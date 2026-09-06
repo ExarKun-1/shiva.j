@@ -735,7 +735,7 @@ const PAYMENT = {
    - id: jedinstvena oznaka
    - name / desc / price (EUR)
    - dims: dimenzije (Š × V × D), material: materijali
-   - imgs: popis fotografija, npr. ["img/luna-1.jpg","img/luna-2.jpg"].
+   - imgs: popis fotografija, npr. ["images/luna-1.jpg","img/luna-2.jpg"].
      Prva fotografija prikazuje se na kartici; sve se listaju
      u povećanom prikazu. Prazan popis [] = elegantni placeholder.
    - sold: true kad je torba prodana (ostaje vidljiva, "Prodano")
@@ -745,12 +745,12 @@ const PAYMENT = {
    Torbe u nastavku su PRIMJERI — imena, cijene, dimenzije i
    materijali izmišljeni su radi prikaza; zamijenite ih stvarnima.
    Luna i Tara imaju probne fotografije stvarnih ranijih torbi
-   (img/luna-1.jpg, img/tara-1.jpg); dimenzije i materijal upisuje
+   (img/images/luna-1.jpg, img/tara-1.jpg); dimenzije i materijal upisuje
    vlasnica umjesto {DIMENZIJE} i {MATERIJAL}.
    ========================================================= */
 const PRODUCTS = [
   { id:"luna", name:"Luna", desc:"Okrugla torba · patchwork u pastelnim tonovima", price:65,
-    dims:"{DIMENZIJE}", material:"{MATERIJAL}", imgs:["img/luna-1.jpg"], sold:false },
+    dims:"{DIMENZIJE}", material:"{MATERIJAL}", imgs:["images/luna-1.jpg"], sold:false },
   { id:"tara", name:"Tara", desc:"Okrugla torba · patchwork u toplim tonovima", price:55,
     dims:"{DIMENZIJE}", material:"{MATERIJAL}", imgs:["img/tara-1.jpg"], sold:false },
   { id:"vela", name:"Vela", desc:"Torba preko ramena · lan i pluto", price:70,
