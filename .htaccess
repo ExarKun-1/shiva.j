@@ -1,0 +1,14 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^api/(status|reserve|order|storno)/?$ api/index.php?a=$1 [L,QSA]
+  RewriteRule ^admin/?$ admin/index.php [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <Files "torbe.json">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </Files>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>

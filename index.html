@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v09 (2026-09-06)
+     SHIVA.J WEBSHOP — v18 (2026-09-08)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -26,6 +26,56 @@
            barkod za skeniranje u m-bankarstvu, gumb "Kopiraj";
            konstanta PAYMENT na vrhu skripte; ispravak: obrazac i
            "Ukupno" bili su vidljivi i u praznoj košarici ([hidden])
+     v10 — rezervacija u stvarnom vremenu (Cloudflare Worker + KV,
+           datoteka shivaj_worker_v01.js): narudžba odmah blokira
+           torbu za sve posjetitelje, storno link u e-mailu narudžbe
+           i admin stranica je oslobađaju, rezervacija sama istječe;
+           konstanta RESERVATION_ENDPOINT (prazno = kao prije)
+     v11 — rok uplate 3 dana upisan u Uvjete kupnje (umjesto
+           placeholdera), usklađeno s workerom v02 i šablonom v02
+     v12 — rezervacija traje 24 sata (worker v03): tekstovi o roku
+           uzimaju broj sati iz workera (data-ttl-text), rok se
+           prikazuje s datumom i vremenom, torbe označene "Plaćeno"
+           u workeru prikazuju se kao Prodano, uputa kupcu da
+           pošalje potvrdu uplate
+     v13 — izbor dostave u košarici (SHIPPING_OPTIONS: BOX NOW
+           paketomat 4 €, GLS na adresu 6 €, osobno preuzimanje u
+           radionici 0 €), BOX NOW karta paketomata (službeni widget,
+           učitava se tek na klik) + polje za paketomat, adresa se
+           traži samo za dostavu na adresu; dostava u ukupnom iznosu,
+           panelu za uplatu i e-mailu; tekstovi (uvjeti, privatnost,
+           podnožje, kako naručiti); ispravak: osvježavanje stanja s
+           workera više ne prazni košaricu usred slanja narudžbe
+     v14 — kategorija "Ostalo" (#ostalo) za artikle po narudžbi:
+           CATEGORIES + polja cat/made/lead u PRODUCTS, prebacivanje
+           kategorija (izbornik i kartice iznad mreže), količina i
+           napomena (boja, duljina) u košarici, bez rezervacije za
+           artikle po narudžbi; tekstovi (uvjeti, kako naručiti)
+     v15 — popis torbi seli u zasebnu datoteku torbe.json pokraj
+           stranice (čita se pri otvaranju, bez predmemorije);
+           ugrađeni popis PRODUCTS ostaje samo kao rezerva ako
+           datoteke nema; konstanta PRODUCTS_URL. Temelj za admin.
+     v16 — stranica radi s PHP servisom na hostingu (mapa hosting/):
+           RESERVATION_ENDPOINT = "api", FORMSPREE_ENDPOINT = "api/order"
+           (Formspree i Cloudflare više nisu potrebni, ali se mogu
+           vratiti upisom njihovih adresa); narudžba nosi i strukturirani
+           dio _order (artikli, količine, dostava, paketomat, kupac,
+           rezervacija) za automatsku potvrdu kupcu; politika privatnosti
+           za hosting Croadria umjesto GitHub Pages / Formspree / Cloudflare
+     v17 — torbe.json je jedini popis proizvoda: iz stranice su uklonjeni
+           primjeri torbi s izmišljenim cijenama (cijenu upisuje vlasnica
+           uz svaku torbu u adminu); prazna ponuda — dok se unose prve
+           torbe ili ako torbe.json nije dostupna — prikazuje poruku
+           „Ponuda se upravo priprema“ umjesto rezervnih primjera;
+           primjeri za lokalno testiranje su u torbe.primjer.json
+     v18 — BOX NOW karta: odabir paketomata prenosi se već klikom na
+           paketomat (widget bez autoclose; s autoclose je čekao još
+           jedan klik na „Izabran“ u detaljima, pa se činilo da odabir
+           ne radi); u polje ide naziv, adresa, poštanski broj i ID
+           paketomata; karta se nakon odabira zatvori, gumb postaje
+           „Promijeni paketomat na karti“; poruke widgeta koje nisu
+           odabir (npr. zatvaranje) zanemaruju se; pri ponovnom
+           otvaranju karte stari iframe se makne
      ========================================================= -->
 <html lang="hr">
 <head>
@@ -259,6 +309,12 @@
     gap:40px 28px;
   }
   .card{display:flex;flex-direction:column;gap:12px}
+  .grid-empty{
+    grid-column:1/-1;text-align:center;padding:56px 24px;
+    border:1px dashed var(--thread);color:var(--ink-soft);line-height:1.6;
+  }
+  .grid-empty-title{font-family:'Marcellus',serif;font-size:1.5rem;color:var(--ink);margin-bottom:10px}
+  .grid-empty a{color:var(--thread);border-bottom:1.5px dashed var(--thread)}
   .card .photo{
     aspect-ratio:4/5;
     background:var(--thread-light);
@@ -286,6 +342,15 @@
   .card h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.1rem;letter-spacing:.02em}
   .price{font-family:'Space Mono',monospace;font-size:.9rem;white-space:nowrap}
   .card .desc{color:var(--ink-soft);font-size:.9rem;margin-top:-6px}
+  .card .lead{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-top:-4px}
+  .cat-tabs{display:flex;gap:18px;margin-top:10px}
+  .cat-tab{
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);padding-bottom:3px;border-bottom:1.5px dashed transparent;
+  }
+  .cat-tab:hover{color:var(--ink)}
+  .cat-tab.on{color:var(--thread);border-bottom-color:var(--thread)}
+  .shop-intro{color:var(--ink-soft);max-width:62ch;margin:-12px 0 28px}
   .unikat-tag{
     font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
     color:var(--thread);
@@ -362,6 +427,15 @@
     padding:14px 0;border-bottom:1px solid var(--line);
   }
   .cart-item .n{font-family:'Marcellus',serif}
+  .cart-item.made{flex-wrap:wrap}
+  .cart-item .qty{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:.85rem}
+  .cart-item .qty button{border:1px solid var(--line);background:none;width:24px;height:24px;line-height:1;border-radius:var(--radius);color:var(--ink);font-size:.9rem}
+  .cart-item .qty button:hover{border-color:var(--ink)}
+  .cart-note{
+    flex:1 1 100%;margin-top:4px;padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius);
+    background:#fff;font-family:inherit;font-size:.85rem;color:var(--ink);
+  }
+  .cart-note:focus{outline:2px solid var(--thread);outline-offset:-1px}
   .cart-item .remove{background:none;border:none;color:var(--sold);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase}
   .cart-item .remove:hover{color:var(--ink)}
   .cart-total{
@@ -386,6 +460,26 @@
   }
   .order-btn:hover{opacity:.9}
   .order-note{font-size:.78rem;color:var(--ink-soft);margin-top:4px}
+  /* način dostave */
+  .ship-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .order-form .ship-opt{
+    display:block;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;cursor:pointer;
+    text-transform:none;letter-spacing:0;color:var(--ink);font-size:.92rem;line-height:1.4;
+  }
+  .order-form .ship-opt.on{border:1.5px dashed var(--thread)}
+  .order-form .ship-opt input{width:auto;padding:0;margin:0 8px 0 0;accent-color:var(--thread);vertical-align:middle}
+  .ship-main{display:inline-flex;justify-content:space-between;align-items:baseline;gap:10px;width:calc(100% - 24px)}
+  .ship-note{display:block;color:var(--ink-soft);font-size:.8rem;margin:4px 0 0 24px;line-height:1.45}
+  .stack{display:flex;flex-direction:column;gap:12px}
+  .locker-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .locker-btn{
+    border:1.5px dashed var(--thread);background:none;color:var(--thread);border-radius:var(--radius);
+    padding:9px 12px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;
+  }
+  .locker-btn:hover{background:var(--thread);color:var(--paper);border-style:solid}
+  .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread)}
+  #boxnowmap:not(:empty){margin-top:10px}
+  #boxnowmap iframe{width:100%;min-height:480px;border:1px solid var(--line);border-radius:var(--radius)}
   .order-form .consent{display:flex;gap:10px;align-items:flex-start;margin-top:2px}
   .order-form .consent input{width:auto;padding:0;margin-top:3px;flex:none;accent-color:var(--thread)}
   .order-form .consent input:focus{outline-offset:2px}
@@ -446,6 +540,7 @@
     <a href="#" class="wordmark">SHIVA<span>.</span>J</a>
     <nav aria-label="Glavna navigacija">
       <a class="navlink" href="#torbe">Torbe</a>
+      <a class="navlink" href="#ostalo">Ostalo</a>
       <a class="navlink" href="#kako">Kako naručiti</a>
       <a class="navlink" href="#o-nama">O nama</a>
       <a class="navlink" href="#kontakt">Kontakt</a>
@@ -459,6 +554,7 @@
   </div>
   <div class="mobile-menu" id="mobileMenu">
     <a href="#torbe">Torbe</a>
+    <a href="#ostalo">Ostalo</a>
     <a href="#kako">Kako naručiti</a>
     <a href="#o-nama">O nama</a>
     <a href="#kontakt">Kontakt</a>
@@ -474,9 +570,13 @@
 
 <main class="shop" id="torbe">
   <div class="shop-head">
-    <h2>Dostupni unikati</h2>
+    <div>
+      <h2 id="shopTitle">Dostupni unikati</h2>
+      <div class="cat-tabs" id="catTabs"><!-- kategorije se generiraju iz JS --></div>
+    </div>
     <span class="mono" id="availCount"></span>
   </div>
+  <p class="shop-intro" id="shopIntro" hidden></p>
 
   <div class="grid" id="productGrid"><!-- proizvodi se generiraju iz JS --></div>
 </main>
@@ -488,17 +588,17 @@
       <div class="step">
         <span class="num">01</span>
         <h3>Odaberite torbu</h3>
-        <p>Svaka postoji u jednom primjerku — što vidite na fotografiji, to i dobivate. Dodajte je u košaricu.</p>
+        <p>Svaka torba postoji u jednom primjerku — što vidite na fotografiji, to i dobivate. Artikle iz kategorije Ostalo radimo po narudžbi, i u više komada. Dodajte u košaricu.</p>
       </div>
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim pošaljete narudžbu, torba je rezervirana za vas.</p>
+        <p>Bez registracije i bez kartice. Čim pošaljete narudžbu, torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti.</p>
       </div>
       <div class="step">
         <span class="num">03</span>
         <h3>Uplatite i pričekajte paket</h3>
-        <p>IBAN, iznos i barkod za uplatu vidite odmah nakon narudžbe, a potvrdu šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo.</p>
+        <p>IBAN, iznos i barkod za uplatu vidite odmah nakon narudžbe, a potvrdu šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo, ili je preuzimate u radionici.</p>
       </div>
     </div>
   </div>
@@ -533,20 +633,20 @@
       <h3>1. Prodavatelj</h3>
       <p>SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi uvjeti vrijede za sve narudžbe putem ove stranice; slanjem narudžbe prihvaćate ih.</p>
 
-      <h3>2. Torbe</h3>
-      <p>Sve torbe ručno su rađeni unikati i postoje u jednom primjerku. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaku torbu.</p>
+      <h3>2. Torbe i ostali artikli</h3>
+      <p>Torbe su ručno rađeni unikati i postoje u jednom primjerku. Artikli iz kategorije „Ostalo" (zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
 
       <h3>3. Cijene i dostava</h3>
-      <p>Cijene su izražene u eurima. {NAPOMENA O PDV-u — npr. „Shiva.J nije u sustavu PDV-a, pa se PDV ne obračunava" ili „Cijene uključuju PDV"}. Trošak dostave prikazan je u košarici prije slanja narudžbe; ako piše „po dogovoru", točan iznos, način i rok dostave javljamo vam u potvrdi narudžbe, prije uplate. Rizik oštećenja ili gubitka torbe prelazi na vas u trenutku kad je preuzmete vi ili osoba koju ste za to ovlastili.</p>
+      <p>Cijene su izražene u eurima. {NAPOMENA O PDV-u — npr. „Shiva.J nije u sustavu PDV-a, pa se PDV ne obračunava" ili „Cijene uključuju PDV"}. Način dostave birate u košarici, a njezin trošak vidite prije slanja narudžbe: BOX NOW paketomat, GLS dostava na adresu ili osobno preuzimanje u radionici (Matije Gupca 33, Zabok, radnim danom od 8 do 15 sati, uz prethodni dogovor). Dostava izvan Hrvatske moguća je po dogovoru e-mailom. Rizik oštećenja ili gubitka torbe prelazi na vas u trenutku kad je preuzmete vi ili osoba koju ste za to ovlastili.</p>
 
       <h3>4. Narudžba i rezervacija</h3>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja". Time je torba rezervirana za vas. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon slanja narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Ako istu torbu naruči više kupaca prije nego što je označimo rezerviranom, prednost ima ranija narudžba, a ostale kupce o tome odmah obavještavamo.</p>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja". Time je torba rezervirana za vas. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon slanja narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Slanjem narudžbe unikatna torba se automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Ako bi dvije narudžbe za istu torbu ipak stigle u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
       <h3>5. Plaćanje</h3>
-      <p>Plaća se uplatom na račun SHIVA. J, obrt za dizajn, IBAN HR98 2360 0001 1027 9044 2, model HR00, a kao poziv na broj upisuje se datum uplate u obliku DDMMGGGG (npr. 06092026). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj i IBAN popune se sami, a iznos, model i poziv na broj upisujete sami. Molimo uplatu odmah po narudžbi. Ako uplata ne stigne u roku {ROK UPLATE, npr. 3 radna dana}, rezervacija prestaje i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Plaća se uplatom na račun SHIVA. J, obrt za dizajn, IBAN HR98 2360 0001 1027 9044 2, model HR00, a kao poziv na broj upisuje se datum uplate u obliku DDMMGGGG (npr. 06092026). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj i IBAN popune se sami, a iznos, model i poziv na broj upisujete sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
 
       <h3>6. Pravo na jednostrani raskid ugovora</h3>
-      <p>Kao potrošač možete jednostrano raskinuti ugovor u roku 14 dana od dana kad ste vi ili osoba koju ste ovlastili preuzeli torbu, bez navođenja razloga. Dovoljna je nedvosmislena izjava e-mailom na shivaj.handmade@gmail.com; možete upotrijebiti obrazac u nastavku. Torbu vraćate na našu adresu najkasnije 14 dana od dana kad ste nam poslali izjavu o raskidu; trošak povrata snosite sami. Uplaćeni iznos vraćamo na vaš račun u roku 14 dana od dana kad nam vratite torbu ili dostavite dokaz da ste je poslali. Torbu možete pregledati kao što biste je pregledali u trgovini; za umanjenje vrijednosti zbog rukovanja koje to nadilazi odgovara kupac. Pravo na raskid ne vrijedi za torbe izrađene po vašim posebnim željama (po mjeri).</p>
+      <p>Kao potrošač možete jednostrano raskinuti ugovor u roku 14 dana od dana kad ste vi ili osoba koju ste ovlastili preuzeli torbu, bez navođenja razloga. Dovoljna je nedvosmislena izjava e-mailom na shivaj.handmade@gmail.com; možete upotrijebiti obrazac u nastavku. Torbu vraćate na našu adresu najkasnije 14 dana od dana kad ste nam poslali izjavu o raskidu; trošak povrata snosite sami. Uplaćeni iznos vraćamo na vaš račun u roku 14 dana od dana kad nam vratite torbu ili dostavite dokaz da ste je poslali. Torbu možete pregledati kao što biste je pregledali u trgovini; za umanjenje vrijednosti zbog rukovanja koje to nadilazi odgovara kupac. Pravo na raskid ne vrijedi za artikle izrađene po vašim posebnim željama, npr. remen u odabranoj boji i duljini ili torbu po mjeri.</p>
       <p>Obrazac za jednostrani raskid ugovora (kopirajte u e-mail i popunite):</p>
       <pre class="raskid-form">Za: SHIVA. J, obrt za dizajn, Matije Gupca 33, 49210 Zabok, shivaj.handmade@gmail.com
 Ovime izjavljujem da jednostrano raskidam ugovor o kupnji torbe: ______________
@@ -564,7 +664,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
     <div class="legal-block" id="privatnost">
       <h2>Politika privatnosti</h2>
       <hr class="seam">
-      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Ova stranica ne koristi kolačiće, analitiku ni bilo kakve alate za praćenje.</p>
+      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Ova stranica ne koristi kolačiće, analitiku ni bilo kakve alate za praćenje; jedina iznimka je karta BOX NOW paketomata, koja se učitava samo na vaš klik (vidi dolje).</p>
 
       <h3>Voditelj obrade</h3>
       <p>SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, OIB: 50934176320. Kontakt: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a>.</p>
@@ -573,7 +673,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <p>Kod narudžbe prikupljamo ime i prezime, e-mail adresu, broj telefona, adresu za dostavu i eventualnu napomenu — isključivo radi obrade i isporuke vaše narudžbe te komunikacije s vama o njoj. Pravna osnova je izvršenje ugovora (čl. 6. st. 1. t. (b) Opće uredbe o zaštiti podataka). Podatke ne koristimo za marketing i ne prosljeđujemo ih trećima, osim navedenim izvršiteljima obrade.</p>
 
       <h3>Tko još dolazi u dodir s podacima</h3>
-      <p>Narudžba se tehnički prenosi putem usluge Formspree Inc. (SAD; prijenos podataka izvan EU temelji se na standardnim ugovornim klauzulama Europske komisije) i pohranjuje u našem e-mail sandučiću (Google Gmail). Adresu za dostavu i broj telefona dijelimo s dostavnom službom isključivo radi isporuke paketa. Stranicu poslužuje GitHub Pages (GitHub Inc., SAD), koji radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
+      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju i šalje nam e-mailom, a vama se automatski šalje potvrda narudžbe. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
 
       <h3>Koliko dugo čuvamo podatke</h3>
       <p>Podatke o izvršenim narudžbama čuvamo koliko nalažu porezni i računovodstveni propisi. Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana.</p>
@@ -606,14 +706,14 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
     </div>
     <div class="foot-links">
       <span class="mono" style="color:var(--thread)">Informacije</span>
-      <span>Dostava po dogovoru</span>
+      <span>Dostava: BOX NOW paketomat, GLS ili preuzimanje u radionici</span>
       <span>Plaćanje uplatom na račun — IBAN i barkod odmah nakon narudžbe</span>
       <a href="#uvjeti">Uvjeti kupnje i pravo na raskid</a>
       <a href="#privatnost">Politika privatnosti</a>
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v09</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v18</p>
 </footer>
 
 <!-- Košarica -->
@@ -646,12 +746,27 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <input id="fPhone" type="tel" required autocomplete="tel">
       </div>
       <div>
-        <label for="fAddr">Ulica i kućni broj</label>
-        <input id="fAddr" required autocomplete="street-address">
+        <label>Način dostave</label>
+        <div class="ship-opts" id="shipOptions"><!-- generira se iz SHIPPING_OPTIONS --></div>
       </div>
-      <div>
-        <label for="fCity">Poštanski broj i mjesto</label>
-        <input id="fCity" required placeholder="npr. 10000 Zagreb">
+      <div id="addrFields" class="stack">
+        <div>
+          <label for="fAddr">Ulica i kućni broj</label>
+          <input id="fAddr" required autocomplete="street-address">
+        </div>
+        <div>
+          <label for="fCity">Poštanski broj i mjesto</label>
+          <input id="fCity" required placeholder="npr. 10000 Zagreb">
+        </div>
+      </div>
+      <div id="lockerFields" hidden>
+        <label for="fLocker">BOX NOW paketomat</label>
+        <input id="fLocker" placeholder="odaberite na karti ili upišite mjesto i adresu paketomata">
+        <div class="locker-actions">
+          <button type="button" class="locker-btn boxnow-map-widget-button" id="lockerMapBtn">Odaberi paketomat na karti</button>
+          <a class="locker-link" href="https://boxnow.hr/locker-finder" target="_blank" rel="noopener">Karta paketomata (boxnow.hr)</a>
+        </div>
+        <div id="boxnowmap"></div>
       </div>
       <div>
         <label for="fNote">Napomena (neobavezno)</label>
@@ -662,7 +777,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
       <button type="submit" class="order-btn">Naruči s obvezom plaćanja</button>
-      <p class="order-note">Bez registracije i bez kartice. Nakon narudžbe torba je rezervirana za vas i odmah vidite podatke za uplatu (IBAN, iznos, barkod); potvrdu s istim podacima šaljemo i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
+      <p class="order-note">Bez registracije i bez kartice. Nakon narudžbe torba je rezervirana za vas <span data-ttl-text>24 sata</span> i odmah vidite podatke za uplatu (IBAN, iznos, barkod); potvrdu s istim podacima šaljemo i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
     </form>
     <div class="empty-cart" id="emptyCart">Košarica je prazna.<br>Svaka torba postoji samo jednom — kad je vaša, samo je vaša.</div>
   </div>
@@ -685,6 +800,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <dl class="lb-specs">
         <div><dt>Dimenzije</dt><dd id="lbDims"></dd></div>
         <div><dt>Materijal</dt><dd id="lbMaterial"></dd></div>
+        <div id="lbLeadRow" hidden><dt>Izrada</dt><dd id="lbLead"></dd></div>
       </dl>
       <button class="add-btn" id="lbAdd"></button>
     </div>
@@ -704,15 +820,60 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
    4. Zalijepite tu adresu dolje umjesto postojeće.
    Dok to ne napravite, narudžba se šalje e-mailom
    (mailto) kao i prije — ništa se ne gubi.
+
+   OD v16: narudžbe zaprima PHP servis na istom hostingu
+   ("api/order", mapa hosting/ iz isporuke). Formspree se
+   koristi samo ako ovdje upišete njegovu adresu.
    ========================================================= */
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/VAS_KOD_OVDJE";
+const FORMSPREE_ENDPOINT = "api/order";
 
 /* =========================================================
-   DOSTAVA
-   - broj (npr. 5) → cijena dostave u EUR, dodaje se na ukupno
-   - null → prikazuje se "Dostava: po dogovoru", ne dodaje se
+   DOSTAVA — kupac bira način dostave u košarici.
+   - price: cijena u EUR koja se dodaje na ukupno (0 = besplatno)
+   - address: true → traže se ulica, poštanski broj i mjesto
+   - locker: true → kupac bira BOX NOW paketomat (karta ili upis)
+   - note: kratki tekst ispod opcije
+   Opciju koju ne nudite obrišite; prva na popisu je zadana.
    ========================================================= */
-const SHIPPING = null;
+const SHIPPING_OPTIONS = [
+  { id: "boxnow", label: "BOX NOW paketomat", price: 4.00, address: false, locker: true,
+    note: "Paket stiže u paketomat po vašem izboru; kod za preuzimanje dobivate SMS-om ili e-mailom." },
+  { id: "gls", label: "GLS dostava na adresu", price: 6.00, address: true, locker: false,
+    note: "Kurir dostavlja na vašu adresu, obično sljedeći radni dan nakon slanja." },
+  { id: "pickup", label: "Osobno preuzimanje u radionici", price: 0, address: false, locker: false,
+    note: "Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati, nakon uplate i uz dogovor termina." }
+];
+
+/* =========================================================
+   BOX NOW KARTA PAKETOMATA — službeni widget, učitava se tek kad
+   kupac odabere paketomat kao način dostave. partnerId nije
+   obavezan; upišite ga ako vlasnica dobije partnerski račun.
+   script: "" = bez karte (ostaje link na karту i ručni upis)
+   ========================================================= */
+const BOXNOW = {
+  script: "https://widget-cdn.boxnow.hr/map-widget/client/v5.js",
+  partnerId: ""
+};
+
+/* =========================================================
+   POPIS TORBI — glavni popis je datoteka torbe.json pokraj ove
+   stranice (nju će uređivati admin). Stranica je čita pri svakom
+   otvaranju. Ako datoteke nema ili je neispravna, koristi se
+   ugrađeni popis PRODUCTS niže (rezerva). "" = samo ugrađeni popis.
+   ========================================================= */
+const PRODUCTS_URL = "torbe.json";
+
+/* =========================================================
+   KATEGORIJE — svaka ima vlastiti link (#torbe, #ostalo), naslov
+   i uvodni tekst. Proizvod pripada kategoriji preko polja cat.
+   ========================================================= */
+const CATEGORIES = [
+  { id: "torbe", label: "Torbe", title: "Dostupni unikati", intro: "",
+    empty: "Nove torbe objavljujemo uskoro; svaka postoji samo jednom." },
+  { id: "ostalo", label: "Ostalo", title: "Ostalo — remeni, torbice, platnene torbe",
+    intro: "Stvari koje radimo u više primjeraka, po narudžbi: zamjenski remeni za torbe, kozmetičke torbice i platnene torbe za plažu. Rok izrade piše uz svaki artikl i teče od primitka uplate; boju ili duljinu upišite u košarici.",
+    empty: "Artikle po narudžbi objavljujemo uskoro." }
+];
 
 /* =========================================================
    PODACI ZA UPLATU — kupac ih vidi odmah nakon narudžbe
@@ -730,70 +891,135 @@ const PAYMENT = {
 };
 
 /* =========================================================
-   PROIZVODI — ovdje se uređuje ponuda.
-   Za svaki proizvod:
+   REZERVACIJE U STVARNOM VREMENU — Cloudflare Worker
+   Adresa workera iz uputa (shivaj_upute_rezervacije_v01.md), npr.
+   "https://shivaj-rezervacije.ime.workers.dev" (bez kose crte na
+   kraju). Prazno "" = stranica radi kao prije, bez blokade torbe
+   za druge kupce.
+   ========================================================= */
+const RESERVATION_ENDPOINT = "api"; /* PHP servis na hostingu; "" = bez rezervacija; ili adresa Cloudflare workera */
+
+/* =========================================================
+   PROIZVODI — popis je torbe.json (vidi PRODUCTS_URL), a piše ga
+   admin na hostingu (/admin/). Ovaj ugrađeni popis je namjerno
+   prazan: dok torbe.json nema ili je prazna, stranica prikazuje
+   „Ponuda se upravo priprema“, nikad izmišljene primjere.
+   Polja svakog proizvoda u torbe.json:
    - id: jedinstvena oznaka
    - name / desc / price (EUR)
    - dims: dimenzije (Š × V × D), material: materijali
-   - imgs: popis fotografija, npr. ["images/luna-1.jpg","img/luna-2.jpg"].
+   - imgs: popis fotografija, npr. ["img/luna-1.jpg","img/luna-2.jpg"].
      Prva fotografija prikazuje se na kartici; sve se listaju
      u povećanom prikazu. Prazan popis [] = elegantni placeholder.
    - sold: true kad je torba prodana (ostaje vidljiva, "Prodano")
    - reserved: true dok za naručenu torbu čekate uplatu (prikazuje
      "Rezervirano", ne može se naručiti); kad uplata stigne,
      reserved obrišite i stavite sold: true
-   Torbe u nastavku su PRIMJERI — imena, cijene, dimenzije i
-   materijali izmišljeni su radi prikaza; zamijenite ih stvarnima.
-   Luna i Tara imaju probne fotografije stvarnih ranijih torbi
-   (img/images/luna-1.jpg, img/images/tara-1.jpg); dimenzije i materijal upisuje
-   vlasnica umjesto {DIMENZIJE} i {MATERIJAL}.
+   - cat: "torbe" (zadano) ili "ostalo" — kategorija u kojoj se prikazuje
+   - made: true → artikl po narudžbi, nije unikat: kupac može naručiti
+     više komada i upisati boju/duljinu, nema rezervacije;
+     sold: true kod takvog artikla znači "Trenutno nedostupno"
+   - lead: rok izrade koji se prikazuje uz artikl, npr. "5 radnih dana"
+   Primjeri za lokalno testiranje (izmišljene cijene) nalaze se u
+   torbe.primjer.json — kopirati u torbe.json samo za probu.
    ========================================================= */
-const PRODUCTS = [
-  { id:"luna", name:"Luna", desc:"Okrugla torba · patchwork u pastelnim tonovima", price:65,
-    dims:"{DIMENZIJE}", material:"{MATERIJAL}", imgs:["images/luna-1.jpg"], sold:false },
-  { id:"tara", name:"Tara", desc:"Okrugla torba · patchwork u toplim tonovima", price:55,
-    dims:"{DIMENZIJE}", material:"{MATERIJAL}", imgs:["images/tara-1.jpg"], sold:false },
-  { id:"vela", name:"Vela", desc:"Torba preko ramena · lan i pluto", price:70,
-    dims:"28 × 22 × 8 cm · podesivi remen", material:"Lan, pluto, metalna kopča", imgs:[], sold:false },
-  { id:"mira", name:"Mira", desc:"Mala večernja torbica · vez ručnim koncem", price:48,
-    dims:"22 × 14 × 6 cm", material:"Saten, ručni vez pamučnim koncem, magnetsko zatvaranje", imgs:[], sold:false, reserved:true },
-  { id:"nera", name:"Nera", desc:"Ruksak · voskirano platno", price:85,
-    dims:"30 × 40 × 14 cm · stane laptop 15\"", material:"Voskirano platno, kožni remeni, mesingani okovi", imgs:[], sold:false },
-  { id:"zora", name:"Zora", desc:"Shopper · tkanina s ručnim printom", price:60,
-    dims:"40 × 36 × 12 cm", material:"Pamučna tkanina s ručnim printom, ojačane ručke", imgs:[], sold:true }
-];
+const PRODUCTS = [];
 
 const fmt = n => n.toFixed(2).replace(".", ",") + " €";
+const isGone = p => p.made ? !!p.sold : !!(p.sold || p.srvSold || p.reserved || p.srvReserved);
+const statusLabel = p => p.made
+  ? (p.sold ? "Trenutno nedostupno" : "Po narudžbi")
+  : (p.sold || p.srvSold) ? "Prodano" : (p.reserved || p.srvReserved) ? "Rezervirano" : "Jedan primjerak";
+const qtyOf = c => Math.max(1, Number(c.qty) || 1);
 let cart = [];
+
+/* ---------- popis torbi iz torbe.json (ugrađeni popis je rezerva) ---------- */
+async function loadProducts(){
+  if(!PRODUCTS_URL || location.protocol === "file:") return false;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const url = PRODUCTS_URL + (PRODUCTS_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+    clearTimeout(timer);
+    if(!res.ok) return false;
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.products) ? data.products : null);
+    if(!list) return false;
+    const ok = list.filter(p => p && p.id && p.name && typeof p.price === "number");
+    /* prazna datoteka je ispravno stanje (npr. dok se unose prve torbe), ne greška */
+    PRODUCTS.length = 0;
+    ok.forEach(p => PRODUCTS.push(p));
+    return true;
+  } catch(err){ return false; /* nema datoteke ili je neispravna → ugrađeni popis */ }
+}
+
+/* ---------- kategorije (#torbe, #ostalo) ---------- */
+const catFromHash = () => { const h = (location.hash || "").slice(1); return CATEGORIES.some(c => c.id === h) ? h : null; };
+let currentCat = catFromHash() || CATEGORIES[0].id;
+const currentCategory = () => CATEGORIES.find(c => c.id === currentCat) || CATEGORIES[0];
+function renderShopHead(){
+  const c = currentCategory();
+  document.getElementById("shopTitle").textContent = c.title;
+  const intro = document.getElementById("shopIntro");
+  intro.textContent = c.intro || ""; intro.hidden = !c.intro;
+  document.getElementById("catTabs").innerHTML = CATEGORIES.length > 1
+    ? CATEGORIES.map(k => `<a class="cat-tab${k.id === currentCat ? " on" : ""}" href="#${k.id}">${k.label}</a>`).join("")
+    : "";
+}
+window.addEventListener("hashchange", () => {
+  const c = catFromHash();
+  if(!c) return;
+  if(c !== currentCat){ currentCat = c; renderShopHead(); renderGrid(); }
+  document.getElementById("torbe").scrollIntoView();
+});
 
 const grid = document.getElementById("productGrid");
 function renderGrid(){
   grid.innerHTML = "";
-  PRODUCTS.forEach(p => {
-    const inCart = cart.some(c => c.id === p.id);
-    const gone = p.sold || p.reserved;
+  const list = PRODUCTS.filter(p => (p.cat || "torbe") === currentCat);
+  if(!list.length){
+    grid.innerHTML = `
+      <div class="grid-empty">
+        <p class="grid-empty-title">Ponuda se upravo priprema</p>
+        <p>${currentCategory().empty || "Nove torbe objavljujemo uskoro."} Do tada nas potražite na Instagramu
+          <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a>
+          ili nam pišite e-mailom.</p>
+      </div>`;
+    document.getElementById("availCount").textContent = "";
+    return;
+  }
+  list.forEach(p => {
+    const entry = cart.find(c => c.id === p.id);
+    const gone = isGone(p);
     const cover = p.imgs && p.imgs.length ? p.imgs[0] : null;
     const card = document.createElement("article");
     card.className = "card" + (gone ? " sold" : "");
+    const btnText = gone ? statusLabel(p)
+      : p.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Dodaj u košaricu")
+      : entry ? "U košarici ✓" : "Dodaj u košaricu";
     card.innerHTML = `
-      <div class="photo" data-view="${p.id}" role="button" tabindex="0" aria-label="Pogledaj torbu ${p.name}">
+      <div class="photo" data-view="${p.id}" role="button" tabindex="0" aria-label="Pogledaj ${p.name}">
         ${cover
-          ? `<img src="${cover}" alt="Torba ${p.name}" loading="lazy">`
+          ? `<img src="${cover}" alt="${p.name}" loading="lazy">`
           : `<div class="ph"><span class="ph-mark">${p.name[0]}</span><span class="ph-note">Fotografija uskoro</span></div>`}
       </div>
-      <span class="unikat-tag">${p.sold ? "Prodano" : p.reserved ? "Rezervirano" : "Jedan primjerak"}</span>
+      <span class="unikat-tag">${statusLabel(p)}</span>
       <div class="card-info">
         <h3>${p.name}</h3>
         <span class="price">${fmt(p.price)}</span>
       </div>
       <p class="desc">${p.desc}</p>
-      <button class="add-btn ${inCart ? "in-cart" : ""}" data-id="${p.id}" ${gone ? "disabled" : ""}>
-        ${p.sold ? "Prodano" : p.reserved ? "Rezervirano" : inCart ? "U košarici ✓" : "Dodaj u košaricu"}
+      ${p.made && p.lead ? `<p class="lead">Izrada: ${p.lead}</p>` : ""}
+      <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${p.id}" ${gone ? "disabled" : ""}>
+        ${btnText}
       </button>`;
     grid.appendChild(card);
   });
-  const avail = PRODUCTS.filter(p => !p.sold && !p.reserved).length;
-  document.getElementById("availCount").textContent = avail + (avail === 1 ? " komad dostupan" : " komada dostupno");
+  const avail = list.filter(p => !isGone(p)).length;
+  document.getElementById("availCount").textContent = list.length && list.every(p => p.made)
+    ? "izrada po narudžbi"
+    : avail + (avail === 1 ? " komad dostupan" : " komada dostupno");
 }
 
 grid.addEventListener("click", e => {
@@ -810,12 +1036,16 @@ grid.addEventListener("keydown", e => {
 
 function toggleCartItem(id){
   const p = PRODUCTS.find(x => x.id === id);
-  if(!p || p.sold || p.reserved) return;
-  if(cart.some(c => c.id === p.id)){
+  if(!p || isGone(p)) return;
+  const entry = cart.find(c => c.id === p.id);
+  if(p.made){
+    if(entry){ entry.qty = Math.min(10, qtyOf(entry) + 1); showToast(`„${p.name}" — ${entry.qty} kom u košarici`); }
+    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`„${p.name}" dodana u košaricu`); }
+  } else if(entry){
     cart = cart.filter(c => c.id !== p.id);
     showToast(`„${p.name}" uklonjena iz košarice`);
   } else {
-    cart.push(p); /* unikat — uvijek količina 1 */
+    cart.push({ ...p, qty: 1, note: "" }); /* unikat — uvijek količina 1 */
     showToast(`„${p.name}" dodana u košaricu`);
   }
   renderGrid(); renderCart();
@@ -835,7 +1065,9 @@ function openLightbox(id){
   document.getElementById("lbDesc").textContent = lbCurrent.desc;
   document.getElementById("lbDims").textContent = lbCurrent.dims || "—";
   document.getElementById("lbMaterial").textContent = lbCurrent.material || "—";
-  document.getElementById("lbTag").textContent = lbCurrent.sold ? "Prodano" : lbCurrent.reserved ? "Rezervirano" : "Jedan primjerak";
+  document.getElementById("lbLeadRow").hidden = !(lbCurrent.made && lbCurrent.lead);
+  document.getElementById("lbLead").textContent = lbCurrent.lead || "";
+  document.getElementById("lbTag").textContent = statusLabel(lbCurrent);
   renderLbPhoto(); updateLbButton();
   lightbox.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -875,11 +1107,13 @@ function stepLb(d){
 function updateLbButton(){
   const b = document.getElementById("lbAdd");
   if(!lbCurrent) return;
-  const gone = lbCurrent.sold || lbCurrent.reserved;
-  const inCart = cart.some(c => c.id === lbCurrent.id);
+  const gone = isGone(lbCurrent);
+  const entry = cart.find(c => c.id === lbCurrent.id);
   b.disabled = gone;
-  b.classList.toggle("in-cart", inCart && !gone);
-  b.textContent = lbCurrent.sold ? "Prodano" : lbCurrent.reserved ? "Rezervirano" : inCart ? "U košarici ✓" : "Dodaj u košaricu";
+  b.classList.toggle("in-cart", !!entry && !gone && !lbCurrent.made);
+  b.textContent = gone ? statusLabel(lbCurrent)
+    : lbCurrent.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Dodaj u košaricu")
+    : entry ? "U košarici ✓" : "Dodaj u košaricu";
 }
 document.getElementById("lbClose").addEventListener("click", closeLightbox);
 document.getElementById("lbPrev").addEventListener("click", () => stepLb(-1));
@@ -909,7 +1143,7 @@ document.getElementById("mobileMenu").addEventListener("click", e => {
 /* ---------- košarica ---------- */
 const drawer = document.getElementById("drawer");
 const EMPTY_MSG = document.getElementById("emptyCart").innerHTML;
-document.getElementById("openCart").addEventListener("click", () => document.body.classList.add("cart-open"));
+document.getElementById("openCart").addEventListener("click", () => { document.body.classList.add("cart-open"); refreshReservations(); });
 document.getElementById("closeCart").addEventListener("click", closeCart);
 document.getElementById("overlay").addEventListener("click", closeCart);
 document.addEventListener("keydown", e => {
@@ -947,27 +1181,163 @@ function renderCart(){
   if(empty.classList.contains("pay-mode")){ empty.classList.remove("pay-mode"); empty.innerHTML = EMPTY_MSG; }
   cart.forEach(p => {
     const row = document.createElement("div");
-    row.className = "cart-item";
+    row.className = "cart-item" + (p.made ? " made" : "");
+    const q = qtyOf(p);
     row.innerHTML = `<span class="n">${p.name}</span>
-      <span class="price">${fmt(p.price)}</span>
-      <button class="remove" data-id="${p.id}">Ukloni</button>`;
+      ${p.made ? `<span class="qty"><button type="button" class="q" data-id="${p.id}" data-d="-1" aria-label="Manje">−</button><b>${q}</b><button type="button" class="q" data-id="${p.id}" data-d="1" aria-label="Više">+</button></span>` : ""}
+      <span class="price">${fmt(p.price * q)}</span>
+      <button class="remove" data-id="${p.id}">Ukloni</button>
+      ${p.made ? `<input class="cart-note" data-id="${p.id}" value="${escHtml(p.note || "")}" placeholder="boja, duljina, želje…" maxlength="120">` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
   const ship = document.createElement("div");
   ship.className = "cart-item";
-  ship.innerHTML = `<span class="n" style="font-family:'Karla',sans-serif;color:var(--ink-soft)">Dostava</span>
-    <span class="price">${SHIPPING === null ? "po dogovoru" : fmt(SHIPPING)}</span><span></span>`;
+  const so = shipSel();
+  ship.innerHTML = `<span class="n" style="font-family:'Karla',sans-serif;color:var(--ink-soft)">Dostava${so ? " · " + so.label : ""}</span>
+    <span class="price">${so ? (so.price ? fmt(so.price) : "besplatno") : "po dogovoru"}</span><span></span>`;
   box.appendChild(ship);
-  const total = cart.reduce((s,p)=>s+p.price,0) + (SHIPPING || 0);
+  const total = cart.reduce((s,p)=>s+p.price*qtyOf(p),0) + shipPrice();
   document.getElementById("totalAmount").textContent = fmt(total);
 }
 document.getElementById("cartItems").addEventListener("click", e => {
+  const qb = e.target.closest(".q");
+  if(qb){
+    const it = cart.find(c => c.id === qb.dataset.id);
+    if(it){ it.qty = Math.max(1, Math.min(10, qtyOf(it) + Number(qb.dataset.d))); renderGrid(); renderCart(); }
+    return;
+  }
   const b = e.target.closest(".remove");
   if(!b) return;
   cart = cart.filter(c => c.id !== b.dataset.id);
   renderGrid(); renderCart();
 });
+document.getElementById("cartItems").addEventListener("input", e => {
+  const n = e.target.closest(".cart-note");
+  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it) it.note = n.value.slice(0, 120); }
+});
+
+/* ---------- rezervacije u stvarnom vremenu (Cloudflare Worker) ---------- */
+let submitting = false; /* dok traje slanje narudžbe, osvježavanje ne dira košaricu */
+async function refreshReservations(){
+  if(!RESERVATION_ENDPOINT || submitting) return;
+  try {
+    const res = await fetch(RESERVATION_ENDPOINT + "/status", { cache: "no-store" });
+    if(!res.ok) return;
+    const data = await res.json();
+    const reservedIds = new Set(data.ids || []);
+    const soldIds = new Set(data.sold || []);
+    if(data.ttlHours) setTtlText(data.ttlHours);
+    let changed = false;
+    const dropped = [];
+    PRODUCTS.forEach(p => {
+      const r = reservedIds.has(p.id), sd = soldIds.has(p.id);
+      if(!!p.srvReserved !== r){ p.srvReserved = r; changed = true; }
+      if(!!p.srvSold !== sd){ p.srvSold = sd; changed = true; }
+      if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); dropped.push(p.name); }
+    });
+    if(dropped.length) showToast(`Nažalost, više nije dostupno: ${dropped.join(", ")}`);
+    if(changed || dropped.length){ renderGrid(); renderCart(); if(lbCurrent) updateLbButton(); }
+  } catch(err){ /* servis nedostupan — stranica radi bez blokade */ }
+}
+/* "24 sata", "12 sati", "1 sat" — broj sati dolazi iz workera (TTL_HOURS) */
+function hoursText(n){
+  n = Number(n) || 0;
+  const m10 = n % 10, m100 = n % 100;
+  const w = (m10 === 1 && m100 !== 11) ? "sat" : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? "sata" : "sati";
+  return n + " " + w;
+}
+function setTtlText(h){ document.querySelectorAll("[data-ttl-text]").forEach(el => { el.textContent = hoursText(h); }); }
+function markTaken(ids){
+  const names = [];
+  ids.forEach(id => { const p = PRODUCTS.find(x => x.id === id); if(p){ p.srvReserved = true; names.push(p.name); } });
+  cart = cart.filter(c => !ids.includes(c.id));
+  renderGrid(); renderCart(); if(lbCurrent) updateLbButton();
+  showToast(`Nažalost, upravo je rezervirano: ${names.join(", ") || "odabrana torba"}`);
+}
+async function reserveCart(o){
+  if(!RESERVATION_ENDPOINT) return null;
+  const ids = cart.filter(p => !p.made).map(p => p.id); /* artikli po narudžbi se ne rezerviraju */
+  if(!ids.length) return null;
+  const res = await fetch(RESERVATION_ENDPOINT + "/reserve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, name: o.name, email: o.email })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(res.status === 409 && Array.isArray(data.taken)){ markTaken(data.taken); return { taken: true }; }
+  if(!res.ok || !data.ok) throw new Error("HTTP " + res.status);
+  return data; /* { ok, ids, token, until, storno } */
+}
+
+/* ---------- dostava: izbor u košarici + BOX NOW karta ---------- */
+let shipId = SHIPPING_OPTIONS.length ? SHIPPING_OPTIONS[0].id : null;
+const shipSel = () => SHIPPING_OPTIONS.find(o => o.id === shipId) || SHIPPING_OPTIONS[0] || null;
+const shipPrice = () => { const o = shipSel(); return o ? (Number(o.price) || 0) : 0; };
+const escHtml = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderShipping(){
+  const box = document.getElementById("shipOptions");
+  if(!SHIPPING_OPTIONS.length){ box.closest("div").hidden = true; applyShipping(); return; }
+  box.innerHTML = SHIPPING_OPTIONS.map(o => `
+    <label class="ship-opt${o.id === shipId ? " on" : ""}">
+      <input type="radio" name="ship" value="${o.id}" ${o.id === shipId ? "checked" : ""}>
+      <span class="ship-main"><span>${o.label}</span><span class="price">${o.price ? fmt(o.price) : "besplatno"}</span></span>
+      ${o.note ? `<span class="ship-note">${o.note}</span>` : ""}
+    </label>`).join("");
+  applyShipping();
+}
+function applyShipping(){
+  const o = shipSel();
+  const needAddr = !!(o && o.address), needLocker = !!(o && o.locker);
+  document.getElementById("addrFields").hidden = !needAddr;
+  document.getElementById("fAddr").required = needAddr;
+  document.getElementById("fCity").required = needAddr;
+  document.getElementById("lockerFields").hidden = !needLocker;
+  document.getElementById("fLocker").required = needLocker;
+  if(needLocker) loadBoxnowWidget();
+  renderCart();
+}
+document.getElementById("shipOptions").addEventListener("change", e => {
+  if(e.target.name === "ship"){ shipId = e.target.value; renderShipping(); }
+});
+
+let boxnowLoaded = false;
+const clearBoxnowMap = () => document.querySelectorAll("#boxnowmap iframe").forEach(f => f.remove());
+function loadBoxnowWidget(){
+  if(boxnowLoaded || !BOXNOW.script) return;
+  boxnowLoaded = true;
+  const mapBtn = document.getElementById("lockerMapBtn");
+  /* widget pri svakom kliku na gumb dodaje novi iframe; naš slušač je registriran prije
+     njegova, pa prvo makne staru kartu */
+  mapBtn.addEventListener("click", clearBoxnowMap);
+  window._bn_map_widget_config = {
+    parentElement: "#boxnowmap",
+    type: "iframe",
+    gps: false,          /* kupac pretražuje po mjestu ili poštanskom broju; bez upita za lokaciju */
+    language: "hr",
+    autoclose: false,    /* VAŽNO: s autoclose:true widget (v5) ne šalje odabir na klik paketomata,
+                            nego čeka još jedan klik na „Izabran“ u detaljima; bez autoclose klik na
+                            paketomat (na karti ili u popisu) odmah šalje odabir, a kartu zatvaramo sami */
+    buttonSelector: ".boxnow-map-widget-button",
+    afterSelect: function(d){
+      if(typeof d === "string"){ try { d = JSON.parse(d); } catch(e){ d = null; } }
+      if(!d || !(d.boxnowLockerId || d.boxnowLockerAddressLine1)) return; /* npr. poruka o zatvaranju karte */
+      const place = [d.boxnowLockerAddressLine1, d.boxnowLockerAddressLine2, d.boxnowLockerPostalCode].filter(Boolean).join(", ");
+      const txt = [d.boxnowLockerName, place].filter(Boolean).join(" — ")
+        + (d.boxnowLockerId ? " (ID " + d.boxnowLockerId + ")" : "");
+      document.getElementById("fLocker").value = txt;
+      clearBoxnowMap();
+      mapBtn.textContent = "Promijeni paketomat na karti";
+      showToast("Paketomat odabran ✓");
+    }
+  };
+  if(BOXNOW.partnerId) window._bn_map_widget_config.partnerId = BOXNOW.partnerId;
+  const sc = document.createElement("script");
+  sc.src = BOXNOW.script; sc.async = true;
+  sc.onerror = () => { document.getElementById("lockerMapBtn").hidden = true; }; /* bez karte ostaju link i ručni upis */
+  document.head.appendChild(sc);
+}
 
 /* ---------- narudžba (Formspree + mailto rezerva) ---------- */
 function buildOrder(){
@@ -976,11 +1346,15 @@ function buildOrder(){
   const phone = document.getElementById("fPhone").value.trim();
   const street = document.getElementById("fAddr").value.trim();
   const city = document.getElementById("fCity").value.trim();
-  const addr = street + ", " + city;
+  const so = shipSel();
+  const lockerText = (so && so.locker) ? document.getElementById("fLocker").value.trim() : "";
+  const addr = (so && so.address) ? street + ", " + city : (so && so.locker ? "dostava u paketomat" : "osobno preuzimanje");
   const note = document.getElementById("fNote").value.trim();
-  const lines = cart.map(p => `- ${p.name} (${fmt(p.price)})`).join("\n");
-  const shipLine = SHIPPING === null ? "po dogovoru" : fmt(SHIPPING);
-  const total = fmt(cart.reduce((s,p)=>s+p.price,0) + (SHIPPING || 0));
+  const lines = cart.map(p => `- ${p.name}${qtyOf(p) > 1 ? " × " + qtyOf(p) : ""}${p.note ? " (" + p.note + ")" : ""} (${fmt(p.price * qtyOf(p))})`).join("\n");
+  const shipLine = so
+    ? `${so.label} — ${so.price ? fmt(so.price) : "besplatno"}${lockerText ? " — paketomat: " + lockerText : ""}`
+    : "po dogovoru";
+  const total = fmt(cart.reduce((s,p)=>s+p.price*qtyOf(p),0) + shipPrice());
   const body =
 `Nova narudžba — Shiva.J
 
@@ -997,7 +1371,7 @@ Ukupno: ${total}
 ${note ? "\nNapomena: " + note : ""}
 
 Kupac je prihvatio Uvjete kupnje (narudžba s obvezom plaćanja).`;
-  return { name, email, phone, addr, note, lines, total, shipLine, body };
+  return { name, email, phone, addr, note, lines, total, shipLine, body, lockerText };
 }
 
 function sendMailto(o){
@@ -1008,18 +1382,18 @@ function sendMailto(o){
   showToast("Otvara se vaš e-mail program s narudžbom…");
 }
 
-function showOrderSuccess(){
+function showOrderSuccess(rez, viaMail){
   const items = cart.slice();
   /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu */
   items.forEach(item => {
     const p = PRODUCTS.find(x => x.id === item.id);
-    if(p) p.reserved = true;
+    if(p && !p.made) p.reserved = true;
   });
   cart = [];
   renderGrid(); renderCart();
   const empty = document.getElementById("emptyCart");
   empty.classList.add("pay-mode");
-  empty.innerHTML = paymentPanel(items);
+  empty.innerHTML = paymentPanel(items, rez, viaMail);
   empty.hidden = false;
   document.querySelector(".drawer-body").scrollTop = 0;
 }
@@ -1030,12 +1404,25 @@ function refDate(){
   return p(d.getDate()) + p(d.getMonth() + 1) + d.getFullYear();
 }
 function ibanPretty(iban){ return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim(); }
-function paymentPanel(items){
-  const names = items.map(p => p.name).join(", ");
-  const goods = items.reduce((s, p) => s + p.price, 0);
-  const amount = SHIPPING === null
-    ? `${fmt(goods)} + dostava<br><small>točan iznos s dostavom javljamo e-mailom prije uplate</small>`
-    : `<span class="mono-val">${fmt(goods + SHIPPING)}</span>`;
+function fmtDate(iso){ try { return new Date(iso).toLocaleDateString("hr-HR"); } catch(e){ return iso || ""; } }
+function fmtDateTime(iso){
+  try { return new Date(iso).toLocaleString("hr-HR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
+  catch(e){ return iso || ""; }
+}
+function paymentPanel(items, rez, viaMail){
+  const names = items.map(p => p.name + (qtyOf(p) > 1 ? " × " + qtyOf(p) : "")).join(", ");
+  const until = rez && rez.until ? ` Rezervacija vrijedi do ${fmtDateTime(rez.until)}.` : "";
+  const mailNote = viaMail ? `
+      <p class="pay-note">Narudžba se otvorila u vašem e-mail programu — molimo pošaljite je. Ako se nije otvorio, pošaljite nam popis torbi i adresu za dostavu na shivaj.handmade@gmail.com.</p>` : "";
+  const goods = items.reduce((s, p) => s + p.price * qtyOf(p), 0);
+  const so = shipSel();
+  const lockerText = (so && so.locker) ? document.getElementById("fLocker").value.trim() : "";
+  const amount = so
+    ? `<span class="mono-val">${fmt(goods + shipPrice())}</span>`
+    : `${fmt(goods)} + dostava<br><small>točan iznos s dostavom javljamo e-mailom prije uplate</small>`;
+  const shipRow = so
+    ? `<div><dt>Dostava</dt><dd>${escHtml(so.label)}${so.price ? " · " + fmt(so.price) : " · besplatno"}${lockerText ? `<br><small>paketomat: ${escHtml(lockerText)}</small>` : ""}</dd></div>`
+    : "";
   const barcode = PAYMENT.barcode ? `
       <figure class="pay-barcode">
         <img src="${PAYMENT.barcode}" alt="Barkod za plaćanje u aplikaciji banke" onerror="this.closest('figure').hidden = true">
@@ -1043,17 +1430,17 @@ function paymentPanel(items){
       </figure>` : "";
   return `
     <div class="pay">
-      <p class="pay-thanks">Hvala vam! ✂️<br>Narudžba je zaprimljena i torba je rezervirana za vas.</p>
+      <p class="pay-thanks">Hvala vam! ✂️<br>Narudžba je zaprimljena i torba je rezervirana za vas.${until}</p>
       <h3 class="pay-title">Podaci za uplatu</h3>
       <dl class="pay-data">
         <div><dt>Primatelj</dt><dd>${PAYMENT.recipient}<br>${PAYMENT.address}</dd></div>
         <div><dt>IBAN</dt><dd><span class="mono-val">${ibanPretty(PAYMENT.iban)}</span><button type="button" class="copy-btn" data-copy="${PAYMENT.iban}">Kopiraj</button></dd></div>
-        <div><dt>Iznos</dt><dd>${amount}</dd></div>
+        <div><dt>Iznos</dt><dd>${amount}</dd></div>${shipRow}
         <div><dt>Model</dt><dd class="mono-val">${PAYMENT.model}</dd></div>
         <div><dt>Poziv na broj</dt><dd><span class="mono-val">${refDate()}</span><br><small>datum uplate u obliku DDMMGGGG; prikazan je današnji datum — ako uplaćujete drugi dan, upišite taj datum</small></dd></div>
         <div><dt>Opis</dt><dd>Narudžba — ${names}</dd></div>
       </dl>${barcode}
-      <p class="pay-note">Potvrdu narudžbe s istim podacima šaljemo vam i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
+      <p class="pay-note">Nakon uplate pošaljite nam potvrdu uplate (snimku zaslona) na shivaj.handmade@gmail.com, pa torba ostaje vaša i nakon isteka rezervacije. Potvrdu narudžbe s istim podacima šaljemo vam i e-mailom, a torbu šaljemo nakon primitka uplate.</p>${mailNote}
     </div>`;
 }
 
@@ -1064,15 +1451,45 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
   if (document.getElementById("fWeb").value !== "") return;
 
   const o = buildOrder();
-
-  /* Formspree nije još postavljen → e-mail rezerva */
-  if (FORMSPREE_ENDPOINT.includes("VAS_KOD_OVDJE")) { sendMailto(o); return; }
-
   const btn = e.target.querySelector(".order-btn");
-  btn.disabled = true;
   const prev = btn.textContent;
-  btn.textContent = "Šaljem…";
+  btn.disabled = true;
+  btn.textContent = "Rezerviram…";
+  submitting = true;
+  const so = shipSel();
+  const orderData = {
+    customer: { name: o.name, email: o.email, phone: o.phone,
+                street: document.getElementById("fAddr").value.trim(), city: document.getElementById("fCity").value.trim() },
+    items: cart.map(p => ({ id: p.id, name: p.name, qty: qtyOf(p), note: p.note || "", price: p.price, made: !!p.made, lead: p.lead || "" })),
+    shipping: so ? { id: so.id, label: so.label, price: so.price, locker: o.lockerText || "" } : null,
+    goods: cart.reduce((s, p) => s + p.price * qtyOf(p), 0),
+    total: cart.reduce((s, p) => s + p.price * qtyOf(p), 0) + shipPrice(),
+    reservation: null
+  };
 
+  /* 1) rezervacija u stvarnom vremenu — torba se odmah blokira za sve druge kupce */
+  let rez = null;
+  try {
+    rez = await reserveCart(o);
+    if (rez && rez.taken) { submitting = false; btn.disabled = false; btn.textContent = prev; return; }
+  } catch (err) {
+    rez = null; /* servis nedostupan → narudžba ide dalje bez blokade, kao prije */
+  }
+  if (rez && rez.storno) {
+    o.body += `\n\nRezervacija vrijedi do: ${fmtDateTime(rez.until)}\nPlaćeno / storno rezervacije (link samo za Shiva.J): ${rez.storno}`;
+    orderData.reservation = { token: rez.token, until: rez.until, storno: rez.storno };
+  }
+
+  /* 2) Formspree nije još postavljen → e-mail rezerva */
+  if (FORMSPREE_ENDPOINT.includes("VAS_KOD_OVDJE")) {
+    sendMailto(o);
+    if (rez) showOrderSuccess(rez, true);
+    submitting = false;
+    btn.disabled = false; btn.textContent = prev;
+    return;
+  }
+
+  btn.textContent = "Šaljem…";
   try {
     const res = await fetch(FORMSPREE_ENDPOINT, {
       method: "POST",
@@ -1088,17 +1505,22 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
         "Ukupno": o.total,
         "Napomena": o.note || "—",
         "Uvjeti kupnje": "prihvaćeni — narudžba s obvezom plaćanja",
-        _replyto: o.email
+        "Rezervacija vrijedi do": rez ? fmtDateTime(rez.until) : "bez automatske rezervacije",
+        "Plaćeno / storno rezervacije (link samo za vas)": rez ? rez.storno : "—",
+        _replyto: o.email,
+        _order: orderData
       })
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    showOrderSuccess();
+    showOrderSuccess(rez, false);
     showToast("Narudžba je poslana ✓");
   } catch (err) {
     /* mreža/servis nedostupan → e-mail rezerva, narudžba se ne gubi */
     showToast("Slanje nije uspjelo — otvaram e-mail kao rezervu.");
     sendMailto(o);
+    if (rez) showOrderSuccess(rez, true);
   } finally {
+    submitting = false;
     btn.disabled = false;
     btn.textContent = prev;
   }
@@ -1114,7 +1536,18 @@ function showToast(msg){
   toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
-renderGrid(); renderCart();
+renderShopHead(); renderShipping();
+loadProducts().then(fromFile => {
+  document.documentElement.dataset.products = fromFile ? "torbe.json" : "ugradjeno";
+  renderGrid();
+  /* link na kategoriju (#ostalo) nema vlastiti element, pa na učitavanju sami skrolamo do trgovine */
+  if(catFromHash() && location.hash !== "#torbe") {
+    const toShop = () => document.getElementById("torbe").scrollIntoView();
+    toShop(); setTimeout(toShop, 120);
+  }
+  refreshReservations();
+});
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") refreshReservations(); });
 </script>
 </body>
 </html>

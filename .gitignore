@@ -1,0 +1,3 @@
+# lokalni podaci admina (lozinka, postavke, rezervacije, narudzbe) ne idu u git
+data/*
+!data/.htaccess
