@@ -1,20 +1,25 @@
 # SHIVA.J web stranica — podaci i odluke
 
-Sažetak svega što je dogovoreno i ugrađeno u stranicu do verzije **v09 (6. rujna 2026.)**.
-Izvučeno iz samog koda stranice (`index.html`) i povijesti repozitorija, jer izvorni
-razgovor („Fotografije ranijih torbi”, 6.–8. rujna 2026.) nije dostupan iz oblaka.
+Sažetak svega što je dogovoreno i ugrađeno u stranicu. Ažurirano **20. rujna 2026.**: v18 je na
+GitHubu (grana main) zajedno s PHP adminom, API-jem, torbe.json i uputama. Odjeljci 3, 4 i 6 opisuju
+put do v09 (povijest); odjeljak 9 opisuje v15–v18; odjeljci 1, 5 i 8 opisuju **trenutno stanje**.
 Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 
 ---
 
-## 1. Gdje se što nalazi
+## 1. Gdje se što nalazi (stanje 20. 9. 2026.)
 
 | Što | Gdje |
 |---|---|
-| Kod stranice | GitHub repozitorij `ExarKun-1/shiva.j`, datoteka `index.html` (jedna datoteka: HTML + CSS + JS) |
-| Fotografije | mapa `images/` (`luna-1.jpg`, `tara-1.jpg`, `okrugla-1.jpg`, `okrugla-2.jpg`) |
-| Objava | GitHub Pages (planirano; adresa u OG oznakama još pokazuje na `exarkun-1.github.io/shivaj-webshop/`) |
-| Stari razgovor | Claude Code sesija „SHIVA.J web stranica — Fotografije ranijih torbi”, vidljiva samo u pregledniku na claude.ai/code; nastavak zahtijeva Claude Code na istom računalu |
+| Kod | GitHub repozitorij `ExarKun-1/shiva.j`, grana `main`, verzija **v18** (8. 9. 2026.) |
+| Stranica | `index.html` (HTML + CSS + JS u jednoj datoteci), `torbe.json` (ponuda, na mainu prazna `[]`), `torbe.primjer.json` (primjeri za probu, ne objavljuje se) |
+| Admin i servis | `admin/index.php`, `admin/lib.php`, `api/index.php`, `router.php` (lokalni test), `.htaccess` (preusmjeravanja, zaštita mape `data/`) |
+| Podaci admina | mapa `data/` na hostingu (lozinka, postavke, rezervacije, narudžbe); u `.gitignore`, ne ide u git |
+| Fotografije | `img/` (barkod-uplata.png, luna-1.jpg, tara-1.jpg), `images/` (originali, 8,7 MB) |
+| Upute | `docs/`: popis za objavu v02, šablona potvrde narudžbe v04, upute admin v02, upute objava Croadria v02, upute rezervacije v03 |
+| Objava | planirano: hosting Croadria (PHP). OG oznake još pokazuju na `exarkun-1.github.io/shivaj-webshop/` |
+| Radna kopija na računalu | `C:\Users\baric\AppData\Local\Temp\shivaj_site` (Temp mapa, nije trajna) i PHP 8.3 u `Temp\php83` |
+| Stari razgovor | Claude Code sesija „SHIVA.J web stranica — Fotografije ranijih torbi”, čitljiva u pregledniku na claude.ai/code |
 
 ---
 
@@ -65,16 +70,17 @@ Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 
 ---
 
-## 5. Postavke u kodu (vrh skripte u `index.html`)
+## 5. Postavke u kodu v18 (vrh skripte u `index.html`)
 
-| Konstanta | Trenutna vrijednost | Značenje |
+| Konstanta | Vrijednost | Značenje |
 |---|---|---|
-| `FORMSPREE_ENDPOINT` | `https://formspree.io/f/VAS_KOD_OVDJE` | **Još nije postavljen.** Dok je tako, narudžba ide preko mailto. |
-| `SHIPPING` | `null` | Dostava „po dogovoru”. Broj (npr. 5) bi dodao fiksnu cijenu dostave. |
-| `PAYMENT.recipient` | SHIVA. J, obrt za dizajn | Primatelj uplate |
-| `PAYMENT.iban` | HR9823600001102790442 | IBAN |
-| `PAYMENT.model` | HR00 | Model plaćanja |
-| `PAYMENT.barcode` | `img/barkod-uplata.png` | Slika barkoda iz bankarske aplikacije. **Datoteka ne postoji u repozitoriju**, pa se barkod ne prikazuje (stranica to tiho preskače). |
+| `FORMSPREE_ENDPOINT` | `api/order` | Narudžba ide na vlastiti PHP servis. Formspree se više ne koristi. |
+| `RESERVATION_ENDPOINT` | `api` | Rezervacije u stvarnom vremenu preko PHP servisa (zamjena za Cloudflare Worker). |
+| `PRODUCTS_URL` | `torbe.json` | Jedini izvor ponude. Prazna ili nedostajuća datoteka daje poruku „Ponuda se upravo priprema”. |
+| `SHIPPING_OPTIONS` | BOX NOW paketomat 4,00 €; GLS na adresu 6,00 €; osobno preuzimanje 0 € (Matije Gupca 33, radnim danom 8–15 h) | Kupac bira u košarici. Prva opcija je zadana. |
+| `BOXNOW.script` | službeni widget v5, `partnerId` prazan | Karta paketomata; radi bez `autoclose`. |
+| `CATEGORIES` | `torbe` (Dostupni unikati) i `ostalo` (remeni, torbice, platnene torbe po narudžbi, s rokom izrade) | Svaka kategorija ima svoj link i tekst za praznu ponudu. |
+| `PAYMENT` | SHIVA. J, obrt za dizajn; IBAN HR9823600001102790442; model HR00; barkod `img/barkod-uplata.png` (datoteka postoji) | Prikaz odmah nakon narudžbe. |
 
 ---
 
@@ -106,26 +112,26 @@ Stanja torbe: `sold: true` = „Prodano” (ostaje vidljiva), `reserved: true` =
 
 ---
 
-## 8. Otvorene stavke (što još treba napraviti)
+## 8. Otvorene stavke (stanje 20. 9. 2026.)
 
-1. **Formspree:** registrirati se na formspree.io sa shivaj.handmade@gmail.com, napraviti obrazac „Narudžbe” i zalijepiti adresu u `FORMSPREE_ENDPOINT`.
-2. **Barkod za uplatu:** iz bankarske aplikacije („Podijeli barkod”) spremiti sliku i prenijeti je kao `img/barkod-uplata.png` (ili promijeniti putanju u `PAYMENT.barcode`).
-3. **PDV napomena** u Uvjetima, točka 3: zamijeniti `{NAPOMENA O PDV-u}` (npr. „Shiva.J nije u sustavu PDV-a, pa se PDV ne obračunava”). Provjeriti s knjigovođom.
-4. **Rok uplate** u Uvjetima, točka 5: zamijeniti `{ROK UPLATE, npr. 3 radna dana}`.
-5. **Luna i Tara:** upisati stvarne dimenzije i materijal umjesto `{DIMENZIJE}` i `{MATERIJAL}`.
-6. **Primjeri proizvoda** (Vela, Mira, Nera, Zora): zamijeniti stvarnim torbama ili obrisati.
-7. **OG oznake:** `og:url` i `og:image` pokazuju na `exarkun-1.github.io/shivaj-webshop/`, a repozitorij se zove `shiva.j`. Uskladiti nakon objave na GitHub Pages. Prenijeti `img/og.jpg` (1200×630 px).
-8. **Fotografije okrugla-1.jpg i okrugla-2.jpg** postoje u mapi `images/`, ali se ne koriste na stranici. Odlučiti kojoj torbi pripadaju ili ih dodati kao druge fotografije Lune/Tare.
-9. **Višak datoteka:** u korijenu repozitorija su velike originalne fotografije `1784356525336.jpg` (1,7 MB) i `1784356525545.jpg` (3,4 MB), a `images/1784356525545.jpg` je kopija `tara-1.jpg`. Mogu se obrisati. Fotografije od 1,7 do 3,4 MB su prevelike za web i vrijedilo bi ih smanjiti (npr. na 1600 px širine, ispod 400 KB).
-10. **Pravna provjera:** Uvjeti kupnje su označeni kao nacrt. Prije objave dati knjigovođi (PDV, rok uplate) i po potrebi pravniku.
-11. **Objava:** uključiti GitHub Pages za repozitorij i provjeriti da se stranica otvara.
+Riješeno od v09: Formspree (zamijenjen PHP servisom), barkod za uplatu (postoji), primjeri proizvoda (uklonjeni iz stranice), višak fotografija u korijenu (uklonjen).
+
+1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md`, prva prijava u admin (lozinka se postavlja pri prvom otvaranju).
+2. **E-mail na domeni** umjesto shivaj.handmade@gmail.com (u stranici 11 mjesta; u adminu postavka e-maila).
+3. **PDV napomena** u Uvjetima kupnje, točka 3 (redak 640): `{NAPOMENA O PDV-u}` (knjigovođa). **Rok uplate** u točki 5.
+4. **Torbe:** vlasnica unosi u adminu (naziv, opis, cijena, dimenzije, materijal, fotografije uspravne 4:5). Stranica kreće prazna. Artikli iz kategorije Ostalo isto u adminu, s rokom izrade. Vitičaste zagrade `{DIMENZIJE}`, `{MATERIJAL}`, `{ROK IZRADE}` ostale su samo u `torbe.primjer.json`.
+5. **Tekst „O nama”** u riječima vlasnice (sada opći tekst).
+6. **OG oznake:** `og:url` i `og:image` (redci 95–96) pokazuju na `exarkun-1.github.io/shivaj-webshop/`. Zamijeniti domenom nakon zakupa. Prenijeti `img/og.jpg` (1200×630 px).
+7. **BOX NOW:** ručna proba karte u pravom pregledniku (klik na paketomat treba popuniti polje). `partnerId` upisati ako vlasnica dobije partnerski račun.
+8. **Fotografije u `images/`** (8,7 MB originala, `okrugla-1/2.jpg` neiskorištene): nisu potrebne na hostingu; admin sam smanjuje prenesene fotografije na 1400 px.
+9. **Pravna provjera** Uvjeta kupnje prije objave (knjigovođa, po potrebi pravnik).
+10. Cijeli popis s kvačicama: `docs/shivaj_popis_za_objavu_v02.md`.
 
 ---
 
 ## 9. Što se dogodilo NAKON v09 (iz razgovora 6.–8. rujna 2026.)
 
-Ovo je rekonstruirano iz sažetka starog razgovora koji je vlasnik zalijepio. **Ništa od
-ovoga nije u GitHub repozitoriju**, gdje je i dalje v09. Zadnja verzija stranice je **v18**.
+Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest na GitHubu** (grana main, commit „v18: stranica, PHP admin/API, torbe.json, upute”).
 
 | Verzija / paket | Što je napravljeno |
 |---|---|
