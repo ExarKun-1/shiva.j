@@ -1,0 +1,106 @@
+[
+  {
+    "id": "luna",
+    "name": "Luna",
+    "desc": "Okrugla torba · patchwork u pastelnim tonovima",
+    "price": 65,
+    "dims": "{DIMENZIJE}",
+    "material": "{MATERIJAL}",
+    "imgs": [
+      "img/luna-1.jpg"
+    ],
+    "sold": false
+  },
+  {
+    "id": "tara",
+    "name": "Tara",
+    "desc": "Okrugla torba · patchwork u toplim tonovima",
+    "price": 55,
+    "dims": "{DIMENZIJE}",
+    "material": "{MATERIJAL}",
+    "imgs": [
+      "img/tara-1.jpg"
+    ],
+    "sold": false
+  },
+  {
+    "id": "vela",
+    "name": "Vela",
+    "desc": "Torba preko ramena · lan i pluto",
+    "price": 70,
+    "dims": "28 × 22 × 8 cm · podesivi remen",
+    "material": "Lan, pluto, metalna kopča",
+    "imgs": [],
+    "sold": false
+  },
+  {
+    "id": "mira",
+    "name": "Mira",
+    "desc": "Mala večernja torbica · vez ručnim koncem",
+    "price": 48,
+    "dims": "22 × 14 × 6 cm",
+    "material": "Saten, ručni vez pamučnim koncem, magnetsko zatvaranje",
+    "imgs": [],
+    "sold": false,
+    "reserved": true
+  },
+  {
+    "id": "nera",
+    "name": "Nera",
+    "desc": "Ruksak · voskirano platno",
+    "price": 85,
+    "dims": "30 × 40 × 14 cm · stane laptop 15\"",
+    "material": "Voskirano platno, kožni remeni, mesingani okovi",
+    "imgs": [],
+    "sold": false
+  },
+  {
+    "id": "zora",
+    "name": "Zora",
+    "desc": "Shopper · tkanina s ručnim printom",
+    "price": 60,
+    "dims": "40 × 36 × 12 cm",
+    "material": "Pamučna tkanina s ručnim printom, ojačane ručke",
+    "imgs": [],
+    "sold": true
+  },
+  {
+    "id": "remen",
+    "cat": "ostalo",
+    "made": true,
+    "name": "Zamjenski remen",
+    "desc": "Podesivi remen za torbu ili ruksak · boja i duljina po želji",
+    "price": 15,
+    "dims": "{DIMENZIJE}",
+    "material": "{MATERIJAL}",
+    "lead": "{ROK IZRADE, npr. 5 radnih dana}",
+    "imgs": [],
+    "sold": false
+  },
+  {
+    "id": "kozmeticka",
+    "cat": "ostalo",
+    "made": true,
+    "name": "Kozmetička torbica",
+    "desc": "Podstavljena torbica s patentnim zatvaračem · boja po želji",
+    "price": 20,
+    "dims": "{DIMENZIJE}",
+    "material": "{MATERIJAL}",
+    "lead": "{ROK IZRADE, npr. 5 radnih dana}",
+    "imgs": [],
+    "sold": false
+  },
+  {
+    "id": "platnena",
+    "cat": "ostalo",
+    "made": true,
+    "name": "Platnena torba za plažu",
+    "desc": "Velika platnena torba s unutarnjim džepom · boja po želji",
+    "price": 25,
+    "dims": "{DIMENZIJE}",
+    "material": "{MATERIJAL}",
+    "lead": "{ROK IZRADE, npr. 7 radnih dana}",
+    "imgs": [],
+    "sold": false
+  }
+]
