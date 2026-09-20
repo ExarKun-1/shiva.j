@@ -18,7 +18,7 @@ Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 | Fotografije | `img/` (barkod-uplata.png, luna-1.jpg, tara-1.jpg), `images/` (originali, 8,7 MB) |
 | Upute | `docs/`: popis za objavu v02, šablona potvrde narudžbe v04, upute admin v02, upute objava Croadria v02, upute rezervacije v03 |
 | Objava | planirano: hosting Croadria (PHP). OG oznake još pokazuju na `exarkun-1.github.io/shivaj-webshop/` |
-| Radna kopija na računalu | `C:\Users\baric\AppData\Local\Temp\shivaj_site` (Temp mapa, nije trajna) i PHP 8.3 u `Temp\php83` |
+| Radna kopija na računalu | **`C:\SHIVAJ.HANDMADE`** (službena lokalna mapa, ista kao GitHub main). Lokalne Claude Code sesije otvarati na toj mapi. Stara kopija u `Temp\shivaj_site` više se ne koristi; PHP 8.3 za lokalni test je u `C:\Users\baric\AppData\Local\Temp\php83` (vrijedi premjestiti npr. u `C:\SHIVAJ.HANDMADE\_alati\php83`) |
 | Stari razgovor | Claude Code sesija „SHIVA.J web stranica — Fotografije ranijih torbi”, čitljiva u pregledniku na claude.ai/code |
 
 ---
@@ -152,8 +152,7 @@ Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest
 **Gdje su datoteke v10–v18 i hosting paket**
 
 1. Kao privitci u starom razgovoru (vidljivo u pregledniku na claude.ai/code). Preuzeti: `shivaj_webshop_v18.html`, `shivaj_hosting_v01.zip`, `torbe.json`, `torbe.primjer.json` i četiri `.md` dokumenta.
-2. Na računalu, u **privremenoj mapi**: `C:\Users\baric\AppData\Local\Temp\shivaj_site` (radna kopija s PHP testnim poslužiteljem) i `C:\Users\baric\AppData\Local\Temp\php83` (PHP 8.3).
-   **Upozorenje:** Windows i alati za čišćenje brišu sadržaj mape Temp. Kopirati `shivaj_site` odmah na sigurno mjesto (npr. `Dokumenti\shiva.j`) i prenijeti u GitHub repozitorij.
+2. Na računalu u `C:\SHIVAJ.HANDMADE` (od 20. 9. 2026.; ranije privremena mapa `Temp\shivaj_site`, koja se više ne koristi).
 3. Bilješke starog razgovora na računalu (Claude Code memorija): `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `MEMORY.md`.
 
 **Lokalni testni poslužitelj** (radi samo dok je prozor otvoren), adresa `http://127.0.0.1:8090/`, admin `/admin/` s lozinkom `test-lozinka-123`:
