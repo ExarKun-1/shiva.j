@@ -18,8 +18,20 @@ Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 | Fotografije | `img/` (barkod-uplata.png, luna-1.jpg, tara-1.jpg), `images/` (originali, 8,7 MB) |
 | Upute | `docs/`: popis za objavu v02, šablona potvrde narudžbe v04, upute admin v02, upute objava Croadria v02, upute rezervacije v03 |
 | Objava | planirano: hosting Croadria (PHP). OG oznake još pokazuju na `exarkun-1.github.io/shivaj-webshop/` |
-| Radna kopija na računalu | **`C:\SHIVAJ.HANDMADE`** (službena lokalna mapa, ista kao GitHub main). Lokalne Claude Code sesije otvarati na toj mapi. Stara kopija u `Temp\shivaj_site` više se ne koristi; PHP 8.3 za lokalni test je u `C:\Users\baric\AppData\Local\Temp\php83` (vrijedi premjestiti npr. u `C:\SHIVAJ.HANDMADE\_alati\php83`) |
+| Radna kopija na računalu | Glavna git kopija **`C:\SHIVAJ.HANDMADE\shiva.j`** (klon GitHub repozitorija, grana main). Zrcalo: `C:\Users\baric\Documents\shiva.j`. Arhiva svih verzija: `C:\SHIVAJ.HANDMADE\WEB STRANCA.1`. Lokalne Claude Code sesije otvarati na `C:\SHIVAJ.HANDMADE\shiva.j`. |
+| PHP za lokalni test | **Nije instaliran** (Temp mapa s php83 obrisana). Instalacija: `winget install PHP.PHP.8.3`, zatim launch konfiguracija `shivaj-docs-php` (port 8090), admin lozinka `test-lozinka-123`. Admin i API nisu lokalno testirani nakon prijenosa; statička stranica jest. |
+| Claude memorija (lokalno) | `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `shivaj-save-location.md` |
 | Stari razgovor | Claude Code sesija „SHIVA.J web stranica — Fotografije ranijih torbi”, čitljiva u pregledniku na claude.ai/code |
+
+---
+
+## 1a. Pravila rada (vrijede za svaku sesiju, lokalnu i oblačnu)
+
+- Nova verzija stranice = kopija prethodne pod imenom `shivaj_webshop_vNN.html`, s dopunom changeloga na vrhu datoteke i oznakom „· vNN” u podnožju. Jedna jasna promjena po verziji.
+- Sprema se na tri mjesta: u `shiva.j` kao `index.html`, u `Documents\shiva.j` i u `WEB STRANCA.1`, pa commit i push na main.
+- Proizvodi se ne izmišljaju. Za podatke vlasnice ostaju vitičaste zagrade `{…}`. Sve na hrvatskom.
+- Pravno i porezno samo činjenice; za PDV, rokove i uvjete uputiti na knjigovođu.
+- Prije rada povući s GitHuba, nakon rada pushati, da lokalna mapa i GitHub ostanu isti.
 
 ---
 
@@ -114,7 +126,7 @@ Stanja torbe: `sold: true` = „Prodano” (ostaje vidljiva), `reserved: true` =
 
 ## 8. Otvorene stavke (stanje 20. 9. 2026.)
 
-Riješeno od v09: Formspree (zamijenjen PHP servisom), barkod za uplatu (postoji), primjeri proizvoda (uklonjeni iz stranice), višak fotografija u korijenu (uklonjen).
+Riješeno od v09: Formspree (zamijenjen PHP servisom), primjeri proizvoda (uklonjeni iz stranice), višak fotografija u korijenu (uklonjen).
 
 1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md`, prva prijava u admin (lozinka se postavlja pri prvom otvaranju).
 2. **E-mail na domeni** umjesto shivaj.handmade@gmail.com (u stranici 11 mjesta; u adminu postavka e-maila).
@@ -122,10 +134,12 @@ Riješeno od v09: Formspree (zamijenjen PHP servisom), barkod za uplatu (postoji
 4. **Torbe:** vlasnica unosi u adminu (naziv, opis, cijena, dimenzije, materijal, fotografije uspravne 4:5). Stranica kreće prazna. Artikli iz kategorije Ostalo isto u adminu, s rokom izrade. Vitičaste zagrade `{DIMENZIJE}`, `{MATERIJAL}`, `{ROK IZRADE}` ostale su samo u `torbe.primjer.json`.
 5. **Tekst „O nama”** u riječima vlasnice (sada opći tekst).
 6. **OG oznake:** `og:url` i `og:image` (redci 95–96) pokazuju na `exarkun-1.github.io/shivaj-webshop/`. Zamijeniti domenom nakon zakupa. Prenijeti `img/og.jpg` (1200×630 px).
+6a. **Barkod za uplatu:** `img/barkod-uplata.png` postoji u repozitoriju (PNG 596×152 px). Vlasnica potvrđuje da je to barkod iz njezine bankarske aplikacije za IBAN HR98 2360 0001 1027 9044 2, a ne probni.
 7. **BOX NOW:** ručna proba karte u pravom pregledniku (klik na paketomat treba popuniti polje). `partnerId` upisati ako vlasnica dobije partnerski račun.
-8. **Fotografije u `images/`** (8,7 MB originala, `okrugla-1/2.jpg` neiskorištene): nisu potrebne na hostingu; admin sam smanjuje prenesene fotografije na 1400 px.
+8. **Obrisati mapu `images/`** iz repozitorija (8,7 MB originala iz v09, stranica v18 je ne koristi; koristi `img/`). Originale zadržati u `WEB STRANCA.1`.
 9. **Pravna provjera** Uvjeta kupnje prije objave (knjigovođa, po potrebi pravnik).
-10. Cijeli popis s kvačicama: `docs/shivaj_popis_za_objavu_v02.md`.
+10. **Lokalni test admina i API-ja** nakon instalacije PHP-a (vidi odjeljak 1).
+11. Cijeli popis s kvačicama: `docs/shivaj_popis_za_objavu_v02.md`.
 
 ---
 
@@ -139,12 +153,12 @@ Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest
 | v16 | Stranica spojena na vlastiti PHP servis (zamjena za Formspree): narudžba nosi strukturirane podatke, politika privatnosti prepisana za hosting kod Croadrije (brend Hrvatskog Telekoma). |
 | v17 | Ugrađeni primjeri torbi uklonjeni. `torbe.json` je jedini izvor ponude. Prazna ili nedostajuća datoteka prikazuje „Ponuda se upravo priprema” s linkom na Instagram. Cijene se upisuju u adminu uz svaku torbu, kad se torba objavljuje. |
 | v18 | BOX NOW paketomat: widget radi bez `autoclose`, pa klik na paketomat odmah prenosi odabir u polje (naziv, adresa, ID). Karta se zatvara sama, gumb postaje „Promijeni paketomat na karti”. |
-| Hosting paket `shivaj_hosting_v01.zip` | Mapa `hosting/` s PHP adminom i API-jem za Croadriju. **Admin** (`/admin/`): lozinka pri prvom otvaranju, torbe s prijenosom fotografija (automatski smanjene na 1400 px), uređivanje, skrivanje, redoslijed, Prodano, brisanje; rezervacije (Plaćeno, Storniraj, Ukloni oznaku, Trajno prodano); narudžbe; postavke (e-mail, rok rezervacije, IBAN, podaci za uplatu, probni e-mail, promjena lozinke). **API** (`/api/`): rezervacija sa zaključavanjem, broj narudžbe, e-mail vlasnici, automatska potvrda kupcu s podacima za uplatu i barkodom u privitku, link Plaćeno/Storno. Testirano lokalno s PHP 8.3. |
+| Hosting paket `shivaj_hosting_v01.zip` | Mapa `hosting/` s PHP adminom i API-jem za Croadriju. **Admin** (`/admin/`): lozinka pri prvom otvaranju, torbe s prijenosom fotografija (automatski smanjene na 1400 px), uređivanje, skrivanje, redoslijed, Prodano, brisanje; rezervacije (Plaćeno, Storniraj, Ukloni oznaku, Trajno prodano); narudžbe; postavke (e-mail, rok rezervacije, IBAN, podaci za uplatu, probni e-mail, promjena lozinke). **API** (`/api/`): rezervacija sa zaključavanjem, broj narudžbe oblika SJ-GGGG-NNNN, e-mail vlasnici, automatska potvrda kupcu s podacima za uplatu i barkodom u privitku, link Plaćeno/Storno. Testirano lokalno s PHP 8.3. |
 | Dokumenti | `shivaj_sablona_potvrda_narudzbe_v04.md` (šablona potvrde: način dostave, količine, rok izrade), `shivaj_upute_objava_croadria_v02.md`, `shivaj_popis_za_objavu_v02.md`, `shivaj_upute_admin_v02.md`, `torbe.json` (prazna, za objavu), `torbe.primjer.json` (primjeri za probu, ne prenosi se). |
 
 **Odluke iz tog razdoblja**
 
-- Hosting: Croadria (Hrvatski Telekom), s PHP-om. Vlastiti servis umjesto Formspreeja i Cloudflarea.
+- Hosting: Croadria (Hrvatski Telekom), Linux, PHP. Vlastiti servis umjesto Formspreeja i Cloudflarea. Politika privatnosti u v18 već navodi taj hosting.
 - Dostava: BOX NOW paketomat kao opcija, uz količine i napomene u narudžbi.
 - Cijene: ne čekaju se unaprijed. Upisuju se u adminu za svaku torbu pri objavi.
 - Prije objave ostaje: zakup hostinga i domene, prijenos po uputama, prva prijava u admin, e-mail na domeni umjesto Gmaila, napomena o PDV-u u Uvjetima (knjigovođa).
