@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — ADMIN   (admin/index.php v01)
+   SHIVA.J — ADMIN   (admin/index.php v02)
    Prijava lozinkom (postavlja se pri prvom otvaranju), torbe i
    artikli s fotografijama, rezervacije (Plaćeno / Storniraj),
    narudžbe, postavke. Sprema u data/ i objavljuje torbe.json.
@@ -14,6 +14,17 @@ $err = '';
 
 /* ---------- prvo pokretanje: lozinka ---------- */
 if ($c['password_hash'] === '') {
+  /* oštećen config.json ne smije otvoriti novo postavljanje lozinke (preuzimanje admina) */
+  if (sj_config_corrupt()) {
+    sj_layout('Greška', '<p>Datoteka <code>data/config.json</code> postoji, ali nije čitljiva. Vratite je iz sigurnosne kopije ili je (ako ste sigurni) obrišite uz novu datoteku <code>data/PRVA-PRIJAVA.txt</code>, pa ponovno otvorite admin.</p>', $c, '', '', false);
+    exit;
+  }
+  /* lozinka se smije postaviti samo dok postoji data/PRVA-PRIJAVA.txt (u paketu za prijenos);
+     briše se čim je lozinka postavljena */
+  if (!is_file(sj_setup_path())) {
+    sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.txt</code> ne postoji. Prenesite je iz paketa (ili napravite praznu datoteku tog imena u mapi <code>data/</code>) i osvježite ovu stranicu.</p>', $c, '', '', false);
+    exit;
+  }
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['setup_password'])) {
     $p1 = (string)$_POST['setup_password']; $p2 = (string)($_POST['setup_password2'] ?? '');
     if (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
@@ -21,12 +32,13 @@ if ($c['password_hash'] === '') {
     else {
       $c['password_hash'] = password_hash($p1, PASSWORD_DEFAULT);
       sj_save_config($c);
+      @unlink(sj_setup_path());
       sj_login($p1);
       header('Location: ?s=torbe&m=' . urlencode('Lozinka je postavljena. Dobrodošli!')); exit;
     }
   }
   sj_layout('Prva prijava', '
-    <p>Ovo je prvo otvaranje admina. Odaberite lozinku (barem 10 znakova) i zapišite je na sigurno.</p>
+    <p>Ovo je prvo otvaranje admina. Odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
     <form method="post" class="card">
       <label>Nova lozinka <input type="password" name="setup_password" required minlength="10" autocomplete="new-password"></label>
       <label>Ponovite lozinku <input type="password" name="setup_password2" required minlength="10" autocomplete="new-password"></label>
@@ -179,11 +191,7 @@ function sj_handle_action(string $act, array &$c): string {
         $d = array_replace(sj_res_default(), $d);
         if ($act === 'res_release') unset($d['res'][$id]);
         elseif ($act === 'res_unsold') unset($d['sold'][$id]);
-        else {
-          $r = $d['res'][$id] ?? ['id' => $id];
-          unset($d['res'][$id]);
-          $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
-        }
+        else sj_mark_paid($d, $id);
         return true;
       }, sj_res_default());
       return ['res_release' => 'Rezervacija stornirana: ', 'res_sold' => 'Označeno kao plaćeno: ', 'res_unsold' => 'Oznaka uklonjena: ', 'res_sold_manual' => 'Označeno kao prodano: '][$act] . $id;
@@ -209,6 +217,20 @@ function sj_handle_action(string $act, array &$c): string {
       $c['payment']['iban'] = $iban;
       $c['payment']['model'] = sj_clean((string)($_POST['model'] ?? 'HR00'), 4) ?: 'HR00';
       $c['pickup_info'] = sj_clean((string)($_POST['pickup_info'] ?? ''), 200);
+      /* dostava: jedan način po retku  id | naziv | cijena | adresa (da/ne) | paketomat (da/ne) | napomena */
+      $ship = [];
+      foreach (preg_split('/\R/', (string)($_POST['shipping'] ?? '')) as $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+        $f = array_map('trim', explode('|', $line));
+        $id = sj_clean($f[0] ?? '', 40);
+        if (!preg_match('/^[a-z0-9_-]+$/', $id)) throw new RuntimeException('Dostava: oznaka „' . $id . '” smije imati samo mala slova, znamenke, - i _.');
+        $price = (float)str_replace(',', '.', $f[2] ?? '0');
+        if ($price < 0 || !is_numeric(str_replace(',', '.', $f[2] ?? '0'))) throw new RuntimeException('Dostava: cijena za „' . $id . '” nije broj.');
+        $yes = fn($v) => in_array(mb_strtolower(trim((string)$v)), ['da', 'yes', '1', 'true'], true);
+        $ship[] = ['id' => $id, 'label' => sj_clean($f[1] ?? $id, 80) ?: $id, 'price' => round($price, 2), 'address' => $yes($f[3] ?? ''), 'locker' => $yes($f[4] ?? ''), 'note' => sj_clean($f[5] ?? '', 200)];
+      }
+      $c['shipping'] = $ship;
       sj_save_config($c);
       return 'Postavke spremljene';
     }
@@ -235,7 +257,8 @@ function sj_handle_action(string $act, array &$c): string {
    PRIKAZI
    ========================================================= */
 function sj_btn(string $act, array $fields, string $label, string $back, bool $alt = false, string $confirm = ''): string {
-  $h = '<form method="post" class="inline"' . ($confirm ? ' onsubmit="return confirm(\'' . e($confirm) . '\')"' : '') . '>';
+  /* tekst potvrde ide kao JSON literal: apostrof ili navodnik u nazivu ne mogu razbiti JS ni ubaciti kod */
+  $h = '<form method="post" class="inline"' . ($confirm ? ' onsubmit="return confirm(' . e(json_encode($confirm, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE)) . ')"' : '') . '>';
   $h .= '<input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="' . e($act) . '"><input type="hidden" name="back" value="' . e($back) . '">';
   foreach ($fields as $k => $v) $h .= '<input type="hidden" name="' . e($k) . '" value="' . e($v) . '">';
   $h .= '<button' . ($alt ? ' class="alt"' : '') . '>' . e($label) . '</button></form>';
@@ -383,6 +406,9 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Model <input name="model" value="' . e($p['model']) . '" maxlength="4"></label>';
   $h .= '</div>';
   $h .= '<label>Osobno preuzimanje (tekst u potvrdi) <input name="pickup_info" value="' . e($c['pickup_info']) . '"></label>';
+  $shipLines = '';
+  foreach (sj_shipping() as $o) $shipLines .= $o['id'] . ' | ' . $o['label'] . ' | ' . number_format($o['price'], 2, ',', '') . ' | ' . ($o['address'] ? 'da' : 'ne') . ' | ' . ($o['locker'] ? 'da' : 'ne') . ' | ' . $o['note'] . "\n";
+  $h .= '<h3>Načini dostave</h3><label>Jedan način po retku: <span class="mono">oznaka | naziv | cijena € | traži adresu (da/ne) | BOX NOW paketomat (da/ne) | napomena</span>. Prvi redak je zadani. Stranica i potvrde kupcu čitaju cijene odavde.<textarea name="shipping" rows="4" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit;font-size:.85rem">' . e($shipLines) . '</textarea></label>';
   $h .= '<div class="row"><button>Spremi postavke</button></div></form>';
 
   $h .= '<form method="post" class="card form"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="act" value="change_password"><input type="hidden" name="back" value="?s=postavke"><h3>Promjena lozinke</h3><div class="grid2">';

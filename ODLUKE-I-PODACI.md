@@ -11,15 +11,15 @@ Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 
 | Što | Gdje |
 |---|---|
-| Kod | GitHub repozitorij `ExarKun-1/shiva.j`, grana `main`, verzija **v18** (8. 9. 2026.) |
-| Stranica | `index.html` (HTML + CSS + JS u jednoj datoteci), `torbe.json` (ponuda, na mainu prazna `[]`), `torbe.primjer.json` (primjeri za probu, ne objavljuje se) |
+| Kod | GitHub repozitorij `ExarKun-1/shiva.j`, grana `main`, verzija **v19** stranice + **api v02 / admin v02** (22. 9. 2026., sigurnosni popravci iz pregleda koda; puni popis nalaza u `docs/PREGLED-KODA-v18.md`) |
+| Stranica | `index.html` (HTML + CSS + JS u jednoj datoteci), `torbe.json` (ponuda; piše je admin na hostingu, nije u gitu; predložak `torbe.json.example`), `torbe.primjer.json` (primjeri za probu, ne objavljuje se) |
 | Admin i servis | `admin/index.php`, `admin/lib.php`, `api/index.php`, `router.php` (lokalni test), `.htaccess` (preusmjeravanja, zaštita mape `data/`) |
-| Podaci admina | mapa `data/` na hostingu (lozinka, postavke, rezervacije, narudžbe); u `.gitignore`, ne ide u git |
+| Podaci admina | mapa `data/` na hostingu (lozinka, postavke, rezervacije, narudžbe, brojač zahtjeva); u `.gitignore`, ne ide u git. `data/PRVA-PRIJAVA.txt` dopušta prvo postavljanje lozinke i briše se sama. |
 | Fotografije | `img/` (barkod-uplata.png, luna-1.jpg, tara-1.jpg), `images/` (originali, 8,7 MB) |
 | Upute | `docs/`: popis za objavu v02, šablona potvrde narudžbe v04, upute admin v02, upute objava Croadria v02, upute rezervacije v03 |
 | Objava | planirano: hosting Croadria (PHP). OG oznake još pokazuju na `exarkun-1.github.io/shivaj-webshop/` |
 | Radna kopija na računalu | Glavna git kopija **`C:\SHIVAJ.HANDMADE\shiva.j`** (klon GitHub repozitorija, grana main). Zrcalo: `C:\Users\baric\Documents\shiva.j`. Arhiva svih verzija: `C:\SHIVAJ.HANDMADE\WEB STRANCA.1`. Lokalne Claude Code sesije otvarati na `C:\SHIVAJ.HANDMADE\shiva.j`. |
-| PHP za lokalni test | **Nije instaliran** (Temp mapa s php83 obrisana). Instalacija: `winget install PHP.PHP.8.3`, zatim launch konfiguracija `shivaj-docs-php` (port 8090), admin lozinka `test-lozinka-123`. Admin i API nisu lokalno testirani nakon prijenosa; statička stranica jest. |
+| PHP za lokalni test | **Nije instaliran** (Temp mapa s php83 obrisana). Instalacija: `winget install PHP.PHP.8.3`, zatim launch konfiguracija `shivaj-docs-php` (port 8090), admin lozinka `(lozinka iz lokalnih bilješki)`. Admin i API nisu lokalno testirani nakon prijenosa; statička stranica jest. |
 | Claude memorija (lokalno) | `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `shivaj-save-location.md` |
 | Stari razgovor | Claude Code sesija „SHIVA.J web stranica — Fotografije ranijih torbi”, čitljiva u pregledniku na claude.ai/code |
 
@@ -128,7 +128,8 @@ Stanja torbe: `sold: true` = „Prodano” (ostaje vidljiva), `reserved: true` =
 
 Riješeno od v09: Formspree (zamijenjen PHP servisom), primjeri proizvoda (uklonjeni iz stranice), višak fotografija u korijenu (uklonjen).
 
-1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md`, prva prijava u admin (lozinka se postavlja pri prvom otvaranju).
+1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md` (dopuna 22. 9.), prva prijava u admin (lozinka se postavlja pri prvom otvaranju, uz `data/PRVA-PRIJAVA.txt`).
+1a. **Preostali popravci iz pregleda koda** (funkcionalne greške, mrtvi kod, dokumentacija): `docs/PREGLED-KODA-v18.md`, odjeljci 2–4; sigurnosni odjeljak 1 je riješen u v19 / api v02.
 2. **E-mail na domeni** umjesto shivaj.handmade@gmail.com (u stranici 11 mjesta; u adminu postavka e-maila).
 3. **PDV napomena** u Uvjetima kupnje, točka 3 (redak 640): `{NAPOMENA O PDV-u}` (knjigovođa). **Rok uplate** u točki 5.
 4. **Torbe:** vlasnica unosi u adminu (naziv, opis, cijena, dimenzije, materijal, fotografije uspravne 4:5). Stranica kreće prazna. Artikli iz kategorije Ostalo isto u adminu, s rokom izrade. Vitičaste zagrade `{DIMENZIJE}`, `{MATERIJAL}`, `{ROK IZRADE}` ostale su samo u `torbe.primjer.json`.
@@ -169,7 +170,7 @@ Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest
 2. Na računalu u `C:\SHIVAJ.HANDMADE` (od 20. 9. 2026.; ranije privremena mapa `Temp\shivaj_site`, koja se više ne koristi).
 3. Bilješke na računalu (Claude Code memorija): `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `shivaj-save-location.md`.
 
-**Lokalni testni poslužitelj** (nakon `winget install PHP.PHP.8.3`; radi samo dok je prozor otvoren), adresa `http://127.0.0.1:8090/`, admin `/admin/` s lozinkom `test-lozinka-123`:
+**Lokalni testni poslužitelj** (nakon `winget install PHP.PHP.8.3`; radi samo dok je prozor otvoren), adresa `http://127.0.0.1:8090/`, admin `/admin/` s lozinkom `(lozinka iz lokalnih bilješki)`:
 
 ```
 cd C:\SHIVAJ.HANDMADE\shiva.j

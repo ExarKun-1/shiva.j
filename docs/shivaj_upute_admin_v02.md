@@ -1,4 +1,10 @@
 # Shiva.J — admin na hostingu · upute v02
+> **Dopuna 22. 9. 2026. (admin v02, api v02, stranica v19)**
+> - Prva prijava radi samo dok u mapi `data/` postoji datoteka `PRVA-PRIJAVA.txt` (u paketu je). Briše se sama čim postavite lozinku, pa nitko drugi ne može naknadno „postaviti” lozinku ni ako se `config.json` ošteti. Zaboravljena lozinka: FTP-om obrisati `data/config.json` **i** napraviti praznu `data/PRVA-PRIJAVA.txt`, pa otvoriti admin.
+> - Link „Plaćeno / storno” iz e-maila narudžbe radi tek nakon prijave u admin (u istom pregledniku). Iste radnje su i pod Rezervacije.
+> - Postavke → **Načini dostave**: stranica i potvrde kupcu čitaju cijene dostave odavde, a servis po njima računa iznos narudžbe. Isto vrijedi za podatke za uplatu i e-mail vlasnice: stranica ih preuzima iz postavki pri otvaranju.
+> - Servis zaprima najviše 6 stavki po narudžbi, 10 narudžbi i 20 rezervacija na sat s iste adrese; rezervirati se mogu samo stvarne, vidljive, neprodane torbe.
+
 
 Datum: 2026-09-08 · vrijedi uz `shivaj_webshop_v17.html` i mapu `hosting/` (admin v01)
 

@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — zajedničke funkcije za admin i API   (lib.php v01)
+   SHIVA.J — zajedničke funkcije za admin i API   (lib.php v02)
    Radi na običnom Linux hostingu (PHP 8.1+, GD). Podaci se čuvaju
    u JSON datotekama u mapi data/ (zaštićena .htaccess-om):
      data/config.json       postavke + lozinka (hash)
@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v01');
+define('SJ_VERSION', 'admin v02');
 
 /* ---------- postavke ---------- */
 
@@ -29,6 +29,17 @@ function sj_defaults(): array {
     'confirm_customer' => true,                        // automatska potvrda kupcu
     'mail_mode'        => 'mail',                      // 'mail' = PHP mail(); 'log' = data/mail-log.txt (test)
     'allowed_origins'  => [],                          // dodatni dopušteni izvori za API (npr. testni)
+    /* Načini dostave — jedini izvor istine: stranica ih čita iz api/status, a servis
+       po njima računa iznos narudžbe. price u EUR (0 = besplatno), address = traži se
+       adresa, locker = kupac bira BOX NOW paketomat. Prva opcija je zadana. */
+    'shipping' => [
+      ['id' => 'boxnow', 'label' => 'BOX NOW paketomat', 'price' => 4.00, 'address' => false, 'locker' => true,
+       'note' => 'Paket stiže u paketomat po vašem izboru; kod za preuzimanje dobivate SMS-om ili e-mailom.'],
+      ['id' => 'gls', 'label' => 'GLS dostava na adresu', 'price' => 6.00, 'address' => true, 'locker' => false,
+       'note' => 'Kurir dostavlja na vašu adresu, obično sljedeći radni dan nakon slanja.'],
+      ['id' => 'pickup', 'label' => 'Osobno preuzimanje u radionici', 'price' => 0, 'address' => false, 'locker' => false,
+       'note' => 'Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati, nakon uplate i uz dogovor termina.'],
+    ],
     'payment' => [
       'recipient' => 'SHIVA. J, obrt za dizajn',
       'address'   => 'Matije Gupca 33, 49210 Zabok',
@@ -45,15 +56,67 @@ function sj_defaults(): array {
 
 function sj_config(bool $reload = false): array {
   static $c = null;
-  if ($c === null || $reload) $c = array_replace_recursive(sj_defaults(), sj_read_json(SJ_DATA . '/config.json', []));
+  if ($c === null || $reload) {
+    $saved = sj_read_json(SJ_DATA . '/config.json', []);
+    $c = array_replace_recursive(sj_defaults(), $saved);
+    /* popisi se ne spajaju po indeksu, nego zamjenjuju u cijelosti */
+    foreach (['shipping', 'allowed_origins'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $c[$k] = array_values($saved[$k]);
+  }
   return $c;
+}
+
+/* config.json postoji, ali nije čitljiv JSON → admin ne smije ponuditi novo postavljanje lozinke */
+function sj_config_corrupt(): bool {
+  $p = SJ_DATA . '/config.json';
+  return is_file($p) && sj_read_json($p, null) === null;
+}
+
+/* Prva prijava (postavljanje lozinke) dopuštena je samo dok postoji ova datoteka; briše se
+   čim je lozinka postavljena, pa se admin ne može „preuzeti” ako se config.json ošteti. */
+function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
+
+function sj_shipping(): array {
+  $out = [];
+  foreach (sj_config()['shipping'] ?? [] as $o) {
+    if (!is_array($o) || empty($o['id'])) continue;
+    $out[] = ['id' => (string)$o['id'], 'label' => (string)($o['label'] ?? $o['id']), 'price' => round((float)($o['price'] ?? 0), 2),
+              'address' => !empty($o['address']), 'locker' => !empty($o['locker']), 'note' => (string)($o['note'] ?? '')];
+  }
+  return $out;
+}
+
+/* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
+function sj_rate_limit(string $key, int $max, int $windowSec): bool {
+  $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '?');
+  $now = time();
+  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now) {
+    foreach ($d as $k => $times) {
+      $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - 86400));
+      if ($times) $d[$k] = $times; else unset($d[$k]);
+    }
+    $k = $key . '|' . $ip;
+    $recent = array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec);
+    if (count($recent) >= $max) return false;
+    $d[$k] = array_merge(array_values($recent), [$now]);
+    return true;
+  }, []);
+}
+
+/* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
+function sj_mark_paid(array &$d, string $id): void {
+  $r = $d['res'][$id] ?? ['id' => $id];
+  unset($d['res'][$id]);
+  $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
 }
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.
    Nakon zapisa osvježava se i predmemorija sj_config(). */
 function sj_config_update(callable $fn): array {
   $new = sj_with_lock(SJ_DATA . '/config.json', function (array &$d) use ($fn) {
+    $saved = $d;
     $d = array_replace_recursive(sj_defaults(), $d);
+    /* popisi (dostava, izvori) se ne spajaju po indeksu sa zadanima, inače bi obrisana opcija „uskrsnula” */
+    foreach (['shipping', 'allowed_origins'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $d[$k] = array_values($saved[$k]);
     $fn($d);
     return $d;
   }, []);
@@ -233,12 +296,20 @@ function sj_check_csrf(): bool {
 
 function e($s): string { return htmlspecialchars((string)($s ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
-function sj_clean(?string $v, int $max): string {
+/* Očisti unos: bez kontrolnih znakova, ograničena duljina. Novi redovi ostaju samo uz $multiline
+   (napomene, popis stavki); u jednorednim poljima (ime, e-mail, id, predmet) se uklanjaju, jer bi
+   inače mogli ubaciti dodatna zaglavlja u e-mail. */
+function sj_clean(?string $v, int $max, bool $multiline = false): string {
   $v = trim((string)$v);
   if (!mb_check_encoding($v, 'UTF-8')) $v = mb_convert_encoding($v, 'UTF-8', 'UTF-8'); /* neispravni bajtovi → ne ruši unos */
-  $v = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $v);
+  $v = preg_replace($multiline ? '/[\x00-\x08\x0B\x0C\x0E-\x1F]/u' : '/[\x00-\x1F\x7F]/u', $multiline ? '' : ' ', $v);
   if ($v === null) $v = '';
   return mb_substr($v, 0, $max);
+}
+
+function sj_valid_email(?string $v): ?string {
+  $v = trim((string)$v);
+  return ($v !== '' && strlen($v) <= 120 && filter_var($v, FILTER_VALIDATE_EMAIL)) ? $v : null;
 }
 
 function sj_fmt_eur(float $n): string { return number_format($n, 2, ',', '.') . ' €'; }
@@ -312,8 +383,13 @@ function sj_mail_from(): string {
 /* Šalje običan tekstualni e-mail (UTF-8), s neobaveznim privitkom. U mail_mode 'log' zapisuje u data/mail-log.txt. */
 function sj_send_mail(string $to, string $subject, string $text, ?string $attachmentPath = null, ?string $replyTo = null): bool {
   $c = sj_config();
-  $from = sj_mail_from();
-  $shop = $c['shop'];
+  /* adrese u zaglavljima moraju biti ispravne e-mail adrese: bez novih redova, bez dodatnih zaglavlja */
+  $to = sj_valid_email($to);
+  $from = sj_valid_email(sj_mail_from());
+  if ($to === null || $from === null) return false;
+  $replyTo = sj_valid_email($replyTo);
+  $subject = sj_clean($subject, 200);
+  $shop = sj_clean((string)$c['shop'], 80);
   $encSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
   $fromHeader = '=?UTF-8?B?' . base64_encode($shop) . '?= <' . $from . '>';
   $boundary = 'sj-' . bin2hex(random_bytes(8));
