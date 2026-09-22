@@ -167,10 +167,11 @@ Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest
 
 1. Kao privitci u starom razgovoru (vidljivo u pregledniku na claude.ai/code). Preuzeti: `shivaj_webshop_v18.html`, `shivaj_hosting_v01.zip`, `torbe.json`, `torbe.primjer.json` i četiri `.md` dokumenta.
 2. Na računalu u `C:\SHIVAJ.HANDMADE` (od 20. 9. 2026.; ranije privremena mapa `Temp\shivaj_site`, koja se više ne koristi).
-3. Bilješke starog razgovora na računalu (Claude Code memorija): `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `MEMORY.md`.
+3. Bilješke na računalu (Claude Code memorija): `shivaj-webshop-project.md`, `shivaj-tooling-quirks.md`, `shivaj-save-location.md`.
 
-**Lokalni testni poslužitelj** (radi samo dok je prozor otvoren), adresa `http://127.0.0.1:8090/`, admin `/admin/` s lozinkom `test-lozinka-123`:
+**Lokalni testni poslužitelj** (nakon `winget install PHP.PHP.8.3`; radi samo dok je prozor otvoren), adresa `http://127.0.0.1:8090/`, admin `/admin/` s lozinkom `test-lozinka-123`:
 
 ```
-"/c/Users/baric/AppData/Local/Temp/php83/php.exe" -S 127.0.0.1:8090 -t "/c/Users/baric/AppData/Local/Temp/shivaj_site" -d display_errors=1 -d upload_max_filesize=20M -d post_max_size=20M -d memory_limit=256M "/c/Users/baric/AppData/Local/Temp/shivaj_site/router.php"
+cd C:\SHIVAJ.HANDMADE\shiva.j
+php -S 127.0.0.1:8090 -t . -d display_errors=1 -d upload_max_filesize=20M -d post_max_size=20M -d memory_limit=256M router.php
 ```
