@@ -24,7 +24,7 @@ U mapu `public_html` (ili kako je Croadria nazove, „korijen web stranice“):
 | `torbe.json` | prazna datoteka (`[]`) iz projektne mape; torbe se unose u adminu, koji je zapisuje. `torbe.primjer.json` služi samo za lokalnu probu i ne prenosi se |
 | `img/` | fotografije torbi i `barkod-uplata.png` |
 
-Uz to mape `admin/`, `api/` i `data/` te datoteka `.htaccess` iz `shivaj_hosting_v01.zip` (vidi upute za admin).
+Uz to mape `admin/`, `api/` i `data/` te datoteka `.htaccess` iz `shivaj_hosting_v02.zip` (vidi upute za admin).
 
 ## 3. Kako prenijeti
 
