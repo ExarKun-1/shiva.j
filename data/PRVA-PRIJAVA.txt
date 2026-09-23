@@ -1,0 +1,1 @@
+Ova datoteka dopušta prvo postavljanje lozinke admina. Briše se sama čim je lozinka postavljena.

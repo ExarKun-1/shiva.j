@@ -1,3 +1,6 @@
 # lokalni podaci admina (lozinka, postavke, rezervacije, narudzbe) ne idu u git
 data/*
 !data/.htaccess
+!data/PRVA-PRIJAVA.txt
+# živu ponudu piše admin na hostingu; u gitu je samo predložak torbe.json.example
+torbe.json
