@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v03');
+define('SJ_VERSION', 'admin v04');
 
 /* ---------- postavke ---------- */
 
@@ -105,8 +105,11 @@ function sj_rate_limit(string $key, int $max, int $windowSec): bool {
 
 /* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
 function sj_mark_paid(array &$d, string $id): void {
-  if (!isset($d['sold'][$id])) sj_count('paid');
   $r = $d['res'][$id] ?? ['id' => $id];
+  /* „plaćeno” se broji po narudžbi: sve torbe iste narudžbe nose isti token, pa se broji samo prva */
+  $tok = (string)($r['token'] ?? '');
+  $counted = $tok !== '' && (bool)array_filter($d['sold'] ?? [], fn($s) => ($s['token'] ?? '') === $tok);
+  if (!isset($d['sold'][$id]) && !$counted) sj_count('paid');
   unset($d['res'][$id]);
   $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
 }
@@ -226,9 +229,14 @@ function sj_res_default(): array { return ['res' => [], 'sold' => []]; }
 
 /* istekle rezervacije se brišu pri svakom čitanju */
 function sj_res_prune(array &$d): void {
-  $now = time(); $n = 0;
+  $now = time(); $n = 0; $seen = [];
   foreach ($d['res'] ?? [] as $id => $r) {
-    if (strtotime($r['until'] ?? '') < $now) { unset($d['res'][$id]); $n++; }
+    if (strtotime($r['until'] ?? '') < $now) {
+      unset($d['res'][$id]);
+      /* „isteklo” se broji po narudžbi (isti token = ista narudžba), ne po torbi */
+      $tok = (string)($r['token'] ?? '');
+      if ($tok === '' || !isset($seen[$tok])) { $n++; if ($tok !== '') $seen[$tok] = true; }
+    }
   }
   if ($n) sj_count('expired', $n); /* poziva se samo unutar brave koja zapis i sprema */
 }
@@ -236,7 +244,7 @@ function sj_res_prune(array &$d): void {
 /* ---------- anonimno mjerenje ----------
    data/brojac.json: dnevni zbrojevi bez ikakvih osobnih podataka (bez imena, e-maila, IP adrese):
    visits (otvaranja stranice), ig (od toga s Instagrama), orders, paid, expired (istekle neplaćene
-   rezervacije). Služi vlasnici da promjene na stranici mjeri prije/poslije. Čuva se 400 dana. */
+   rezervacije). orders, paid i expired broje se po narudžbi (ne po torbi), pa je omjer B usporediv. Služi vlasnici da promjene na stranici mjeri prije/poslije. Čuva se 400 dana. */
 function sj_count(string $key, int $n = 1): void {
   if (!in_array($key, ['visits', 'ig', 'orders', 'paid', 'expired'], true) || $n < 1) return;
   $day = (new DateTime('now', new DateTimeZone('Europe/Zagreb')))->format('Y-m-d');

@@ -419,7 +419,7 @@ function sj_view_stats(): string {
     $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
   }
   $h .= '</tbody></table></div>';
-  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
+  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. Narudžbe, plaćeno i isteklo broje se po narudžbi, ne po torbi (narudžba s dvije torbe je jedna). „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
   return $h;
 }
 
