@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v02)
+   SHIVA.J — javni API na hostingu   (api/index.php v03)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -13,6 +13,8 @@
         samo stvarni, vidljivi, neprodani unikati; ograničenje broja
         zahtjeva po IP adresi; storno token ne ide kupcu; e-mail adrese
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
+   v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
+        HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
    ========================================================= */
 declare(strict_types=1);
 require __DIR__ . '/../admin/lib.php';
@@ -203,6 +205,7 @@ if ($a === 'order') {
     $seq = (int)$cfg['order_seq'];
   });
   $no = 'SJ-' . date('Y') . '-' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+  $ref = sj_payment_ref($no);
 
   $o = ['customer' => $cust, 'items' => $items, 'shipping' => $ship ? ['id' => $ship['id'], 'label' => $ship['label'], 'price' => $shipPrice, 'locker' => $locker] : null,
         'goods' => round($goods, 2), 'total' => $total, 'note' => $note, 'reservation' => $res ? ['until' => $res['until']] : null];
@@ -247,7 +250,7 @@ if ($a === 'order') {
     $bar = SJ_ROOT . '/' . ltrim((string)($c['payment']['barcode'] ?? ''), '/');
     $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, is_file($bar) ? $bar : null, (string)$c['owner_email']);
   }
-  sj_json_out(['ok' => true, 'orderNo' => $no, 'total' => $total, 'until' => $res ? $res['until'] : null, 'mailOwner' => $sentOwner, 'mailCustomer' => $sentCust]);
+  sj_json_out(['ok' => true, 'orderNo' => $no, 'reference' => $ref, 'total' => $total, 'until' => $res ? $res['until'] : null, 'mailOwner' => $sentOwner, 'mailCustomer' => $sentCust]);
 }
 
 /* ---------- storno / plaćeno (link iz e-maila vlasnici; radnje samo uz prijavu u admin) ---------- */
@@ -307,6 +310,13 @@ header('Content-Type: text/plain; charset=utf-8');
 echo "Not found";
 exit;
 
+/* poziv na broj za model HR00: broj narudžbe bez slovnog dijela (SJ-2026-0007 → 2026-0007);
+   HR00 dopušta samo znamenke i crticu, najviše 22 znaka, bez kontrolnog broja */
+function sj_payment_ref(string $no): string {
+  $ref = preg_replace('/[^0-9-]/', '', $no) ?? '';
+  return substr(trim($ref, '-'), 0, 22);
+}
+
 /* ---------- potvrda kupcu (svi podaci su već provjereni na poslužitelju) ---------- */
 function sj_customer_mail(array $o, string $no, array $c): string {
   $cust = $o['customer'] ?? [];
@@ -326,7 +336,6 @@ function sj_customer_mail(array $o, string $no, array $c): string {
   $total = (float)($o['total'] ?? 0);
   $p = $c['payment'];
   $ibanPretty = trim(chunk_split(preg_replace('/\s+/', '', (string)$p['iban']) ?? '', 4, ' '));
-  $today = new DateTime('now', new DateTimeZone('Europe/Zagreb'));
   $torba = $nUnique > 1 ? 'Torbe su rezervirane za vas — kao i sve naše torbe, postoje samo u jednom primjerku, i sada su vaše.' : 'Torba je rezervirana za vas — kao i sve naše torbe, postoji samo u jednom primjerku, i sada je vaša.';
 
   $t = [];
@@ -349,10 +358,10 @@ function sj_customer_mail(array $o, string $no, array $c): string {
   $t[] = '- IBAN: ' . $ibanPretty;
   $t[] = '- Iznos: ' . sj_fmt_eur($total);
   $t[] = '- Model: ' . $p['model'];
-  $t[] = '- Poziv na broj: datum vaše uplate u obliku DDMMGGGG (npr. za ' . $today->format('j. n. Y.') . ' upišite ' . $today->format('dmY') . ')';
+  $t[] = '- Poziv na broj: ' . sj_payment_ref($no) . ' (broj vaše narudžbe)';
   $t[] = '- Opis plaćanja: ' . $c['shop'] . ' — ' . implode(', ', $names);
   $t[] = '';
-  $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka. Primatelj i IBAN popune se sami, a vi upišete još iznos, model ' . $p['model'] . ' i poziv na broj (datum uplate).';
+  $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka. Primatelj i IBAN popune se sami, a vi upišete još iznos, model ' . $p['model'] . ' i poziv na broj ' . sj_payment_ref($no) . '.';
   $t[] = '';
   if ($res && !empty($res['until'])) {
     $t[] = 'Rezervacija vrijedi ' . (int)$c['ttl_hours'] . ' h, do ' . sj_fmt_hr((string)$res['until']) . '. Molimo vas da uplatu izvršite odmah i da nam čim uplatite pošaljete potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail — torbu tada odmah označavamo kao vašu, bez obzira na to kad banka proknjiži uplatu. Ako u tom roku ne primimo uplatu ni potvrdu, rezervacija automatski istječe i torba se ponovno nudi drugim kupcima.';
