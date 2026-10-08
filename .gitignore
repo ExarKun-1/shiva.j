@@ -4,3 +4,6 @@ data/*
 !data/PRVA-PRIJAVA.txt
 # živu ponudu piše admin na hostingu; u gitu je samo predložak torbe.json.example
 torbe.json
+
+# lokalni zapisi alata za pregled dizajna (impeccable); pregled je u docs/PREGLED-DIZAJNA-v19.md
+.impeccable/

@@ -2,6 +2,8 @@
 
 Datum: 2026-09-07 · zamjenjuje v03
 
+> **Dopuna 8. 10. 2026. (api v03):** potvrdu kupcu šalje servis automatski. Poziv na broj više nije datum uplate nego broj narudžbe bez slova (SJ-2026-0007 → **2026-0007**, model HR00). Ako potvrdu pišete ručno, upišite taj broj umjesto {DDMMGGGG}.
+
 Što je novo u v04: način dostave (BOX NOW paketomat, GLS na adresu, osobno preuzimanje u radionici), količine i napomene za artikle iz kategorije „Ostalo“ (po narudžbi) i rok izrade.
 
 Polja u vitičastim zagradama {OVAKO} zamijeniti podacima iz e-maila narudžbe. Sve ostalo može ostati kako jest. Retke koji se ne odnose na narudžbu obrisati (npr. paketomat kad je dostava GLS-om). Kupac je iste podatke već vidio na stranici odmah nakon narudžbe; ovaj e-mail je službena potvrda narudžbe i podsjetnik za uplatu.

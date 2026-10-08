@@ -85,6 +85,7 @@ switch ($s) {
   case 'rez':      sj_layout('Rezervacije', sj_view_reservations($c), $c, $msg, $err); break;
   case 'narudzbe': sj_layout('Narudžbe', sj_view_orders(), $c, $msg, $err); break;
   case 'postavke': sj_layout('Postavke', sj_view_settings($c), $c, $msg, $err); break;
+  case 'mjerenje': sj_layout('Mjerenje', sj_view_stats(), $c, $msg, $err); break;
   default:         sj_layout('Torbe i artikli', sj_view_products(), $c, $msg, $err);
 }
 exit;
@@ -111,12 +112,17 @@ function sj_handle_action(string $act, array &$c): string {
         'price'    => round($price, 2),
         'dims'     => sj_clean((string)($_POST['dims'] ?? ''), 80),
         'material' => sj_clean((string)($_POST['material'] ?? ''), 160),
+        'tagline'  => sj_clean((string)($_POST['tagline'] ?? ''), 60),
+        'story'    => sj_clean((string)($_POST['story'] ?? ''), 400, true),
         'imgs'     => [],
         'sold'     => !empty($_POST['sold']),
       ];
       if ($made) { $p['made'] = true; $p['lead'] = sj_clean((string)($_POST['lead'] ?? ''), 60); }
       if (!empty($_POST['reserved']) && !$made) $p['reserved'] = true;
       if (!empty($_POST['hidden'])) $p['hidden'] = true;
+      if (!empty($_POST['hero'])) $p['hero'] = true;
+      if ($p['tagline'] === '') unset($p['tagline']);
+      if ($p['story'] === '') unset($p['story']);
 
       $idx = null;
       foreach ($list as $i => $x) if (($x['id'] ?? '') === $oldId && $oldId !== '') $idx = $i;
@@ -139,6 +145,8 @@ function sj_handle_action(string $act, array &$c): string {
       if ($cover !== '' && in_array($cover, $p['imgs'], true)) $p['imgs'] = array_values(array_merge([$cover], array_values(array_diff($p['imgs'], [$cover]))));
 
       if ($idx !== null) $list[$idx] = $p; else $list[] = $p;
+      /* naslovnica: samo jedna torba */
+      if (!empty($p['hero'])) foreach ($list as $i => $x) if (($x['id'] ?? '') !== $p['id']) unset($list[$i]['hero']);
       sj_save_products($list);
       return 'Spremljeno: ' . $name;
     }
@@ -217,6 +225,7 @@ function sj_handle_action(string $act, array &$c): string {
       $c['payment']['iban'] = $iban;
       $c['payment']['model'] = sj_clean((string)($_POST['model'] ?? 'HR00'), 4) ?: 'HR00';
       $c['pickup_info'] = sj_clean((string)($_POST['pickup_info'] ?? ''), 200);
+      $c['ship_lead'] = sj_clean((string)($_POST['ship_lead'] ?? ''), 60);
       /* dostava: jedan način po retku  id | naziv | cijena | adresa (da/ne) | paketomat (da/ne) | napomena */
       $ship = [];
       foreach (preg_split('/\R/', (string)($_POST['shipping'] ?? '')) as $line) {
@@ -305,7 +314,7 @@ function sj_view_products(): string {
 }
 
 function sj_view_form(array $c, string $id): string {
-  $p = ['id' => '', 'cat' => 'torbe', 'name' => '', 'desc' => '', 'price' => '', 'dims' => '', 'material' => '', 'imgs' => [], 'sold' => false, 'lead' => ''];
+  $p = ['id' => '', 'cat' => 'torbe', 'name' => '', 'desc' => '', 'price' => '', 'dims' => '', 'material' => '', 'tagline' => '', 'story' => '', 'imgs' => [], 'sold' => false, 'lead' => ''];
   if ($id !== '') {
     foreach (sj_products() as $x) if (($x['id'] ?? '') === $id) $p = array_replace($p, $x);
     if ($p['id'] === '') return '<p>Torba nije nađena.</p>';
@@ -324,11 +333,15 @@ function sj_view_form(array $c, string $id): string {
   $h .= '<label>Dimenzije <input name="dims" maxlength="80" value="' . e($p['dims']) . '" placeholder="npr. 30 × 30 × 10 cm"></label>';
   $h .= '<label>Materijal <input name="material" maxlength="160" value="' . e($p['material']) . '"></label>';
   $h .= '<label>Rok izrade (samo po narudžbi) <input name="lead" maxlength="60" value="' . e($p['lead'] ?? '') . '" placeholder="npr. 5 radnih dana"></label>';
+  $h .= '<label>Karakter u jednom retku (na kartici, do 60 znakova) <input name="tagline" maxlength="60" value="' . e($p['tagline'] ?? '') . '" placeholder="npr. Okrugla, mirna, s jednim zlatnim odsjajem."></label>';
   $h .= '<div class="stack">';
   $h .= '<label class="check"><input type="checkbox" name="sold" value="1"' . (!empty($p['sold']) ? ' checked' : '') . '> Prodano / trenutno nedostupno</label>';
   $h .= '<label class="check"><input type="checkbox" name="reserved" value="1"' . (!empty($p['reserved']) ? ' checked' : '') . '> Rezervirano ručno (npr. dogovor porukom)</label>';
   $h .= '<label class="check"><input type="checkbox" name="hidden" value="1"' . (!empty($p['hidden']) ? ' checked' : '') . '> Skriveno (nije na stranici)</label>';
+  $h .= '<label class="check"><input type="checkbox" name="hero" value="1"' . (!empty($p['hero']) ? ' checked' : '') . '> Na naslovnici (velika fotografija na vrhu stranice; samo jedna torba)</label>';
   $h .= '</div></div>';
+  $h .= '<label>Priča torbe (u povećanom prikazu, 2–3 rečenice, do 400 znakova) <textarea name="story" maxlength="400" rows="3" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit">' . e($p['story'] ?? '') . '</textarea></label>';
+  $h .= '<p class="muted">Upute za fotografije: docs/UPUTE-FOTOGRAFIRANJE.md (5 kadrova: sprijeda, u prostoru, na osobi, detalj s rukom, unutrašnjost).</p>';
 
   $h .= '<h3>Fotografije</h3>';
   if (!empty($p['imgs'])) {
@@ -386,6 +399,30 @@ function sj_view_orders(): string {
   return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom.</p>';
 }
 
+/* tjedni zbrojevi iz data/brojac.json: A = narudžbe / posjeti, B = plaćeno / narudžbe */
+function sj_view_stats(): string {
+  $d = sj_read_json(SJ_DATA . '/brojac.json', []);
+  if (!$d) return '<p class="muted">Još nema podataka. Brojanje počinje s prvim posjetom stranici.</p>';
+  $weeks = [];
+  foreach ($d as $day => $v) {
+    $t = strtotime($day . ' 12:00');
+    if (!$t) continue;
+    $wk = date('o-W', $t);
+    $weeks[$wk] = $weeks[$wk] ?? ['from' => $day, 'visits' => 0, 'ig' => 0, 'orders' => 0, 'paid' => 0, 'expired' => 0];
+    if ($day < $weeks[$wk]['from']) $weeks[$wk]['from'] = $day;
+    foreach (['visits', 'ig', 'orders', 'paid', 'expired'] as $k) $weeks[$wk][$k] += (int)($v[$k] ?? 0);
+  }
+  krsort($weeks);
+  $pct = fn($a, $b) => $b > 0 ? number_format(100 * $a / $b, 1, ',', '') . ' %' : '—';
+  $h = '<div class="tablewrap"><table><thead><tr><th>Tjedan od</th><th>Posjeti</th><th>s Instagrama</th><th>Narudžbe</th><th>Plaćeno</th><th>Isteklo neplaćeno</th><th>A: narudžbe / posjeti</th><th>B: plaćeno / narudžbe</th></tr></thead><tbody>';
+  foreach (array_slice($weeks, 0, 30) as $w) {
+    $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
+  }
+  $h .= '</tbody></table></div>';
+  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
+  return $h;
+}
+
 function sj_view_settings(array $c): string {
   $p = $c['payment'];
   $csrf = e(sj_csrf());
@@ -406,6 +443,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Model <input name="model" value="' . e($p['model']) . '" maxlength="4"></label>';
   $h .= '</div>';
   $h .= '<label>Osobno preuzimanje (tekst u potvrdi) <input name="pickup_info" value="' . e($c['pickup_info']) . '"></label>';
+  $h .= '<label>Rok slanja nakon uplate (prikazuje se kupcu nakon narudžbe; prazno = ne prikazuje se) <input name="ship_lead" maxlength="60" value="' . e((string)($c['ship_lead'] ?? '')) . '" placeholder="npr. 1–2 radna dana"></label>';
   $shipLines = '';
   foreach (sj_shipping() as $o) $shipLines .= $o['id'] . ' | ' . $o['label'] . ' | ' . number_format($o['price'], 2, ',', '') . ' | ' . ($o['address'] ? 'da' : 'ne') . ' | ' . ($o['locker'] ? 'da' : 'ne') . ' | ' . $o['note'] . "\n";
   $h .= '<h3>Načini dostave</h3><label>Jedan način po retku: <span class="mono">oznaka | naziv | cijena € | traži adresu (da/ne) | BOX NOW paketomat (da/ne) | napomena</span>. Prvi redak je zadani. Stranica i potvrde kupcu čitaju cijene odavde.<textarea name="shipping" rows="4" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit;font-size:.85rem">' . e($shipLines) . '</textarea></label>';
@@ -431,7 +469,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   $s = (string)($_GET['s'] ?? 'torbe');
   $navHtml = '';
   if ($nav) {
-    $items = ['torbe' => 'Torbe', 'rez' => 'Rezervacije', 'narudzbe' => 'Narudžbe', 'postavke' => 'Postavke'];
+    $items = ['torbe' => 'Torbe', 'rez' => 'Rezervacije', 'narudzbe' => 'Narudžbe', 'mjerenje' => 'Mjerenje', 'postavke' => 'Postavke'];
     foreach ($items as $k => $v) $navHtml .= '<a href="?s=' . $k . '"' . (($s === $k || ($k === 'torbe' && in_array($s, ['nova', 'uredi'], true))) ? ' class="on"' : '') . '>' . $v . '</a>';
     $navHtml .= '<a href="../" target="_blank" rel="noopener">Stranica ↗</a><a href="?odjava=1">Odjava</a>';
   }
