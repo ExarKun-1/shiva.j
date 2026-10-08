@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — zajedničke funkcije za admin i API   (lib.php v02)
+   SHIVA.J — zajedničke funkcije za admin i API   (lib.php v03)
    Radi na običnom Linux hostingu (PHP 8.1+, GD). Podaci se čuvaju
    u JSON datotekama u mapi data/ (zaštićena .htaccess-om):
      data/config.json       postavke + lozinka (hash)
@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v02');
+define('SJ_VERSION', 'admin v03');
 
 /* ---------- postavke ---------- */
 
@@ -47,6 +47,7 @@ function sj_defaults(): array {
       'model'     => 'HR00',
       'barcode'   => 'img/barkod-uplata.png',
     ],
+    'ship_lead'        => '',                          // rok slanja nakon uplate, npr. "1–2 radna dana" (prazno = ne prikazuje se)
     'pickup_info'      => 'Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati, nakon uplate javite se za termin.',
     'password_hash'    => '',
     'login_fails'      => [],
@@ -104,6 +105,7 @@ function sj_rate_limit(string $key, int $max, int $windowSec): bool {
 
 /* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
 function sj_mark_paid(array &$d, string $id): void {
+  if (!isset($d['sold'][$id])) sj_count('paid');
   $r = $d['res'][$id] ?? ['id' => $id];
   unset($d['res'][$id]);
   $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
@@ -224,10 +226,25 @@ function sj_res_default(): array { return ['res' => [], 'sold' => []]; }
 
 /* istekle rezervacije se brišu pri svakom čitanju */
 function sj_res_prune(array &$d): void {
-  $now = time();
+  $now = time(); $n = 0;
   foreach ($d['res'] ?? [] as $id => $r) {
-    if (strtotime($r['until'] ?? '') < $now) unset($d['res'][$id]);
+    if (strtotime($r['until'] ?? '') < $now) { unset($d['res'][$id]); $n++; }
   }
+  if ($n) sj_count('expired', $n); /* poziva se samo unutar brave koja zapis i sprema */
+}
+
+/* ---------- anonimno mjerenje ----------
+   data/brojac.json: dnevni zbrojevi bez ikakvih osobnih podataka (bez imena, e-maila, IP adrese):
+   visits (otvaranja stranice), ig (od toga s Instagrama), orders, paid, expired (istekle neplaćene
+   rezervacije). Služi vlasnici da promjene na stranici mjeri prije/poslije. Čuva se 400 dana. */
+function sj_count(string $key, int $n = 1): void {
+  if (!in_array($key, ['visits', 'ig', 'orders', 'paid', 'expired'], true) || $n < 1) return;
+  $day = (new DateTime('now', new DateTimeZone('Europe/Zagreb')))->format('Y-m-d');
+  sj_with_lock(SJ_DATA . '/brojac.json', function (array &$d) use ($key, $n, $day) {
+    $d[$day][$key] = (int)($d[$day][$key] ?? 0) + $n;
+    if (count($d) > 400) { ksort($d); $d = array_slice($d, -400, null, true); }
+    return true;
+  }, []);
 }
 
 function sj_res_read(): array {

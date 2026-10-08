@@ -58,3 +58,23 @@ Detektor: 5 upozorenja o kontrastu navigacije su lažna (gradijent podcrte uzet 
 2. **Privatnost:** jedna rečenica o tome da preglednik pamti košaricu i podatke za uplatu na uređaju kupca (bez osobnih podataka). Tekst mijenja vlasnica.
 3. **Uvjeti, točka 4:** piše „u roku 24 sata e-mailom vam šaljemo potvrdu”, a potvrda stiže automatski odmah. Pravni tekst, vlasnica.
 4. P2 i P3 iz tablice gore.
+
+## Vijeće recenzenata i v21 (8. 10. 2026.)
+
+Četiri neovisna recenzenta pregledala su v20: umjetnički direktor, istraživač konverzije (s izvorima),
+kupac s Instagrama na mobitelu i pisac brenda. Zajednički zaključak: torbe se premalo vide, nedostaju
+lice i priča, pravni tekst zauzima previše mjesta, oskudicu treba reći mirno, a plaćanje samo uplatom
+moglo bi kočiti prodaju (odluka vlasnice). Upute za fotografiranje s izvorima: `docs/UPUTE-FOTOGRAFIRANJE.md`.
+
+**Napravljeno u v21 (uz admin v03, api v04):**
+- velika fotografija torbe u krugu sa šavom na prvom ekranu (u adminu kvačica „Na naslovnici”, inače prva dostupna torba s fotografijom);
+- kartica: druga fotografija na prijelaz mišem, broj fotografija, „1/1”, redak karaktera, „Ručni rad · dostava od X €”;
+- povećani prikaz: priča torbe, poveznica na punu veličinu; nepopunjene `{…}` vrijednosti se ne prikazuju;
+- Uvjeti i privatnost na sklapanje (tekst neizmijenjen); mobilna stranica 9 173 px umjesto 11 590 px;
+- košarica: „Bez registracije · Plaćanje uplatom · 14 dana za raskid ugovora”, „Sljedeći korak” ispod gumba;
+- nakon narudžbe vremenska crta, s rokom slanja iz Postavki („Rok slanja nakon uplate”);
+- uklonjeno „nemojte predugo čekati”;
+- admin „Mjerenje”: tjedni zbrojevi posjeta, posjeta s Instagrama (`?izvor=ig`), narudžbi, plaćenih i isteklih rezervacija, s omjerima A i B; bez osobnih podataka.
+
+**Ostaje vlasnici:** fotografije po uputama, dimenzije, materijal, redak karaktera i priča za svaku torbu,
+„O nama” u prvom licu s fotografijom, rok slanja, odluka o pouzeću ili kartici, Instagram link s `?izvor=ig`.
