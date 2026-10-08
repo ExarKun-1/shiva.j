@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v21 (2026-10-08)
+     SHIVA.J WEBSHOP — v22 (2026-10-08)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,15 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v22 — popravci po drugom krugu vijeća (admin v04): umjesto
+           „O nama” poveznica „Radionica” i naslov „Iz radionice u
+           Zaboku.”; uklonjena oznaka „1/1” (zbunjivala uz „1/2 foto”);
+           redak karaktera na kartici manji i u boji konca; gumb
+           „Pogledaj unikate” na prvom ekranu; tekstovi: „bit će
+           rezervirana”, korak „Do isteka rezervacije”, „javit ćemo vam
+           kad paket krene”, „bez kartice” samo jednom u košarici,
+           rodno neutralne poruke košarice (vrijede i za remen);
+           mjerenje: plaćeno i isteklo broje se po narudžbi, ne po torbi
      v21 — „vau i prodaja” prema vijeću recenzenata (docs/PREGLED-DIZAJNA-v19.md),
            uz admin v03 i api v04: velika fotografija torbe u krugu sa
            šavom na prvom ekranu (torba označena „na naslovnici” u adminu,
@@ -335,7 +344,7 @@
     white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);
   }
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#o-nama,#uvjeti,#privatnost,#impressum,#kontakt{scroll-margin-top:72px}
+  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt{scroll-margin-top:72px}
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -358,6 +367,8 @@
     margin-top:24px;max-width:52ch;color:var(--ink-soft);font-size:1.05rem;
   }
   .hero .seam{max-width:180px;margin-top:44px}
+  .hero-cta{display:inline-block;margin-top:26px;padding:12px 22px;border:1.5px dashed var(--thread);border-radius:var(--radius);color:var(--thread);font-family:'Space Mono',monospace;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;transition:background .2s,color .2s}
+  .hero-cta:hover{background:var(--thread);color:var(--paper)}
   /* torba na naslovnici — krug kao sama torba, s crtkanim „šavom” oko njega */
   .hero.has-bag{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding-top:64px}
   .hero-bag{margin:0;justify-self:center;width:min(100%,460px);text-align:center}
@@ -400,8 +411,7 @@
   .card .photo img.alt{position:absolute;inset:0;opacity:0}
   @media (hover:hover){ .card:hover .photo img.alt{opacity:1} }
   .photo .count{position:absolute;right:10px;bottom:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;background:rgba(246,246,243,.92);color:var(--ink);padding:3px 8px;border-radius:var(--radius)}
-  .photo .one{position:absolute;left:10px;top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;color:var(--thread);background:rgba(246,246,243,.92);padding:3px 8px;border:1.5px dashed var(--thread);border-radius:var(--radius)}
-  .card .tagline{font-family:'Marcellus',serif;font-size:1rem;color:var(--ink);margin-top:-6px}
+  .card .tagline{font-family:'Marcellus',serif;font-size:.92rem;color:var(--thread);margin-top:-6px}
   .card .ship-from{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
   /* placeholder kad nema fotografije */
   .photo .ph{
@@ -460,7 +470,7 @@
   .step h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.1rem;margin-bottom:6px}
   .step p{color:var(--ink-soft);font-size:.92rem;max-width:36ch}
 
-  /* ---------- O nama ---------- */
+  /* ---------- Radionica (prije „O nama”) ---------- */
   .about{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#FBFBF9}
   .about-inner{
     max-width:1180px;margin:0 auto;padding:88px 24px;
@@ -651,7 +661,7 @@
       <a class="navlink" href="#torbe">Torbe</a>
       <a class="navlink" href="#ostalo">Ostalo</a>
       <a class="navlink" href="#kako">Kako naručiti</a>
-      <a class="navlink" href="#o-nama">O nama</a>
+      <a class="navlink" href="#radionica">Radionica</a>
       <a class="navlink" href="#kontakt">Kontakt</a>
       <button class="cart-btn" id="openCart" aria-label="Otvori košaricu">
         Košarica <span class="cart-count" id="cartCount">0</span>
@@ -665,7 +675,7 @@
     <a href="#torbe">Torbe</a>
     <a href="#ostalo">Ostalo</a>
     <a href="#kako">Kako naručiti</a>
-    <a href="#o-nama">O nama</a>
+    <a href="#radionica">Radionica</a>
     <a href="#kontakt">Kontakt</a>
   </div>
 </header>
@@ -676,6 +686,7 @@
     <h1>Torbe koje postoje samo jednom.</h1>
     <p>Svaka Shiva.J torba šivana je ručno, u jednom jedinom primjerku. Kad je netko odnese kući, više se ne ponavlja — ni kroj, ni tkanina, ni detalj.</p>
     <hr class="seam">
+    <a class="hero-cta" href="#torbe">Pogledaj unikate ↓</a>
   </div>
   <!-- torba na naslovnici: puni je renderHero() iz torbe.json -->
   <figure class="hero-bag" id="heroBag" hidden></figure>
@@ -717,10 +728,12 @@
   </div>
 </section>
 
-<section class="about" id="o-nama">
+<!-- Radionica: ovaj tekst vlasnica zamjenjuje svojim riječima u prvom licu
+     (tko šije, otkad, zašto) i dodaje svoju fotografiju ili fotografiju ruku pri radu. -->
+<section class="about" id="radionica">
   <div class="about-inner">
     <div>
-      <h2>Jedna torba,<br>jedna priča.</h2>
+      <h2>Iz radionice<br>u Zaboku.</h2>
       <hr class="seam">
     </div>
     <div>
@@ -838,7 +851,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v21</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v22</p>
 </footer>
 
 <!-- Košarica -->
@@ -903,7 +916,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note">Bez registracije i bez kartice. Nakon narudžbe torba je rezervirana za vas <span data-ttl-text>24 sata</span> i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod); potvrdu s istim podacima šaljemo i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
+      <p class="order-note">Nakon narudžbe torba je rezervirana za vas <span data-ttl-text>24 sata</span> i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod); potvrdu s istim podacima šaljemo i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: podaci za uplatu, odmah na ekranu.</p>
@@ -1168,7 +1181,6 @@ function renderGrid(){
           : `<div class="ph"><span class="ph-mark">${escHtml(String(p.name)[0])}</span><span class="ph-note">Fotografija uskoro</span></div>`}
         ${imgs.length > 1 ? `<img class="alt" src="${escHtml(imgs[1])}" alt="" loading="lazy">` : ""}
         ${imgs.length > 1 ? `<span class="count" aria-hidden="true">1/${imgs.length} foto</span>` : ""}
-        ${!p.made && !gone && cover ? `<span class="one" aria-hidden="true">1/1</span>` : ""}
       </div>
       <span class="unikat-tag">${statusLabel(p)}</span>
       <div class="card-info">
@@ -1209,13 +1221,13 @@ function toggleCartItem(id){
   const entry = cart.find(c => c.id === p.id);
   if(p.made){
     if(entry){ entry.qty = Math.min(10, qtyOf(entry) + 1); showToast(`„${p.name}" — ${entry.qty} kom u košarici`); }
-    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`„${p.name}" dodana u košaricu`); }
+    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`U košarici: „${p.name}" ✓`); }
   } else if(entry){
     cart = cart.filter(c => c.id !== p.id);
-    showToast(`„${p.name}" uklonjena iz košarice`);
+    showToast(`Uklonjeno iz košarice: „${p.name}"`);
   } else {
     cart.push({ ...p, qty: 1, note: "" }); /* unikat — uvijek količina 1 */
-    showToast(`„${p.name}" dodana u košaricu`);
+    showToast(`U košarici: „${p.name}" ✓`);
   }
   renderGrid(); renderCart();
   if(lbCurrent) updateLbButton();
@@ -1427,7 +1439,7 @@ function renderCart(){
   const uniques = cart.filter(p => !p.made).map(p => p.name);
   const hold = document.getElementById("orderHold");
   hold.hidden = !(RESERVATION_ENDPOINT && uniques.length);
-  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? uniques.slice(0, -1).join(", ") + " i " + uniques[uniques.length - 1] + " ostaju rezervirane" : uniques[0] + " ostaje rezervirana"} za vas ${hoursText(currentTtl)} od slanja narudžbe.`;
+  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? uniques.slice(0, -1).join(", ") + " i " + uniques[uniques.length - 1] + " bit će rezervirane" : uniques[0] + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od slanja narudžbe.`;
   cart.forEach(p => {
     const row = document.createElement("div");
     row.className = "cart-item" + (p.made ? " made" : "");
@@ -1809,8 +1821,8 @@ function paymentPanel(last){
       <p class="pay-thanks">Hvala vam! ✂️<br>${thanks}</p>
       <ol class="pay-steps" aria-label="Što slijedi">
         ${anyUnique && untilIso ? `<li><b>Sada</b>Rezervirano za vas do ${fmtDateTime(untilIso)}.</li>` : ""}
-        <li><b>Danas</b>Uplatite prema podacima ispod i pošaljite nam potvrdu uplate.</li>
-        <li><b>Nakon uplate</b>${anyUnique ? "Torbu" : "Artikle"} pažljivo pakiramo i šaljemo${SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : ""}; javimo vam kad krene.</li>
+        <li><b>Do isteka rezervacije</b>Uplatite prema podacima ispod i pošaljite nam potvrdu uplate.</li>
+        <li><b>Nakon uplate</b>${anyUnique ? "Torbu" : "Artikle"} pažljivo pakiramo i šaljemo${SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : ""}; javit ćemo vam kad paket krene.</li>
         ${anyUnique ? `<li><b>Kod vas</b>Imate 14 dana za jednostrani raskid ugovora, prema Uvjetima kupnje.</li>` : ""}
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>

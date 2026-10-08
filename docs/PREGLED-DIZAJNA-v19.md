@@ -78,3 +78,22 @@ moglo bi kočiti prodaju (odluka vlasnice). Upute za fotografiranje s izvorima: 
 
 **Ostaje vlasnici:** fotografije po uputama, dimenzije, materijal, redak karaktera i priča za svaku torbu,
 „O nama” u prvom licu s fotografijom, rok slanja, odluka o pouzeću ili kartici, Instagram link s `?izvor=ig`.
+
+## Vijeće o v21 i v22 (8. 10. 2026.)
+
+Ista četiri recenzenta pregledala su v21. Umjetnički direktor: v20 6/10 → v21 7,5/10; kupac s Instagrama:
+„Da, Lunu bih kupila, uz malo nelagode” (nakon v20 ne bi). Hvale torbu u krugu na prvom ekranu, drugu
+fotografiju i redak karaktera, „Sljedeći korak” i vremensku crtu, cijenu dostave uz torbu i sklopljene uvjete.
+
+**Napravljeno u v22 (uz admin v04):** poveznica „Radionica” i naslov „Iz radionice u Zaboku.” umjesto
+„O nama” (Zabok je adresa obrta iz impressuma); uklonjena oznaka „1/1” (zbunjivala uz „1/2 foto”, a
+„Jedan primjerak” već stoji ispod); redak karaktera na kartici manji i u boji konca; gumb „Pogledaj
+unikate” na prvom ekranu; tekst: „bit će rezervirana”, korak „Do isteka rezervacije”, „javit ćemo vam
+kad paket krene”, „bez kartice” samo jednom u košarici, poruke košarice bez roda („U košarici: „Luna” ✓”);
+mjerenje: plaćeno i isteklo broje se po narudžbi, ne po torbi (omjer B više ne može prijeći 100 %).
+
+**Ostaje vlasnici (vijeće smatra da to najviše koči prodaju):** dimenzije i materijal uz svaku torbu i
+fotografija na ramenu; prave fotografije 4–6 po torbi (`docs/UPUTE-FOTOGRAFIRANJE.pdf`); tekst
+„Radionica” u prvom licu s licem i imenom; odluka o pouzeću ili kartici (prijedlog istraživača: 6 tjedana
+mjeriti istekle neplaćene rezervacije; prag 25 % je njegova procjena, ne podatak iz literature); HUB-3
+barkod s iznosom traži vanjsku biblioteku (nije uvedeno).
