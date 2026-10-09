@@ -7,7 +7,7 @@ Datum: 2026-09-08 (v02: torbe i cijene unose se u adminu, stranica kreće prazna
 - [ ] Stvarne torbe unosi vlasnica u adminu, svaku sa svojom cijenom prema modelu: naziv, opis, cijena, dimenzije, materijal, fotografije (uspravne, omjer oko 4:5, bez teksta na slici). Stranica na hostingu kreće prazna (poruka „Ponuda se upravo priprema“) dok se ne unese prva torba; primjeri Luna, Tara, Vela, Mira, Nera, Zora od v17 više nisu u stranici.
 - [ ] Artikli iz kategorije Ostalo isto u adminu (kvačica „Artikl po narudžbi“): naziv, opis, cijena, rok izrade, što se može birati (boja, duljina), fotografije.
 - [ ] Napomena o PDV-u u Uvjetima kupnje (sada `{NAPOMENA O PDV-u}`): je li obrt u sustavu PDV-a. Pitanje za knjigovođu.
-- [ ] Tekst „O nama“ u njezinim riječima (sada opći tekst).
+- [ ] Tekst „Radionica“: potvrditi ili ispraviti nacrt u prvom licu (v23, složen iz članaka) i prenijeti fotografiju `img/radionica.jpg` (uspravna, 4:5).
 - [ ] Fotografija za dijeljenje linka `img/og.jpg`, 1200×630 px, najbolja torba s logom.
 - [ ] Potvrda da je radionica na adresi Matije Gupca 33 i da preuzimanje vrijedi radnim danom 8 do 15 h (potvrđeno 6. 9. 2026.).
 
