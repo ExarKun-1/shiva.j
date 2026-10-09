@@ -132,3 +132,8 @@ pouzeću ili kartici.
 Napravljeno: Radionica u konačnom obliku (nakon istraživanja stila i dvije recenzije pisca brenda), sedam mjesta usklađeno,
 klasične torbe pod podnaslovom, plaćeno po narudžbi, redak uplate iz postavki i zaštita od nepopunjenih podataka, ograničenje
 zahtjeva, brojači Radionica/Košarica/Kopiraj/Bez unikata, `docs/MJERENJE.md`.
+
+**v27 (9. 10. 2026.):** vijeće o v26 (dir. 8,5/10: logika trgovine čista, strop su fotografije; pisac 8,5/10, tekst 9; kupac
+„Možda, skoro da”, zaustavlja je ista fotografija Lune i Tare u probnim podacima; istraživač: osmo mjesto „samo jednom” u e-mailu,
+ploča obećava slanje za 1–2 dana i za izradu od 5 dana, ograda 14 dana nestaje u mješovitoj narudžbi, `orders_m` krivo, `paid`
+dvaput, IP 24 h bez napomene u privatnosti). Sve to popravljeno u v27; ostatak u ODLUKE-I-PODACI.md, otvorene stavke.

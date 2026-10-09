@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v26 (2026-10-09)
+     SHIVA.J WEBSHOP — v27 (2026-10-09)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,26 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v27 — četvrti krug vijeća (uz api v07, admin v07): slogan „Ručno
+           šivane torbe iz Zaboka” u naslovu stranice, OG naslovu i
+           podnožju; statični naslov kategorije „Torbe”; Uvjeti: sažetak
+           „Ukratko” točan za unikate i artikle po narudžbi, t. 4 bez
+           dvostruke rečenice i s rečenicom o artiklima po narudžbi,
+           ispravni navodnici; koraci 01–03 i napomena iznad gumba točni
+           za obje vrste; ploča nakon narudžbe: bez dvostrukog koraka o
+           rezervaciji, rok izrade za artikle po narudžbi, preuzimanje u
+           radionici bez „paket krene”, 14 dana običnim jezikom s ogradom
+           kad ima artikala po narudžbi, redak „Uplaćujete izravno na
+           račun primatelja …”, bez kopiranja, dijeljenja i barkoda kad
+           podaci za uplatu nisu popunjeni, IBAN u jednom retku; mreža:
+           podnaslov „Klasične torbe” kao naslov, „šijemo”, „Naruči
+           izradu” i u povećanom prikazu; Radionica: dvije uvodne
+           rečenice, „rezom … šavom”, „Ono što tako nastane”, „crne i
+           druge jednobojne”, „jedan do tri dana šivanja”, citat u lijevom
+           stupcu; izravna poveznica na torbu #torba-ID (za Instagram);
+           brojač: posjet vlasnice (prijavljene u admin) se ne broji,
+           Radionica se broji na naslov; privatnost: rečenica o anonimnom
+           brojanju i kratkom čuvanju skraćene adrese uređaja
      v26 — Radionica u konačnom obliku (tekst vlasnika projekta i pisca
            brenda: aforizam u prvoj rečenici, mozaik, „šarena se dogodi,
            crna se dogovori”) i popravci po trećem krugu vijeća (uz api
@@ -174,7 +194,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shiva.J — Unikatne ručno rađene torbe</title>
+<title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe od skaja iz Zaboka. Šarene torbe postoje samo jednom, klasične šijemo i po narudžbi.">
 <!-- Favicon: prošiveni "S" u boji konca -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%23F6F6F3'/%3E%3Crect x='7' y='7' width='50' height='50' rx='3' fill='none' stroke='%232E4A3A' stroke-width='2.5' stroke-dasharray='5 4'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='32' text-anchor='middle' fill='%232E4A3A'%3ES%3C/text%3E%3C/svg%3E">
@@ -183,7 +203,7 @@
      img/og.jpg (1200×630 px, najbolja fotografija torbe s logom). -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Shiva.J">
-<meta property="og:title" content="Shiva.J — Unikatne ručno rađene torbe">
+<meta property="og:title" content="Shiva.J — Ručno šivane torbe iz Zaboka">
 <meta property="og:description" content="Šarene torbe koje postoje samo jednom; klasične i po narudžbi. Ručni rad, Zabok.">
 <meta property="og:url" content="https://exarkun-1.github.io/shivaj-webshop/">
 <meta property="og:image" content="https://exarkun-1.github.io/shivaj-webshop/img/og.jpg">
@@ -463,7 +483,9 @@
   .card .photo img.alt{position:absolute;inset:0;opacity:0}
   @media (hover:hover){ .card:hover .photo img.alt{opacity:1} }
   .photo .count{position:absolute;right:10px;bottom:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;background:rgba(246,246,243,.92);color:var(--ink);padding:3px 8px;border-radius:var(--radius)}
-  .grid-sub{grid-column:1/-1;margin:20px 0 -8px;padding-top:18px;border-top:1.5px dashed var(--thread);font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--thread)}
+  .grid-sub{grid-column:1/-1;margin:20px 0 -8px;padding-top:22px;border-top:1.5px dashed var(--thread)}
+  .grid-sub span{display:block;font-family:'Marcellus',serif;font-size:1.35rem;color:var(--ink)}
+  .grid-sub small{display:block;margin-top:4px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--thread)}
   .card.made .unikat-tag::before{border-top-style:solid}
   .card .tagline{font-family:'Marcellus',serif;font-size:.92rem;color:var(--thread);margin-top:-6px}
   .card .ship-from{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
@@ -535,8 +557,9 @@
   .about .seam{max-width:120px;margin:22px 0 0}
   .about-inner > div:first-child{position:sticky;top:96px;align-self:start}
   .about p:first-of-type{font-family:'Marcellus',serif;font-size:1.2rem;line-height:1.45;color:var(--ink);max-width:48ch}
+  .about p.about-quote{font-family:'Marcellus',serif;font-size:1.5rem;line-height:1.3;color:var(--thread);margin:26px 0 0;max-width:14ch}
   .about p a{border-bottom:1.5px dashed var(--thread)}
-  .about-photo{margin:28px 0 0;max-width:360px}
+    .about-photo{margin:28px 0 0;max-width:360px}
   .about-photo img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:var(--radius);display:block;background:var(--thread-light)}
   .about-photo figcaption{margin-top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread)}
   .about .press-list{list-style:none;margin:28px 0 0;padding:20px 0 0;border-top:1.5px dashed var(--thread);max-width:58ch}
@@ -772,7 +795,7 @@
 <main class="shop" id="torbe">
   <div class="shop-head">
     <div>
-      <h2 id="shopTitle">Dostupni unikati</h2>
+      <h2 id="shopTitle">Torbe</h2>
       <div class="cat-tabs" id="catTabs"><!-- kategorije se generiraju iz JS --></div>
     </div>
     <span class="mono" id="availCount"></span>
@@ -789,17 +812,17 @@
       <div class="step">
         <span class="num">01</span>
         <h3>Odaberite torbu</h3>
-        <p>Šarene torbe postoje u jednom primjerku — što vidite na fotografiji, to i dobivate. Torbe i artikle označene „po narudžbi” (klasične torbe u jednoj boji, remeni, torbice) radimo i u više komada; rok izrade piše uz svaki. Dodajte u košaricu.</p>
+        <p>Šarene torbe postoje u jednom primjerku — što vidite na fotografiji, to i dobivate. Torbe i artikle označene „po narudžbi” (klasične torbe u jednoj boji, remeni, torbice) izrađujemo tek kad ih naručite, u više primjeraka; rok izrade piše uz svaki. Dodajte u košaricu.</p>
       </div>
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim pošaljete narudžbu, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi plaćate bez rezervacije.</p>
+        <p>Bez registracije i bez kartice. Čim pošaljete narudžbu, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi ne treba rezervirati.</p>
       </div>
       <div class="step">
         <span class="num">03</span>
         <h3>Uplatite i pričekajte paket</h3>
-        <p>IBAN, iznos i barkod za uplatu vidite odmah nakon narudžbe, a potvrdu šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo, ili je preuzimate u radionici.</p>
+        <p>IBAN, iznos i barkod za uplatu vidite odmah nakon narudžbe, a potvrdu šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.</p>
       </div>
     </div>
   </div>
@@ -808,23 +831,24 @@
 <!-- Radionica — konačni tekst (vlasnik projekta i pisac brenda, 9. 10. 2026.), iz činjenica
      objavljenih u člancima ispod i podataka vlasnika projekta (skaj; šarene unikati, klasične po narudžbi).
      Jasmina još provjerava: „J od mene” (J = Jasmina), reže li škarama (tada „počinje škarama, a završava
-     iglom”), i želi li dodati „od svake koja nije uspjela nešto sam naučila” (3. odlomak) i „odgovaram sama”
+     šavom” umjesto „počinje rezom”), i želi li dodati „od svake koja nije uspjela nešto sam naučila” (3. odlomak) i „odgovaram sama”
      (zadnji odlomak). Fotografija img/radionica.jpg (uspravna, 4:5; dok je nema, okvir se sam sakrije). -->
 <section class="about" id="radionica">
   <div class="about-inner">
     <div>
       <h2>Iz radionice<br>u Zaboku.</h2>
       <hr class="seam">
+      <p class="about-quote">Šarena se dogodi,<br>crna se dogovori.</p>
       <figure class="about-photo">
         <img src="img/radionica.jpg" alt="Jasmina Šivalec u radionici" loading="lazy" onerror="this.closest('figure').hidden = true">
         <figcaption>Radionica, Zabok</figcaption>
       </figure>
     </div>
     <div>
-      <p>Ja sam Jasmina Šivalec, i što radim, piše mi već u prezimenu. Dizajn tekstila diplomirala sam 2015. na Tekstilno-tehnološkom fakultetu u Zagrebu, s torbom u ruci: moja prva okrugla torba nastala je ondje, kao sporedni zadatak. Zadatak sam predala, torbu zadržala.</p>
+      <p>Ja sam Jasmina Šivalec. Što radim, piše mi već u prezimenu. Dizajn tekstila diplomirala sam 2015. na Tekstilno-tehnološkom fakultetu u Zagrebu, s torbom u ruci: moja prva okrugla torba nastala je ondje, kao sporedni zadatak. Zadatak sam predala, torbu zadržala.</p>
       <p>Onda sam jednu sašila sestri. Njezine su je prijateljice vidjele na društvenim mrežama i počele naručivati, a obitelj mi je rekla da krenem. Tako je nastao Shiva.J: Shiva od Šivalec i od toga što šivam, J od mene.</p>
-      <p>Krenula sam vlastitim sredstvima, bez poticaja. Trebalo je sašiti mnogo torbi dok nisu izgledale onako kako sam htjela. Danas izrada jedne traje jedan do tri dana.</p>
-      <p>Šijem od skaja, ne od kože. Šarena torba počinje rezanjem, a završava iglom: izrezane komade slažem, boju uz boju, dok se ne slože, kao mozaik. Ono što tako složim ni sama ne mogu ponoviti; kad torba ode, ode i uzorak. Klasične, crne i jednobojne, šijem i ponovno, po narudžbi: šarena se dogodi, crna se dogovori.</p>
+      <p>Krenula sam vlastitim sredstvima, bez poticaja. Trebalo je sašiti mnogo torbi dok nisu izgledale onako kako sam htjela. Danas mi za jednu treba jedan do tri dana šivanja.</p>
+      <p>Šijem od skaja, ne od kože. Šarena torba počinje rezom, a završava šavom: izrezane komade slažem, boju uz boju, dok se ne slože, kao mozaik. Ono što tako nastane ni sama ne mogu ponoviti; kad torba ode, ode i uzorak. Klasične, crne i druge jednobojne, šijem i ponovno, po narudžbi: šarena se dogodi, crna se dogovori.</p>
       <p>Radionica je u Zaboku, Matije Gupca 33. Ako me prije narudžbe želite išta pitati, pišite mi na Instagramu <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <ul class="press-list" aria-label="O Shiva.J su pisali">
         <li><span class="src">Dnevnik.hr · Zadovoljna · 2019.</span><a href="https://zadovoljna.dnevnik.hr/clanak/shiva-j-okrugle-torbice-koje-nastaju-u-zaboku---578360.html" target="_blank" rel="noopener">Shiva.J: Okrugle torbice iz Zaboka koje već imaju i svoje kolekcionarke</a></li>
@@ -845,14 +869,14 @@
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
       <hr class="seam">
-      <p>Ukratko: torbu naručite obrascem u košarici, mi je rezerviramo za vas i e-mailom vam pošaljemo podatke za uplatu. Nakon uplate torbu šaljemo na vašu adresu. Ako vam ne odgovara, možete je vratiti u roku 14 dana. Detalji su u nastavku.</p>
+      <p>Ukratko: naručite obrascem u košarici; šarenu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (artikle po narudžbi kad ih izradimo). Ako vam ne odgovara, možete je vratiti u roku 14 dana. Detalji su u nastavku.</p>
 
       <details><summary><h3>1. Prodavatelj</h3></summary>
       <p>SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi uvjeti vrijede za sve narudžbe putem ove stranice; slanjem narudžbe prihvaćate ih.</p>
 
       </details>
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Torbe označene „Jedan primjerak" ručno su rađeni unikati i postoje u jednom primjerku. Artikli označeni „po narudžbi" (klasične torbe u jednoj boji, zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
+      <p>Torbe označene „Jedan primjerak” ručno su rađeni unikati i postoje u jednom primjerku. Artikli označeni „po narudžbi” (klasične torbe u jednoj boji, zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
 
       </details>
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -860,7 +884,7 @@
 
       </details>
       <details><summary><h3>4. Narudžba i rezervacija</h3></summary>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja". Time je unikatna torba rezervirana za vas. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon slanja narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Slanjem narudžbe unikatna torba se automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Ako bi dvije narudžbe za istu torbu ipak stigle u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon slanja narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Slanjem narudžbe unikatna torba se automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
       </details>
       <details><summary><h3>5. Plaćanje</h3></summary>
@@ -888,7 +912,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
     <div class="legal-block" id="privatnost">
       <h2>Politika privatnosti</h2>
       <hr class="seam">
-      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Ova stranica ne koristi kolačiće, analitiku ni bilo kakve alate za praćenje; jedina iznimka je karta BOX NOW paketomata, koja se učitava samo na vaš klik (vidi dolje).</p>
+      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Ova stranica ne koristi kolačiće, vanjsku analitiku ni bilo kakve alate za praćenje; jedina iznimka je karta BOX NOW paketomata, koja se učitava samo na vaš klik (vidi dolje). Posjete i klikove brojimo samo kao dnevne zbrojeve, bez osobnih podataka; radi zaštite od zlouporabe adresa vašeg uređaja čuva se u skraćenom, neprepoznatljivom obliku najviše sat vremena.</p>
 
       <details><summary><h3>Voditelj obrade</h3></summary>
       <p>SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, OIB: 50934176320. Kontakt: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a>.</p>
@@ -926,7 +950,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
   <div class="foot-grid">
     <div>
       <p class="wordmark">SHIVA<span style="color:var(--thread)">.</span>J</p>
-      <p style="color:var(--ink-soft);font-size:.9rem;margin-top:8px">Unikatne ručno rađene torbe</p>
+      <p style="color:var(--ink-soft);font-size:.9rem;margin-top:8px">Ručno šivane torbe iz Zaboka</p>
     </div>
     <div class="foot-links">
       <span class="mono" style="color:var(--thread)">Kontakt</span>
@@ -942,7 +966,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v26</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v27</p>
 </footer>
 
 <!-- Košarica -->
@@ -1007,7 +1031,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note">Nakon narudžbe torba je rezervirana za vas <span data-ttl-text>24 sata</span> i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod); potvrdu s istim podacima šaljemo i e-mailom. Torbu šaljemo nakon primitka uplate.</p>
+      <p class="order-note">Odmah nakon narudžbe vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod); potvrdu s istim podacima šaljemo i e-mailom. Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span>; artikle po narudžbi izrađujemo nakon uplate.</p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: podaci za uplatu, odmah na ekranu.</p>
@@ -1220,6 +1244,8 @@ async function loadProducts(){
 
 /* ---------- kategorije (#torbe, #ostalo) ---------- */
 const catFromHash = () => { const h = (location.hash || "").slice(1); return CATEGORIES.some(c => c.id === h) ? h : null; };
+/* izravna poveznica na torbu (za Instagram): #torba-ID otvara povećani prikaz čim se ponuda učita */
+const bagFromHash = () => { const m = /^#torba-([A-Za-z0-9_-]{1,40})$/.exec(location.hash || ""); return m ? m[1] : null; };
 let currentCat = catFromHash() || CATEGORIES[0].id;
 const currentCategory = () => CATEGORIES.find(c => c.id === currentCat) || CATEGORIES[0];
 function renderShopHead(){
@@ -1262,7 +1288,7 @@ function renderGrid(){
     const paid = SHIPPING_OPTIONS.map(o => Number(o.price) || 0).filter(x => x > 0);
     const shipFrom = paid.length ? Math.min(...paid) : null;
     if(p.made && currentCat === "torbe" && !grid.querySelector(".grid-sub")){
-      const sub = document.createElement("p"); sub.className = "grid-sub"; sub.textContent = "Klasične torbe · šijem po narudžbi"; grid.appendChild(sub);
+      const sub = document.createElement("p"); sub.className = "grid-sub"; sub.innerHTML = `<span>Klasične torbe</span><small>šijemo po narudžbi · rok izrade piše uz svaku</small>`; grid.appendChild(sub);
     }
     const card = document.createElement("article");
     card.className = "card" + (gone ? " sold" : "") + (p.made ? " made" : "");
@@ -1295,7 +1321,7 @@ function renderGrid(){
   const avail = list.filter(p => !p.made && !isGone(p)).length, anyMade = list.some(p => p.made);
   document.getElementById("availCount").textContent = list.length && list.every(p => p.made)
     ? "izrada po narudžbi"
-    : avail + (avail === 1 ? " unikat dostupan" : " unikata dostupno") + (anyMade ? " · klasične po narudžbi" : "");
+    : avail + (avail === 1 ? " unikat dostupan" : " unikata dostupno") + (anyMade ? " · klasične\u00a0po\u00a0narudžbi" : "");
 }
 
 grid.addEventListener("click", e => {
@@ -1357,8 +1383,8 @@ function countOnce(key, once = true){
 }
 document.querySelectorAll(".press-list a").forEach(a => a.addEventListener("click", () => countOnce("press", false)));
 if("IntersectionObserver" in window){
-  const io = new IntersectionObserver(es => { if(es.some(e => e.isIntersecting)){ countOnce("rad"); io.disconnect(); } }, { threshold: .3 });
-  io.observe(document.getElementById("radionica"));
+  const io = new IntersectionObserver(es => { if(es.some(e => e.isIntersecting)){ countOnce("rad"); io.disconnect(); } }, { threshold: 0 });
+  io.observe(document.querySelector("#radionica h2"));
 }
 document.getElementById("heroBag").addEventListener("click", e => {
   const b = e.target.closest("[data-view]");
@@ -1448,7 +1474,7 @@ function updateLbButton(){
   b.disabled = gone;
   b.classList.toggle("in-cart", !!entry && !gone && !lbCurrent.made);
   b.textContent = gone ? statusLabel(lbCurrent)
-    : lbCurrent.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Dodaj u košaricu")
+    : lbCurrent.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Naruči izradu")
     : entry ? "U košarici ✓" : "Dodaj u košaricu";
 }
 document.getElementById("lbClose").addEventListener("click", closeLightbox);
@@ -1847,7 +1873,7 @@ function sendMailto(o){
 function showOrderSuccess(srv){
   const items = cart.slice();
   const so = shipSel();
-  const ship = so ? { label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
+  const ship = so ? { id: so.id, label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
   /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu */
   items.forEach(item => {
     const p = PRODUCTS.find(x => x.id === item.id);
@@ -1887,7 +1913,8 @@ const copyBtn = (value, label) => `<button type="button" class="copy-btn" data-c
 function paymentPanel(last){
   const items = last.items || [], srv = last.srv || {}, so = last.ship || null;
   const names = items.map(p => escHtml(p.name) + (qtyOf(p) > 1 ? " × " + qtyOf(p) : "")).join(", ");
-  const anyUnique = items.some(p => !p.made);
+  const anyUnique = items.some(p => !p.made), anyMade = items.some(p => p.made);
+  const pickup = !!(so && (so.id === "pickup" || (!so.locker && !(Number(so.price) > 0) && /preuzimanje/i.test(String(so.label || "")))));
   const untilIso = srv.until || null;
   /* o rezervaciji govorimo samo kad je stvarno napravljena; artikli po narudžbi se ne rezerviraju */
   const uniqueNames = items.filter(p => !p.made).map(p => escHtml(p.name));
@@ -1934,23 +1961,24 @@ function paymentPanel(last){
     <div class="pay">
       <p class="pay-thanks">Hvala vam! ✂️<br>${thanks}</p>
       <ol class="pay-steps" aria-label="Što slijedi">
-        ${anyUnique && untilIso ? `<li><b>Sada</b>${uniqueNames.length === 1 ? "Torba je rezervirana" : "Torbe su rezervirane"} za vas.</li>` : ""}
-        <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ispod i pošaljite nam potvrdu uplate.</li>
-        <li><b>Nakon uplate</b>${anyUnique ? "Torbu" : "Artikle"} pažljivo pakiramo i šaljemo${SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : ""}; javit ćemo vam kad paket krene.</li>
-        <li><b>Kod vas</b>Imate 14 dana za jednostrani raskid ugovora, prema Uvjetima kupnje${anyUnique ? "" : " (osim za artikle izrađene po vašim posebnim željama)"}.</li>
+        <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ispod i pošaljite nam potvrdu uplate na ${escHtml(OWNER_EMAIL)}.</li>
+        <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo u roku navedenom uz svaki, zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici i javimo vam se." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
+          : pickup ? "Torbu pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad je spremna."
+          : "Torbu pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
+        <li><b>Kod vas</b>Ako se predomislite, ${anyUnique ? "torbu" : "artikl"} možete vratiti u roku 14 dana od primitka${anyMade ? ", osim ako je rađen po vašoj boji ili mjeri" : ""} (Uvjeti kupnje, t. 6).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
-      ${payOk ? `<p class="pay-who">Uplata ide izravno obrtu ${escHtml(PAYMENT.recipient)}, Zabok.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam e-mailom.</p>`}
+      ${payOk ? `<p class="pay-who">Uplaćujete izravno na račun primatelja ${escHtml(PAYMENT.recipient)}, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam e-mailom.</p>`}
       ${payOk ? `<dl class="pay-data">${orderNo}
         <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}</dd></div>
-        <div><dt>IBAN</dt><dd><span class="mono-val">${ibanPretty(PAYMENT.iban)}</span>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</dd></div>
+        <div><dt>IBAN</dt><dd><span class="mono-val" style="white-space:nowrap">${ibanPretty(PAYMENT.iban)}</span><br>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</dd></div>
         <div><dt>Iznos</dt><dd>${amount}</dd></div>${shipRow}
         <div><dt>Model</dt><dd class="mono-val">${escHtml(PAYMENT.model)}</dd></div>
         ${refRow}
         <div><dt>Opis</dt><dd>${escHtml(desc)}</dd></div>
       </dl>` : orderNo ? `<dl class="pay-data">${orderNo}</dl>` : ""}
-      <div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcode}
-      <p class="pay-note">Nakon uplate pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? ", pa torba ostaje vaša i nakon isteka rezervacije" : ""}. ${mailSent} ${anyUnique ? "Torbu" : "Artikle"} šaljemo nakon primitka uplate.</p>
+      ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcode}` : ""}
+      <p class="pay-note">Nakon uplate pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? ", pa torba ostaje vaša i nakon isteka rezervacije" : ""}. ${mailSent} ${pickup ? (anyUnique ? "Torbu" : "Artikle") + " pripremamo za preuzimanje nakon primitka uplate." : (anyUnique ? "Torbu" : "Artikle") + " šaljemo nakon primitka uplate."}</p>
     </div>`;
 }
 
@@ -2049,6 +2077,8 @@ renderShopHead(); renderShipping();
 loadProducts().then(() => {
   restoreCart();
   renderGrid();
+  const bagId = bagFromHash();
+  if(bagId && PRODUCTS.some(p => p.id === bagId)){ const c = PRODUCTS.find(p => p.id === bagId).cat || "torbe"; if(c !== currentCat){ currentCat = c; renderShopHead(); renderGrid(); } setTimeout(() => openLightbox(bagId), 150); }
   /* link na kategoriju (#ostalo) nema vlastiti element, pa na učitavanju sami skrolamo do trgovine */
   if(catFromHash() && location.hash !== "#torbe") {
     const toShop = () => document.getElementById("torbe").scrollIntoView();

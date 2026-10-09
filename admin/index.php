@@ -210,16 +210,17 @@ function sj_handle_action(string $act, array &$c): string {
       /* „Plaćeno” za narudžbe bez rezervacije (samo artikli po narudžbi); narudžbe s unikatom označuju se kod rezervacija */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
       if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
-      $counted = false;
-      sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($act, $no, &$counted) {
-        foreach ($list as &$o) {
-          if (($o['no'] ?? '') !== $no) continue;
-          if ($act === 'order_paid') { if (empty($o['paidAt'])) { $o['paidAt'] = sj_iso(time()); $counted = true; } }
-          else unset($o['paidAt']);
-        }
-        return true;
-      }, []);
-      if ($counted) sj_count('paid');
+      if ($act === 'order_paid') {
+        /* samo narudžbe bez rezervacije; one s unikatom označuju se kod rezervacija (sj_mark_paid) */
+        $list = sj_read_json(SJ_DATA . '/narudzbe.json', []);
+        foreach ($list as $o) if (($o['no'] ?? '') === $no && !empty($o['reservation'])) throw new RuntimeException('Ova narudžba ima rezervaciju: označite je kao plaćenu kod rezervacija.');
+        if (sj_order_paid_once(['no' => $no])) sj_count('paid');
+      } else {
+        sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no) {
+          foreach ($list as &$o) if (($o['no'] ?? '') === $no) unset($o['paidAt']); /* paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje */
+          return true;
+        }, []);
+      }
       return ($act === 'order_paid' ? 'Označeno kao plaćeno: ' : 'Oznaka uklonjena: ') . $no;
     }
 
