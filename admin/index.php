@@ -205,6 +205,24 @@ function sj_handle_action(string $act, array &$c): string {
       return ['res_release' => 'Rezervacija stornirana: ', 'res_sold' => 'Označeno kao plaćeno: ', 'res_unsold' => 'Oznaka uklonjena: ', 'res_sold_manual' => 'Označeno kao prodano: '][$act] . $id;
     }
 
+    case 'order_paid':
+    case 'order_unpaid': {
+      /* „Plaćeno” za narudžbe bez rezervacije (samo artikli po narudžbi); narudžbe s unikatom označuju se kod rezervacija */
+      $no = sj_clean((string)($_POST['no'] ?? ''), 20);
+      if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
+      $counted = false;
+      sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($act, $no, &$counted) {
+        foreach ($list as &$o) {
+          if (($o['no'] ?? '') !== $no) continue;
+          if ($act === 'order_paid') { if (empty($o['paidAt'])) { $o['paidAt'] = sj_iso(time()); $counted = true; } }
+          else unset($o['paidAt']);
+        }
+        return true;
+      }, []);
+      if ($counted) sj_count('paid');
+      return ($act === 'order_paid' ? 'Označeno kao plaćeno: ' : 'Oznaka uklonjena: ') . $no;
+    }
+
     case 'save_settings': {
       $owner = sj_clean((string)($_POST['owner_email'] ?? ''), 120);
       if (!filter_var($owner, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('E-mail vlasnice nije ispravan.');
@@ -392,11 +410,15 @@ function sj_view_reservations(array $c): string {
 function sj_view_orders(): string {
   $list = sj_read_json(SJ_DATA . '/narudzbe.json', []);
   if (!$list) return '<p class="muted">Još nema narudžbi.</p>';
-  $h = '<div class="tablewrap"><table><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th></tr></thead><tbody>';
+  $h = '<div class="tablewrap"><table><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th><th>Plaćeno</th></tr></thead><tbody>';
   foreach (array_slice($list, 0, 100) as $o) {
-    $h .= '<tr><td class="mono">' . e($o['no'] ?? '') . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span></td><td><pre>' . e($o['items'] ?? '') . '</pre></td><td>' . e($o['shipping'] ?? '') . '</td><td class="mono">' . e($o['total'] ?? '') . '</td></tr>';
+    $no = (string)($o['no'] ?? '');
+    if (!empty($o['reservation'])) $paid = '<span class="muted">kod rezervacija</span>';
+    elseif (!empty($o['paidAt'])) $paid = e(sj_fmt_hr($o['paidAt'])) . ' ' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true);
+    else $paid = sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
+    $h .= '<tr><td class="mono">' . e($no) . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span></td><td><pre>' . e($o['items'] ?? '') . '</pre></td><td>' . e($o['shipping'] ?? '') . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
-  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom.</p>';
+  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. Narudžbe s unikatnom torbom označujete kao plaćene kod rezervacija; ovdje se označuju samo narudžbe bez rezervacije (artikli po narudžbi), da ih Mjerenje broji.</p>';
 }
 
 /* tjedni zbrojevi iz data/brojac.json: A = narudžbe / posjeti, B = plaćeno / narudžbe */
@@ -408,18 +430,18 @@ function sj_view_stats(): string {
     $t = strtotime($day . ' 12:00');
     if (!$t) continue;
     $wk = date('o-W', $t);
-    $weeks[$wk] = $weeks[$wk] ?? ['from' => $day, 'visits' => 0, 'ig' => 0, 'orders' => 0, 'paid' => 0, 'expired' => 0, 'press' => 0];
+    $weeks[$wk] = $weeks[$wk] ?? ['from' => $day, 'visits' => 0, 'ig' => 0, 'orders' => 0, 'paid' => 0, 'expired' => 0, 'press' => 0, 'rad' => 0, 'cart' => 0, 'copy' => 0, 'orders_m' => 0];
     if ($day < $weeks[$wk]['from']) $weeks[$wk]['from'] = $day;
-    foreach (['visits', 'ig', 'orders', 'paid', 'expired', 'press'] as $k) $weeks[$wk][$k] += (int)($v[$k] ?? 0);
+    foreach (['visits', 'ig', 'orders', 'paid', 'expired', 'press', 'rad', 'cart', 'copy', 'orders_m'] as $k) $weeks[$wk][$k] += (int)($v[$k] ?? 0);
   }
   krsort($weeks);
   $pct = fn($a, $b) => $b > 0 ? number_format(100 * $a / $b, 1, ',', '') . ' %' : '—';
-  $h = '<div class="tablewrap"><table><thead><tr><th>Tjedan od</th><th>Posjeti</th><th>s Instagrama</th><th>Narudžbe</th><th>Plaćeno</th><th>Isteklo neplaćeno</th><th>Klik na članke</th><th>A: narudžbe / posjeti</th><th>B: plaćeno / narudžbe</th></tr></thead><tbody>';
+  $h = '<div class="tablewrap"><table><thead><tr><th>Tjedan od</th><th>Posjeti</th><th>s Instagrama</th><th>Narudžbe</th><th>Plaćeno</th><th>Isteklo neplaćeno</th><th>Radionica</th><th>Košarica</th><th>Kopiraj</th><th>Klik na članke</th><th>Bez unikata</th><th>A: narudžbe / posjeti</th><th>B: plaćeno / narudžbe</th></tr></thead><tbody>';
   foreach (array_slice($weeks, 0, 30) as $w) {
-    $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $w['press'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
+    $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $w['rad'] . '</td><td class="mono">' . $w['cart'] . '</td><td class="mono">' . $w['copy'] . '</td><td class="mono">' . $w['press'] . '</td><td class="mono">' . $w['orders_m'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
   }
   $h .= '</tbody></table></div>';
-  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. Narudžbe, plaćeno i isteklo broje se po narudžbi, ne po torbi (narudžba s dvije torbe je jedna). „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). „Klik na članke” broji klikove na članke u odjeljku Radionica; ako je to više od nekoliko posto posjeta, članci odvode kupce sa stranice (prag je procjena). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
+  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. Narudžbe, plaćeno i isteklo broje se po narudžbi, ne po torbi (narudžba s dvije torbe je jedna). „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). „Radionica” = posjeti koji su došli do odjeljka Radionica, „Košarica” = posjeti s barem jednim dodavanjem u košaricu, „Kopiraj” = posjeti koji su kopirali podatke za uplatu, „Klik na članke” = klikovi na članke u Radionici (usporedite s „Radionica”, ne s posjetima), „Bez unikata” = narudžbe samo s artiklima po narudžbi. Plan čitanja brojeva: docs/MJERENJE.md. Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
   return $h;
 }
 

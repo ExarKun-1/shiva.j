@@ -126,3 +126,9 @@ stupac, veći naslov, uvodna rečenica u Marcellusu, e-mail vodi na Kontakt; red
 **Ostaje Jasmini:** fotografija u radionici (sva četiri recenzenta: jedino što još fali), fotografije torbi,
 dimenzije i materijal, potvrda „J od Jasmine”, godine članaka, Uvjeti točka 2 s knjigovođom, odluka o
 pouzeću ili kartici.
+
+**v26 (9. 10. 2026.):** vijeće o v25 (dir. 8/10, pisac 8/10, kupac „Možda” zbog testnog „{IME VLASNICE}”, istraživač: sedam mjesta
+„svaka torba postoji samo jednom”, plaćeno se ne broji za narudžbe bez unikata, redak uplate iz koda, bez ograničenja zahtjeva).
+Napravljeno: Radionica u konačnom obliku (nakon istraživanja stila i dvije recenzije pisca brenda), sedam mjesta usklađeno,
+klasične torbe pod podnaslovom, plaćeno po narudžbi, redak uplate iz postavki i zaštita od nepopunjenih podataka, ograničenje
+zahtjeva, brojači Radionica/Košarica/Kopiraj/Bez unikata, `docs/MJERENJE.md`.
