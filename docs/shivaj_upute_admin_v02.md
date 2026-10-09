@@ -48,7 +48,7 @@ Mapa `data/` mora biti zapisiva (na Croadriji jest). Provjera zaštite: `https:/
 
 **Nova torba**: Torbe → + Nova torba / artikl → naziv, cijena, kategorija, opis, dimenzije, materijal → dodati fotografije → Spremi. Odmah je na stranici.
 
-**Artikl po narudžbi** (remeni, torbice, platnene torbe): kategorija Ostalo + kvačica „Artikl po narudžbi“ + rok izrade. Kupac tada bira količinu i upisuje boju ili duljinu.
+**Artikl po narudžbi** (remeni, torbice, platnene torbe): kategorija Ostalo + kvačica „Artikl po narudžbi“ + rok izrade. Kupac tada bira količinu i upisuje boju ili duljinu. Isto vrijedi za klasičnu torbu u jednoj boji (npr. crnu) koja se šije ponovno: ostavite je u kategoriji Torbe, uključite kvačicu „Artikl po narudžbi“ i upišite rok izrade; na stranici dobiva oznaku „Po narudžbi“ umjesto „Jedan primjerak“ i ne rezervira se.
 
 **Fotografije**: uspravne, omjer oko 4:5, mirna pozadina. Prva je naslovna; naslovnu se mijenja u „Uredi“. Prenose se s telefona ravno iz galerije, smanjuju se na 1400 px same.
 

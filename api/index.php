@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v04)
+   SHIVA.J — javni API na hostingu   (api/index.php v05)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -15,6 +15,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v05: status?c=press broji klik na članak u Radionici (anonimno, samo zbroj).
    v04: status vraća rok slanja (shipLead); anonimni dnevni brojač (sj_count):
         api/status?v=1 broji otvaranje stranice (&src=ig s Instagrama), narudžbe.
    ========================================================= */
@@ -70,6 +71,7 @@ function sj_products_by_id(): array {
 /* ---------- status ---------- */
 if ($a === 'status') {
   if (($_GET['v'] ?? '') === '1') { sj_count('visits'); if (($_GET['src'] ?? '') === 'ig') sj_count('ig'); }
+  if (($_GET['c'] ?? '') === 'press') sj_count('press'); /* klik na članak; drugi ključevi se ne primaju */
   $d = sj_res_read();
   $pay = $c['payment'];
   sj_json_out([

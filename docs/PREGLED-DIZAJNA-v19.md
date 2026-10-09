@@ -102,3 +102,27 @@ barkod s iznosom traži vanjsku biblioteku (nije uvedeno).
 Stilueta, pregled poduzetnica KZŽ). Dodana traka „Pisali su o nama” ispod prvog ekrana i nacrt teksta
 „Radionica” u prvom licu iz činjenica koje se poklapaju u više izvora, s popisom članaka i mjestom za
 fotografiju. Vlasnica potvrđuje tekst prije objave.
+
+## Vijeće o v24 i v25 (9. 10. 2026.)
+
+Treći krug: umjetnički direktor v24 8/10 (v22 7,5); kupac s Instagrama „Da, kupila bih Lunu” (nelagoda
+zbog nepoznate osobe pala na pola, zbog uplate unaprijed ostala); pisac brenda tekstu Radionice 6/10
+(izmišljeni osjećaji, materijali i „ne radim serije” nisu iz članaka, „torba traje” umjesto „izrada traje”,
+unikatnost ponovljena četiri puta, ime brenda neobjašnjeno); istraživač: tri vanjske poveznice na
+najskupljem mjestu, brojač pri ovom prometu ne razlikuje učinak trake od šuma, predlaže brojanje klikova
+i signal identiteta uz IBAN. Umjetnički direktor našao mrtvo CSS pravilo (mobilni blok za traku stajao
+prije osnovnih pravila).
+
+Vlasnik projekta dodao činjenice: skaj umjesto kože; šarene torbe od izrezanih komada su unikati,
+klasične u jednoj boji šiju se i po narudžbi; „s torbom u ruci” i „Zadatak sam predala, torbu zadržala.”
+ostaju.
+
+**Napravljeno u v25 (api v05, admin v05):** tekstovi usklađeni s istinom o torbama (hero, korak 01,
+Uvjeti točka 2 prva rečenica, Radionica); traka bez vanjskih poveznica, vodi na Radionicu; popravljeno
+mobilno pravilo; Radionica: konačni tekst, adresa, poziv da kupac piše prije narudžbe, ljepljivi lijevi
+stupac, veći naslov, uvodna rečenica u Marcellusu, e-mail vodi na Kontakt; redak kome se uplaćuje ispod
+„Podaci za uplatu”; klik na članak broji se anonimno (stupac „Klik na članke” u Mjerenju).
+
+**Ostaje Jasmini:** fotografija u radionici (sva četiri recenzenta: jedino što još fali), fotografije torbi,
+dimenzije i materijal, potvrda „J od Jasmine”, godine članaka, Uvjeti točka 2 s knjigovođom, odluka o
+pouzeću ili kartici.

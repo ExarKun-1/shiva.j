@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v24 (2026-10-09)
+     SHIVA.J WEBSHOP — v25 (2026-10-09)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,18 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v25 — istina o torbama i treći krug vijeća (uz api v05, admin v05):
+           torbe se šiju od skaja (ne kože); šarene torbe od izrezanih
+           komada su unikati, klasične u jednoj boji šiju se i po narudžbi
+           (admin kvačica „Artikl po narudžbi” radi i u kategoriji Torbe):
+           usklađeni hero odlomak, korak 01, Uvjeti točka 2 (prva rečenica)
+           i Radionica; Radionica: konačni tekst, adresa radionice, poziv
+           da kupac piše prije narudžbe, ljepljivi lijevi stupac, veći
+           naslov, uvodna rečenica u Marcellusu; traka „Pisali su o nama”
+           bez vanjskih poveznica (vodi na Radionicu; članci ostaju dolje),
+           popravljeno mrtvo mobilno CSS pravilo; ispod „Podaci za uplatu”
+           redak kome se uplaćuje (obrt, vlasnica, Zabok); klik na članak
+           broji se anonimno (api/status?c=press)
      v24 — tekst „Radionica” ispričan življe (faks, sestra, torbe),
            i dalje samo iz činjenica objavljenih u člancima; dvije
            stilske rečenice označene u komentaru da ih vlasnica može
@@ -324,9 +336,6 @@
   .lb-close:hover{color:var(--ink)}
   .lb-info .add-btn{margin-top:auto}
   @media (max-width:680px){
-    .press a small{display:none}
-    .press-inner{gap:8px 18px;padding:14px 0}
-    .press-label{flex-basis:100%}
     .lb-panel{grid-template-columns:1fr;overflow-y:auto;max-height:92dvh}
     .lb-photo{aspect-ratio:1/1}
   }
@@ -385,11 +394,19 @@
   .hero-cta:hover{background:var(--thread);color:var(--paper)}
   /* ---------- Pisali su o nama ---------- */
   .press{max-width:1180px;margin:0 auto;padding:0 24px 8px}
-  .press-inner{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:18px 0;border-top:1.5px dashed var(--thread);border-bottom:1.5px dashed var(--thread)}
+  .press-inner{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;padding:16px 0;border-top:1.5px dashed var(--thread);border-bottom:1px solid var(--line);color:var(--ink)}
   .press-label{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--thread)}
-  .press a{font-family:'Marcellus',serif;font-size:1.05rem;color:var(--ink);border-bottom:1.5px dashed transparent;padding:4px 0}
-  .press a:hover{border-bottom-color:var(--thread)}
-  .press a small{display:block;font-family:'Karla',sans-serif;font-size:.78rem;color:var(--ink-soft)}
+  .press-name{font-family:'Marcellus',serif;font-size:1.05rem}
+  .press-name+.press-name::before{content:"·";color:var(--thread);margin-right:18px}
+  .press-more{font-size:.85rem;color:var(--ink-soft);margin-left:auto;border-bottom:1.5px dashed transparent}
+  .press-inner:hover .press-more{border-bottom-color:var(--thread)}
+  @media (max-width:680px){
+    .press-inner{gap:4px 12px;padding:12px 0}
+    .press-label{flex-basis:100%}
+    .press-name{font-size:.98rem}
+    .press-name+.press-name::before{margin-right:12px}
+    .press-more{display:none}
+  }
   /* torba na naslovnici — krug kao sama torba, s crtkanim „šavom” oko njega */
   .hero.has-bag{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding-top:64px}
   .hero-bag{margin:0;justify-self:center;width:min(100%,460px);text-align:center}
@@ -497,9 +514,12 @@
     max-width:1180px;margin:0 auto;padding:88px 24px;
     display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:56px;align-items:start;
   }
-  .about h2{font-family:'Marcellus',serif;font-weight:400;font-size:1.9rem;line-height:1.25}
+  .about h2{font-family:'Marcellus',serif;font-weight:400;font-size:2.4rem;line-height:1.2}
   .about p{color:var(--ink-soft);margin-bottom:16px;max-width:58ch}
   .about .seam{max-width:120px;margin:22px 0 0}
+  .about-inner > div:first-child{position:sticky;top:96px;align-self:start}
+  .about p:first-of-type{font-family:'Marcellus',serif;font-size:1.2rem;line-height:1.45;color:var(--ink)}
+  .about p a{border-bottom:1.5px dashed var(--thread)}
   .about-photo{margin:28px 0 0;max-width:360px}
   .about-photo img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:var(--radius);display:block;background:var(--thread-light)}
   .about-photo figcaption{margin-top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread)}
@@ -629,6 +649,8 @@
     color:var(--thread);margin-bottom:12px;display:flex;align-items:center;gap:10px;
   }
   .pay-title::after{content:"";flex:1;border-top:1.5px dashed var(--thread)}
+  .pay-who{font-size:.85rem;color:var(--ink-soft);margin:-6px 0 12px}
+  .pay-who a{border-bottom:1.5px dashed var(--thread)}
   .pay-data{display:flex;flex-direction:column;gap:9px;font-size:.9rem;margin-bottom:18px}
   .pay-data div{display:flex;gap:10px;align-items:baseline}
   .pay-data dt{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);min-width:98px;flex:none}
@@ -666,6 +688,7 @@
     nav a.navlink{display:none}
     .menu-btn{display:flex}
     .about-inner{grid-template-columns:1fr;padding:64px 24px}
+    .about-inner > div:first-child{position:static}
     .hero{padding:64px 24px 48px}
     .hero.has-bag{grid-template-columns:1fr;gap:28px;padding-top:36px}
     .hero.has-bag .hero-bag{order:-1;width:min(64vw,270px)}
@@ -712,7 +735,7 @@
   <div class="hero-text">
     <p class="mono eyebrow">Ručni rad · Hrvatska</p>
     <h1>Torbe koje postoje samo jednom.</h1>
-    <p>Svaka Shiva.J torba šivana je ručno, u jednom jedinom primjerku. Kad je netko odnese kući, više se ne ponavlja — ni kroj, ni tkanina, ni detalj.</p>
+    <p>Šarene Shiva.J torbe šivane su ručno, od izrezanih komada skaja, u jednom jedinom primjerku. Kad jednu netko odnese kući, više se ne ponavlja — ni kroj, ni boje, ni detalj. Klasične torbe u jednoj boji šijemo i po narudžbi.</p>
     <hr class="seam">
     <a class="hero-cta" href="#torbe">Pogledaj unikate ↓</a>
   </div>
@@ -720,14 +743,14 @@
   <figure class="hero-bag" id="heroBag" hidden></figure>
 </section>
 
-<!-- Pisali su o nama: javno objavljeni članci o Jasmini i Shiva.J (društveni dokaz). -->
+<!-- Pisali su o nama: javno objavljeni članci o Jasmini i Shiva.J (društveni dokaz).
+     Bez vanjskih poveznica na ovom mjestu (ne odvoditi kupca s trgovine); članci su u Radionici. -->
 <section class="press" aria-label="Pisali su o nama">
-  <div class="press-inner">
+  <a class="press-inner" href="#radionica">
     <span class="press-label">Pisali su o nama</span>
-    <a href="https://zadovoljna.dnevnik.hr/clanak/shiva-j-okrugle-torbice-koje-nastaju-u-zaboku---578360.html" target="_blank" rel="noopener">Dnevnik.hr<small>Okrugle torbice iz Zaboka koje već imaju svoje kolekcionarke</small></a>
-    <a href="https://www.zagorje.com/clanak/vijesti/jasminine-unikatne-torbe-postale-su-pravi-modni-hit" target="_blank" rel="noopener">Zagorje.com<small>Jasminine unikatne torbe postale su pravi modni hit</small></a>
-    <a href="https://stilueta.net/iz-ateliera-hrvatskih-dizajnera-preslatke-torbe-s-potpisom-shiva-j-handmade/" target="_blank" rel="noopener">Stilueta<small>Iz ateliera hrvatskih dizajnera: torbe s potpisom Shiva.J</small></a>
-  </div>
+    <span class="press-name">Dnevnik.hr</span><span class="press-name">Zagorje.com</span><span class="press-name">Stilueta</span>
+    <span class="press-more">o radionici ↓</span>
+  </a>
 </section>
 
 <main class="shop" id="torbe">
@@ -750,7 +773,7 @@
       <div class="step">
         <span class="num">01</span>
         <h3>Odaberite torbu</h3>
-        <p>Svaka torba postoji u jednom primjerku — što vidite na fotografiji, to i dobivate. Artikle iz kategorije Ostalo radimo po narudžbi, i u više komada. Dodajte u košaricu.</p>
+        <p>Šarene torbe postoje u jednom primjerku — što vidite na fotografiji, to i dobivate. Torbe i artikle označene „po narudžbi” (klasične torbe u jednoj boji, remeni, torbice) radimo i u više komada; rok izrade piše uz svaki. Dodajte u košaricu.</p>
       </div>
       <div class="step">
         <span class="num">02</span>
@@ -766,12 +789,11 @@
   </div>
 </section>
 
-<!-- Radionica — NACRT u prvom licu, složen samo iz činjenica objavljenih u člancima
-     navedenih ispod (Dnevnik.hr 2019., Zagorje.com, Stilueta, pregled poduzetnica KZŽ).
-     Vlasnica tekst potvrđuje ili ispravlja prije objave i dodaje fotografiju img/radionica.jpg
-     (uspravna, 4:5; dok je nema, okvir se sam sakrije). Materijali se ne navode ovdje nego uz
-     svaku torbu. Rečenice „Zadatak sam predala, torbu zadržala.” i „A meni?” su stilska dorada,
-     ne citati iz članaka; vlasnica ih slobodno izbaci ili zamijeni svojima. -->
+<!-- Radionica — tekst u prvom licu iz činjenica objavljenih u člancima navedenih ispod
+     (Dnevnik.hr 2019., Zagorje.com, Stilueta, pregled poduzetnica KZŽ) i iz podataka vlasnika
+     projekta (9. 10. 2026.: skaj, unikati vs. klasične torbe; rečenice „s torbom u ruci” i
+     „Zadatak sam predala, torbu zadržala.” potvrđene). Jasmina još provjerava „J od Jasmine” i
+     godine članaka. Fotografija img/radionica.jpg (uspravna, 4:5; dok je nema, okvir se sam sakrije). -->
 <section class="about" id="radionica">
   <div class="about-inner">
     <div>
@@ -779,15 +801,14 @@
       <hr class="seam">
       <figure class="about-photo">
         <img src="img/radionica.jpg" alt="Jasmina Šivalec u radionici" loading="lazy" onerror="this.closest('figure').hidden = true">
-        <figcaption>Jasmina Šivalec · Shiva.J</figcaption>
+        <figcaption>Radionica, Zabok</figcaption>
       </figure>
     </div>
     <div>
-      <p>Ja sam Jasmina Šivalec i šivam torbe koje postoje samo jednom.</p>
-      <p>Počelo je na faksu. Na Tekstilno-tehnološkom fakultetu u Zagrebu učila sam dizajn tekstila, a jedan sporedni zadatak za jedan kolegij ispao je okrugla torba. Zadatak sam predala, torbu zadržala. Od svega što sam ondje crtala i šivala, jedino me ona nije puštala. Diplomirala sam 2015., s torbom u ruci.</p>
-      <p>Prvu „pravu” sašila sam sestri. Nije bila za prodaju, bila je poklon. Ali sestra je torbu nosila, prijateljice su je vidjele na društvenim mrežama i počele pitati: „A meni?” Tako je, uz podršku obitelji i prijatelja, nastao Shiva.J. Ime je jednostavno: Jasmina Šivalec, ona koja šiva, i slovo J.</p>
-      <p>Posao sam pokrenula vlastitim rukama i vlastitim sredstvima, bez poticaja. Trebalo je sašiti mnogo torbi da dođem do kroja i završne obrade kakve sam htjela, i svaka me nova naučila nešto praktičnije od prethodne. Jedna torba traje od jednog do tri dana, ovisno o modelu. Ne radim serije i ne ponavljam modele: kad torba ode iz radionice, više se ne ponavlja, ni kroj, ni tkanina, ni detalj. Materijale biram u malim količinama, pa se kolekcija stalno mijenja.</p>
-      <p>Za posebne želje i narudžbe po mjeri javite se porukom na Instagram <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener" style="border-bottom:1.5px dashed var(--thread)">@shiva.j_handmade</a> ili e-mailom.</p>
+      <p>Ja sam Jasmina Šivalec. Dizajn tekstila diplomirala sam 2015. na Tekstilno-tehnološkom fakultetu u Zagrebu, s torbom u ruci: moja prva okrugla torba nastala je ondje, kao sporedni zadatak. Zadatak sam predala, torbu zadržala.</p>
+      <p>Onda sam jednu sašila sestri. Njezine su je prijateljice vidjele na društvenim mrežama i počele naručivati, a obitelj i prijatelji rekli su mi da krenem. Tako je nastao Shiva.J: Shiva od Šivalec i od toga što šivam, J od Jasmine.</p>
+      <p>Krenula sam vlastitim sredstvima, bez poticaja. Trebalo je sašiti mnogo torbi dok nisu izgledale onako kako sam htjela. Danas izrada jedne traje jedan do tri dana. Šijem od skaja, ne od kože. Šarene torbe, složene od izrezanih komada, šijem samo jednom i ne ponavljam ih. Klasične, crne i slične, mogu sašiti ponovno, po narudžbi.</p>
+      <p>Radionica je u Zaboku, Matije Gupca 33. Ako prije narudžbe želite pitati bilo što, pišite mi na Instagramu <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a> ili <a href="#kontakt">e-mailom</a>.</p>
       <ul class="press-list" aria-label="O Shiva.J su pisali">
         <li><span class="src">Dnevnik.hr · Zadovoljna · 2019.</span><a href="https://zadovoljna.dnevnik.hr/clanak/shiva-j-okrugle-torbice-koje-nastaju-u-zaboku---578360.html" target="_blank" rel="noopener">Shiva.J: Okrugle torbice iz Zaboka koje već imaju i svoje kolekcionarke</a></li>
         <li><span class="src">Zagorje.com</span><a href="https://www.zagorje.com/clanak/vijesti/jasminine-unikatne-torbe-postale-su-pravi-modni-hit" target="_blank" rel="noopener">Jasminine unikatne torbe postale su pravi modni hit</a></li>
@@ -814,7 +835,7 @@
 
       </details>
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Torbe su ručno rađeni unikati i postoje u jednom primjerku. Artikli iz kategorije „Ostalo" (zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
+      <p>Torbe označene „Jedan primjerak" ručno su rađeni unikati i postoje u jednom primjerku. Artikli označeni „po narudžbi" (klasične torbe u jednoj boji, zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
 
       </details>
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -904,7 +925,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v24</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v25</p>
 </footer>
 
 <!-- Košarica -->
@@ -1302,6 +1323,12 @@ function renderHero(){
   fig.hidden = false;
   hero.classList.add("has-bag");
 }
+/* anonimno brojanje klikova na članke (samo zbroj po danu, bez ikakvih podataka o posjetitelju) */
+document.querySelectorAll(".press-list a").forEach(a => a.addEventListener("click", () => {
+  if(!RESERVATION_ENDPOINT) return;
+  const u = RESERVATION_ENDPOINT + "/status?c=press";
+  if(!(navigator.sendBeacon && navigator.sendBeacon(u))) fetch(u, { keepalive: true }).catch(() => {});
+}));
 document.getElementById("heroBag").addEventListener("click", e => {
   const b = e.target.closest("[data-view]");
   if(b) openLightbox(b.dataset.view);
@@ -1879,6 +1906,7 @@ function paymentPanel(last){
         ${anyUnique ? `<li><b>Kod vas</b>Imate 14 dana za jednostrani raskid ugovora, prema Uvjetima kupnje.</li>` : ""}
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
+      <p class="pay-who">Uplaćujete obrtu Shiva.J, vl. Jasmina Šivalec, Zabok · <a href="#radionica" class="drawer-link">o radionici</a></p>
       <dl class="pay-data">${orderNo}
         <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}</dd></div>
         <div><dt>IBAN</dt><dd><span class="mono-val">${ibanPretty(PAYMENT.iban)}</span>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</dd></div>

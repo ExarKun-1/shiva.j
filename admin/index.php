@@ -408,18 +408,18 @@ function sj_view_stats(): string {
     $t = strtotime($day . ' 12:00');
     if (!$t) continue;
     $wk = date('o-W', $t);
-    $weeks[$wk] = $weeks[$wk] ?? ['from' => $day, 'visits' => 0, 'ig' => 0, 'orders' => 0, 'paid' => 0, 'expired' => 0];
+    $weeks[$wk] = $weeks[$wk] ?? ['from' => $day, 'visits' => 0, 'ig' => 0, 'orders' => 0, 'paid' => 0, 'expired' => 0, 'press' => 0];
     if ($day < $weeks[$wk]['from']) $weeks[$wk]['from'] = $day;
-    foreach (['visits', 'ig', 'orders', 'paid', 'expired'] as $k) $weeks[$wk][$k] += (int)($v[$k] ?? 0);
+    foreach (['visits', 'ig', 'orders', 'paid', 'expired', 'press'] as $k) $weeks[$wk][$k] += (int)($v[$k] ?? 0);
   }
   krsort($weeks);
   $pct = fn($a, $b) => $b > 0 ? number_format(100 * $a / $b, 1, ',', '') . ' %' : '—';
-  $h = '<div class="tablewrap"><table><thead><tr><th>Tjedan od</th><th>Posjeti</th><th>s Instagrama</th><th>Narudžbe</th><th>Plaćeno</th><th>Isteklo neplaćeno</th><th>A: narudžbe / posjeti</th><th>B: plaćeno / narudžbe</th></tr></thead><tbody>';
+  $h = '<div class="tablewrap"><table><thead><tr><th>Tjedan od</th><th>Posjeti</th><th>s Instagrama</th><th>Narudžbe</th><th>Plaćeno</th><th>Isteklo neplaćeno</th><th>Klik na članke</th><th>A: narudžbe / posjeti</th><th>B: plaćeno / narudžbe</th></tr></thead><tbody>';
   foreach (array_slice($weeks, 0, 30) as $w) {
-    $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
+    $h .= '<tr><td>' . e(date('j. n. Y.', strtotime($w['from']))) . '</td><td class="mono">' . $w['visits'] . '</td><td class="mono">' . $w['ig'] . '</td><td class="mono">' . $w['orders'] . '</td><td class="mono">' . $w['paid'] . '</td><td class="mono">' . $w['expired'] . '</td><td class="mono">' . $w['press'] . '</td><td class="mono">' . $pct($w['orders'], $w['visits']) . '</td><td class="mono">' . $pct($w['paid'], $w['orders']) . '</td></tr>';
   }
   $h .= '</tbody></table></div>';
-  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. Narudžbe, plaćeno i isteklo broje se po narudžbi, ne po torbi (narudžba s dvije torbe je jedna). „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
+  $h .= '<p class="muted">Samo zbrojevi po danu, bez imena, e-maila i IP adrese. Posjet = jedno otvaranje stranice. Narudžbe, plaćeno i isteklo broje se po narudžbi, ne po torbi (narudžba s dvije torbe je jedna). „s Instagrama” broji posjete preko linka koji završava s <span class="mono">?izvor=ig</span> (taj link stavite u Instagram bio). „Klik na članke” broji klikove na članke u odjeljku Radionica; ako je to više od nekoliko posto posjeta, članci odvode kupce sa stranice (prag je procjena). Promjenu na stranici mjerite tako da usporedite nekoliko tjedana prije i poslije; mijenjajte jednu stvar odjednom i zapišite datum.</p>';
   return $h;
 }
 

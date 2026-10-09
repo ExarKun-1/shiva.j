@@ -1,7 +1,7 @@
 # Upute za fotografiranje torbi Shiva.J
 
 Za Jasminu. Snima se mobitelom, kod kuće, uz prozor. Uz svaku preporuku je broj izvora s popisa na dnu.
-Datum: 8. 10. 2026.
+Datum: 8. 10. 2026. (dopuna 9. 10.: skaj umjesto kože)
 
 ## Zašto se ovo isplati
 
@@ -29,7 +29,7 @@ Ovaj dio je praktična uputa, ne znanstveni nalaz. [5]
 1. **Glavna fotografija.** Torba sprijeda, na mirnoj neutralnoj podlozi (lan ili svijetlo drvo). Ista podloga i ista udaljenost za sve torbe, kvadratni kadar, torba zauzima oko tri četvrtine slike. Ovo je kartica u trgovini, a ujednačenost daje dojam kolekcije. Za ujednačenost nema pokusa, to je dobra praksa. [5]
 2. **Torba u prostoru.** Na stolu, stolici ili klupi, uz nekoliko stvarnih predmeta. Pokusi pokazuju da proizvod u stvarnom prostoru dobiva bolje ocjene, veću namjeru kupnje i veću spremnost da se plati nego isti proizvod izrezan na bijelom. [6] [7]
 3. **Na osobi.** Preko ramena, i na leđima ako je torba i ruksak. Lice nije potrebno. Iz te fotografije kupac vidi veličinu. [4]
-4. **Detalj šava i kože, s rukom.** Krupni plan prošivenih spojeva, kopči i teksture, a u kadru vaša ruka drži ili dodiruje torbu. Zamišljeni dodir povećava osjećaj da je proizvod „već moj”. [8] [9] Ujedno pokazuje ručni rad, a ručno rađeni predmeti kupcima su privlačniji jer u njima osjećaju uloženu brigu. [10]
+4. **Detalj šava i skaja, s rukom.** Krupni plan prošivenih spojeva, kopči i teksture, a u kadru vaša ruka drži ili dodiruje torbu. Zamišljeni dodir povećava osjećaj da je proizvod „već moj”. [8] [9] Ujedno pokazuje ručni rad, a ručno rađeni predmeti kupcima su privlačniji jer u njima osjećaju uloženu brigu. [10]
 5. **Unutrašnjost.** Otvorena torba: podstava, džepovi, zatvarač.
 
 **Usmjerenje:** u barem jednom kadru neka ručka ili remen gleda udesno. Kad je proizvod okrenut prema ruci kojom se kupac služi, lakše zamišlja korištenje i češće kupuje. [11]
