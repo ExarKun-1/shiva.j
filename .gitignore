@@ -7,3 +7,7 @@ torbe.json
 
 # lokalni zapisi alata za pregled dizajna (impeccable); pregled je u docs/PREGLED-DIZAJNA-v19.md
 .impeccable/
+
+# bilješke istraživanja (deep research); izvještaj se po potrebi kopira u docs/
+research_notes/
+reports/
