@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v06');
+define('SJ_VERSION', 'admin v07');
 
 /* ---------- postavke ---------- */
 
@@ -87,12 +87,16 @@ function sj_shipping(): array {
 }
 
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
-function sj_rate_limit(string $key, int $max, int $windowSec): bool {
+/* $short = true: adresa se sprema skraćeno (HMAC s dnevnom soli, 16 znakova) i čisti nakon sat vremena;
+   koristi se za anonimni brojač, gdje nema razloga čuvati pravu adresu */
+function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false): bool {
   $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '?');
+  if ($short) $ip = substr(hash_hmac('sha256', $ip, date('Y-m-d') . '|' . SJ_DATA), 0, 16);
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now) {
     foreach ($d as $k => $times) {
-      $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - 86400));
+      $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|')) ? 3600 : 86400;
+      $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
     $k = $key . '|' . $ip;
@@ -103,13 +107,31 @@ function sj_rate_limit(string $key, int $max, int $windowSec): bool {
   }, []);
 }
 
+/* Narudžba se u brojač „plaćeno” upisuje najviše jednom: traži narudžbu po tokenu rezervacije ili broju,
+   upisuje paidAt (ako nema) i paidCounted; vraća true samo prvi put. */
+function sj_order_paid_once(array $by): bool {
+  $first = false;
+  sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($by, &$first) {
+    foreach ($list as &$o) {
+      $hit = (isset($by['no']) && ($o['no'] ?? '') === $by['no']) || (isset($by['token']) && (($o['reservation']['token'] ?? '') === $by['token']));
+      if (!$hit) continue;
+      if (empty($o['paidAt'])) $o['paidAt'] = sj_iso(time());
+      if (empty($o['paidCounted'])) { $o['paidCounted'] = true; $first = true; }
+      return true;
+    }
+    return false;
+  }, []);
+  return $first;
+}
+
 /* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
 function sj_mark_paid(array &$d, string $id): void {
   $r = $d['res'][$id] ?? ['id' => $id];
   /* „plaćeno” se broji po narudžbi: sve torbe iste narudžbe nose isti token, pa se broji samo prva */
   $tok = (string)($r['token'] ?? '');
-  $counted = $tok !== '' && (bool)array_filter($d['sold'] ?? [], fn($s) => ($s['token'] ?? '') === $tok);
-  if (!isset($d['sold'][$id]) && !$counted) sj_count('paid');
+  /* ručno „prodano” bez narudžbe sa stranice (prazan token) ne ulazi u brojač; narudžba se broji jednom,
+     oznaka paidCounted ostaje u zapisu narudžbe i kad se oznaka plaćeno ukloni pa vrati */
+  if ($tok !== '' && !isset($d['sold'][$id]) && sj_order_paid_once(['token' => $tok])) sj_count('paid');
   unset($d['res'][$id]);
   $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
 }
