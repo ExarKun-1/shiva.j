@@ -97,3 +97,8 @@ fotografija na ramenu; prave fotografije 4–6 po torbi (`docs/UPUTE-FOTOGRAFIRA
 „Radionica” u prvom licu s licem i imenom; odluka o pouzeću ili kartici (prijedlog istraživača: 6 tjedana
 mjeriti istekle neplaćene rezervacije; prag 25 % je njegova procjena, ne podatak iz literature); HUB-3
 barkod s iznosom traži vanjsku biblioteku (nije uvedeno).
+
+**v23 (9. 10. 2026.):** tražilica je našla članke o Jasmini i Shiva.J (Dnevnik.hr/Zadovoljna 2019., Zagorje.com,
+Stilueta, pregled poduzetnica KZŽ). Dodana traka „Pisali su o nama” ispod prvog ekrana i nacrt teksta
+„Radionica” u prvom licu iz činjenica koje se poklapaju u više izvora, s popisom članaka i mjestom za
+fotografiju. Vlasnica potvrđuje tekst prije objave.

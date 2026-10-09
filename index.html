@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v22 (2026-10-08)
+     SHIVA.J WEBSHOP — v23 (2026-10-09)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,13 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v23 — lice i priča: traka „Pisali su o nama” ispod prvog ekrana
+           (Dnevnik.hr, Zagorje.com, Stilueta, poveznice na članke);
+           odjeljak Radionica u prvom licu, nacrt složen samo iz
+           činjenica objavljenih u tim člancima (fakultet, prva okrugla
+           torba, torba za sestru, ime brenda, trajanje izrade), s
+           popisom članaka i mjestom za fotografiju img/radionica.jpg
+           (sakrije se dok datoteke nema); vlasnica tekst potvrđuje
      v22 — popravci po drugom krugu vijeća (admin v04): umjesto
            „O nama” poveznica „Radionica” i naslov „Iz radionice u
            Zaboku.”; uklonjena oznaka „1/1” (zbunjivala uz „1/2 foto”);
@@ -313,6 +320,9 @@
   .lb-close:hover{color:var(--ink)}
   .lb-info .add-btn{margin-top:auto}
   @media (max-width:680px){
+    .press a small{display:none}
+    .press-inner{gap:8px 18px;padding:14px 0}
+    .press-label{flex-basis:100%}
     .lb-panel{grid-template-columns:1fr;overflow-y:auto;max-height:92dvh}
     .lb-photo{aspect-ratio:1/1}
   }
@@ -369,6 +379,13 @@
   .hero .seam{max-width:180px;margin-top:44px}
   .hero-cta{display:inline-block;margin-top:26px;padding:12px 22px;border:1.5px dashed var(--thread);border-radius:var(--radius);color:var(--thread);font-family:'Space Mono',monospace;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;transition:background .2s,color .2s}
   .hero-cta:hover{background:var(--thread);color:var(--paper)}
+  /* ---------- Pisali su o nama ---------- */
+  .press{max-width:1180px;margin:0 auto;padding:0 24px 8px}
+  .press-inner{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:18px 0;border-top:1.5px dashed var(--thread);border-bottom:1.5px dashed var(--thread)}
+  .press-label{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--thread)}
+  .press a{font-family:'Marcellus',serif;font-size:1.05rem;color:var(--ink);border-bottom:1.5px dashed transparent;padding:4px 0}
+  .press a:hover{border-bottom-color:var(--thread)}
+  .press a small{display:block;font-family:'Karla',sans-serif;font-size:.78rem;color:var(--ink-soft)}
   /* torba na naslovnici — krug kao sama torba, s crtkanim „šavom” oko njega */
   .hero.has-bag{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding-top:64px}
   .hero-bag{margin:0;justify-self:center;width:min(100%,460px);text-align:center}
@@ -479,6 +496,13 @@
   .about h2{font-family:'Marcellus',serif;font-weight:400;font-size:1.9rem;line-height:1.25}
   .about p{color:var(--ink-soft);margin-bottom:16px;max-width:58ch}
   .about .seam{max-width:120px;margin:22px 0 0}
+  .about-photo{margin:28px 0 0;max-width:360px}
+  .about-photo img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:var(--radius);display:block;background:var(--thread-light)}
+  .about-photo figcaption{margin-top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread)}
+  .about .press-list{list-style:none;margin:28px 0 0;padding:20px 0 0;border-top:1.5px dashed var(--thread);max-width:58ch}
+  .about .press-list li{margin:0 0 10px;font-size:.92rem;color:var(--ink-soft)}
+  .about .press-list a{color:var(--ink);border-bottom:1.5px dashed var(--thread)}
+  .about .press-list .src{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);display:block;margin-bottom:2px}
 
   /* ---------- Kontakt / footer ---------- */
   footer{max-width:1180px;margin:0 auto;padding:72px 24px 48px}
@@ -692,6 +716,16 @@
   <figure class="hero-bag" id="heroBag" hidden></figure>
 </section>
 
+<!-- Pisali su o nama: javno objavljeni članci o Jasmini i Shiva.J (društveni dokaz). -->
+<section class="press" aria-label="Pisali su o nama">
+  <div class="press-inner">
+    <span class="press-label">Pisali su o nama</span>
+    <a href="https://zadovoljna.dnevnik.hr/clanak/shiva-j-okrugle-torbice-koje-nastaju-u-zaboku---578360.html" target="_blank" rel="noopener">Dnevnik.hr<small>Okrugle torbice iz Zaboka koje već imaju svoje kolekcionarke</small></a>
+    <a href="https://www.zagorje.com/clanak/vijesti/jasminine-unikatne-torbe-postale-su-pravi-modni-hit" target="_blank" rel="noopener">Zagorje.com<small>Jasminine unikatne torbe postale su pravi modni hit</small></a>
+    <a href="https://stilueta.net/iz-ateliera-hrvatskih-dizajnera-preslatke-torbe-s-potpisom-shiva-j-handmade/" target="_blank" rel="noopener">Stilueta<small>Iz ateliera hrvatskih dizajnera: torbe s potpisom Shiva.J</small></a>
+  </div>
+</section>
+
 <main class="shop" id="torbe">
   <div class="shop-head">
     <div>
@@ -728,18 +762,31 @@
   </div>
 </section>
 
-<!-- Radionica: ovaj tekst vlasnica zamjenjuje svojim riječima u prvom licu
-     (tko šije, otkad, zašto) i dodaje svoju fotografiju ili fotografiju ruku pri radu. -->
+<!-- Radionica — NACRT u prvom licu, složen samo iz činjenica objavljenih u člancima
+     navedenih ispod (Dnevnik.hr 2019., Zagorje.com, Stilueta, pregled poduzetnica KZŽ).
+     Vlasnica tekst potvrđuje ili ispravlja prije objave i dodaje fotografiju img/radionica.jpg
+     (uspravna, 4:5; dok je nema, okvir se sam sakrije). Materijali se ne navode ovdje nego uz
+     svaku torbu. -->
 <section class="about" id="radionica">
   <div class="about-inner">
     <div>
       <h2>Iz radionice<br>u Zaboku.</h2>
       <hr class="seam">
+      <figure class="about-photo">
+        <img src="img/radionica.jpg" alt="Jasmina Šivalec u radionici" loading="lazy" onerror="this.closest('figure').hidden = true">
+        <figcaption>Jasmina Šivalec · Shiva.J</figcaption>
+      </figure>
     </div>
     <div>
-      <p>Shiva.J je mala radionica unikatnih torbi. Svaki komad nastaje ručno — od odabira tkanine i kože, preko kroja, do zadnjeg šava. Ne radimo serije i ne ponavljamo modele: torba koju vidite ovdje jedina je takva na svijetu.</p>
-      <p>Materijale biramo pažljivo i u malim količinama, pa se kolekcija stalno mijenja.</p>
+      <p>Ja sam Jasmina Šivalec. Dizajn tekstila diplomirala sam na Tekstilno-tehnološkom fakultetu u Zagrebu 2015. godine. Prvu okruglu torbu sašila sam još na faksu, kao sporedni zadatak za jedan kolegij, i od svega što sam ondje radila jedino me torbe nisu puštale.</p>
+      <p>Poslije sam sašila torbu sestri. Prijateljice su je vidjele na društvenim mrežama i počele naručivati, i tako je, uz podršku obitelji i prijatelja, nastao Shiva.J: moje ime, moje prezime i ono što najviše volim raditi — šivati. Posao sam pokrenula vlastitim rukama i vlastitim sredstvima, a svaka nova torba naučila me nešto praktičnije od prethodne.</p>
+      <p>Jedna torba traje od jednog do tri dana, ovisno o modelu. Ne radim serije i ne ponavljam modele: torba koju vidite ovdje jedina je takva na svijetu. Materijale biram u malim količinama, pa se kolekcija stalno mijenja.</p>
       <p>Za posebne želje i narudžbe po mjeri javite se porukom na Instagram <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener" style="border-bottom:1.5px dashed var(--thread)">@shiva.j_handmade</a> ili e-mailom.</p>
+      <ul class="press-list" aria-label="O Shiva.J su pisali">
+        <li><span class="src">Dnevnik.hr · Zadovoljna · 2019.</span><a href="https://zadovoljna.dnevnik.hr/clanak/shiva-j-okrugle-torbice-koje-nastaju-u-zaboku---578360.html" target="_blank" rel="noopener">Shiva.J: Okrugle torbice iz Zaboka koje već imaju i svoje kolekcionarke</a></li>
+        <li><span class="src">Zagorje.com</span><a href="https://www.zagorje.com/clanak/vijesti/jasminine-unikatne-torbe-postale-su-pravi-modni-hit" target="_blank" rel="noopener">Jasminine unikatne torbe postale su pravi modni hit</a></li>
+        <li><span class="src">Stilueta</span><a href="https://stilueta.net/iz-ateliera-hrvatskih-dizajnera-preslatke-torbe-s-potpisom-shiva-j-handmade/" target="_blank" rel="noopener">Iz ateliera hrvatskih dizajnera: preslatke torbe s potpisom Shiva.J Handmade!</a></li>
+      </ul>
     </div>
   </div>
 </section>
@@ -851,7 +898,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v22</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v23</p>
 </footer>
 
 <!-- Košarica -->
