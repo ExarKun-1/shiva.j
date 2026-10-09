@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v04');
+define('SJ_VERSION', 'admin v05');
 
 /* ---------- postavke ---------- */
 
@@ -244,9 +244,9 @@ function sj_res_prune(array &$d): void {
 /* ---------- anonimno mjerenje ----------
    data/brojac.json: dnevni zbrojevi bez ikakvih osobnih podataka (bez imena, e-maila, IP adrese):
    visits (otvaranja stranice), ig (od toga s Instagrama), orders, paid, expired (istekle neplaćene
-   rezervacije). orders, paid i expired broje se po narudžbi (ne po torbi), pa je omjer B usporediv. Služi vlasnici da promjene na stranici mjeri prije/poslije. Čuva se 400 dana. */
+   rezervacije), press (klikovi na članke u Radionici). orders, paid i expired broje se po narudžbi (ne po torbi), pa je omjer B usporediv. Služi vlasnici da promjene na stranici mjeri prije/poslije. Čuva se 400 dana. */
 function sj_count(string $key, int $n = 1): void {
-  if (!in_array($key, ['visits', 'ig', 'orders', 'paid', 'expired'], true) || $n < 1) return;
+  if (!in_array($key, ['visits', 'ig', 'orders', 'paid', 'expired', 'press'], true) || $n < 1) return;
   $day = (new DateTime('now', new DateTimeZone('Europe/Zagreb')))->format('Y-m-d');
   sj_with_lock(SJ_DATA . '/brojac.json', function (array &$d) use ($key, $n, $day) {
     $d[$day][$key] = (int)($d[$day][$key] ?? 0) + $n;
