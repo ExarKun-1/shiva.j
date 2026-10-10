@@ -10,7 +10,7 @@ Stanje 10. 10. 2026. (v28, api v08, admin v08). Brojač je anoniman: samo zbroje
 | s Instagrama | posjeti preko linka `?izvor=ig` (Instagram bio) | koliko promet dolazi s Instagrama |
 | Narudžbe | poslane narudžbe (jedna narudžba = 1, bez obzira na broj torbi) | brojnik za A, nazivnik za B |
 | Plaćeno | narudžbe označene „Plaćeno” (kod rezervacija ili u popisu narudžbi) | brojnik za B |
-| Isteklo neplaćeno | narudžbe s unikatom kojima je rezervacija istekla bez uplate (ako kupac uplati naknadno, narudžba ulazi i u „Plaćeno”, a „Isteklo” se ne umanjuje) | koči li uplata unaprijed |
+| Isteklo neplaćeno | narudžbe s unikatom kojima je rezervacija istekla bez uplate (od v29 samo zaprimljene narudžbe: rezervacija bez narudžbe, npr. kupac odustao usred slanja, ne broji se; ako kupac uplati naknadno, narudžba ulazi i u „Plaćeno”, a „Isteklo” se ne umanjuje) | koči li uplata unaprijed |
 | Radionica | posjeti koji su došli do odjeljka Radionica | domet priče; nazivnik za „Klik na članke” |
 | Košarica | posjeti s barem jednim dodavanjem u košaricu | razdvaja „ne sviđa mi se torba” od „odustao na blagajni” |
 | Kopiraj | posjeti koji su kopirali IBAN, iznos ili poziv na broj | najbliži znak namjere uplate |
@@ -29,12 +29,18 @@ tjedan koji počinje ponedjeljkom nakon objave; upišite datum: tjedan 1 = poned
 ne broje dok ste prijavljeni u admin u istom pregledniku; na mobitelu se prijavite jednom u admin pa će i tamo biti tako.
 Iznimka: kad otvorite vlastiti link iz Instagram profila unutar Instagramove aplikacije, taj se posjet broji (drugi preglednik).
 
-**Narudžbe izvan stranice** (Instagram poruke, e-mail): gumb „Ručno označi plaćeno” samo skida torbu iz ponude; ne ulazi u
-„Plaćeno” i ne dira tuđu rezervaciju ako je ima. B zato opisuje samo narudžbe sa stranice. Artikli po narudžbi nisu u tom popisu.
+**Narudžbe izvan stranice** (Instagram poruke, e-mail): gumb „Ručno označi plaćeno” samo skida torbu iz ponude i ne ulazi u
+„Plaćeno”. B zato opisuje samo narudžbe sa stranice. U popisu tog gumba nisu artikli po narudžbi ni torbe koje su upravo
+rezervirane ili već plaćene (od v29): rezerviranu torbu prvo stornirajte ako je prodajete nekom drugom.
 
-**Narudžba kojoj je rezervacija istekla, a kupac ipak uplatio:** označite je u Narudžbama gumbom „Plaćeno” (ne kod rezervacija, jer
-rezervacije više nema) i torbu ručno označite prodanom. Tako ulazi u „Plaćeno”; u „Isteklo” ostaje, pa je stvarni gubitak zbog
-uplate unaprijed = Isteklo − naknadno plaćene (brojite ih u dnevniku).
+**Narudžba kojoj je rezervacija istekla, a kupac ipak uplatio:** u Narudžbama uz nju piše „rezervacija istekla” i gumb „Plaćeno”
+(od v29). Gumb je upisuje u „Plaćeno” i torbu, ako je još slobodna, označi plaćenom za tog kupca; ako ju je u međuvremenu
+rezervirao ili kupio netko drugi, admin to javi porukom. U „Isteklo” narudžba ostaje, pa je stvarni gubitak zbog uplate unaprijed
+= Isteklo − naknadno plaćene (brojite ih u dnevniku).
+
+**Rezervacija prije i nakon narudžbe (od v29):** kad kupac klikne „Naruči”, torba se prvo drži najviše 2 sata; čim narudžba stigne,
+rezervacija vrijedi puni rok iz Postavki (npr. 24 sata). Ako narudžba ne stigne, torba se za najviše 2 sata sama vraća u ponudu
+i ne broji se kao „Isteklo”.
 
 **B čitajte kumulativno** za 3–4 tjedna, ne po tjednu: uplata se bilježi na dan kad je označite, a narudžba na dan narudžbe.
 

@@ -142,3 +142,11 @@ dvaput, IP 24 h bez napomene u privatnosti). Sve to popravljeno u v27; ostatak u
 fotografije; istraživač: pošta bez adrese na omotnici, preuzimanje „tko koga zove”, istekla-pa-plaćena narudžba, predvidljiva sol,
 dvostruko slanje narudžbe, HUB-3 opis). Sve što ne traži vlasnicu napravljeno u v28; ostatak u ODLUKE-I-PODACI.md, otvorene stavke
 (fotografije, PDV, pravnik za t. 6 i trajni medij, plaćanje pri preuzimanju, citat u traci, škare, „J od mene”).
+
+**v29 (10. 10. 2026.):** vijeće o v28 (dir. 8,5: slika za dijeljenje u zamjenskom fontu, IBAN izlazi iz ploče na 360 px, gumbi
+Kopiraj na tri mjesta, kružić dostave sam u retku, prazna crtkana linija u povećanom prikazu; pisac 9, Radionica 9,5: rod u
+koraku 3, „3 unikata dostupno”, jednina za dvije torbe, „Luna/Mozaik je rezervirana”, preuzimanje unikata bez termina, e-mail
+„24 sata” zakucano; istraživač 7 za lansiranje: ključ narudžbe se brisao pri svakom učitavanju, istekla narudžba bez gumba
+„Plaćeno”, ručno „Plaćeno” brisalo tuđu rezervaciju, narudžba prolazila za torbu koju drži drugi kupac, rezervacija bez narudžbe
+24 h, zapis JSON-a bez provjere; kupac „Da, uz prave fotografije”: vitičasta zagrada PDV-a u Uvjetima, barkod na istom mobitelu,
+Kopiraj uz primatelja). Sve to napravljeno u v29, osim pravnog teksta i odluka vlasnice (ODLUKE-I-PODACI.md, stavke 12 i 13).

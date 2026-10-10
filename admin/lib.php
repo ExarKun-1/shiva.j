@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v08');
+define('SJ_VERSION', 'admin v09');
 
 /* ---------- postavke ---------- */
 
@@ -137,10 +137,12 @@ function sj_order_paid_once(array $by): bool {
 }
 
 /* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
-/* $manual = true (gumb „Ručno označi plaćeno”): prodaja izvan stranice; ne preuzima tuđu aktivnu rezervaciju
-   (token, ime, e-mail) i ne ulazi u brojač. Već prodana torba se ne prepisuje. */
-function sj_mark_paid(array &$d, string $id, bool $manual = false): void {
-  if (isset($d['sold'][$id])) return;
+/* $manual = true (gumb „Ručno označi plaćeno”): prodaja izvan stranice, ne ulazi u brojač. Torbu s aktivnom
+   rezervacijom kupca ručni način ne dira (vraća false): nju se označuje kod rezervacija ili prvo stornira.
+   Već prodana torba se ne prepisuje. Vraća true kad je oznaka upisana. */
+function sj_mark_paid(array &$d, string $id, bool $manual = false): bool {
+  if (isset($d['sold'][$id])) return false;
+  if ($manual && isset($d['res'][$id])) return false;
   $r = $manual ? ['id' => $id] : ($d['res'][$id] ?? ['id' => $id]);
   /* „plaćeno” se broji po narudžbi: sve torbe iste narudžbe nose isti token, pa se broji samo prva;
      oznaka paidCounted ostaje u zapisu narudžbe i kad se oznaka plaćeno ukloni pa vrati */
@@ -148,6 +150,7 @@ function sj_mark_paid(array &$d, string $id, bool $manual = false): void {
   if ($tok !== '' && sj_order_paid_once(['token' => $tok])) sj_count('paid');
   unset($d['res'][$id]);
   $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
+  return true;
 }
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.
@@ -189,12 +192,18 @@ function sj_read_json(string $path, $default) {
   return is_array($d) ? $d : $default;
 }
 
+/* Piše preko privremene datoteke; ako zapis ne uspije (pun disk, neispravan JSON), postojeća datoteka ostaje
+   netaknuta i baca se iznimka, umjesto da se zamijeni praznom ili krnjom. */
 function sj_write_json(string $path, $data): void {
   $dir = dirname($path);
   if (!is_dir($dir)) mkdir($dir, 0755, true);
+  $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  if ($json === false) throw new RuntimeException('Zapis nije uspio (neispravan sadržaj): ' . basename($path));
+  $json .= "\n";
   $tmp = $path . '.tmp';
-  file_put_contents($tmp, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
-  rename($tmp, $path);
+  $n = @file_put_contents($tmp, $json, LOCK_EX);
+  if ($n !== strlen($json)) { @unlink($tmp); throw new RuntimeException('Zapis nije uspio (disk?): ' . basename($path)); }
+  if (!@rename($tmp, $path)) { @unlink($tmp); throw new RuntimeException('Zapis nije uspio (preimenovanje): ' . basename($path)); }
 }
 
 /* Zaključani rad nad JSON datotekom: $fn(array &$data) smije mijenjati $data; vraća što god želi. */
@@ -205,6 +214,13 @@ function sj_with_lock(string $path, callable $fn, $default = []) {
   flock($fp, LOCK_EX);
   try {
     $data = sj_read_json($path, $default);
+    /* datoteka postoji i nije prazna, ali nije čitljiv JSON: čuva se kopija (ime.json.osteceno-datum), a postavke se
+       ne prepisuju zadanima (izgubili bi se lozinka, brojač narudžbi, adresa pošiljatelja) */
+    if (is_file($path) && filesize($path) > 0 && sj_read_json($path, null) === null) {
+      $bak = $path . '.osteceno-' . date('Ymd');
+      if (!is_file($bak)) @copy($path, $bak);
+      if (basename($path) === 'config.json') throw new RuntimeException('data/config.json nije čitljiv; vratite ga iz sigurnosne kopije.');
+    }
     $before = json_encode($data);
     $result = $fn($data);
     if (json_encode($data) !== $before) sj_write_json($path, $data);
@@ -269,7 +285,9 @@ function sj_res_prune(array &$d): void {
   foreach ($d['res'] ?? [] as $id => $r) {
     if (strtotime($r['until'] ?? '') < $now) {
       unset($d['res'][$id]);
-      /* „isteklo” se broji po narudžbi (isti token = ista narudžba), ne po torbi */
+      /* „isteklo” se broji po narudžbi (isti token = ista narudžba), ne po torbi, i samo ako je narudžba
+         stvarno zaprimljena (ordered); rezervacija bez narudžbe (kupac odustao, kvar) se ne broji */
+      if (empty($r['ordered'])) continue;
       $tok = (string)($r['token'] ?? '');
       if ($tok === '' || !isset($seen[$tok])) { $n++; if ($tok !== '') $seen[$tok] = true; }
     }
@@ -322,7 +340,7 @@ function sj_login(string $password): bool {
   $c = sj_config(true);
   $ip = sj_short_ip(); /* skraćena adresa: u postavkama ne ostaje prava adresa */
   $fails = $c['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
-  if ($fails['n'] >= 8 && time() - $fails['t'] < 900) return false; /* 15 min pauze nakon 8 promašaja */
+  if ((int)$fails['n'] >= 8 && time() - (int)$fails['t'] < 900) return false; /* 15 min pauze nakon 8 promašaja */
   if ($c['password_hash'] && password_verify($password, $c['password_hash'])) {
     sj_session_start();
     session_regenerate_id(true);
@@ -332,7 +350,13 @@ function sj_login(string $password): bool {
     return true;
   }
   usleep(400000);
-  sj_config_update(function (array &$d) use ($ip, $fails) { $d['login_fails'][$ip] = ['n' => (int)$fails['n'] + 1, 't' => time()]; });
+  /* brojač promašaja raste unutar brave (paralelni pokušaji ga ne zaobilaze); zapisi stariji od dana se brišu */
+  sj_config_update(function (array &$d) use ($ip) {
+    $now = time();
+    foreach ((array)($d['login_fails'] ?? []) as $k => $f) if ($now - (int)($f['t'] ?? 0) > 86400) unset($d['login_fails'][$k]);
+    $f = $d['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
+    $d['login_fails'][$ip] = ['n' => (int)$f['n'] + 1, 't' => $now];
+  });
   return false;
 }
 
@@ -371,6 +395,13 @@ function sj_clean(?string $v, int $max, bool $multiline = false): string {
 function sj_valid_email(?string $v): ?string {
   $v = trim((string)$v);
   return ($v !== '' && strlen($v) <= 120 && filter_var($v, FILTER_VALIDATE_EMAIL)) ? $v : null;
+}
+
+/* „1 sat”, „24 sata”, „12 sati”, „48 sati” (kao hoursText na stranici) */
+function sj_hours_text(int $n): string {
+  $m10 = $n % 10; $m100 = $n % 100;
+  $w = ($m10 === 1 && $m100 !== 11) ? 'sat' : (($m10 >= 2 && $m10 <= 4 && ($m100 < 12 || $m100 > 14)) ? 'sata' : 'sati');
+  return $n . ' ' . $w;
 }
 
 function sj_fmt_eur(float $n): string { return number_format($n, 2, ',', '.') . ' €'; }
