@@ -199,7 +199,7 @@ function sj_handle_action(string $act, array &$c): string {
         $d = array_replace(sj_res_default(), $d);
         if ($act === 'res_release') unset($d['res'][$id]);
         elseif ($act === 'res_unsold') unset($d['sold'][$id]);
-        else sj_mark_paid($d, $id);
+        else sj_mark_paid($d, $id, $act === 'res_sold_manual');
         return true;
       }, sj_res_default());
       return ['res_release' => 'Rezervacija stornirana: ', 'res_sold' => 'Označeno kao plaćeno: ', 'res_unsold' => 'Oznaka uklonjena: ', 'res_sold_manual' => 'Označeno kao prodano: '][$act] . $id;
@@ -211,9 +211,16 @@ function sj_handle_action(string $act, array &$c): string {
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
       if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       if ($act === 'order_paid') {
-        /* samo narudžbe bez rezervacije; one s unikatom označuju se kod rezervacija (sj_mark_paid) */
+        /* narudžbe bez rezervacije i narudžbe čija je rezervacija istekla (kupac uplatio prekasno); narudžbe s
+           AKTIVNOM rezervacijom označuju se kod rezervacija (sj_mark_paid), da torba ode iz ponude */
         $list = sj_read_json(SJ_DATA . '/narudzbe.json', []);
-        foreach ($list as $o) if (($o['no'] ?? '') === $no && !empty($o['reservation'])) throw new RuntimeException('Ova narudžba ima rezervaciju: označite je kao plaćenu kod rezervacija.');
+        $rd = sj_res_read();
+        foreach ($list as $o) {
+          if (($o['no'] ?? '') !== $no) continue;
+          $tok = (string)($o['reservation']['token'] ?? '');
+          $active = $tok !== '' && (bool)array_filter($rd['res'], fn($r) => ($r['token'] ?? '') === $tok);
+          if ($active) throw new RuntimeException('Ova narudžba ima aktivnu rezervaciju: označite je kao plaćenu kod rezervacija.');
+        }
         if (sj_order_paid_once(['no' => $no])) sj_count('paid');
       } else {
         sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no) {
@@ -402,7 +409,8 @@ function sj_view_reservations(array $c): string {
     $h .= '</tbody></table></div>';
   }
   $opts = '';
-  foreach ($names as $id => $n) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>';
+  $madeIds = []; foreach (sj_products() as $p) if (!empty($p['made'])) $madeIds[(string)($p['id'] ?? '')] = true;
+  foreach ($names as $id => $n) if (empty($madeIds[$id])) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>'; /* artikli po narudžbi se ne „prodaju” ručno */
   $h .= '<h3>Ručno označi plaćeno</h3><form method="post" class="inline"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="res_sold_manual"><input type="hidden" name="back" value="' . e($back) . '"><select name="id">' . $opts . '</select> <button>Plaćeno</button></form>';
   $h .= '<p class="muted">Tijek: narudžba → kupac uplati i pošalje potvrdu → „Plaćeno“ (ovdje ili iz e-maila) → „Trajno prodano“ na torbi kad stignete. „Storniraj“ i „Ukloni oznaku“ vraćaju torbu u prodaju.</p>';
   return $h;

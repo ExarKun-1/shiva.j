@@ -76,3 +76,5 @@ Jednom mjesečno preuzeti `data/` i `img/` s hostinga (File Manager → Download
 ## Testni način (za Zlatka)
 
 U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data/mail-log.txt“. Lokalno: `php -S 127.0.0.1:8090 -t <mapa> router.php` u mapi koja sadrži `index.html`, `torbe.json`, `img/`, `admin/`, `api/`, `data/`.
+
+**Link na torbu za Instagram objavu**: svaka torba ima oznaku (ID) koja se u adminu vidi ispod naziva sivim slovima (npr. `luna`). Link `https://vaša-domena/?izvor=ig#torba-luna` otvara stranicu i odmah povećani prikaz te torbe; `?izvor=ig` kaže Mjerenju da je posjet s Instagrama. U Instagram profil (bio) stavite `https://vaša-domena/?izvor=ig`, a u pojedinu objavu ili priču link s `#torba-ID`.
