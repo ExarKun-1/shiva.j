@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v07');
+define('SJ_VERSION', 'admin v08');
 
 /* ---------- postavke ---------- */
 
@@ -48,7 +48,7 @@ function sj_defaults(): array {
       'barcode'   => 'img/barkod-uplata.png',
     ],
     'ship_lead'        => '',                          // rok slanja nakon uplate, npr. "1–2 radna dana" (prazno = ne prikazuje se)
-    'pickup_info'      => 'Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati, nakon uplate javite se za termin.',
+    'pickup_info'      => 'Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati; kad je narudžba spremna, javit ćemo vam se i dogovoriti termin.',
     'password_hash'    => '',
     'login_fails'      => [],
     'order_seq'        => 0,
@@ -87,11 +87,23 @@ function sj_shipping(): array {
 }
 
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
-/* $short = true: adresa se sprema skraćeno (HMAC s dnevnom soli, 16 znakova) i čisti nakon sat vremena;
+/* Skraćena adresa: HMAC adrese s nasumičnom dnevnom tajnom (data/sol.json, random_bytes, mijenja se svaki dan),
+   16 znakova. Kad tajna istekne, stare skraćene adrese više se ne mogu povezati s pravima. */
+function sj_short_ip(?string $ip = null): string {
+  $ip = $ip ?? (string)($_SERVER['REMOTE_ADDR'] ?? '?');
+  $day = date('Y-m-d');
+  $key = (string)sj_with_lock(SJ_DATA . '/sol.json', function (array &$d) use ($day) {
+    if (($d['day'] ?? '') !== $day || empty($d['key'])) $d = ['day' => $day, 'key' => bin2hex(random_bytes(32))];
+    return $d['key'];
+  }, []);
+  return substr(hash_hmac('sha256', $ip, $key ?: $day), 0, 16);
+}
+
+/* $short = true: adresa se sprema skraćeno (sj_short_ip) i čisti nakon sat vremena;
    koristi se za anonimni brojač, gdje nema razloga čuvati pravu adresu */
 function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false): bool {
   $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '?');
-  if ($short) $ip = substr(hash_hmac('sha256', $ip, date('Y-m-d') . '|' . SJ_DATA), 0, 16);
+  if ($short) $ip = sj_short_ip($ip);
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now) {
     foreach ($d as $k => $times) {
@@ -125,15 +137,17 @@ function sj_order_paid_once(array $by): bool {
 }
 
 /* Rezervacija → oznaka „plaćeno” (isti zapis gradi admin i API) */
-function sj_mark_paid(array &$d, string $id): void {
-  $r = $d['res'][$id] ?? ['id' => $id];
-  /* „plaćeno” se broji po narudžbi: sve torbe iste narudžbe nose isti token, pa se broji samo prva */
-  $tok = (string)($r['token'] ?? '');
-  /* ručno „prodano” bez narudžbe sa stranice (prazan token) ne ulazi u brojač; narudžba se broji jednom,
+/* $manual = true (gumb „Ručno označi plaćeno”): prodaja izvan stranice; ne preuzima tuđu aktivnu rezervaciju
+   (token, ime, e-mail) i ne ulazi u brojač. Već prodana torba se ne prepisuje. */
+function sj_mark_paid(array &$d, string $id, bool $manual = false): void {
+  if (isset($d['sold'][$id])) return;
+  $r = $manual ? ['id' => $id] : ($d['res'][$id] ?? ['id' => $id]);
+  /* „plaćeno” se broji po narudžbi: sve torbe iste narudžbe nose isti token, pa se broji samo prva;
      oznaka paidCounted ostaje u zapisu narudžbe i kad se oznaka plaćeno ukloni pa vrati */
-  if ($tok !== '' && !isset($d['sold'][$id]) && sj_order_paid_once(['token' => $tok])) sj_count('paid');
+  $tok = (string)($r['token'] ?? '');
+  if ($tok !== '' && sj_order_paid_once(['token' => $tok])) sj_count('paid');
   unset($d['res'][$id]);
-  $d['sold'][$id] = ['id' => $id, 'token' => $r['token'] ?? '', 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
+  $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
 }
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.
@@ -306,7 +320,7 @@ function sj_logged_in(): bool {
 
 function sj_login(string $password): bool {
   $c = sj_config(true);
-  $ip = $_SERVER['REMOTE_ADDR'] ?? '?';
+  $ip = sj_short_ip(); /* skraćena adresa: u postavkama ne ostaje prava adresa */
   $fails = $c['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
   if ($fails['n'] >= 8 && time() - $fails['t'] < 900) return false; /* 15 min pauze nakon 8 promašaja */
   if ($c['password_hash'] && password_verify($password, $c['password_hash'])) {
@@ -440,7 +454,7 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
   $encSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
   $fromHeader = '=?UTF-8?B?' . base64_encode($shop) . '?= <' . $from . '>';
   $boundary = 'sj-' . bin2hex(random_bytes(8));
-  $headers = ["From: $fromHeader", "Reply-To: " . ($replyTo ?: $from), "MIME-Version: 1.0", "X-Mailer: Shiva.J"];
+  $headers = ["From: $fromHeader", "Reply-To: " . ($replyTo ?: $from), "Return-Path: <$from>", "MIME-Version: 1.0", "X-Mailer: Shiva.J"];
 
   if ($attachmentPath && is_file($attachmentPath)) {
     $headers[] = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
@@ -458,5 +472,9 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
     $entry = "=== " . date('c') . " | To: $to | Subject: $subject | Attachment: " . ($attachmentPath ? basename($attachmentPath) : '-') . "\n" . $text . "\n\n";
     return (bool)file_put_contents(SJ_DATA . '/mail-log.txt', $entry, FILE_APPEND | LOCK_EX);
   }
-  return @mail($to, $encSubject, $body, implode("\r\n", $headers));
+  /* -f = adresa pošiljatelja na omotnici (Return-Path); bez nje poslužitelj šalje kao korisnik hostinga,
+     pa provjere SPF/DMARC padaju i potvrda s IBAN-om završi u neželjenoj pošti */
+  $sent = @mail($to, $encSubject, $body, implode("\r\n", $headers), '-f' . $from);
+  if (!$sent) $sent = @mail($to, $encSubject, $body, implode("\r\n", $headers)); /* neki hostinzi ne dopuštaju -f */
+  return $sent;
 }

@@ -137,3 +137,8 @@ zahtjeva, brojači Radionica/Košarica/Kopiraj/Bez unikata, `docs/MJERENJE.md`.
 „Možda, skoro da”, zaustavlja je ista fotografija Lune i Tare u probnim podacima; istraživač: osmo mjesto „samo jednom” u e-mailu,
 ploča obećava slanje za 1–2 dana i za izradu od 5 dana, ograda 14 dana nestaje u mješovitoj narudžbi, `orders_m` krivo, `paid`
 dvaput, IP 24 h bez napomene u privatnosti). Sve to popravljeno u v27; ostatak u ODLUKE-I-PODACI.md, otvorene stavke.
+
+**v28 (10. 10. 2026.):** vijeće o v27 (dir. 8,5: „u kodu i tekstu smo na stropu”; pisac 9, Radionica 9,5; kupac „Da” uz prave
+fotografije; istraživač: pošta bez adrese na omotnici, preuzimanje „tko koga zove”, istekla-pa-plaćena narudžba, predvidljiva sol,
+dvostruko slanje narudžbe, HUB-3 opis). Sve što ne traži vlasnicu napravljeno u v28; ostatak u ODLUKE-I-PODACI.md, otvorene stavke
+(fotografije, PDV, pravnik za t. 6 i trajni medij, plaćanje pri preuzimanju, citat u traci, škare, „J od mene”).
