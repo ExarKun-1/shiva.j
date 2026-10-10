@@ -195,13 +195,14 @@ function sj_handle_action(string $act, array &$c): string {
     case 'res_sold_manual': {
       $id = sj_clean((string)($_POST['id'] ?? ''), 40);
       if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) throw new RuntimeException('Neispravna oznaka torbe.');
-      sj_with_lock(sj_res_path(), function (array &$d) use ($act, $id) {
+      $ok = sj_with_lock(sj_res_path(), function (array &$d) use ($act, $id) {
         $d = array_replace(sj_res_default(), $d);
         if ($act === 'res_release') unset($d['res'][$id]);
         elseif ($act === 'res_unsold') unset($d['sold'][$id]);
-        else sj_mark_paid($d, $id, $act === 'res_sold_manual');
+        else return sj_mark_paid($d, $id, $act === 'res_sold_manual');
         return true;
       }, sj_res_default());
+      if ($act === 'res_sold_manual' && !$ok) throw new RuntimeException('Torba je rezervirana za kupca ili već označena kao plaćena. Rezerviranu torbu označite gumbom „Plaćeno” u tablici iznad ili je prvo stornirajte.');
       return ['res_release' => 'Rezervacija stornirana: ', 'res_sold' => 'Označeno kao plaćeno: ', 'res_unsold' => 'Oznaka uklonjena: ', 'res_sold_manual' => 'Označeno kao prodano: '][$act] . $id;
     }
 
@@ -222,6 +223,25 @@ function sj_handle_action(string $act, array &$c): string {
           if ($active) throw new RuntimeException('Ova narudžba ima aktivnu rezervaciju: označite je kao plaćenu kod rezervacija.');
         }
         if (sj_order_paid_once(['no' => $no])) sj_count('paid');
+        /* rezervacija je istekla, a kupac je ipak platio: torbe iz narudžbe koje su još slobodne označuju se
+           kao plaćene za tog kupca; ako je neku u međuvremenu rezervirao ili kupio drugi kupac, javlja se */
+        $conflict = [];
+        foreach ($list as $o) {
+          if (($o['no'] ?? '') !== $no || empty($o['reservation']['token'])) continue;
+          $ids = [];
+          foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made']) && !empty($it['id'])) $ids[] = (string)$it['id'];
+          $conflict = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $o) {
+            $d = array_replace(sj_res_default(), $d);
+            $busy = [];
+            foreach ($ids as $id) {
+              if (isset($d['sold'][$id])) { if (($d['sold'][$id]['token'] ?? '') !== $o['reservation']['token']) $busy[] = $id; continue; }
+              if (isset($d['res'][$id])) { $busy[] = $id; continue; }
+              $d['sold'][$id] = ['id' => $id, 'token' => (string)$o['reservation']['token'], 'name' => (string)($o['name'] ?? ''), 'email' => (string)($o['email'] ?? ''), 'since' => (string)($o['at'] ?? ''), 'paidAt' => sj_iso(time())];
+            }
+            return $busy;
+          }, sj_res_default());
+        }
+        if ($conflict) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode(', ', $conflict) . ' u međuvremenu drži ili je kupio drugi kupac — javite se kupcu iz ove narudžbe.';
       } else {
         sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no) {
           foreach ($list as &$o) if (($o['no'] ?? '') === $no) unset($o['paidAt']); /* paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje */
@@ -410,7 +430,8 @@ function sj_view_reservations(array $c): string {
   }
   $opts = '';
   $madeIds = []; foreach (sj_products() as $p) if (!empty($p['made'])) $madeIds[(string)($p['id'] ?? '')] = true;
-  foreach ($names as $id => $n) if (empty($madeIds[$id])) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>'; /* artikli po narudžbi se ne „prodaju” ručno */
+  /* artikli po narudžbi se ne „prodaju” ručno; rezervirane i već plaćene torbe nisu u popisu */
+  foreach ($names as $id => $n) if (empty($madeIds[$id]) && !isset($d['res'][$id]) && !isset($d['sold'][$id])) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>';
   $h .= '<h3>Ručno označi plaćeno</h3><form method="post" class="inline"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="res_sold_manual"><input type="hidden" name="back" value="' . e($back) . '"><select name="id">' . $opts . '</select> <button>Plaćeno</button></form>';
   $h .= '<p class="muted">Tijek: narudžba → kupac uplati i pošalje potvrdu → „Plaćeno“ (ovdje ili iz e-maila) → „Trajno prodano“ na torbi kad stignete. „Storniraj“ i „Ukloni oznaku“ vraćaju torbu u prodaju.</p>';
   return $h;
@@ -419,15 +440,20 @@ function sj_view_reservations(array $c): string {
 function sj_view_orders(): string {
   $list = sj_read_json(SJ_DATA . '/narudzbe.json', []);
   if (!$list) return '<p class="muted">Još nema narudžbi.</p>';
+  $rd = sj_res_read();
+  $active = [];
+  foreach ($rd['res'] as $r) if (!empty($r['token'])) $active[(string)$r['token']] = true;
   $h = '<div class="tablewrap"><table><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th><th>Plaćeno</th></tr></thead><tbody>';
   foreach (array_slice($list, 0, 100) as $o) {
     $no = (string)($o['no'] ?? '');
-    if (!empty($o['reservation'])) $paid = '<span class="muted">kod rezervacija</span>';
+    $tok = (string)($o['reservation']['token'] ?? '');
+    /* aktivna rezervacija se označuje kod rezervacija (torba ode iz ponude); istekla ima gumb ovdje */
+    if ($tok !== '' && isset($active[$tok])) $paid = '<span class="muted">kod rezervacija</span>';
     elseif (!empty($o['paidAt'])) $paid = e(sj_fmt_hr($o['paidAt'])) . ' ' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true);
-    else $paid = sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
+    else $paid = ($tok !== '' ? '<span class="muted">rezervacija istekla</span><br>' : '') . sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
     $h .= '<tr><td class="mono">' . e($no) . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span></td><td><pre>' . e($o['items'] ?? '') . '</pre></td><td>' . e($o['shipping'] ?? '') . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
-  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. Narudžbe s unikatnom torbom označujete kao plaćene kod rezervacija; ovdje se označuju samo narudžbe bez rezervacije (artikli po narudžbi), da ih Mjerenje broji.</p>';
+  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. Narudžbe s aktivnom rezervacijom označujete kao plaćene kod rezervacija; ovdje se označuju narudžbe bez unikata i narudžbe čija je rezervacija istekla (kupac je platio kasnije), da ih Mjerenje broji.</p>';
 }
 
 /* tjedni zbrojevi iz data/brojac.json: A = narudžbe / posjeti, B = plaćeno / narudžbe */
@@ -461,6 +487,10 @@ function sj_view_settings(array $c): string {
   $h .= '<h3>E-mail i stranica</h3><div class="grid2">';
   $h .= '<label>E-mail vlasnice (narudžbe stižu ovdje) * <input name="owner_email" required value="' . e($c['owner_email']) . '"></label>';
   $h .= '<label>Adresa pošiljatelja na domeni (npr. info@shivaj.hr) <input name="from_email" value="' . e($c['from_email']) . '"></label>';
+  $siteHost = strtolower(preg_replace('/^www\./', '', (string)parse_url(sj_site_url(), PHP_URL_HOST)));
+  $fromHost = strtolower((string)substr(strrchr((string)sj_mail_from(), '@') ?: '', 1));
+  if ($fromHost === '' || ($siteHost !== '' && $fromHost !== $siteHost && !str_ends_with($fromHost, '.' . $siteHost)))
+    $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: e-mailovi odlaze s adrese ' . e(sj_mail_from()) . ', koja nije na domeni stranice (' . e($siteHost) . '). Potvrde kupcima s podacima za uplatu tada često završe u neželjenoj pošti. Upišite adresu na domeni (npr. info@' . e($siteHost) . ') i na hostingu uključite SPF i DKIM.</p>';
   $h .= '<label>Adresa stranice (npr. https://shivaj.hr) <input name="site_url" value="' . e($c['site_url']) . '" placeholder="prazno = automatski"></label>';
   $h .= '<label>Rezervacija traje (sati) <input name="ttl_hours" type="number" min="1" max="168" value="' . e((string)$c['ttl_hours']) . '"></label>';
   $h .= '</div><div class="stack">';
