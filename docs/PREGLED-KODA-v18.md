@@ -174,3 +174,11 @@ Preostali rizik: lažne narudžbe drže najviše 2 torbe po narudžbi i 2 narud�
 | Tjedna zamjena tajne poništava granice po adresi i storno | nisko | čuva se prošlotjedna oznaka (`ip_prev`, `sj_short_ips`, `sj_same_ip`) |
 
 Jamstvo: nijedna granica više ne zatvara naručivanje; neplaćene narudžbe nikad ne drže više od pola slobodnih unikata.
+
+## Recenzija sigurnosti, 11. 10. 2026. (v35): v33 6/10, v34 4/10, v35 7/10 → v36 (api v15)
+
+| Nalaz | Stanje u v36 |
+|---|---|
+| Torbe označene „Plaćeno” broje se kao slobodne, pa napadač drži sve stvarno slobodne | riješeno: brojanje pod bravom rezervacija, bez `sold` |
+| „Barem 2” dopušta blokadu cijele male ponude | riješeno: pola zaokruženo naniže, jedna samo ako ostaje barem jedna slobodna |
+| 30 potvrda/h može se potrošiti s desetak adresa | prihvaćeno: podaci za uplatu su na ekranu, vlasnica dobiva upozorenje |
