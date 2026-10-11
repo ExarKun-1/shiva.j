@@ -132,19 +132,16 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const f3 = await post('order', order('api-key-0030-ffcc', 'f3@primjer.hr', [{ id: 'nera' }], 85));
     ok(f3.data.ok && f3.data.reserved === false && !read('rezervacije.json').res.nera, 'zadnja slobodna torba ne rezervira se nikome (dobiva je tko prvi uplati)');
     clearRes();
-    // 13c) granica vrijedi stalno: nakon prodaje druge torbe novija rezervacija više ne blokira
+    // 13c) dodijeljena rezervacija vrijedi do isteka i kad se poslije proda druga torba (obećanje kupcu)
     clearLimits(); clearRes();
     const g1 = await post('order', order('api-key-0031-ggaa', 'g1@primjer.hr', [{ id: 'luna' }], 65));
-    await new Promise(r => setTimeout(r, 1100));
     const g2 = await post('order', order('api-key-0032-ggbb', 'g2@primjer.hr', [{ id: 'tara' }], 55));
     { const r = read('rezervacije.json'); r.sold = { vela: { id: 'vela', paidAt: '2026-10-11T00:00:00Z' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
     const stG = await (await fetch(U + 'status')).json();
-    ok(g1.data.reserved && g2.data.reserved && stG.ids.includes('luna') && !stG.ids.includes('tara'), 'nakon prodaje treće torbe slobodne su 3, blokira samo najstarija rezervacija (Luna), Tara se drugima prikazuje dostupnom');
     const g3 = await post('order', order('api-key-0033-ggcc', 'g3@primjer.hr', [{ id: 'tara' }], 55));
-    const mlg = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(g3.data.ok && g3.data.reserved === false && read('rezervacije.json').res.tara.email === 'g2@primjer.hr' && /već u ranijoj neplaćenoj narudžbi: tara/.test(mlg), 'drugi kupac može naručiti Taru (tko prvi uplati), stara narudžba ostaje zapisana, vlasnica obaviještena');
-    const g4 = await post('order', order('api-key-0034-ggdd', 'g4@primjer.hr', [{ id: 'luna' }], 65));
-    ok(g4.status === 409, 'najstarija rezervacija (Luna) i dalje blokira: 409');
+    ok(g1.data.reserved && g2.data.reserved && stG.ids.includes('luna') && stG.ids.includes('tara') && g3.status === 409, 'nakon prodaje treće torbe obje dodijeljene rezervacije i dalje vrijede (Tara: 409 za drugog kupca)');
+    const g4 = await post('order', order('api-key-0034-ggdd', 'g4@primjer.hr', [{ id: 'nera' }], 85));
+    ok(g4.data.ok && g4.data.reserved === false, 'nova narudžba ne dobiva rezervaciju dok neplaćene drže više od pola (Nera bez rezervacije)');
     // 13d) rezervira se koliko stane
     clearLimits(); clearRes();
     { const r = read('rezervacije.json'); r.sold = { luna: { id: 'luna' }, tara: { id: 'tara' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }

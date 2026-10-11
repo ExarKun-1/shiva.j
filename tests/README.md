@@ -6,6 +6,7 @@ Svi testovi rade nad zasebnom probnom stranicom, složenom iz repozitorija i isp
 | Naredba | Što provjerava | Treba |
 |---|---|---|
 | `php tests/run.php` | biblioteka `admin/lib.php`: rezervacije, „Plaćeno”, „Isteklo”, siguran zapis JSON-a, oštećene datoteke, ograničenje zahtjeva, izmjene proizvoda pod bravom, linkovi u e-mailu, prijava | PHP 8.1+ |
+| `php tests/admin.php` | admin preko pravog poslužitelja (port 8091) i prijave: „Plaćeno” za cijelu narudžbu, torba bez rezervacije pripada onome tko je prvi platio, upozorenja u Rezervacijama | PHP 8.1+, `curl` |
 | `sh tests/serve.sh` | složi probnu stranicu u `/tmp/shivaj-test` i pokrene poslužitelj na http://127.0.0.1:8090/ | PHP 8.1+ |
 | `node tests/api.js` | API preko HTTP-a: narudžba, ključ narudžbe, rezervacije i ključ rezervacije, 409/429/500, e-mailovi | Node 18+, pokrenut `serve.sh` |
 | `node tests/e2e.js` | stranica u pregledniku (Playwright): prvi ekran, košarica, narudžba, ploča za uplatu, HUB-3 barkod, prekid veze, mobitel 360 i 390 px | Node 18+, Playwright s Chromiumom, **svježe** pokrenut `serve.sh` |
