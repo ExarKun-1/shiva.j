@@ -97,7 +97,8 @@ function sj_handle_action(string $act, array &$c): string {
   switch ($act) {
 
     case 'save_product': {
-      $list = sj_products();
+      /* cijela izmjena pod bravom popisa proizvoda (sj_products_update) */
+      return sj_products_update(function (array &$list) {
       $oldId = sj_clean((string)($_POST['id'] ?? ''), 40);
       $name = sj_clean((string)($_POST['name'] ?? ''), 80);
       if ($name === '') throw new RuntimeException('Naziv je obavezan.');
@@ -147,28 +148,28 @@ function sj_handle_action(string $act, array &$c): string {
       if ($idx !== null) $list[$idx] = $p; else $list[] = $p;
       /* naslovnica: samo jedna torba */
       if (!empty($p['hero'])) foreach ($list as $i => $x) if (($x['id'] ?? '') !== $p['id']) unset($list[$i]['hero']);
-      sj_save_products($list);
       return 'Spremljeno: ' . $name;
+      });
     }
 
     case 'delete_product': {
       $id = sj_clean((string)($_POST['id'] ?? ''), 40);
-      $list = array_values(array_filter(sj_products(), fn($p) => ($p['id'] ?? '') !== $id));
-      sj_save_products($list);
+      sj_products_update(function (array &$list) use ($id) { $list = array_values(array_filter($list, fn($p) => ($p['id'] ?? '') !== $id)); });
       return 'Obrisano: ' . $id . ' (fotografije ostaju u mapi img)';
     }
 
     case 'move': {
       $id = sj_clean((string)($_POST['id'] ?? ''), 40);
       $dir = ((string)($_POST['dir'] ?? '') === 'up') ? -1 : 1;
-      $list = sj_products();
-      foreach ($list as $i => $p) {
-        if (($p['id'] ?? '') === $id) {
-          $j = $i + $dir;
-          if ($j >= 0 && $j < count($list)) { [$list[$i], $list[$j]] = [$list[$j], $list[$i]]; sj_save_products($list); }
-          break;
+      sj_products_update(function (array &$list) use ($id, $dir) {
+        foreach ($list as $i => $p) {
+          if (($p['id'] ?? '') === $id) {
+            $j = $i + $dir;
+            if ($j >= 0 && $j < count($list)) [$list[$i], $list[$j]] = [$list[$j], $list[$i]];
+            break;
+          }
         }
-      }
+      });
       return 'Redoslijed promijenjen';
     }
 
@@ -176,17 +177,17 @@ function sj_handle_action(string $act, array &$c): string {
       $id = sj_clean((string)($_POST['id'] ?? ''), 40);
       $field = (string)($_POST['field'] ?? '');
       if (!in_array($field, ['sold', 'hidden', 'reserved'], true)) throw new RuntimeException('Nepoznato polje.');
-      $list = sj_products();
-      foreach ($list as $i => $p) {
-        if (($p['id'] ?? '') === $id) {
-          $on = empty($p[$field]);
-          if ($on) $list[$i][$field] = true; else unset($list[$i][$field]);
-          if ($field === 'sold' && !$on) $list[$i]['sold'] = false;
-          sj_save_products($list);
-          return ($on ? 'Uključeno: ' : 'Isključeno: ') . ['sold' => 'prodano', 'hidden' => 'skriveno', 'reserved' => 'rezervirano'][$field] . ' — ' . ($p['name'] ?? $id);
+      return sj_products_update(function (array &$list) use ($id, $field) {
+        foreach ($list as $i => $p) {
+          if (($p['id'] ?? '') === $id) {
+            $on = empty($p[$field]);
+            if ($on) $list[$i][$field] = true; else unset($list[$i][$field]);
+            if ($field === 'sold' && !$on) $list[$i]['sold'] = false;
+            return ($on ? 'Uključeno: ' : 'Isključeno: ') . ['sold' => 'prodano', 'hidden' => 'skriveno', 'reserved' => 'rezervirano'][$field] . ' — ' . ($p['name'] ?? $id);
+          }
         }
-      }
-      throw new RuntimeException('Torba nije nađena.');
+        throw new RuntimeException('Torba nije nađena.');
+      });
     }
 
     case 'res_release':
@@ -492,6 +493,8 @@ function sj_view_settings(array $c): string {
   if ($fromHost === '' || ($siteHost !== '' && $fromHost !== $siteHost && !str_ends_with($fromHost, '.' . $siteHost)))
     $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: e-mailovi odlaze s adrese ' . e(sj_mail_from()) . ', koja nije na domeni stranice (' . e($siteHost) . '). Potvrde kupcima s podacima za uplatu tada često završe u neželjenoj pošti. Upišite adresu na domeni (npr. info@' . e($siteHost) . ') i na hostingu uključite SPF i DKIM.</p>';
   $h .= '<label>Adresa stranice (npr. https://shivaj.hr) <input name="site_url" value="' . e($c['site_url']) . '" placeholder="prazno = automatski"></label>';
+  if (trim((string)$c['site_url']) === '')
+    $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: adresa stranice nije upisana. Dok je prazna, linkovi u e-mailovima (Plaćeno/Storniraj, Uvjeti kupnje, admin) šalju se samo ako se domena stranice slaže s adresom pošiljatelja. Upišite punu adresu, npr. https://shivaj.hr.</p>';
   $h .= '<label>Rezervacija traje (sati) <input name="ttl_hours" type="number" min="1" max="168" value="' . e((string)$c['ttl_hours']) . '"></label>';
   $h .= '</div><div class="stack">';
   $h .= '<label class="check"><input type="checkbox" name="confirm_customer" value="1"' . (!empty($c['confirm_customer']) ? ' checked' : '') . '> Automatski pošalji kupcu potvrdu narudžbe s podacima za uplatu i barkodom</label>';

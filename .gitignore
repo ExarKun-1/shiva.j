@@ -11,3 +11,6 @@ torbe.json
 # bilješke istraživanja (deep research); izvještaj se po potrebi kopira u docs/
 research_notes/
 reports/
+
+# ispitni podaci (tests/fixtures) idu u git
+!tests/fixtures/torbe.json

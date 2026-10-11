@@ -1,0 +1,49 @@
+{
+  "shop": "Shiva.J",
+  "owner_email": "shivaj.handmade@gmail.com",
+  "from_email": "",
+  "site_url": "",
+  "ttl_hours": 24,
+  "confirm_customer": true,
+  "mail_mode": "log",
+  "allowed_origins": [],
+  "shipping": [
+    {
+      "id": "boxnow",
+      "label": "BOX NOW paketomat",
+      "price": 4,
+      "address": false,
+      "locker": true,
+      "note": "Paket stiže u paketomat po vašem izboru; kod za preuzimanje dobivate SMS-om ili e-mailom."
+    },
+    {
+      "id": "gls",
+      "label": "GLS dostava na adresu",
+      "price": 6,
+      "address": true,
+      "locker": false,
+      "note": "Kurir dostavlja na vašu adresu, obično sljedeći radni dan nakon slanja."
+    },
+    {
+      "id": "pickup",
+      "label": "Osobno preuzimanje u radionici",
+      "price": 0,
+      "address": false,
+      "locker": false,
+      "note": "Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati, nakon uplate i uz dogovor termina."
+    }
+  ],
+  "payment": {
+    "recipient": "SHIVA. J, obrt za dizajn",
+    "address": "Matije Gupca 33, 49210 Zabok",
+    "iban": "HR9823600001102790442",
+    "model": "HR00",
+    "barcode": "img/barkod-uplata.png"
+  },
+  "ship_lead": "1–2 radna dana",
+  "pickup_info": "Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati; kad je narudžba spremna, javit ćemo vam se i dogovoriti termin.",
+  "password_hash": "",
+  "login_fails": {},
+  "order_seq": 0,
+  "pickup": "Osobno preuzimanje u Zaboku, po dogovoru"
+}
