@@ -49,6 +49,8 @@
   "limits": {
     "holds_per_ip": 20,
     "orders_per_ip": 20,
-    "unique_per_order": 2
+    "unique_per_order": 2,
+    "unique_orders_per_hour": 100,
+    "confirm_per_ip": 100
   }
 }

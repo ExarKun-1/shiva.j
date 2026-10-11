@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v12');
+define('SJ_VERSION', 'admin v13');
 
 /* ---------- postavke ---------- */
 
@@ -87,12 +87,12 @@ function sj_shipping(): array {
 }
 
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
-/* Skraćena adresa: HMAC adrese (IPv6 po mreži /64) s nasumičnom tajnom (data/sol.json, random_bytes, mijenja se
+/* Skraćena adresa: HMAC adrese (IPv6 po mreži /48) s nasumičnom tajnom (data/sol.json, random_bytes, mijenja se
    svaki tjedan), 16 znakova. Kad tajna istekne, stare skraćene adrese više se ne mogu povezati s pravima. */
 function sj_short_ip(?string $ip = null): string {
   $ip = $ip ?? (string)($_SERVER['REMOTE_ADDR'] ?? '?');
-  /* IPv6: jedan priključak dobiva cijelu mrežu /64 (2^64 adresa), pa se broji mreža, ne pojedina adresa */
-  if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) { $b = @inet_pton($ip); if ($b !== false) $ip = bin2hex(substr($b, 0, 8)) . '::/64'; }
+  /* IPv6: kućni priključak obično dobiva cijelu mrežu /56 ili /48, pa se broji mreža /48, ne pojedina adresa */
+  if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) { $b = @inet_pton($ip); if ($b !== false) $ip = bin2hex(substr($b, 0, 6)) . '::/48'; }
   /* tajna traje tjedan dana (ne mijenja se u ponoć, pa se granice po adresi ne poništavaju svaki dan) */
   $day = date('o-\WW');
   $key = (string)sj_with_lock(SJ_DATA . '/sol.json', function (array &$d) use ($day) {
@@ -102,13 +102,12 @@ function sj_short_ip(?string $ip = null): string {
   return substr(hash_hmac('sha256', $ip, $key ?: $day), 0, 16);
 }
 
-/* $short = true: adresa se sprema skraćeno (sj_short_ip) i čisti nakon sat vremena;
-   koristi se za anonimni brojač, gdje nema razloga čuvati pravu adresu */
+/* Sve granice broje skraćenu adresu (sj_short_ip: IPv4 adresa ili IPv6 mreža /48), pa promjena IPv6 adrese ne
+   zaobilazi granicu i ne napuhuje datoteku. $short ostaje radi starih poziva i više ništa ne mijenja. */
 /* $record = false: samo provjera, bez upisa (npr. narudžba se upisuje tek kad je zaprimljena, pa odbijeni
    pokušaji, 409 i slično, ne troše ograničenje); upis kasnije istim pozivom s $record = true */
 function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false, bool $record = true): bool {
-  $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '?');
-  if ($short) $ip = sj_short_ip($ip);
+  $ip = sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'));
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
@@ -116,6 +115,8 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
+    /* gornja granica veličine: najviše 5000 ključeva, najstariji (po zadnjem zahtjevu) se brišu */
+    if (count($d) >= 5000) { uasort($d, fn($a, $b) => max((array)$b) <=> max((array)$a)); $d = array_slice($d, 0, 4999, true); }
     $k = $key . '|' . $ip;
     $recent = array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec);
     if (count($recent) >= $max) return false;

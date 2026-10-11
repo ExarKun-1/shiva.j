@@ -83,8 +83,20 @@ $ok($bad === '' && $good === 'http://www.shivaj.hr', 'linkovi u e-mailu: tuđi H
 $ok(sj_payment_ref('SJ-2026-0007') === '2026-0007', 'poziv na broj iz broja narudžbe');
 
 /* K: IPv6 po mreži /64, IPv4 po adresi */
-$a6 = sj_short_ip('2001:db8:1:2:aaaa::1'); $b6 = sj_short_ip('2001:db8:1:2:ffff:1:2:3'); $c6 = sj_short_ip('2001:db8:1:3::1');
-$ok($a6 === $b6 && $a6 !== $c6 && sj_short_ip('203.0.113.1') !== sj_short_ip('203.0.113.2'), 'IPv6 iz iste /64 mreže = ista oznaka; druga mreža i druga IPv4 adresa = druga');
+$a6 = sj_short_ip('2001:db8:1:2:aaaa::1'); $b6 = sj_short_ip('2001:db8:1:ff00:ffff:1:2:3'); $c6 = sj_short_ip('2001:db8:2::1');
+$ok($a6 === $b6 && $a6 !== $c6 && sj_short_ip('203.0.113.1') !== sj_short_ip('203.0.113.2'), 'IPv6 iz iste /48 mreže = ista oznaka; druga mreža i druga IPv4 adresa = druga');
+/* granica po adresi: dvije IPv6 adrese iz iste /48 dijele brojač */
+@unlink(SJ_DATA . '/zahtjevi.json');
+$_SERVER['REMOTE_ADDR'] = '2001:db8:5:1::1'; $g1 = sj_rate_limit('t6', 1, 3600);
+$_SERVER['REMOTE_ADDR'] = '2001:db8:5:99::7'; $g2 = sj_rate_limit('t6', 1, 3600);
+$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+$ok($g1 && !$g2, 'dvije IPv6 adrese iz iste /48 mreže dijele granicu');
+/* zahtjevi.json najviše 5000 ključeva */
+$big = []; $t = time(); for ($i = 0; $i < 6000; $i++) $big['x|' . $i] = [$t - 6000 + $i];
+file_put_contents(SJ_DATA . '/zahtjevi.json', json_encode($big));
+sj_rate_limit('t7', 5, 3600);
+$zj = sj_read_json(SJ_DATA . '/zahtjevi.json', []);
+$ok(count($zj) <= 5000 && isset($zj['x|5999']) && !isset($zj['x|0']), 'zahtjevi.json najviše 5000 ključeva, najstariji se brišu (' . count($zj) . ')');
 
 /* L: e-mail za brojanje */
 $ok(sj_email_key('Ana.Kovac+torba@GMAIL.com') === sj_email_key('anakovac@gmail.com') && sj_email_key('ana+1@primjer.hr') === 'ana@primjer.hr' && sj_email_key('a.b@primjer.hr') !== sj_email_key('ab@primjer.hr'), 'e-mail za granicu: mala slova, bez +oznake, Gmail bez točaka');

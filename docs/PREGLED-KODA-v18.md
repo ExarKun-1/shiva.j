@@ -153,3 +153,13 @@ Preostali rizik, svjesno prihvaćen bez potvrde e-mailom: napad s mnogo adresa i
 | `zahtjevi.json` raste s mnogo adresa | nisko | ublaženo: IPv6 po /64; ostaje za praćenje |
 
 Preostali rizik: lažne narudžbe drže najviše 2 torbe po narudžbi i 2 narudžbe po mreži, 24 h (2 h kad je ponuda zauzeta).
+
+## Recenzija sigurnosti, 11. 10. 2026. (v33): 7/10, „spremno uvjetno” → v34 (api v13, admin v13)
+
+| Nalaz | Težina | Stanje u v34 |
+|---|---|---|
+| IPv6 po /64, a priključci dobivaju /56 ili /48 | srednje | IPv6 po /48 i ukupno najviše 6 novih narudžbi sa šarenom torbom na sat |
+| Granice po punoj IPv6 adresi, `zahtjevi.json` raste | srednje | sve granice po skraćenoj adresi; najviše 5000 zapisa |
+| Narudžbe bez unikata troše 30 potvrda na sat | srednje/nisko | najviše 3 potvrde na sat po adresi |
+| Odgovor otkriva broj tuđe narudžbe | nisko | broj uklonjen |
+| `tests/` zaštićen samo mod_aliasom | nisko | `tests/.htaccess` (Require all denied) |

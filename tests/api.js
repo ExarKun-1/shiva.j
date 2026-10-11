@@ -38,7 +38,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const other = await post('order', order('api-key-0002-bbbb', 'drugi@primjer.hr', [{ id: 'luna' }], 65));
     ok(other.status === 409 && JSON.stringify(other.data.taken) === '["luna"]', 'torba iz zaprimljene narudžbe: drugi kupac dobiva 409 taken');
     const again = await post('order', order('api-key-0004-dddd', 'ana.ispravno@primjer.hr', [{ id: 'luna' }], 65));
-    ok(again.status === 409 && /već je u vašoj narudžbi SJ-2026-0002/.test(again.data.error || ''), 'ista torba u novoj narudžbi istog kupca: 409 s brojem ranije narudžbe');
+    ok(again.status === 409 && /već je u vašoj ranijoj narudžbi/.test(again.data.error || '') && !/SJ-/.test(again.data.error || ''), 'ista torba u novoj narudžbi istog kupca: 409, bez broja narudžbe');
     // 4) narudžba bez rezervacije sama rezervira
     const direct = await post('order', order('api-key-0005-eeee', 'iva@primjer.hr', [{ id: 'vela' }], 70));
     ok(direct.data.ok && read('rezervacije.json').res.vela.email === 'iva@primjer.hr', 'narudžba bez rezervacije sama rezervira slobodnu torbu');
@@ -118,7 +118,22 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const capped = await post('order', order('api-key-0023-wwww', 'cap@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
     const ml2 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(capped.data.ok && capped.data.mailCustomer === false && !/To: cap@primjer\.hr/.test(ml2) && /NIJE poslana automatska potvrda/.test(ml2), '31. potvrda u satu ne ide kupcu; vlasnica dobiva napomenu');
-    // 14) e-mailovi
+    // 14) ukupna granica novih narudžbi sa šarenom torbom na sat
+    clearLimits(); clearRes(); setLimits({ unique_orders_per_hour: 2 });
+    const u1 = await post('order', order('api-key-0024-xxxx', 'u1@primjer.hr', [{ id: 'luna' }], 65));
+    const u2 = await post('order', order('api-key-0025-yyyy', 'u2@primjer.hr', [{ id: 'tara' }], 55));
+    const u3 = await post('order', order('api-key-0026-zzzz', 'u3@primjer.hr', [{ id: 'vela' }], 70));
+    const um = await post('order', order('api-key-0027-aaab', 'u4@primjer.hr', [{ id: 'remen', qty: 1, note: '' }], 15));
+    const mlu = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+    ok(u1.data.ok && u2.data.ok && u3.status === 429 && um.data.ok && /mnogo narudžbi u kratkom vremenu/.test(mlu), 'iznad ukupne granice narudžba sa šarenom torbom dobiva 429, vlasnica upozorenje; artikl po narudžbi prolazi');
+    setLimits({ unique_orders_per_hour: 100 });
+    // 15) najviše 3 potvrde na sat s iste adrese
+    clearLimits(); setLimits({ confirm_per_ip: 3 });
+    const cf = [];
+    for (let i = 0; i < 4; i++) cf.push(await post('order', order('api-key-cf' + i + '-bbbb', 'cf' + i + '@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)));
+    ok(cf.slice(0, 3).every(r => r.data.mailCustomer === true) && cf[3].data.ok && cf[3].data.mailCustomer === false, '4. potvrda u satu s iste adrese ne ide kupcu');
+    setLimits({ confirm_per_ip: 100 });
+    // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Rezervacija vrijedi 24 sata/.test(ml) && /upišite još iznos/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, „upišite”, „na Instagramu”, preuzimanje, t. 6');
     ok(/kliknite „Plaćeno” prije isteka rezervacije/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
