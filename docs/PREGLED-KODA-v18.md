@@ -140,3 +140,16 @@ Ukupna granica na `api/reserve` mogla je blokirati prave kupce. Ispravljeno:
 
 Preostali rizik, svjesno prihvaćen bez potvrde e-mailom: napad s mnogo adresa i e-mailova može držati do pola ponude najviše
 24 sata.
+
+## Recenzija sigurnosti, 11. 10. 2026. (v32): 6/10 → v33 (api v12, admin v12)
+
+| Nalaz | Težina | Stanje u v33 |
+|---|---|---|
+| Rezervacija iz košarice (bez narudžbe) blokira druge, obnavlja se bez kraja (12 torbi po adresi trajno, cijela ponuda s mnogo IPv6 adresa) | visoko | riješeno: blokira samo zaprimljena narudžba; status ne prikazuje tuđe košarice |
+| Granice po cijeloj IPv6 adresi, poništavanje u ponoć | visoko | riješeno: IPv6 po /64, tajna tjedan dana |
+| Granica po e-mailu zaobilazi se „+oznakom” i točkama | srednje | riješeno: `sj_email_key` |
+| Potvrde kupcima na tuđe adrese (spam), istiskivanje narudžbi iz popisa od 300 | srednje | riješeno: 30 potvrda na sat ukupno; arhiva umjesto brisanja |
+| Zaključavanje prijave zaobilazi se rotacijom adresa | nisko | ublaženo: iznad 30 promašaja na sat 3 s čekanja po pokušaju |
+| `zahtjevi.json` raste s mnogo adresa | nisko | ublaženo: IPv6 po /64; ostaje za praćenje |
+
+Preostali rizik: lažne narudžbe drže najviše 2 torbe po narudžbi i 2 narudžbe po mreži, 24 h (2 h kad je ponuda zauzeta).

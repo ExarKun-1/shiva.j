@@ -58,7 +58,7 @@ Mapa `data/` mora biti zapisiva (na Croadriji jest). Provjera zaštite: `https:/
 
 **Kupac odustao**: Rezervacije → **Storniraj**. Ili ništa: rezervacija sama istekne.
 
-**Sumnjive narudžbe (od v32)**: ako stigne e-mail „PAŽNJA, mnogo rezervacija” ili u Rezervacijama jedna adresa drži više torbi, a kupci se ne javljaju, kliknite **Storniraj sve s ove adrese**. Torbe se odmah vraćaju u prodaju. Stupac „Adresa” je skraćena, neprepoznatljiva oznaka veze (mijenja se svaki dan), ne prava IP adresa.
+**Sumnjive narudžbe (od v32)**: ako stigne e-mail „PAŽNJA, mnogo rezervacija” ili u Rezervacijama jedna adresa drži više torbi, a kupci se ne javljaju, kliknite **Storniraj sve s ove adrese**. Torbe se odmah vraćaju u prodaju. Stupac „Adresa” je skraćena, neprepoznatljiva oznaka veze (mijenja se svaki tjedan), ne prava IP adresa. Redak s oznakom „bez narudžbe” je samo torba u nečijoj košarici: ne blokira druge kupce i sama nestaje za najviše 2 sata.
 
 **Torba prodana uživo ili na Instagramu**: Torbe → **Prodano** (ostaje vidljiva kao prodana) ili **Sakrij** (nestaje sa stranice, ostaje u adminu).
 

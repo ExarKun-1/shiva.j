@@ -451,7 +451,7 @@ function sj_view_reservations(array $c): string {
   /* artikli po narudžbi se ne „prodaju” ručno; rezervirane i već plaćene torbe nisu u popisu */
   foreach ($names as $id => $n) if (empty($madeIds[$id]) && !isset($d['res'][$id]) && !isset($d['sold'][$id])) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>';
   $h .= '<h3>Ručno označi plaćeno</h3><form method="post" class="inline"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="res_sold_manual"><input type="hidden" name="back" value="' . e($back) . '"><select name="id">' . $opts . '</select> <button>Plaćeno</button></form>';
-  $h .= '<p class="muted">„Adresa” je skraćena, neprepoznatljiva oznaka veze s koje je stigla rezervacija (mijenja se svaki dan). Ako jedna adresa drži više torbi, a kupci se ne javljaju, gumb „Storniraj sve s ove adrese” vraća ih u prodaju odjednom.</p>';
+  $h .= '<p class="muted">„Adresa” je skraćena, neprepoznatljiva oznaka veze s koje je stigla rezervacija (mijenja se svaki tjedan); „bez narudžbe” je torba u nečijoj košarici, koja druge kupce ne blokira. Ako jedna adresa drži više torbi, a kupci se ne javljaju, gumb „Storniraj sve s ove adrese” vraća ih u prodaju odjednom.</p>';
   $h .= '<p class="muted">Tijek: narudžba → kupac uplati i pošalje potvrdu → „Plaćeno“ (ovdje ili iz e-maila) → „Trajno prodano“ na torbi kad stignete. „Storniraj“ i „Ukloni oznaku“ vraćaju torbu u prodaju.</p>';
   return $h;
 }

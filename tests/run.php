@@ -82,6 +82,24 @@ $ok($bad === '' && $good === 'http://www.shivaj.hr', 'linkovi u e-mailu: tuđi H
 /* J: poziv na broj */
 $ok(sj_payment_ref('SJ-2026-0007') === '2026-0007', 'poziv na broj iz broja narudžbe');
 
+/* K: IPv6 po mreži /64, IPv4 po adresi */
+$a6 = sj_short_ip('2001:db8:1:2:aaaa::1'); $b6 = sj_short_ip('2001:db8:1:2:ffff:1:2:3'); $c6 = sj_short_ip('2001:db8:1:3::1');
+$ok($a6 === $b6 && $a6 !== $c6 && sj_short_ip('203.0.113.1') !== sj_short_ip('203.0.113.2'), 'IPv6 iz iste /64 mreže = ista oznaka; druga mreža i druga IPv4 adresa = druga');
+
+/* L: e-mail za brojanje */
+$ok(sj_email_key('Ana.Kovac+torba@GMAIL.com') === sj_email_key('anakovac@gmail.com') && sj_email_key('ana+1@primjer.hr') === 'ana@primjer.hr' && sj_email_key('a.b@primjer.hr') !== sj_email_key('ab@primjer.hr'), 'e-mail za granicu: mala slova, bez +oznake, Gmail bez točaka');
+
+/* M: arhiva narudžbi umjesto brisanja */
+file_put_contents(SJ_DATA . '/narudzbe.json', '[]'); @unlink(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json');
+for ($i = 1; $i <= 5; $i++) sj_orders_prepend(['no' => 'SJ-T-' . $i], 3);
+$list = sj_read_json(SJ_DATA . '/narudzbe.json', []); $arh = sj_read_json(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', []);
+$ok(array_column($list, 'no') === ['SJ-T-5', 'SJ-T-4', 'SJ-T-3'] && array_column($arh, 'no') === ['SJ-T-1', 'SJ-T-2'], 'starije narudžbe idu u arhivu, ništa se ne briše');
+
+/* N: ukupna granica (potvrde kupcima) */
+@unlink(SJ_DATA . '/zahtjevi.json');
+$n = 0; for ($i = 0; $i < 5; $i++) if (sj_global_limit('proba', 3, 3600)) $n++;
+$ok($n === 3, 'ukupna granica: 3 od 5 propušteno');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

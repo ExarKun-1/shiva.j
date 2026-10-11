@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v11');
+define('SJ_VERSION', 'admin v12');
 
 /* ---------- postavke ---------- */
 
@@ -87,11 +87,14 @@ function sj_shipping(): array {
 }
 
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
-/* Skraćena adresa: HMAC adrese s nasumičnom dnevnom tajnom (data/sol.json, random_bytes, mijenja se svaki dan),
-   16 znakova. Kad tajna istekne, stare skraćene adrese više se ne mogu povezati s pravima. */
+/* Skraćena adresa: HMAC adrese (IPv6 po mreži /64) s nasumičnom tajnom (data/sol.json, random_bytes, mijenja se
+   svaki tjedan), 16 znakova. Kad tajna istekne, stare skraćene adrese više se ne mogu povezati s pravima. */
 function sj_short_ip(?string $ip = null): string {
   $ip = $ip ?? (string)($_SERVER['REMOTE_ADDR'] ?? '?');
-  $day = date('Y-m-d');
+  /* IPv6: jedan priključak dobiva cijelu mrežu /64 (2^64 adresa), pa se broji mreža, ne pojedina adresa */
+  if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) { $b = @inet_pton($ip); if ($b !== false) $ip = bin2hex(substr($b, 0, 8)) . '::/64'; }
+  /* tajna traje tjedan dana (ne mijenja se u ponoć, pa se granice po adresi ne poništavaju svaki dan) */
+  $day = date('o-\WW');
   $key = (string)sj_with_lock(SJ_DATA . '/sol.json', function (array &$d) use ($day) {
     if (($d['day'] ?? '') !== $day || empty($d['key'])) $d = ['day' => $day, 'key' => bin2hex(random_bytes(32))];
     return $d['key'];
@@ -109,7 +112,7 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
-      $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|')) ? 3600 : 86400;
+      $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400;
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
@@ -118,6 +121,19 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
     if (count($recent) >= $max) return false;
     if (!$record) return true;
     $d[$k] = array_merge(array_values($recent), [$now]);
+    return true;
+  }, []);
+}
+
+/* Nova narudžba na vrh popisa; zadnjih $keep ostaje u narudzbe.json, starije idu u godišnju arhivu
+   data/narudzbe-arhiva-GGGG.json (ne brišu se, pa lažne narudžbe ne mogu istisnuti prave) */
+function sj_orders_prepend(array $entry, int $keep = 300): void {
+  sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($entry, $keep) {
+    array_unshift($list, $entry);
+    if (count($list) > $keep) {
+      $old = array_slice($list, $keep); $list = array_slice($list, 0, $keep);
+      sj_with_lock(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', function (array &$a) use ($old) { foreach (array_reverse($old) as $o) $a[] = $o; return true; }, []);
+    }
     return true;
   }, []);
 }
@@ -377,6 +393,10 @@ function sj_login(string $password): bool {
   $ip = sj_short_ip(); /* skraćena adresa: u postavkama ne ostaje prava adresa */
   $fails = $c['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
   if ((int)$fails['n'] >= 8 && time() - (int)$fails['t'] < 900) return false; /* 15 min pauze nakon 8 promašaja */
+  /* ukupno za cijelu prijavu (napad s mnogo adresa): iznad 30 promašaja na sat svaki pokušaj čeka 3 s; prijava se ne
+     zaključava potpuno, da napadač ne može vlasnicu zaključati izvan admina */
+  $all = array_filter((array)($c['login_fails_all'] ?? []), fn($t) => (int)$t > time() - 3600);
+  if (count($all) >= 30) sleep(3);
   if ($c['password_hash'] && password_verify($password, $c['password_hash'])) {
     sj_session_start();
     session_regenerate_id(true);
@@ -392,6 +412,8 @@ function sj_login(string $password): bool {
     foreach ((array)($d['login_fails'] ?? []) as $k => $f) if ($now - (int)($f['t'] ?? 0) > 86400) unset($d['login_fails'][$k]);
     $f = $d['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
     $d['login_fails'][$ip] = ['n' => (int)$f['n'] + 1, 't' => $now];
+    $all = array_values(array_filter((array)($d['login_fails_all'] ?? []), fn($t) => (int)$t > $now - 3600));
+    $all[] = $now; $d['login_fails_all'] = array_slice($all, -200);
   });
   return false;
 }
@@ -426,6 +448,30 @@ function sj_clean(?string $v, int $max, bool $multiline = false): string {
   $v = preg_replace($multiline ? '/[\x00-\x08\x0B\x0C\x0E-\x1F]/u' : '/[\x00-\x1F\x7F]/u', $multiline ? '' : ' ', $v);
   if ($v === null) $v = '';
   return mb_substr($v, 0, $max);
+}
+
+/* e-mail za brojanje (granica „1 neplaćena narudžba po e-mailu”): mala slova, bez „+oznake”, a za Gmail bez točaka,
+   jer sve te inačice stižu u isti sandučić */
+function sj_email_key(string $email): string {
+  $email = strtolower(trim($email));
+  $at = strrpos($email, '@');
+  if ($at === false) return $email;
+  $local = substr($email, 0, $at); $dom = substr($email, $at + 1);
+  $plus = strpos($local, '+'); if ($plus !== false) $local = substr($local, 0, $plus);
+  if (in_array($dom, ['gmail.com', 'googlemail.com'], true)) { $local = str_replace('.', '', $local); $dom = 'gmail.com'; }
+  return $local . '@' . $dom;
+}
+
+/* Ukupna granica za cijelu stranicu (npr. potvrde kupcima na sat), bez obzira na adresu. true = smije. */
+function sj_global_limit(string $key, int $max, int $windowSec): bool {
+  $now = time();
+  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $max, $windowSec, $now) {
+    $k = 'sve|' . $key;
+    $recent = array_values(array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec));
+    if (count($recent) >= $max) { $d[$k] = $recent; return false; }
+    $recent[] = $now; $d[$k] = $recent;
+    return true;
+  }, []);
 }
 
 function sj_valid_email(?string $v): ?string {
