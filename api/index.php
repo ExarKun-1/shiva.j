@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v16)
+   SHIVA.J — javni API na hostingu   (api/index.php v17)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -15,6 +15,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v17: rezervacija dodijeljena narudžbi vrijedi do isteka (obećanje kupcu); granica „pola ponude” vrijedi za nove
+        rezervacije. Admin: „Plaćeno” za cijelu narudžbu, i za torbe bez rezervacije (tko prvi uplati).
    v16: granica „pola ponude” vrijedi stalno (sj_blocking_ids): blokiraju samo najstarije rezervacije iz narudžbi,
         do pola stvarno slobodnih; novije preko toga ne blokiraju (status, reserve, order); narudžba s dvije torbe
         rezervira koliko stane; brojanje samo torbi na prodaji.

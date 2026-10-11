@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v15');
+define('SJ_VERSION', 'admin v16');
 
 /* ---------- postavke ---------- */
 
@@ -143,24 +143,20 @@ function sj_free_unique_ids(array $prodsById): array {
   return $out;
 }
 
-/* Koje rezervacije stvarno blokiraju torbu za druge kupce (id => true). Rezervacija iz košarice (bez narudžbe) nikad.
-   Od rezervacija iz zaprimljenih narudžbi samo najstarije, do pola stvarno slobodnih unikata (zaokruženo naniže; jedna
-   samo ako barem jedna ostaje slobodna) — granica vrijedi stalno, i kad se poslije proda neka druga torba. Novije preko
-   granice ostaju zapisane (vlasnica ih vidi), ali torbu drugi mogu naručiti i dobiva je tko prvi uplati.
-   Rezervacije torbi koje nisu na prodaji (skrivene, ručno rezervirane) blokiraju kao i prije. */
+/* Koje rezervacije blokiraju torbu za druge kupce (id => true): sve rezervacije iz zaprimljenih narudžbi, do isteka.
+   Rezervacija iz košarice (bez narudžbe) nikad. Granica „pola ponude” vrijedi pri dodjeli NOVE rezervacije (api/order):
+   tko je rezervaciju već dobio, zadržava je do isteka i kad se poslije proda neka druga torba (obećanje kupcu vrijedi).
+   Kad zato neplaćene narudžbe drže više od pola, admin to pokazuje u Rezervacijama. $freeIds ostaje radi poziva. */
 function sj_blocking_ids(array $d, array $freeIds): array {
-  $freeSet = [];
-  foreach ($freeIds as $f) if (!isset($d['sold'][$f])) $freeSet[(string)$f] = true;
-  $free = count($freeSet);
-  $cap = $free >= 2 ? max(1, intdiv($free, 2)) : 0;
-  $held = []; $out = [];
-  foreach ((array)($d['res'] ?? []) as $id => $r) {
-    if (empty($r['ordered'])) continue;
-    if (!isset($freeSet[(string)$id])) { $out[(string)$id] = true; continue; }
-    $held[] = [(string)$id, (string)($r['at'] ?? $r['since'] ?? '')];
-  }
-  usort($held, fn($a, $b) => strcmp($a[1], $b[1]) ?: strcmp($a[0], $b[0]));
-  foreach (array_slice($held, 0, $cap) as $h) $out[$h[0]] = true;
+  $out = [];
+  foreach ((array)($d['res'] ?? []) as $id => $r) if (!empty($r['ordered'])) $out[(string)$id] = true;
+  return $out;
+}
+
+/* Vidljivi proizvodi po id-u (za admin; isto što i sj_products_by_id u api/index.php) */
+function sj_products_by_id_all(): array {
+  $out = [];
+  foreach (sj_products() as $p) if (!empty($p['id']) && empty($p['hidden'])) $out[(string)$p['id']] = $p;
   return $out;
 }
 

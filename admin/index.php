@@ -226,36 +226,38 @@ function sj_handle_action(string $act, array &$c): string {
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
       if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       if ($act === 'order_paid') {
-        /* narudžbe bez rezervacije i narudžbe čija je rezervacija istekla (kupac uplatio prekasno); narudžbe s
-           AKTIVNOM rezervacijom označuju se kod rezervacija (sj_mark_paid), da torba ode iz ponude */
-        $list = sj_read_json(SJ_DATA . '/narudzbe.json', []);
-        $rd = sj_res_read();
-        foreach ($list as $o) {
-          if (($o['no'] ?? '') !== $no) continue;
-          $tok = (string)($o['reservation']['token'] ?? '');
-          $active = $tok !== '' && (bool)array_filter($rd['res'], fn($r) => ($r['token'] ?? '') === $tok);
-          if ($active) throw new RuntimeException('Ova narudžba ima aktivnu rezervaciju: označite je kao plaćenu kod rezervacija.');
-        }
-        if (sj_order_paid_once(['no' => $no])) sj_count('paid');
-        /* rezervacija je istekla, a kupac je ipak platio: torbe iz narudžbe koje su još slobodne označuju se
-           kao plaćene za tog kupca; ako je neku u međuvremenu rezervirao ili kupio drugi kupac, javlja se */
-        $conflict = [];
-        foreach ($list as $o) {
-          if (($o['no'] ?? '') !== $no || empty($o['reservation']['token'])) continue;
-          $ids = [];
-          foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made']) && !empty($it['id'])) $ids[] = (string)$it['id'];
-          $conflict = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $o) {
-            $d = array_replace(sj_res_default(), $d);
-            $busy = [];
-            foreach ($ids as $id) {
-              if (isset($d['sold'][$id])) { if (($d['sold'][$id]['token'] ?? '') !== $o['reservation']['token']) $busy[] = $id; continue; }
-              if (isset($d['res'][$id])) { $busy[] = $id; continue; }
-              $d['sold'][$id] = ['id' => $id, 'token' => (string)$o['reservation']['token'], 'name' => (string)($o['name'] ?? ''), 'email' => (string)($o['email'] ?? ''), 'since' => (string)($o['at'] ?? ''), 'paidAt' => sj_iso(time())];
+        /* „Plaćeno” za cijelu narudžbu: torbe s rezervacijom ove narudžbe postaju plaćene (kao kod rezervacija);
+           torbe bez rezervacije (narudžba je stigla kad je pola ponude već čekalo uplatu) ili s isteklom rezervacijom
+           pripadaju ovom kupcu ako je uplatio prvi — tuđa rezervacija na njima se uklanja i vlasnica dobiva upozorenje */
+        $ord = null;
+        foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) if (($o['no'] ?? '') === $no) { $ord = $o; break; }
+        if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
+        $tok = (string)($ord['reservation']['token'] ?? '');
+        $ids = [];
+        foreach ((array)($ord['order']['items'] ?? []) as $it) if (empty($it['made']) && !empty($it['id'])) $ids[] = (string)$it['id'];
+        $out = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $tok, $ord) {
+          $d = array_replace(sj_res_default(), $d);
+          $taken = []; $other = [];
+          foreach ($ids as $id) {
+            if (isset($d['sold'][$id])) {
+              $sd = $d['sold'][$id];
+              $ours = ($tok !== '' && ($sd['token'] ?? '') === $tok) || strcasecmp((string)($sd['email'] ?? ''), (string)($ord['email'] ?? '')) === 0;
+              if (!$ours) $taken[] = $id; /* već plaćena za drugog kupca */
+              continue;
             }
-            return $busy;
-          }, sj_res_default());
-        }
-        if ($conflict) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode(', ', $conflict) . ' u međuvremenu drži ili je kupio drugi kupac — javite se kupcu iz ove narudžbe.';
+            $r = $d['res'][$id] ?? null;
+            if ($r && $tok !== '' && ($r['token'] ?? '') === $tok) { sj_mark_paid($d, $id); continue; }
+            if ($r && !empty($r['ordered'])) $other[] = $id . ' (' . ($r['name'] ?? '') . ', ' . ($r['email'] ?? '') . ')';
+            unset($d['res'][$id]);
+            $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'name' => (string)($ord['name'] ?? ''), 'email' => (string)($ord['email'] ?? ''), 'since' => (string)($ord['at'] ?? ''), 'paidAt' => sj_iso(time())];
+          }
+          return ['taken' => $taken, 'other' => $other];
+        }, sj_res_default());
+        if (sj_order_paid_once(['no' => $no])) sj_count('paid');
+        $warn = [];
+        if ($out['taken']) $warn[] = implode(', ', $out['taken']) . ' je već plaćena za drugog kupca — javite se kupcu iz ove narudžbe';
+        if ($out['other']) $warn[] = 'uklonjena je neplaćena rezervacija drugog kupca: ' . implode('; ', $out['other']) . ' — javite mu se da je torba prodana';
+        if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.';
       } else {
         sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no) {
           foreach ($list as &$o) if (($o['no'] ?? '') === $no) unset($o['paidAt']); /* paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje */
@@ -423,6 +425,11 @@ function sj_view_reservations(array $c): string {
   foreach (sj_products() as $p) $names[$p['id'] ?? ''] = $p['name'] ?? '';
   $back = '?s=rez';
   $h = '<h3>Aktivne rezervacije — istječu nakon ' . (int)$c['ttl_hours'] . ' h</h3>';
+  /* rezervacije iz narudžbi vrijede do isteka; ako su se u međuvremenu prodale druge torbe, mogu držati više od pola */
+  $freeIdsV = sj_free_unique_ids(sj_products_by_id_all());
+  $freeV = 0; foreach ($freeIdsV as $f) if (!isset($d['sold'][$f])) $freeV++;
+  $heldV = 0; foreach ($d['res'] as $rid => $r) if (!empty($r['ordered']) && in_array((string)$rid, $freeIdsV, true) && !isset($d['sold'][(string)$rid])) $heldV++;
+  if ($freeV > 0 && $heldV * 2 > $freeV) $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: neplaćene narudžbe drže ' . $heldV . ' od ' . $freeV . ' slobodnih šarenih torbi (više od pola). Nove narudžbe dobivaju rezervaciju tek kad se ovo smanji. Ako sumnjate na lažne narudžbe, stornirajte ih.</p>';
   if (!$d['res']) $h .= '<p class="muted">Trenutno nema rezervacija.</p>';
   else {
     $h .= '<div class="tablewrap"><table><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th>Adresa</th><th></th></tr></thead><tbody>';
@@ -467,12 +474,12 @@ function sj_view_orders(): string {
     $no = (string)($o['no'] ?? '');
     $tok = (string)($o['reservation']['token'] ?? '');
     /* aktivna rezervacija se označuje kod rezervacija (torba ode iz ponude); istekla ima gumb ovdje */
-    if ($tok !== '' && isset($active[$tok])) $paid = '<span class="muted">kod rezervacija</span>';
-    elseif (!empty($o['paidAt'])) $paid = e(sj_fmt_hr($o['paidAt'])) . ' ' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true);
-    else $paid = ($tok !== '' ? '<span class="muted">rezervacija istekla</span><br>' : '') . sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
+    $unheldO = array_filter((array)($o['order']['unheld'] ?? []), 'is_string'); /* starije narudžbe imaju samo true/false */
+    if (!empty($o['paidAt'])) $paid = e(sj_fmt_hr($o['paidAt'])) . ' ' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true);
+    else $paid = ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">rezervacija istekla</span><br>' : '') . ($unheldO ? '<span class="muted">bez rezervacije: ' . e(implode(', ', $unheldO)) . '</span><br>' : '') . sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
     $h .= '<tr><td class="mono">' . e($no) . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span></td><td><pre>' . e($o['items'] ?? '') . '</pre></td><td>' . e($o['shipping'] ?? '') . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
-  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. Narudžbe s aktivnom rezervacijom označujete kao plaćene kod rezervacija; ovdje se označuju narudžbe bez unikata i narudžbe čija je rezervacija istekla (kupac je platio kasnije), da ih Mjerenje broji.</p>';
+  return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Plaćeno” ovdje označuje cijelu narudžbu: torbe s rezervacijom postaju plaćene, a torbe bez rezervacije (ili s isteklom) pripadaju ovom kupcu ako je uplatio prvi; ako je torbu u međuvremenu držao ili kupio drugi kupac, admin to javi.</p>';
 }
 
 /* tjedni zbrojevi iz data/brojac.json: A = narudžbe / posjeti, B = plaćeno / narudžbe */

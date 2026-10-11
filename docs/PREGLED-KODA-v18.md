@@ -190,3 +190,10 @@ Jamstvo: nijedna granica više ne zatvara naručivanje; neplaćene narudžbe nik
 | Granica „pola” provjerava se samo pri narudžbi; nakon prodaje druge torbe napadač drži više od pola | riješeno: `sj_blocking_ids` u statusu, rezervaciji i narudžbi; blokiraju samo najstarije do pola |
 | „Sve ili ništa” kod narudžbe s dvije torbe | riješeno: rezervira se koliko stane, ostatak poimence bez rezervacije |
 | `$heldIds` broji torbe koje nisu na prodaji | riješeno: broje se samo torbe na prodaji |
+
+## Recenzija sigurnosti, 11. 10. 2026. (v37): 8/10, „spremno” → v38 (api v17, admin v16)
+
+| Nalaz | Stanje u v38 |
+|---|---|
+| Plaćanje sporne torbe pripisuje se krivom kupcu (jedini gumb bio je `res_sold`) | riješeno: `order_paid` za cijelu narudžbu, torbe bez rezervacije pripadaju onome tko je prvi platio, upozorenja |
+| Obećana rezervacija može tiho prestati vrijediti kad se proda druga torba | riješeno: dodijeljena rezervacija vrijedi do isteka; granica „pola” za nove; upozorenje u adminu kad je više od pola |
