@@ -122,6 +122,16 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const capped = await post('order', order('api-key-0023-wwww', 'cap@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
     const ml2 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(capped.data.ok && capped.data.mailCustomer === false && !/To: cap@primjer\.hr/.test(ml2) && /NIJE poslana automatska potvrda/.test(ml2), '31. potvrda u satu ne ide kupcu; vlasnica dobiva napomenu');
+    // 13b) pola STVARNO slobodnih: torbe označene „Plaćeno” ne broje se kao slobodne; mala ponuda
+    clearLimits(); clearRes();
+    { const r = read('rezervacije.json'); r.sold = { luna: { id: 'luna', paidAt: '2026-10-11T00:00:00Z' }, tara: { id: 'tara', paidAt: '2026-10-11T00:00:00Z' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
+    const f1 = await post('order', order('api-key-0028-ffaa', 'f1@primjer.hr', [{ id: 'vela' }], 70));
+    const f2 = await post('order', order('api-key-0029-ffbb', 'f2@primjer.hr', [{ id: 'nera' }], 85));
+    ok(f1.data.reserved === true && f2.data.ok && f2.data.reserved === false, '2 od 4 torbe plaćene: slobodne su 2, rezervirati se smije samo 1 (druga narudžba bez rezervacije)');
+    { const r = read('rezervacije.json'); r.res = {}; r.sold.vela = { id: 'vela', paidAt: '2026-10-11T00:00:00Z' }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
+    const f3 = await post('order', order('api-key-0030-ffcc', 'f3@primjer.hr', [{ id: 'nera' }], 85));
+    ok(f3.data.ok && f3.data.reserved === false && !read('rezervacije.json').res.nera, 'zadnja slobodna torba ne rezervira se nikome (dobiva je tko prvi uplati)');
+    clearRes();
     // 14) ukupna granica novih narudžbi sa šarenom torbom na sat
     clearLimits(); clearRes(); setLimits({ unique_orders_per_hour: 2 });
     const u1 = await post('order', order('api-key-0024-xxxx', 'u1@primjer.hr', [{ id: 'luna' }], 65));

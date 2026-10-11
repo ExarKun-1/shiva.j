@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v14)
+   SHIVA.J — javni API na hostingu   (api/index.php v15)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -15,6 +15,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v15: granica „pola ponude” računa stvarno slobodne torbe (bez torbi označenih „Plaćeno”) i zaokružuje naniže;
+        jedna torba smije se rezervirati samo ako barem jedna ostaje slobodna, pa napadač nikad ne drži više od pola.
    v14: granice nikad ne zatvaraju trgovinu: ukupna granica narudžbi na sat više ne odbija (samo upozorava
         vlasnicu); kad bi neplaćene narudžbe držale više od pola slobodnih unikata, narudžba se prima BEZ
         rezervacije (torbu dobiva tko prvi uplati), pa napadač nikad ne drži više od pola ponude; ponovljeni
@@ -276,7 +278,8 @@ if ($a === 'order') {
   if (!preg_match('/^[A-Za-z0-9-]{8,64}$/', $key)) $key = '';
   $ttl = max(1, (int)$c['ttl_hours']);
   $ip = sj_short_ip(); $ipPrev = sj_short_ip(null, true); $myIps = sj_short_ips();
-  $free = 0; foreach ($prods as $p) if (empty($p['made']) && empty($p['sold']) && empty($p['reserved'])) $free++;
+  /* unikati koji su u katalogu na prodaji; torbe označene „Plaćeno” oduzimaju se tek pod bravom rezervacija */
+  $freeIds = []; foreach ($prods as $pid => $p) if (empty($p['made']) && empty($p['sold']) && empty($p['reserved'])) $freeIds[] = (string)$pid;
   $itemsText = implode("\n", array_map(fn($it) => '- ' . $it['name'] . ($it['qty'] > 1 ? ' × ' . $it['qty'] : '') . ($it['note'] !== '' ? ' (' . $it['note'] . ')' : '') . ' — ' . sj_fmt_eur($it['price'] * $it['qty']), $items));
   $shipText = $ship ? $ship['label'] . ' — ' . ($shipPrice > 0 ? sj_fmt_eur($shipPrice) : 'besplatno') . ($locker !== '' ? ' — paketomat: ' . $locker : '') : 'po dogovoru';
 
@@ -284,12 +287,12 @@ if ($a === 'order') {
      1) isti ključ iz preglednika (ponovni klik, prekid veze, osvježena stranica) → isti odgovor, bez nove narudžbe;
      2) unikati: prodani ili rezervirani za drugog kupca → 409; slobodni ili kupčevi → rezervirani puni rok;
      3) broj narudžbe i upis. E-mailovi idu nakon brave. */
-  $done = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($key, $holdKey, $uniqueIds, $cust, $ttl, $ip, $ipPrev, $myIps, $free, $items, $ship, $shipPrice, $locker, $goods, $total, $note, $itemsText, $shipText) {
+  $done = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($key, $holdKey, $uniqueIds, $cust, $ttl, $ip, $ipPrev, $myIps, $freeIds, $items, $ship, $shipPrice, $locker, $goods, $total, $note, $itemsText, $shipText) {
     if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (($prev['key'] ?? '') === $key) return ['prev' => $prev];
 
     $res = null; $unheld = null;
     if ($uniqueIds) {
-      $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $myIps, $free) {
+      $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $myIps, $freeIds) {
         $d = array_replace(sj_res_default(), $d);
         sj_res_prune($d);
         $taken = []; $mine = []; $tok = ''; $since = ''; $prev = [];
@@ -315,9 +318,12 @@ if ($a === 'order') {
         }
         if ($byEmail) return ['limit' => 'Već imate narudžbu sa šarenom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću; za više torbi odjednom javite nam se e-mailom ili na Instagramu.', 'status' => 409];
         if (count($byIp) >= SJ_ORDERS_PER_IP) return ['limit' => 'S ove veze već postoje narudžbe koje čekaju uplatu. Za novu narudžbu javite nam se e-mailom ili na Instagramu.', 'status' => 429];
-        /* čvrsta granica: neplaćene narudžbe drže najviše pola slobodnih unikata (barem 2); narudžba preko toga se prima
-           BEZ rezervacije — torba ostaje dostupna drugima i dobiva je tko prvi uplati, pa napadač ne može zauzeti ostatak */
-        if ($heldIds + count($uniqueIds) > max(2, (int)ceil($free / 2))) {
+        /* čvrsta granica: neplaćene narudžbe drže najviše pola stvarno slobodnih unikata (zaokruženo naniže; jedna torba
+           samo ako barem jedna ostaje slobodna). Narudžba preko toga se prima BEZ rezervacije: torba ostaje dostupna
+           drugima i dobiva je tko prvi uplati, pa napadač nikad ne drži više od pola ponude. */
+        $free = count(array_filter($freeIds, fn($fid) => !isset($d['sold'][$fid])));
+        $cap = $free >= 2 ? max(1, intdiv($free, 2)) : 0;
+        if ($heldIds + count($uniqueIds) > $cap) {
           foreach ($uniqueIds as $id) if ($prev[$id] && empty($prev[$id]['ordered'])) unset($d['res'][$id]); /* kupčeva košarica ne smije ostati kao blokada */
           return ['unheld' => true, 'held' => $heldIds, 'prev' => $prev];
         }
