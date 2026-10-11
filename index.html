@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v32 (2026-10-11)
+     SHIVA.J WEBSHOP — v33 (2026-10-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v33 — blokira samo zaprimljena narudžba (uz api v12, admin v12):
+           tuđa košarica više ne prikazuje torbu kao „Rezervirano”
      v32 — zaštita ponude od sabotaže (uz api v11, admin v11): kad
            rezervacija vrati 429, narudžba se ipak šalje (poslužitelj sam
            provjerava i rezervira)
@@ -1041,7 +1043,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v32</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v33</p>
 </footer>
 
 <!-- Košarica -->

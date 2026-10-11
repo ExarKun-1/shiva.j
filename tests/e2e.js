@@ -236,9 +236,12 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pk.close();
 
   // ---------- v29: uski mobitel, IBAN unutar ploče ----------
+  // tuđa košarica: netko drugi rezervira Taru (bez narudžbe), ja je ipak vidim i naručim
+  await fetch(URL + 'api/reserve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: ['tara'], name: 'Drugi', email: 'drugi-kosarica@primjer.hr' }) });
   const m3 = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const p3 = await m3.newPage(); watch(p3);
   await p3.goto(URL, { waitUntil: 'networkidle' }); await p3.waitForTimeout(300);
+  ok(!(await p3.locator('.card:has(h3:text-is("Tara")) .add-btn').isDisabled()), 'torba u tuđoj košarici nije „Rezervirano”');
   await p3.click('.card:has(h3:text-is("Tara")) .add-btn');
   await p3.click('#openCart'); await p3.waitForTimeout(300);
   const radio = await p3.locator('#shipOptions .ship-opt').first().locator('input').boundingBox();

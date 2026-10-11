@@ -31,12 +31,12 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     // 2) kratka rezervacija, puni rok nakon narudžbe, tuđa torba
     const rs = await post('reserve', { ids: ['luna'], name: 'Ana', email: 'ana@primjer.hr' });
     ok(rs.data.ok && hrs(rs.data.until) > 1.9 && hrs(rs.data.until) <= 2.01 && /^[a-f0-9]{32}$/.test(rs.data.hold || ''), 'api/reserve: 2 sata i tajni ključ rezervacije');
-    const other = await post('order', order('api-key-0002-bbbb', 'drugi@primjer.hr', [{ id: 'luna' }], 65));
-    ok(other.status === 409 && JSON.stringify(other.data.taken) === '["luna"]', 'torba koju drži drugi kupac: 409 taken');
     // 3) ispravljen e-mail s ključem rezervacije: narudžba prolazi
     const fixed = await post('order', order('api-key-0003-cccc', 'ana.ispravno@primjer.hr', [{ id: 'luna' }], 65, rs.data.hold));
     const resA = read('rezervacije.json');
     ok(fixed.data.ok && hrs(fixed.data.until) > 23.9 && resA.res.luna.email === 'ana.ispravno@primjer.hr' && resA.res.luna.ordered === true, 'ispravljen e-mail + ključ rezervacije: narudžba prolazi, puni rok, novi e-mail');
+    const other = await post('order', order('api-key-0002-bbbb', 'drugi@primjer.hr', [{ id: 'luna' }], 65));
+    ok(other.status === 409 && JSON.stringify(other.data.taken) === '["luna"]', 'torba iz zaprimljene narudžbe: drugi kupac dobiva 409 taken');
     const again = await post('order', order('api-key-0004-dddd', 'ana.ispravno@primjer.hr', [{ id: 'luna' }], 65));
     ok(again.status === 409 && /već je u vašoj narudžbi SJ-2026-0002/.test(again.data.error || ''), 'ista torba u novoj narudžbi istog kupca: 409 s brojem ranije narudžbe');
     // 4) narudžba bez rezervacije sama rezervira
@@ -98,7 +98,27 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     ok(hrs(c1.data.until) > 23.9 && hrs(c2.data.until) > 23.9 && c3.data.ok && hrs(c3.data.until) < 2.01, 'više od pola ponude u neplaćenim narudžbama: nova narudžba drži torbu samo 2 sata (' + hrs(c3.data.until).toFixed(2) + ')');
     const mlc = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Subject: PAŽNJA, mnogo rezervacija — Narudžba/.test(mlc) && /Storniraj sve s ove adrese/.test(mlc) && /Rezervacija vrijedi 2 sata/.test(mlc), 'vlasnica dobiva upozorenje, kupac točan rok (2 sata)');
-    // 11) e-mailovi
+    // 11) tuđa košarica (rezervacija bez narudžbe) ne blokira
+    clearLimits(); clearRes();
+    const cart = await post('reserve', { ids: ['nera'], name: 'Košarica', email: 'kosarica@primjer.hr' });
+    const st = await (await fetch(U + 'status')).json();
+    ok(cart.data.ok && !st.ids.includes('nera'), 'rezervacija iz košarice se drugima ne prikazuje kao „Rezervirano”');
+    const other2 = await post('reserve', { ids: ['nera'], name: 'Drugi', email: 'drugi2@primjer.hr' });
+    const buy = await post('order', order('api-key-0019-ssss', 'kupac3@primjer.hr', [{ id: 'nera' }], 85));
+    ok(other2.data.ok && buy.data.ok && read('rezervacije.json').res.nera.email === 'kupac3@primjer.hr', 'tuđa rezervacija bez narudžbe ne blokira: prva zaprimljena narudžba dobiva torbu');
+    const late = await post('order', order('api-key-0020-tttt', 'kosarica@primjer.hr', [{ id: 'nera' }], 85, cart.data.hold));
+    ok(late.status === 409 && JSON.stringify(late.data.taken) === '["nera"]', 'tko je samo rezervirao, a nije naručio, dobiva 409 kad je drugi već naručio');
+    // 12) e-mail s +oznakom se broji kao isti
+    setLimits({ orders_per_ip: 20 }); clearLimits(); clearRes();
+    const p1 = await post('order', order('api-key-0021-uuuu', 'ana.kovac@gmail.com', [{ id: 'luna' }], 65));
+    const p2 = await post('order', order('api-key-0022-vvvv', 'AnaKovac+2@gmail.com', [{ id: 'tara' }], 55));
+    ok(p1.data.ok && p2.status === 409, 'ana.kovac@gmail i AnaKovac+2@gmail broje se kao isti e-mail: 409');
+    // 13) najviše 30 potvrda kupcima na sat
+    const z = read('zahtjevi.json'); z['sve|confirm'] = Array(30).fill(Math.floor(Date.now() / 1000)); fs.writeFileSync(D + 'zahtjevi.json', JSON.stringify(z));
+    const capped = await post('order', order('api-key-0023-wwww', 'cap@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+    const ml2 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+    ok(capped.data.ok && capped.data.mailCustomer === false && !/To: cap@primjer\.hr/.test(ml2) && /NIJE poslana automatska potvrda/.test(ml2), '31. potvrda u satu ne ide kupcu; vlasnica dobiva napomenu');
+    // 14) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Rezervacija vrijedi 24 sata/.test(ml) && /upišite još iznos/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, „upišite”, „na Instagramu”, preuzimanje, t. 6');
     ok(/kliknite „Plaćeno” prije isteka rezervacije/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
