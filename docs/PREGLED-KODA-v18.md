@@ -129,3 +129,14 @@ s uvijek istim redom brava, ulaz se dosljedno čisti, CSRF i escaping. Nalazi i 
 | Proizvodi se spremaju bez brave | sitnica | riješeno: `sj_products_update` |
 | Linkovi u e-mailovima iz zaglavlja `Host` | sitnica | riješeno: `sj_site_url_trusted`, upozorenje u Postavkama |
 | Održivost: 136 KB `index.html`, ista logika na ploči i u e-mailu, nema testova u repozitoriju | preporuka | testovi u `tests/`; izdvajanje JS-a i zajednički tekstovi ostaju za kasnije |
+
+**Dopuna 11. 10. 2026. (v32, api v11, admin v11):** provjera nalaza „svatko može zaključati ponudu” pokazala je da v31 nije
+bio dovoljan. Granica je bila samo na `api/reserve`, a `api/order` je sam rezervirao do 6 unikata na 24 sata bez granice.
+Ukupna granica na `api/reserve` mogla je blokirati prave kupce. Ispravljeno:
+- granice na narudžbi (2 unikata po narudžbi, 1 neplaćena po e-mailu, 2 po adresi);
+- kratko držanje (2 h) i upozorenje vlasnici kad neplaćene narudžbe drže više od pola ponude;
+- bez ukupne granice na rezervaciji, a stranica naručuje i nakon 429;
+- u adminu stupac „Adresa” i gumb „Storniraj sve s ove adrese”.
+
+Preostali rizik, svjesno prihvaćen bez potvrde e-mailom: napad s mnogo adresa i e-mailova može držati do pola ponude najviše
+24 sata.

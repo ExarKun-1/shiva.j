@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v31 (2026-10-11)
+     SHIVA.J WEBSHOP — v32 (2026-10-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v32 — zaštita ponude od sabotaže (uz api v11, admin v11): kad
+           rezervacija vrati 429, narudžba se ipak šalje (poslužitelj sam
+           provjerava i rezervira)
      v31 — pregled softverskog inženjera (uz api v10, admin v10):
            rezervacija pamti tajni ključ (hold) i šalje ga uz narudžbu,
            pa ispravljen e-mail nakon prekida više ne blokira vlastitu
@@ -1038,7 +1041,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v31</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v32</p>
 </footer>
 
 <!-- Košarica -->
@@ -1790,6 +1793,8 @@ async function reserveCart(o){
   });
   const data = await res.json().catch(() => ({}));
   if(res.status === 409 && Array.isArray(data.taken)){ markTaken(data.taken); return { taken: true }; }
+  /* 429 (previše rezervacija): narudžba ipak ide, jer poslužitelj pri narudžbi sam provjerava i rezervira torbu */
+  if(res.status === 429) return null;
   if(res.status >= 400 && res.status < 500){ showOrderError(`<b>Rezervacija nije prihvaćena.</b> ${escHtml(data.error || "Osvježite stranicu i pokušajte ponovno.")}`); return { taken: true }; } /* servis je odbio s razlogom — kupac vidi poruku, narudžba se ne šalje */
   if(!res.ok || !data.ok) throw new Error("HTTP " + res.status);
   if(data.ttlHours) setTtlText(data.ttlHours);

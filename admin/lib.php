@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v10');
+define('SJ_VERSION', 'admin v11');
 
 /* ---------- postavke ---------- */
 
