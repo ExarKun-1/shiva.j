@@ -98,6 +98,12 @@ sj_rate_limit('t7', 5, 3600);
 $zj = sj_read_json(SJ_DATA . '/zahtjevi.json', []);
 $ok(count($zj) <= 5000 && isset($zj['x|5999']) && !isset($zj['x|0']), 'zahtjevi.json najviše 5000 ključeva, najstariji se brišu (' . count($zj) . ')');
 
+/* K2: zamjena tjedne tajne: prošlotjedna oznaka iste adrese i dalje se prepoznaje */
+$cur = sj_short_ip('198.51.100.7');
+$sol = json_decode(file_get_contents(SJ_DATA . '/sol.json'), true); $sol['day'] = '2000-W01'; file_put_contents(SJ_DATA . '/sol.json', json_encode($sol));
+$new = sj_short_ip('198.51.100.7'); $old = sj_short_ip('198.51.100.7', true);
+$ok($new !== $cur && $old === $cur && sj_same_ip(['ip' => $cur], sj_short_ips('198.51.100.7')), 'nakon zamjene tajne stara oznaka iste adrese se prepoznaje');
+
 /* L: e-mail za brojanje */
 $ok(sj_email_key('Ana.Kovac+torba@GMAIL.com') === sj_email_key('anakovac@gmail.com') && sj_email_key('ana+1@primjer.hr') === 'ana@primjer.hr' && sj_email_key('a.b@primjer.hr') !== sj_email_key('ab@primjer.hr'), 'e-mail za granicu: mala slova, bez +oznake, Gmail bez točaka');
 

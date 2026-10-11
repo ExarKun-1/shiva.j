@@ -163,3 +163,14 @@ Preostali rizik: lažne narudžbe drže najviše 2 torbe po narudžbi i 2 narud�
 | Narudžbe bez unikata troše 30 potvrda na sat | srednje/nisko | najviše 3 potvrde na sat po adresi |
 | Odgovor otkriva broj tuđe narudžbe | nisko | broj uklonjen |
 | `tests/` zaštićen samo mod_aliasom | nisko | `tests/.htaccess` (Require all denied) |
+
+## Recenzija sigurnosti, 11. 10. 2026. (v34): 6/10, „nije spremno” → v35 (api v14, admin v14)
+
+| Nalaz | Težina | Stanje u v35 |
+|---|---|---|
+| Ukupna granica 6/h odbija i prave kupce, napadač je potroši | visoko | granica samo upozorava; preko pola ponude narudžba bez rezervacije |
+| Utrka oko ukupne granice (provjera izvan brave) | srednje | nema više odbijanja po toj granici; pola ponude provjerava se pod bravom rezervacija |
+| Ponovljeni ključ dobiva 429 | srednje | ključ se provjerava prije svih granica |
+| Tjedna zamjena tajne poništava granice po adresi i storno | nisko | čuva se prošlotjedna oznaka (`ip_prev`, `sj_short_ips`, `sj_same_ip`) |
+
+Jamstvo: nijedna granica više ne zatvara naručivanje; neplaćene narudžbe nikad ne drže više od pola slobodnih unikata.

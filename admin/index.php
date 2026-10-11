@@ -197,7 +197,7 @@ function sj_handle_action(string $act, array &$c): string {
       $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip) {
         $d = array_replace(sj_res_default(), $d);
         $n = 0;
-        foreach ($d['res'] as $id => $r) if (($r['ip'] ?? '') === $ip) { unset($d['res'][$id]); $n++; }
+        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip])) { unset($d['res'][$id]); $n++; } /* i zapisi s prošlotjednom oznakom iste adrese */
         return $n;
       }, sj_res_default());
       return 'Stornirano s iste adrese: ' . $n . ' rezervacija. Torbe su ponovno u prodaji.';
@@ -426,7 +426,7 @@ function sj_view_reservations(array $c): string {
   if (!$d['res']) $h .= '<p class="muted">Trenutno nema rezervacija.</p>';
   else {
     $h .= '<div class="tablewrap"><table><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th>Adresa</th><th></th></tr></thead><tbody>';
-    $perIp = []; foreach ($d['res'] as $r) if (!empty($r['ip'])) $perIp[$r['ip']] = ($perIp[$r['ip']] ?? 0) + 1;
+    $perIp = []; foreach ($d['res'] as $r) foreach (array_unique(array_filter([$r['ip'] ?? '', $r['ip_prev'] ?? ''])) as $k) $perIp[$k] = ($perIp[$k] ?? 0) + 1;
     foreach ($d['res'] as $id => $r) {
       $h .= '<tr><td><b>' . e($names[$id] ?? $id) . '</b><br><span class="muted mono">' . e($id) . '</span></td><td>' . e($r['name']) . '<br><span class="muted">' . e($r['email']) . '</span></td><td>' . e(sj_fmt_hr($r['since'])) . '</td><td>' . e(sj_fmt_hr($r['until'])) . (empty($r['ordered']) ? '<br><span class="muted">bez narudžbe</span>' : '') . '</td>';
       $ipc = (string)($r['ip'] ?? '');

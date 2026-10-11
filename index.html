@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v34 (2026-10-11)
+     SHIVA.J WEBSHOP — v35 (2026-10-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v35 — granice nikad ne zatvaraju trgovinu (uz api v14, admin v14):
+           narudžba bez rezervacije (kad je pola ponude u neplaćenim
+           narudžbama) ima vlastiti tekst na ploči „dobiva je tko prvi uplati”
      v34 — recenzija sigurnosti v33 (uz api v13, admin v13): stranica
            nepromijenjena osim verzije; zaštita je na poslužitelju
      v33 — blokira samo zaprimljena narudžba (uz api v12, admin v12):
@@ -1045,7 +1048,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v34</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v35</p>
 </footer>
 
 <!-- Košarica -->
@@ -1995,8 +1998,8 @@ function showOrderSuccess(srv){
   const items = cart.slice();
   const so = shipSel();
   const ship = so ? { id: so.id, label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
-  /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu */
-  items.forEach(item => {
+  /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu (osim kad narudžba nije dobila rezervaciju) */
+  if(!srv.unheld) items.forEach(item => {
     const p = PRODUCTS.find(x => x.id === item.id);
     if(p && !p.made) p.reserved = true;
   });
@@ -2007,7 +2010,7 @@ function showOrderSuccess(srv){
   const last = { at: Date.now(),
     items: items.map(p => ({ name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", cat: p.cat || "torbe" })),
     ship,
-    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, mailCustomer: srv.mailCustomer } };
+    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, unheld: !!srv.unheld, mailCustomer: srv.mailCustomer } };
   storeSet("last", last);
   renderGrid(); renderCart();
   renderPaymentPanel(last);
@@ -2095,6 +2098,7 @@ function paymentPanel(last){
   /* ime torbe uvijek uz riječ „torba”, da rod glagola ne ovisi o imenu (Luna, Mozaik…) */
   const thanks = anyUnique && untilIso
     ? `${many ? "Torbe su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do ${fmtDateTime(untilIso)}.`
+    : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate."
     : "Narudžba je zaprimljena. Artikle izrađujemo po narudžbi; rok izrade teče od primitka uplate.";
   const orderNo = srv.orderNo ? `<div><dt>Narudžba</dt><dd class="mono-val">${escHtml(srv.orderNo)}</dd></div>` : "";

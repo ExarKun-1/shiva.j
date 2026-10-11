@@ -263,6 +263,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p3.screenshot({ path: OUT + 'm-05-uplata-360-podaci.png' });
   await m3.close();
   // ---------- v31: krivi e-mail, prekid prije poslužitelja, ispravak → narudžba prolazi (ključ rezervacije) ----------
+  /* ispitna ponuda ima 4 slobodne torbe, a neplaćene narudžbe smiju držati pola: prije sljedećih scenarija rezervacije se prazne */
+  fs.writeFileSync(SITE + 'data/rezervacije.json', JSON.stringify({ res: {}, sold: {} }));
   const m5 = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const p5 = await m5.newPage(); watch(p5);
   await p5.goto(URL, { waitUntil: 'networkidle' }); await p5.waitForTimeout(300);
@@ -289,12 +291,23 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(!fb.hub3 && /barkod-uplata\.png$/.test(fb.src) && fb.vis, 'bez skripte ostaje opći barkod iz Postavki');
   ok(/Torba „Nera” je rezervirana/.test(await p4.textContent('.pay-thanks').catch(() => '')), 'rezervacija vrati 429, narudžba ipak prolazi');
   await m4.close();
+  // treća narudžba dok dvije neplaćene već drže pola ponude: prima se bez rezervacije, s jasnim tekstom
+  const m6 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const p6 = await m6.newPage(); watch(p6);
+  await p6.goto(URL, { waitUntil: 'networkidle' }); await p6.waitForTimeout(300);
+  await p6.click('.card:has(h3:text-is("Luna")) .add-btn'); await p6.click('#openCart'); await p6.waitForTimeout(300);
+  await p6.check('#shipOptions input[value="pickup"]');
+  await p6.fill('#fName', 'Treća Narudžba'); await p6.fill('#fEmail', 'treca@primjer.hr'); await p6.fill('#fPhone', '091 777 3333'); await p6.check('#fConsent');
+  await p6.click('#orderBtn'); await p6.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
+  const th6 = await p6.textContent('.pay-thanks').catch(() => '');
+  ok(/ne možemo rezervirati/.test(th6) && /tko prvi uplati/.test(th6) && /Sada/.test(await p6.textContent('.pay-steps')), 'narudžba bez rezervacije: ploča kaže „dobiva je tko prvi uplati”');
+  await m6.close();
 
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 10 && day.ig === 1 && day.orders === 6 && day.orders_m === 2 && day.press === 1 && day.rad >= 1 && day.cart === 6 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
+  ok(day.visits === 11 && day.ig === 1 && day.orders === 7 && day.orders_m === 2 && day.press === 1 && day.rad >= 1 && day.cart === 7 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /Rezervacija vrijedi 24 sata/.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, 24 sata');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

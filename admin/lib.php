@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v13');
+define('SJ_VERSION', 'admin v14');
 
 /* ---------- postavke ---------- */
 
@@ -89,17 +89,27 @@ function sj_shipping(): array {
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
 /* Skraćena adresa: HMAC adrese (IPv6 po mreži /48) s nasumičnom tajnom (data/sol.json, random_bytes, mijenja se
    svaki tjedan), 16 znakova. Kad tajna istekne, stare skraćene adrese više se ne mogu povezati s pravima. */
-function sj_short_ip(?string $ip = null): string {
+function sj_short_ip(?string $ip = null, bool $prev = false): string {
   $ip = $ip ?? (string)($_SERVER['REMOTE_ADDR'] ?? '?');
   /* IPv6: kućni priključak obično dobiva cijelu mrežu /56 ili /48, pa se broji mreža /48, ne pojedina adresa */
   if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) { $b = @inet_pton($ip); if ($b !== false) $ip = bin2hex(substr($b, 0, 6)) . '::/48'; }
-  /* tajna traje tjedan dana (ne mijenja se u ponoć, pa se granice po adresi ne poništavaju svaki dan) */
-  $day = date('o-\WW');
-  $key = (string)sj_with_lock(SJ_DATA . '/sol.json', function (array &$d) use ($day) {
-    if (($d['day'] ?? '') !== $day || empty($d['key'])) $d = ['day' => $day, 'key' => bin2hex(random_bytes(32))];
-    return $d['key'];
+  /* tajna traje tjedan dana; prošlotjedna se čuva, da granice i „Storniraj sve s ove adrese” prepoznaju istu adresu
+     i nakon zamjene tajne ($prev = true vraća oznaku po prošlotjednoj tajni, ili '' ako je nema) */
+  $week = date('o-\\WW');
+  $keys = (array)sj_with_lock(SJ_DATA . '/sol.json', function (array &$d) use ($week) {
+    if (($d['day'] ?? '') !== $week || empty($d['key'])) $d = ['day' => $week, 'key' => bin2hex(random_bytes(32)), 'prev' => (string)($d['key'] ?? '')];
+    return [(string)$d['key'], (string)($d['prev'] ?? '')];
   }, []);
-  return substr(hash_hmac('sha256', $ip, $key ?: $day), 0, 16);
+  $key = $prev ? ($keys[1] ?? '') : ($keys[0] ?? '');
+  if ($prev && $key === '') return '';
+  return substr(hash_hmac('sha256', $ip, $key ?: $week), 0, 16);
+}
+
+/* Oznake ove adrese (trenutna i prošlotjedna) i provjera pripada li zapis (ip, ip_prev) istoj adresi */
+function sj_short_ips(?string $ip = null): array { return array_values(array_filter([sj_short_ip($ip), sj_short_ip($ip, true)])); }
+function sj_same_ip(array $rec, array $mine): bool {
+  foreach (['ip', 'ip_prev'] as $k) if (!empty($rec[$k]) && in_array((string)$rec[$k], $mine, true)) return true;
+  return false;
 }
 
 /* Sve granice broje skraćenu adresu (sj_short_ip: IPv4 adresa ili IPv6 mreža /48), pa promjena IPv6 adrese ne
