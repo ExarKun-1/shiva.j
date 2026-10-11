@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v36 (2026-10-11)
+     SHIVA.J WEBSHOP — v37 (2026-10-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v37 — uz api v16: ploča poimence kaže koja je torba rezervirana, a
+           koja nije, kad narudžba dobije rezervaciju samo za dio torbi
      v36 — uz api v15: granica „pola ponude” računa samo stvarno
            slobodne torbe (stranica nepromijenjena osim verzije)
      v35 — granice nikad ne zatvaraju trgovinu (uz api v14, admin v14):
@@ -1050,7 +1052,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v36</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v37</p>
 </footer>
 
 <!-- Košarica -->
@@ -2001,18 +2003,19 @@ function showOrderSuccess(srv){
   const so = shipSel();
   const ship = so ? { id: so.id, label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
   /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu (osim kad narudžba nije dobila rezervaciju) */
-  if(!srv.unheld) items.forEach(item => {
+  const unheldIds = Array.isArray(srv.unheldIds) ? srv.unheldIds.map(String) : [];
+  items.forEach(item => {
     const p = PRODUCTS.find(x => x.id === item.id);
-    if(p && !p.made) p.reserved = true;
+    if(p && !p.made && !unheldIds.includes(p.id)) p.reserved = true;
   });
   cart = [];
   document.getElementById("fNote").value = "";
   clearOrderError();
   /* podaci za uplatu ostaju dostupni 24 sata i nakon osvježavanja (bez osobnih podataka) */
   const last = { at: Date.now(),
-    items: items.map(p => ({ name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", cat: p.cat || "torbe" })),
+    items: items.map(p => ({ id: p.id, name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", cat: p.cat || "torbe" })),
     ship,
-    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, unheld: !!srv.unheld, mailCustomer: srv.mailCustomer } };
+    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, unheld: !!srv.unheld, unheldIds: Array.isArray(srv.unheldIds) ? srv.unheldIds.map(String) : [], mailCustomer: srv.mailCustomer } };
   storeSet("last", last);
   renderGrid(); renderCart();
   renderPaymentPanel(last);
@@ -2098,7 +2101,14 @@ function paymentPanel(last){
   const many = uniqueNames.length > 1;           /* jedna ili više šarenih torbi: torbu/torbe, spremna/spremne */
   const torbu = many ? "torbe" : "torbu", Torbu = many ? "Torbe" : "Torbu";
   /* ime torbe uvijek uz riječ „torba”, da rod glagola ne ovisi o imenu (Luna, Mozaik…) */
-  const thanks = anyUnique && untilIso
+  /* narudžba kojoj je dio torbi ostao bez rezervacije (mnogo narudžbi na čekanju): poimence što je rezervirano, a što nije */
+  const unheldSet = new Set(srv.unheldIds || []);
+  const uq = items.filter(p => !p.made);
+  const heldN = uq.filter(p => !unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
+  const unheldN = uq.filter(p => unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
+  const thanks = anyUnique && untilIso && unheldN.length
+    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do ${fmtDateTime(untilIso)}. ${unheldN.length > 1 ? "Torbe " : "Torbu "}${unheldN.join(" i ")} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
+    : anyUnique && untilIso
     ? `${many ? "Torbe su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do ${fmtDateTime(untilIso)}.`
     : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate."

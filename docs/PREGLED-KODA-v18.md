@@ -182,3 +182,11 @@ Jamstvo: nijedna granica više ne zatvara naručivanje; neplaćene narudžbe nik
 | Torbe označene „Plaćeno” broje se kao slobodne, pa napadač drži sve stvarno slobodne | riješeno: brojanje pod bravom rezervacija, bez `sold` |
 | „Barem 2” dopušta blokadu cijele male ponude | riješeno: pola zaokruženo naniže, jedna samo ako ostaje barem jedna slobodna |
 | 30 potvrda/h može se potrošiti s desetak adresa | prihvaćeno: podaci za uplatu su na ekranu, vlasnica dobiva upozorenje |
+
+## Recenzija sigurnosti, 11. 10. 2026. (v36): 7/10, „spremno uz jedno ograničenje” → v37 (api v16)
+
+| Nalaz | Stanje u v37 |
+|---|---|
+| Granica „pola” provjerava se samo pri narudžbi; nakon prodaje druge torbe napadač drži više od pola | riješeno: `sj_blocking_ids` u statusu, rezervaciji i narudžbi; blokiraju samo najstarije do pola |
+| „Sve ili ništa” kod narudžbe s dvije torbe | riješeno: rezervira se koliko stane, ostatak poimence bez rezervacije |
+| `$heldIds` broji torbe koje nisu na prodaji | riješeno: broje se samo torbe na prodaji |
