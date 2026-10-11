@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v29 (2026-10-10)
+     SHIVA.J WEBSHOP — v30 (2026-10-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,14 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v30 — kratka recenzija v29 (8/10): za svaku narudžbu novi HUB-3
+           barkod (PDF417) s primateljem, IBAN-om, iznosom, modelom,
+           pozivom na broj i opisom, crta ga js/hub3-barcode.js (izdvojeno
+           iz bwip-js, MIT) tek na ploči za uplatu; bez skripte ostaje opći
+           barkod iz Postavki; nakon narudžbe nema obavijesti preko ploče,
+           a dok je košarica otvorena obavijesti idu na vrh; na mobitelu
+           naslov iznad torbe, krug manji; Kopiraj primatelja ispod adrese;
+           oznaka „Telefon” s pojašnjenjem ispod polja
      v29 — šesti krug vijeća (uz api v09, admin v09): ključ narudžbe
            preživi osvježavanje stranice i mijenja se samo s promjenom
            sadržaja narudžbe; nakon prekida veze „Pošalji ponovno” (isti
@@ -771,6 +779,10 @@
     font-size:.85rem;opacity:0;pointer-events:none;transition:all .3s;z-index:200;
   }
   .toast.show{opacity:1;transform:translate(-50%,0)}
+  /* dok je košarica otvorena, obavijest ide na vrh, da ne prekrije gumbe i podatke za uplatu */
+  body.cart-open .toast{top:20px;bottom:auto;transform:translate(-50%,-20px)}
+  body.cart-open .toast.show{transform:translate(-50%,0)}
+  .field-hint{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:4px}
 
   @media (max-width:820px){
     nav a.navlink{display:none}
@@ -778,8 +790,15 @@
     .about-inner{grid-template-columns:1fr;padding:64px 24px}
     .about-inner > div:first-child{position:static}
     .hero{padding:64px 24px 48px}
-    .hero.has-bag{grid-template-columns:1fr;gap:28px;padding-top:36px}
-    .hero.has-bag .hero-bag{order:-1;width:min(64vw,270px)}
+    /* mobitel: natpis i naslov iznad torbe, opis i gumb ispod; krug manji, da prvi ekran kaže što se gleda */
+    .hero.has-bag{grid-template-columns:1fr;gap:0;padding-top:36px}
+    .hero.has-bag .hero-text{display:contents}
+    .hero.has-bag .eyebrow{order:1}
+    .hero.has-bag h1{order:2}
+    .hero.has-bag .hero-bag{order:3;width:min(52vw,230px);margin-top:30px}
+    .hero.has-bag .hero-text > p:not(.eyebrow){order:4}
+    .hero.has-bag .seam{order:5}
+    .hero.has-bag .hero-cta{order:6;justify-self:start}
     .hero.has-bag h1{font-size:clamp(2rem,9vw,2.6rem)}
     .hero.has-bag .seam{margin-top:28px}
     .steps{grid-template-columns:1fr;gap:22px}
@@ -1015,7 +1034,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v29</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v30</p>
 </footer>
 
 <!-- Košarica -->
@@ -1045,8 +1064,9 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <input id="fEmail" type="email" required autocomplete="email" maxlength="120" inputmode="email">
       </div>
       <div>
-        <label for="fPhone">Telefon (za dostavu ili dogovor preuzimanja)</label>
-        <input id="fPhone" type="tel" required autocomplete="tel" maxlength="20" pattern="[0-9 +.\(\)\/\-]{6,20}" inputmode="tel" placeholder="npr. 091 234 5678">
+        <label for="fPhone">Telefon</label>
+        <input id="fPhone" type="tel" required autocomplete="tel" maxlength="20" pattern="[0-9 +.\(\)\/\-]{6,20}" inputmode="tel" placeholder="npr. 091 234 5678" aria-describedby="fPhoneHint">
+        <small class="field-hint" id="fPhoneHint">za dostavu ili dogovor preuzimanja</small>
       </div>
       <fieldset class="ship-field">
         <legend>Način dostave</legend>
@@ -1204,6 +1224,9 @@ const PAYMENT = {
    stranica ni ne čita dostavu i podatke za uplatu iz postavki.
    ========================================================= */
 const RESERVATION_ENDPOINT = "api";
+/* Skripta koja crta HUB-3 barkod za svaku narudžbu (PDF417, izdvojeno iz bwip-js, licenca MIT). Učitava se s vlastitog
+   poslužitelja tek kad se prikažu podaci za uplatu. Prazno "" = samo opći barkod iz Postavki (PAYMENT.barcode). */
+const HUB3_SCRIPT = "js/hub3-barcode.js";
 
 /* =========================================================
    PROIZVODI — popis je torbe.json (vidi PRODUCTS_URL), a piše ga
@@ -1975,6 +1998,50 @@ function showOrderSuccess(srv){
   renderGrid(); renderCart();
   renderPaymentPanel(last);
 }
+/* ---------- HUB-3 barkod (PDF417) za ovu narudžbu ----------
+   Format kao na papirnatoj uplatnici i u ZABA barkodu: retci odvojeni s \n, znakovi u UTF-8, iznos u centima
+   na 15 znamenki; podaci platitelja ostaju prazni (kupac je vlasnik računa u svojoj aplikaciji). */
+let pendingHub3 = "";
+let hub3Lib = null;
+function hub3Text(d){
+  const cut = (t, n) => String(t || "").replace(/[\r\n]+/g, " ").trim().slice(0, n);
+  const addr = String(d.address || ""), i = addr.lastIndexOf(",");
+  const street = i > 0 ? addr.slice(0, i) : addr, place = i > 0 ? addr.slice(i + 1) : "";
+  const cents = Math.round(Number(d.amount) * 100);
+  return ["HRVHUB30", "EUR", String(cents).padStart(15, "0"), "", "", "",
+    cut(d.recipient, 25), cut(street, 25), cut(place, 27), cut(String(d.iban).replace(/\s+/g, ""), 21),
+    cut(d.model || "HR00", 4), cut(d.ref, 22), "OTHR", cut(d.desc, 35)].join("\n") + "\n";
+}
+function loadHub3Lib(){
+  if(window.SJBarcode) return Promise.resolve(window.SJBarcode);
+  if(!hub3Lib) hub3Lib = new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = HUB3_SCRIPT; sc.async = true;
+    sc.onload = () => window.SJBarcode ? ok(window.SJBarcode) : fail(new Error("nema SJBarcode"));
+    sc.onerror = () => { hub3Lib = null; fail(new Error("skripta")); };
+    document.head.appendChild(sc);
+  });
+  return hub3Lib;
+}
+async function drawHub3(){
+  const text = pendingHub3, fig = document.getElementById("payBarcode");
+  if(!text || !fig || !HUB3_SCRIPT) return;
+  try {
+    const lib = await loadHub3Lib();
+    if(text !== pendingHub3 || !document.body.contains(fig)) return; /* ploča se u međuvremenu promijenila */
+    const canvas = document.createElement("canvas");
+    /* PDF417 s razinom ispravka pogrešaka 4 i 9 stupaca, kao HUB-3; tekst ide kao bajtovi UTF-8 */
+    lib.pdf417(canvas, { bcid: "pdf417", text: unescape(encodeURIComponent(text)), eclevel: 4, columns: 9, scale: 2, rowmult: 3, paddingwidth: 6, paddingheight: 6, backgroundcolor: "FFFFFF" });
+    const img = fig.querySelector("img");
+    img.dataset.hub3 = "1";
+    img.src = canvas.toDataURL("image/png");
+    img.alt = "Barkod za plaćanje ove narudžbe u aplikaciji banke";
+    const cap = fig.querySelector(".bc-text");
+    if(cap) cap.textContent = "Skenirajte barkod u aplikaciji svoje banke: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami, a vi samo potvrdite plaćanje.";
+    const zoom = fig.querySelector(".bc-zoom"); if(zoom) zoom.remove();
+    fig.hidden = false;
+  } catch(err){ /* ostaje opći barkod iz Postavki (ili ga nema) */ }
+}
 function renderPaymentPanel(last){
   const empty = document.getElementById("emptyCart");
   empty.classList.add("pay-mode");
@@ -1983,6 +2050,9 @@ function renderPaymentPanel(last){
   document.querySelector(".drawer-body").scrollTop = 0;
   /* fokus na zahvalu: čitač zaslona čuje ishod, a fokus ne ostaje na skrivenom obrascu */
   const th = empty.querySelector(".pay-thanks"); if(th) th.focus({ preventScroll: true });
+  drawHub3();
+  /* ploča „Hvala vam!” sama kaže da je narudžba stigla; obavijest od ranije ne smije je prekriti */
+  clearTimeout(toastTimer); document.getElementById("toast").classList.remove("show");
 }
 
 /* ---------- podaci za uplatu (prikaz nakon narudžbe) ---------- */
@@ -2041,10 +2111,14 @@ function paymentPanel(last){
     `Opis: ${desc}`
   ].join("\n");
   const share = navigator.share ? `<button type="button" class="copy-btn share-btn" data-share="${escHtml(allText)}">Podijeli / spremi</button>` : "";
-  const barcode = PAYMENT.barcode ? `
-      <figure class="pay-barcode">
-        <img src="${escHtml(PAYMENT.barcode)}" alt="Barkod za plaćanje u aplikaciji banke" onerror="this.closest('figure').hidden = true">
-        <figcaption>Skenirajte barkod u aplikaciji svoje banke: primatelj i IBAN popune se sami. Zatim upišite iznos ${so ? escHtml(amountTxt) : ""}, model ${escHtml(PAYMENT.model)} i poziv na broj ${escHtml(ref || "(datum uplate)")}; iznos i poziv na broj možete kopirati gumbima iznad. Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke. <a href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a></figcaption>
+  /* barkod: za svaku narudžbu novi HUB-3 barkod s iznosom, modelom, pozivom na broj i opisom (crta ga js/hub3-barcode.js
+     tek kad se ploča prikaže); dok se crta ili ako ne uspije, vidi se opći barkod iz Postavki (samo primatelj i IBAN) */
+  pendingHub3 = (payOk && so && ref) ? hub3Text({ amount: totalNum, recipient: PAYMENT.recipient, address: PAYMENT.address, iban: PAYMENT.iban, model: PAYMENT.model, ref, desc }) : "";
+  const genericCap = `Skenirajte barkod u aplikaciji svoje banke: primatelj i IBAN popune se sami. Zatim upišite iznos ${so ? escHtml(amountTxt) : ""}, model ${escHtml(PAYMENT.model)} i poziv na broj ${escHtml(ref || "(datum uplate)")}; iznos i poziv na broj možete kopirati gumbima iznad.`;
+  const barcode = (PAYMENT.barcode || pendingHub3) ? `
+      <figure class="pay-barcode" id="payBarcode"${PAYMENT.barcode ? "" : " hidden"}>
+        <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">
+        <figcaption><span class="bc-text">${genericCap}</span> Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
       </figure>` : "";
   const mailSent = srv.mailCustomer === false
     ? `Potvrdu narudžbe e-mailom nismo uspjeli poslati automatski; javit ćemo vam se sami e-mailom. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`
@@ -2062,7 +2136,7 @@ function paymentPanel(last){
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam e-mailom.</p>`}
       ${payOk ? `<dl class="pay-data">${orderNo}
-        <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${copyBtn(PAYMENT.recipient, "Primatelj")}<br>${escHtml(PAYMENT.address)}</dd></div>
+        <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}<br>${copyBtn(PAYMENT.recipient, "Primatelj")}</dd></div>
         <div><dt>IBAN</dt><dd><span class="mono-val iban">${ibanPretty(PAYMENT.iban)}</span><br>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</dd></div>
         <div><dt>Iznos</dt><dd>${amount}</dd></div>${shipRow}
         <div><dt>Model</dt><dd class="mono-val">${escHtml(PAYMENT.model)}</dd></div>
@@ -2146,7 +2220,6 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
     heldRes = null; storeSet("hold", null);
     storeSet("okey", null); /* narudžba je prošla: sljedeća dobiva novi ključ */
     showOrderSuccess(data);
-    showToast("Narudžba je poslana ✓");
   } catch (err) {
     /* mreža/servis nedostupan ili istek vremena: narudžba je možda ipak stigla. Prvo se nudi ponovno slanje
        s istim ključem (ne može nastati druga narudžba), e-mail tek kao druga mogućnost */
