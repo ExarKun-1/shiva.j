@@ -150,3 +150,7 @@ koraku 3, „3 unikata dostupno”, jednina za dvije torbe, „Luna/Mozaik je re
 „Plaćeno”, ručno „Plaćeno” brisalo tuđu rezervaciju, narudžba prolazila za torbu koju drži drugi kupac, rezervacija bez narudžbe
 24 h, zapis JSON-a bez provjere; kupac „Da, uz prave fotografije”: vitičasta zagrada PDV-a u Uvjetima, barkod na istom mobitelu,
 Kopiraj uz primatelja). Sve to napravljeno u v29, osim pravnog teksta i odluka vlasnice (ODLUKE-I-PODACI.md, stavke 12 i 13).
+
+**v30 (11. 10. 2026.):** kratka recenzija v29 (8/10: jasna ponuda, povjerenje, ploča nakon narudžbe; trenje u uplati).
+Napravljeno: novi HUB-3 barkod za svaku narudžbu (odluka korisnika), obavijest više ne prekriva ploču, naslov iznad torbe na
+mobitelu, Kopiraj primatelja ispod adrese, kraća oznaka telefona. Uvjeti t. 4 („u roku 24 sata”) idu pravniku.
