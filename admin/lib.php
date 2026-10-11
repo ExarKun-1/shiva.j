@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v16');
+define('SJ_VERSION', 'admin v17');
 
 /* ---------- postavke ---------- */
 
@@ -173,20 +173,45 @@ function sj_orders_prepend(array $entry, int $keep = 300): void {
   }, []);
 }
 
-/* Narudžba se u brojač „plaćeno” upisuje najviše jednom: traži narudžbu po tokenu rezervacije ili broju,
-   upisuje paidAt (ako nema) i paidCounted; vraća true samo prvi put. */
+/* Datoteke s narudžbama, od najnovije: narudzbe.json pa godišnje arhive (novija godina prva) */
+function sj_order_files(): array {
+  $arh = glob(SJ_DATA . '/narudzbe-arhiva-*.json') ?: [];
+  rsort($arh);
+  return array_merge([SJ_DATA . '/narudzbe.json'], $arh);
+}
+
+/* Prva narudžba po broju ili tokenu rezervacije, i u arhivi (za čitanje) */
+function sj_order_find(array $by): ?array {
+  foreach (sj_order_files() as $f) foreach (sj_read_json($f, []) as $o) if (sj_order_hit($o, $by)) return $o;
+  return null;
+}
+
+function sj_order_hit(array $o, array $by): bool {
+  return (isset($by['no']) && $by['no'] !== '' && ($o['no'] ?? '') === $by['no'])
+      || (isset($by['token']) && $by['token'] !== '' && (($o['reservation']['token'] ?? '') === $by['token']));
+}
+
+/* Promjena prve pronađene narudžbe pod bravom njene datoteke; vraća false ako narudžbe nema */
+function sj_order_edit(array $by, callable $fn): bool {
+  foreach (sj_order_files() as $f) {
+    if (!is_file($f)) continue;
+    $hit = sj_with_lock($f, function (array &$list) use ($by, $fn) {
+      foreach ($list as &$o) if (sj_order_hit($o, $by)) { $fn($o); return true; }
+      return false;
+    }, []);
+    if ($hit) return true;
+  }
+  return false;
+}
+
+/* Narudžba se u brojač „plaćeno” upisuje najviše jednom: traži narudžbu po tokenu rezervacije ili broju
+   (i u arhivi), upisuje paidAt (ako nema) i paidCounted; vraća true samo prvi put. */
 function sj_order_paid_once(array $by): bool {
   $first = false;
-  sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($by, &$first) {
-    foreach ($list as &$o) {
-      $hit = (isset($by['no']) && ($o['no'] ?? '') === $by['no']) || (isset($by['token']) && (($o['reservation']['token'] ?? '') === $by['token']));
-      if (!$hit) continue;
-      if (empty($o['paidAt'])) $o['paidAt'] = sj_iso(time());
-      if (empty($o['paidCounted'])) { $o['paidCounted'] = true; $first = true; }
-      return true;
-    }
-    return false;
-  }, []);
+  sj_order_edit($by, function (array &$o) use (&$first) {
+    if (empty($o['paidAt'])) $o['paidAt'] = sj_iso(time());
+    if (empty($o['paidCounted'])) { $o['paidCounted'] = true; $first = true; }
+  });
   return $first;
 }
 

@@ -197,3 +197,13 @@ Jamstvo: nijedna granica više ne zatvara naručivanje; neplaćene narudžbe nik
 |---|---|
 | Plaćanje sporne torbe pripisuje se krivom kupcu (jedini gumb bio je `res_sold`) | riješeno: `order_paid` za cijelu narudžbu, torbe bez rezervacije pripadaju onome tko je prvi platio, upozorenja |
 | Obećana rezervacija može tiho prestati vrijediti kad se proda druga torba | riješeno: dodijeljena rezervacija vrijedi do isteka; granica „pola” za nove; upozorenje u adminu kad je više od pola |
+
+## Recenzija sigurnosti, 11. 10. 2026. (v38): 8/10, „spremno” → v39 (admin v17)
+
+Jamstva: trgovina se ne može zatvoriti (nove rezervacije najviše pola stvarno slobodnih torbi) — da; dvije osobe ne mogu istodobno rezervirati istu torbu — da.
+
+| Nalaz | Stanje u v39 |
+|---|---|
+| `order_paid` ne čita katalog: ručno prodana torba tiho se upisuje kao plaćena za kupca | riješeno: torba koja nije na prodaji (prodana, rezervirana, skrivena, obrisana) se ne upisuje, nego se navodi u upozorenju |
+| „Ukloni oznaku” briše samo datum uplate, torbe ostaju „prodane” | riješeno: torbe te narudžbe (isti token ili broj narudžbe) vraćaju se u prodaju, poruka to kaže |
+| `order_paid` ne nalazi narudžbe iz arhive | riješeno: `sj_order_find` / `sj_order_edit` traže i u `narudzbe-arhiva-GGGG.json`; i brojač „plaćeno” (`sj_order_paid_once`) |

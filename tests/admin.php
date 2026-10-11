@@ -45,6 +45,28 @@ $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0403', 'back' => '?s=narud
 $r = $rd(); $cnt = array_values(json_decode((string)@file_get_contents($D . '/brojac.json'), true) ?: [[]])[0];
 $ok(($r['sold']['tara']['token'] ?? '') === 'tC' && !isset($r['res']['tara']) && (int)($cnt['paid'] ?? 0) === 3, 'aktivna rezervacija plaćena iz Narudžbi: Tara prodana C-u, plaćeno se broji jednom po narudžbi (3)');
 
+/* v39: torba bez rezervacije koja u katalogu više nije na prodaji (zora ručno prodana, mira ručno rezervirana) se ne upisuje */
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0410', 'at' => '2026-10-11T13:00:00Z', 'name' => 'Dora D', 'email' => 'd@p.hr', 'reservation' => null, 'order' => ['items' => [['id' => 'zora', 'made' => false], ['id' => 'mira', 'made' => false], ['id' => 'luna', 'made' => false]], 'unheld' => ['zora', 'mira', 'luna']]],
+]));
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
+$out = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0410', 'back' => '?s=narudzbe']);
+$r = $rd();
+$ok(!isset($r['sold']['zora']) && !isset($r['sold']['mira']) && ($r['sold']['luna']['no'] ?? '') === 'SJ-2026-0410' && str_contains($out, 'pa nisu označene: zora, mira'), 'Plaćeno: ručno prodana/rezervirana torba se ne upisuje i navodi se u upozorenju, slobodna (luna) se upisuje');
+/* v39: „Ukloni oznaku” vraća torbe ove narudžbe u prodaju, tuđe ne dira */
+$r['sold']['tara'] = ['id' => 'tara', 'token' => 'tX', 'email' => 'x@p.hr', 'paidAt' => '2026-10-11T00:00:00Z'];
+file_put_contents($D . '/rezervacije.json', json_encode($r));
+$out = $req('POST', ['act' => 'order_unpaid', 'no' => 'SJ-2026-0410', 'back' => '?s=narudzbe']);
+$r = $rd(); $o = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
+$ok(!isset($r['sold']['luna']) && isset($r['sold']['tara']) && empty($o['paidAt']) && !empty($o['paidCounted']) && str_contains($out, 'luna vraćene su u prodaju'), 'Ukloni oznaku: luna vraćena u prodaju, tuđa tara ostaje, brojač se ne dira');
+/* v39: narudžba iz godišnje arhive (starija od zadnjih 300) */
+file_put_contents($D . '/narudzbe-arhiva-2026.json', json_encode([
+  ['no' => 'SJ-2026-0001', 'at' => '2026-01-11T10:00:00Z', 'name' => 'Ema E', 'email' => 'e@p.hr', 'reservation' => null, 'order' => ['items' => [['id' => 'vela', 'made' => false]], 'unheld' => ['vela']]],
+]));
+$out = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0001', 'back' => '?s=narudzbe']);
+$a = json_decode(file_get_contents($D . '/narudzbe-arhiva-2026.json'), true)[0];
+$ok(($rd()['sold']['vela']['email'] ?? '') === 'e@p.hr' && !empty($a['paidAt']) && !str_contains($out, 'nije nađena'), 'Plaćeno radi i za narudžbu iz arhive');
+
 /* upozorenje u Rezervacijama kad neplaćene drže više od pola slobodnih */
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
   'luna' => ['id' => 'luna', 'token' => 't1', 'name' => 'X', 'email' => 'x@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z'],

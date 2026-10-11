@@ -222,47 +222,61 @@ function sj_handle_action(string $act, array &$c): string {
 
     case 'order_paid':
     case 'order_unpaid': {
-      /* „Plaćeno” za narudžbe bez rezervacije (samo artikli po narudžbi); narudžbe s unikatom označuju se kod rezervacija */
+      /* „Plaćeno” / „Ukloni oznaku” za cijelu narudžbu (i staru, iz arhive) */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
       if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
+      $ord = sj_order_find(['no' => $no]); /* i u arhivi (starije od zadnjih 300) */
+      if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
+      $tok = (string)($ord['reservation']['token'] ?? '');
+      $ids = [];
+      foreach ((array)($ord['order']['items'] ?? []) as $it) if (empty($it['made']) && !empty($it['id'])) $ids[] = (string)$it['id'];
+      /* zapis „plaćeno” pripada ovoj narudžbi: isti token rezervacije ili broj narudžbe (torbe bez rezervacije) */
+      $isOurs = function (array $sd) use ($tok, $no) { return ($tok !== '' && ($sd['token'] ?? '') === $tok) || ($sd['no'] ?? '') === $no; };
       if ($act === 'order_paid') {
         /* „Plaćeno” za cijelu narudžbu: torbe s rezervacijom ove narudžbe postaju plaćene (kao kod rezervacija);
            torbe bez rezervacije (narudžba je stigla kad je pola ponude već čekalo uplatu) ili s isteklom rezervacijom
-           pripadaju ovom kupcu ako je uplatio prvi — tuđa rezervacija na njima se uklanja i vlasnica dobiva upozorenje */
-        $ord = null;
-        foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) if (($o['no'] ?? '') === $no) { $ord = $o; break; }
-        if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
-        $tok = (string)($ord['reservation']['token'] ?? '');
-        $ids = [];
-        foreach ((array)($ord['order']['items'] ?? []) as $it) if (empty($it['made']) && !empty($it['id'])) $ids[] = (string)$it['id'];
-        $out = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $tok, $ord) {
+           pripadaju ovom kupcu ako je uplatio prvi — tuđa rezervacija na njima se uklanja i vlasnica dobiva upozorenje.
+           Takva torba koja u katalogu više nije na prodaji (ručno prodana ili rezervirana, skrivena, obrisana) se ne
+           upisuje, nego se navodi u upozorenju. */
+        $cat = [];
+        foreach (sj_products() as $p) if (!empty($p['id'])) $cat[(string)$p['id']] = $p;
+        $out = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $tok, $ord, $no, $cat, $isOurs) {
           $d = array_replace(sj_res_default(), $d);
-          $taken = []; $other = [];
+          $taken = []; $other = []; $offsale = [];
           foreach ($ids as $id) {
             if (isset($d['sold'][$id])) {
               $sd = $d['sold'][$id];
-              $ours = ($tok !== '' && ($sd['token'] ?? '') === $tok) || strcasecmp((string)($sd['email'] ?? ''), (string)($ord['email'] ?? '')) === 0;
+              $ours = $isOurs($sd) || strcasecmp((string)($sd['email'] ?? ''), (string)($ord['email'] ?? '')) === 0;
               if (!$ours) $taken[] = $id; /* već plaćena za drugog kupca */
               continue;
             }
             $r = $d['res'][$id] ?? null;
             if ($r && $tok !== '' && ($r['token'] ?? '') === $tok) { sj_mark_paid($d, $id); continue; }
+            $p = $cat[$id] ?? null;
+            if (!$p || !empty($p['hidden']) || !empty($p['sold']) || !empty($p['reserved'])) { $offsale[] = $id; continue; }
             if ($r && !empty($r['ordered'])) $other[] = $id . ' (' . ($r['name'] ?? '') . ', ' . ($r['email'] ?? '') . ')';
             unset($d['res'][$id]);
-            $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'name' => (string)($ord['name'] ?? ''), 'email' => (string)($ord['email'] ?? ''), 'since' => (string)($ord['at'] ?? ''), 'paidAt' => sj_iso(time())];
+            $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'no' => $no, 'name' => (string)($ord['name'] ?? ''), 'email' => (string)($ord['email'] ?? ''), 'since' => (string)($ord['at'] ?? ''), 'paidAt' => sj_iso(time())];
           }
-          return ['taken' => $taken, 'other' => $other];
+          return ['taken' => $taken, 'other' => $other, 'offsale' => $offsale];
         }, sj_res_default());
         if (sj_order_paid_once(['no' => $no])) sj_count('paid');
         $warn = [];
         if ($out['taken']) $warn[] = implode(', ', $out['taken']) . ' je već plaćena za drugog kupca — javite se kupcu iz ove narudžbe';
+        if ($out['offsale']) $warn[] = 'u katalogu nisu na prodaji (prodane, rezervirane, skrivene ili obrisane) pa nisu označene: ' . implode(', ', $out['offsale']) . ' — provjerite i javite se kupcu';
         if ($out['other']) $warn[] = 'uklonjena je neplaćena rezervacija drugog kupca: ' . implode('; ', $out['other']) . ' — javite mu se da je torba prodana';
         if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.';
       } else {
-        sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no) {
-          foreach ($list as &$o) if (($o['no'] ?? '') === $no) unset($o['paidAt']); /* paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje */
-          return true;
+        /* „Ukloni oznaku”: narudžba više nije plaćena, a njezine torbe s oznakom „plaćeno” vraćaju se u prodaju
+           (bez rezervacije). paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje. */
+        $back = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $isOurs) {
+          $d = array_replace(sj_res_default(), $d);
+          $out = [];
+          foreach ($ids as $id) if (isset($d['sold'][$id]) && $isOurs($d['sold'][$id])) { unset($d['sold'][$id]); $out[] = $id; }
+          return $out;
         }, []);
+        sj_order_edit(['no' => $no], function (array &$o) { unset($o['paidAt']); });
+        if ($back) return 'Oznaka uklonjena: ' . $no . '. Torbe ' . implode(', ', $back) . ' vraćene su u prodaju bez rezervacije.';
       }
       return ($act === 'order_paid' ? 'Označeno kao plaćeno: ' : 'Oznaka uklonjena: ') . $no;
     }
