@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v12)
+   SHIVA.J — javni API na hostingu   (api/index.php v13)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -15,6 +15,9 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v13: IPv6 po mreži /48; sve granice po skraćenoj adresi; najviše 6 novih neplaćenih narudžbi sa šarenom
+        torbom na sat za cijelu stranicu i 3 automatske potvrde na sat po adresi (limits u config.json);
+        odgovor „već je u vašoj narudžbi” bez broja narudžbe.
    v12: blokira samo zaprimljena narudžba: rezervacija iz košarice (bez narudžbe) ne blokira druge kupce ni na
         stranici ni pri narudžbi (prva zaprimljena narudžba dobiva torbu); IPv6 se broji po mreži /64, tajna za
         skraćenu adresu traje tjedan; granica po e-mailu broji normaliziran e-mail (sj_email_key); najviše 30
@@ -90,6 +93,8 @@ function sj_limit(string $k, int $def): int { $l = sj_config()['limits'] ?? []; 
 define('SJ_HOLDS_PER_IP', sj_limit('holds_per_ip', 2));             /* nenaručene rezervacije s iste skraćene adrese */
 define('SJ_MAX_UNIQUE_PER_ORDER', sj_limit('unique_per_order', 2)); /* šarene torbe (unikati) u jednoj narudžbi */
 define('SJ_ORDERS_PER_IP', sj_limit('orders_per_ip', 2));           /* neplaćene narudžbe s unikatom s iste adrese */
+define('SJ_UNIQUE_ORDERS_PER_HOUR', sj_limit('unique_orders_per_hour', 6)); /* nove narudžbe sa šarenom torbom na sat, ukupno */
+define('SJ_CONFIRM_PER_IP', sj_limit('confirm_per_ip', 3));         /* automatske potvrde kupcima na sat s iste adrese */
 
 function sj_unique_words(int $n): string { return $n === 1 ? 'može biti najviše jedna šarena torba' : ($n <= 4 ? 'mogu biti najviše ' . [2 => 'dvije', 3 => 'tri', 4 => 'četiri'][$n] . ' šarene torbe' : 'može biti najviše ' . $n . ' šarenih torbi'); }
 
@@ -250,6 +255,15 @@ if ($a === 'order') {
   $seen = is_numeric($in['total'] ?? null) ? round((float)$in['total'], 2) : null;
   if ($seen !== null && abs($seen - $total) > 0.005) sj_json_out(['ok' => false, 'error' => 'Cijene su se u međuvremenu promijenile. Osvježite stranicu i pošaljite narudžbu ponovno.'], 409);
 
+  /* ukupna granica novih narudžbi sa šarenom torbom (napad s mnogo mreža): provjera ovdje, upis kad je narudžba zaprimljena */
+  if ($uniqueIds) {
+    $recentU = array_filter((array)(sj_read_json(SJ_DATA . '/zahtjevi.json', [])['sve|orders_u'] ?? []), fn($t) => (int)$t > time() - 3600);
+    if (count($recentU) >= SJ_UNIQUE_ORDERS_PER_HOUR) {
+      if (sj_global_limit('alert_u', 1, 3600)) sj_send_mail((string)$c['owner_email'], 'PAŽNJA: mnogo narudžbi u kratkom vremenu — ' . $c['shop'], 'U zadnjih sat vremena stiglo je ' . SJ_UNIQUE_ORDERS_PER_HOUR . ' narudžbi sa šarenim torbama, pa stranica sljedeći sat ne prima nove (kupci vide poruku da se jave e-mailom). Ako su narudžbe lažne, stornirajte ih u adminu → Rezervacije. Ova poruka stiže najviše jednom na sat.');
+      sj_json_out(['ok' => false, 'error' => 'Upravo stiže neuobičajeno mnogo narudžbi, pa ih nakratko ne primamo automatski. Pišite nam e-mailom na ' . $c['owner_email'] . ' i torbu ćemo vam rezervirati ručno.'], 429);
+    }
+  }
+
   $holdKey = sj_str($in['hold'] ?? '', 64);
   if (!preg_match('/^[a-f0-9]{32}$/', $holdKey)) $holdKey = '';
   $key = sj_str($in['key'] ?? '', 64);
@@ -337,10 +351,9 @@ if ($a === 'order') {
   if (isset($done['limit'])) sj_json_out(['ok' => false, 'error' => $done['limit']], (int)$done['status']);
   if (isset($done['mine'])) {
     /* torba je već u ranijoj narudžbi istog kupca (npr. prvi pokušaj je stigao, a kupac je zatim promijenio napomenu) */
-    $prevNo = '';
-    foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (isset($done['mine'][(string)($prev['reservation']['token'] ?? '')])) { $prevNo = (string)$prev['no']; break; }
     $names = array_map(fn($id) => '„' . ($prods[$id]['name'] ?? $id) . '”', array_values($done['mine']));
-    sj_json_out(['ok' => false, 'error' => 'Torba ' . implode(', ', $names) . ' već je u vašoj narudžbi' . ($prevNo !== '' ? ' ' . $prevNo : '') . '; podatke za uplatu poslali smo vam e-mailom. Ako želite nešto promijeniti, odgovorite na taj e-mail.'], 409);
+    /* broj narudžbe se ne navodi: tko upiše tuđi e-mail, ne smije saznati tuđu narudžbu */
+    sj_json_out(['ok' => false, 'error' => 'Torba ' . implode(', ', $names) . ' već je u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom. Ako želite nešto promijeniti, odgovorite na taj e-mail.'], 409);
   }
   if (isset($done['prev'])) {
     $prev = $done['prev'];
@@ -352,11 +365,12 @@ if ($a === 'order') {
   $ref = sj_payment_ref($no);
   $stornoUrl = $res ? sj_storno_url((string)$res['token']) : '';
   sj_rate_limit('order', PHP_INT_MAX, 3600); /* zaprimljena narudžba ulazi u ograničenje (provjera je bila na početku) */
+  if ($uniqueIds) sj_global_limit('orders_u', PHP_INT_MAX, 3600);
   sj_count('orders');
   if (!$uniqueIds) sj_count('orders_m'); /* narudžba bez unikata (samo artikli po narudžbi) */
 
   /* najviše 30 automatskih potvrda kupcima na sat za cijelu stranicu: stranica se ne smije koristiti za slanje pošte */
-  $capped = !empty($c['confirm_customer']) && !sj_global_limit('confirm', 30, 3600);
+  $capped = !empty($c['confirm_customer']) && (!sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600) || !sj_global_limit('confirm', 30, 3600));
 
   /* e-mail vlasnici */
   $lines = ["Nova narudžba $no — " . $c['shop'], ""];
@@ -378,7 +392,7 @@ if ($a === 'order') {
     if (!empty($res['crowded'])) $lines[] = 'PAŽNJA: neplaćene narudžbe već drže ' . (int)$res['held'] . ' šarenih torbi, više od pola slobodne ponude. Zato ova narudžba drži torbu samo ' . sj_hours_text((int)$res['hours']) . '. Ako sumnjate na lažne narudžbe, u adminu → Rezervacije stornirajte ih gumbom „Storniraj sve s ove adrese”.';
     $lines[] = $stornoUrl !== '' ? 'Plaćeno / storno rezervacije (uz prijavu u admin): ' . $stornoUrl : 'Plaćeno / storno rezervacije: u adminu pod „Rezervacije” (upišite adresu stranice u Postavkama, pa će ovdje stajati izravan link).';
   }
-  if ($capped) $lines[] = 'PAŽNJA: u zadnjih sat vremena stiglo je više od 30 narudžbi, pa kupcu NIJE poslana automatska potvrda (zaštita od zlouporabe). Ako je narudžba prava, pošaljite kupcu podatke za uplatu ručno.';
+  if ($capped) $lines[] = 'PAŽNJA: s iste veze ili ukupno stiglo je u zadnjih sat vremena previše narudžbi, pa kupcu NIJE poslana automatska potvrda (zaštita od zlouporabe). Ako je narudžba prava, pošaljite kupcu podatke za uplatu ručno.';
   if (!$uniqueIds) $lines[] = 'Narudžba bez unikata: kad kupac uplati, označite je kao plaćenu u adminu → Narudžbe (tako je Mjerenje broji).';
   if (($ship['id'] ?? '') === 'pickup') $lines[] = 'Preuzimanje u radionici: kad je narudžba spremna, javite se kupcu i dogovorite termin.';
   $lines[] = '';

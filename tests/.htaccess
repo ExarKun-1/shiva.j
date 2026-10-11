@@ -1,0 +1,8 @@
+# Testovi nisu za javnost: mapa se ne prenosi na hosting, a ako se ipak prenese, ostaje zatvorena.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>
