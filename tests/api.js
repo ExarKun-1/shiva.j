@@ -101,7 +101,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const c3r = await post('order', order('api-key-0018-rrrr', 'c3@primjer.hr', [{ id: 'vela' }], 70));
     ok(c3r.data.repeated && c3r.data.orderNo === c3.data.orderNo && c3r.data.reserved === false, 'ponovljeni ključ vraća istu narudžbu bez rezervacije');
     const mlc = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/Subject: PAŽNJA, mnogo rezervacija — Narudžba/.test(mlc) && /NIJE dobila rezervaciju/.test(mlc) && /dobiva je tko prvi uplati/.test(mlc), 'vlasnica dobiva upozorenje, kupac objašnjenje „tko prvi uplati”');
+    ok(/Subject: PAŽNJA, mnogo rezervacija — Narudžba/.test(mlc) && /bez rezervacije \(dobiva ih tko prvi uplati\): Vela/.test(mlc) && /dobiva je tko prvi uplati/.test(mlc), 'vlasnica dobiva upozorenje, kupac objašnjenje „tko prvi uplati”');
     // 11) tuđa košarica (rezervacija bez narudžbe) ne blokira
     clearLimits(); clearRes();
     const cart = await post('reserve', { ids: ['nera'], name: 'Košarica', email: 'kosarica@primjer.hr' });
@@ -131,6 +131,33 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     { const r = read('rezervacije.json'); r.res = {}; r.sold.vela = { id: 'vela', paidAt: '2026-10-11T00:00:00Z' }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
     const f3 = await post('order', order('api-key-0030-ffcc', 'f3@primjer.hr', [{ id: 'nera' }], 85));
     ok(f3.data.ok && f3.data.reserved === false && !read('rezervacije.json').res.nera, 'zadnja slobodna torba ne rezervira se nikome (dobiva je tko prvi uplati)');
+    clearRes();
+    // 13c) granica vrijedi stalno: nakon prodaje druge torbe novija rezervacija više ne blokira
+    clearLimits(); clearRes();
+    const g1 = await post('order', order('api-key-0031-ggaa', 'g1@primjer.hr', [{ id: 'luna' }], 65));
+    await new Promise(r => setTimeout(r, 1100));
+    const g2 = await post('order', order('api-key-0032-ggbb', 'g2@primjer.hr', [{ id: 'tara' }], 55));
+    { const r = read('rezervacije.json'); r.sold = { vela: { id: 'vela', paidAt: '2026-10-11T00:00:00Z' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
+    const stG = await (await fetch(U + 'status')).json();
+    ok(g1.data.reserved && g2.data.reserved && stG.ids.includes('luna') && !stG.ids.includes('tara'), 'nakon prodaje treće torbe slobodne su 3, blokira samo najstarija rezervacija (Luna), Tara se drugima prikazuje dostupnom');
+    const g3 = await post('order', order('api-key-0033-ggcc', 'g3@primjer.hr', [{ id: 'tara' }], 55));
+    const mlg = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+    ok(g3.data.ok && g3.data.reserved === false && read('rezervacije.json').res.tara.email === 'g2@primjer.hr' && /već u ranijoj neplaćenoj narudžbi: tara/.test(mlg), 'drugi kupac može naručiti Taru (tko prvi uplati), stara narudžba ostaje zapisana, vlasnica obaviještena');
+    const g4 = await post('order', order('api-key-0034-ggdd', 'g4@primjer.hr', [{ id: 'luna' }], 65));
+    ok(g4.status === 409, 'najstarija rezervacija (Luna) i dalje blokira: 409');
+    // 13d) rezervira se koliko stane
+    clearLimits(); clearRes();
+    { const r = read('rezervacije.json'); r.sold = { luna: { id: 'luna' }, tara: { id: 'tara' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
+    const hh2 = await post('order', order('api-key-0035-hhaa', 'h2@primjer.hr', [{ id: 'vela' }, { id: 'nera' }], 155));
+    const rh = read('rezervacije.json');
+    ok(hh2.data.ok && hh2.data.until && JSON.stringify(hh2.data.unheldIds) === '["nera"]' && rh.res.vela && !rh.res.nera, 'slobodne 2, granica 1: narudžba s dvije torbe rezervira Velu, Nera bez rezervacije');
+    // 13e) torba koja nije na prodaji ne sužava granicu
+    clearLimits(); clearRes();
+    { const r = read('rezervacije.json'); r.res = { luna: { id: 'luna', token: 'tx', email: 'x@p.hr', ordered: true, at: '2026-10-11T00:00:00Z', until: '2099-01-01T00:00:00Z' } }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); }
+    setProd('luna', { hidden: true });
+    const hd = await post('order', order('api-key-0036-iiaa', 'hd@primjer.hr', [{ id: 'tara' }], 55));
+    fs.writeFileSync(D + 'proizvodi.json', orig);
+    ok(hd.data.ok && hd.data.reserved === true, 'skrivena torba s rezervacijom ne sužava granicu: Tara dobiva rezervaciju');
     clearRes();
     // 14) ukupna granica novih narudžbi sa šarenom torbom na sat
     clearLimits(); clearRes(); setLimits({ unique_orders_per_hour: 2 });
