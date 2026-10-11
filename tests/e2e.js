@@ -276,6 +276,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const m4 = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const p4 = await m4.newPage();
   await p4.route('**/js/hub3-barcode.js', r => r.abort());
+  await p4.route('**/api/reserve', r => r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'previše' }) }));
   await p4.goto(URL, { waitUntil: 'networkidle' }); await p4.waitForTimeout(300);
   await p4.click('.card:has(h3:text-is("Nera")) .add-btn'); await p4.click('#openCart'); await p4.waitForTimeout(300);
   await p4.check('#shipOptions input[value="pickup"]');
@@ -283,6 +284,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p4.click('#orderBtn'); await p4.waitForSelector('#payBarcode', { timeout: 8000 }).catch(() => {}); await p4.waitForTimeout(800);
   const fb = await p4.evaluate(() => { const i = document.querySelector('#payBarcode img'); return { hub3: i.dataset.hub3 || '', src: i.getAttribute('src'), vis: !document.getElementById('payBarcode').hidden }; });
   ok(!fb.hub3 && /barkod-uplata\.png$/.test(fb.src) && fb.vis, 'bez skripte ostaje opći barkod iz Postavki');
+  ok(/Torba „Nera” je rezervirana/.test(await p4.textContent('.pay-thanks').catch(() => '')), 'rezervacija vrati 429, narudžba ipak prolazi');
   await m4.close();
 
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));

@@ -190,6 +190,19 @@ function sj_handle_action(string $act, array &$c): string {
       });
     }
 
+    case 'res_release_ip': {
+      /* sve rezervacije s iste skraćene adrese odjednom (sumnja na lažne narudžbe) */
+      $ip = sj_clean((string)($_POST['ip'] ?? ''), 32);
+      if (!preg_match('/^[a-f0-9]{16}$/', $ip)) throw new RuntimeException('Neispravna adresa.');
+      $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip) {
+        $d = array_replace(sj_res_default(), $d);
+        $n = 0;
+        foreach ($d['res'] as $id => $r) if (($r['ip'] ?? '') === $ip) { unset($d['res'][$id]); $n++; }
+        return $n;
+      }, sj_res_default());
+      return 'Stornirano s iste adrese: ' . $n . ' rezervacija. Torbe su ponovno u prodaji.';
+    }
+
     case 'res_release':
     case 'res_sold':
     case 'res_unsold':
@@ -412,10 +425,14 @@ function sj_view_reservations(array $c): string {
   $h = '<h3>Aktivne rezervacije — istječu nakon ' . (int)$c['ttl_hours'] . ' h</h3>';
   if (!$d['res']) $h .= '<p class="muted">Trenutno nema rezervacija.</p>';
   else {
-    $h .= '<div class="tablewrap"><table><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th></th></tr></thead><tbody>';
+    $h .= '<div class="tablewrap"><table><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th>Adresa</th><th></th></tr></thead><tbody>';
+    $perIp = []; foreach ($d['res'] as $r) if (!empty($r['ip'])) $perIp[$r['ip']] = ($perIp[$r['ip']] ?? 0) + 1;
     foreach ($d['res'] as $id => $r) {
-      $h .= '<tr><td><b>' . e($names[$id] ?? $id) . '</b><br><span class="muted mono">' . e($id) . '</span></td><td>' . e($r['name']) . '<br><span class="muted">' . e($r['email']) . '</span></td><td>' . e(sj_fmt_hr($r['since'])) . '</td><td>' . e(sj_fmt_hr($r['until'])) . '</td>';
-      $h .= '<td class="acts">' . sj_btn('res_sold', ['id' => $id], 'Plaćeno', $back) . sj_btn('res_release', ['id' => $id], 'Storniraj', $back, true) . '</td></tr>';
+      $h .= '<tr><td><b>' . e($names[$id] ?? $id) . '</b><br><span class="muted mono">' . e($id) . '</span></td><td>' . e($r['name']) . '<br><span class="muted">' . e($r['email']) . '</span></td><td>' . e(sj_fmt_hr($r['since'])) . '</td><td>' . e(sj_fmt_hr($r['until'])) . (empty($r['ordered']) ? '<br><span class="muted">bez narudžbe</span>' : '') . '</td>';
+      $ipc = (string)($r['ip'] ?? '');
+      $h .= '<td class="mono">' . ($ipc !== '' ? e(substr($ipc, 0, 6)) . ($perIp[$ipc] > 1 ? '<br><span class="muted">' . (int)$perIp[$ipc] . ' torbe</span>' : '') : '—') . '</td>';
+      $h .= '<td class="acts">' . sj_btn('res_sold', ['id' => $id], 'Plaćeno', $back) . sj_btn('res_release', ['id' => $id], 'Storniraj', $back, true)
+        . ($ipc !== '' && $perIp[$ipc] > 1 ? sj_btn('res_release_ip', ['ip' => $ipc], 'Storniraj sve s ove adrese', $back, true, 'Stornirati sve rezervacije s ove adrese (' . $perIp[$ipc] . ')? Torbe se odmah vraćaju u prodaju.') : '') . '</td></tr>';
     }
     $h .= '</tbody></table></div>';
   }
@@ -434,6 +451,7 @@ function sj_view_reservations(array $c): string {
   /* artikli po narudžbi se ne „prodaju” ručno; rezervirane i već plaćene torbe nisu u popisu */
   foreach ($names as $id => $n) if (empty($madeIds[$id]) && !isset($d['res'][$id]) && !isset($d['sold'][$id])) $opts .= '<option value="' . e($id) . '">' . e($n) . ' (' . e($id) . ')</option>';
   $h .= '<h3>Ručno označi plaćeno</h3><form method="post" class="inline"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="res_sold_manual"><input type="hidden" name="back" value="' . e($back) . '"><select name="id">' . $opts . '</select> <button>Plaćeno</button></form>';
+  $h .= '<p class="muted">„Adresa” je skraćena, neprepoznatljiva oznaka veze s koje je stigla rezervacija (mijenja se svaki dan). Ako jedna adresa drži više torbi, a kupci se ne javljaju, gumb „Storniraj sve s ove adrese” vraća ih u prodaju odjednom.</p>';
   $h .= '<p class="muted">Tijek: narudžba → kupac uplati i pošalje potvrdu → „Plaćeno“ (ovdje ili iz e-maila) → „Trajno prodano“ na torbi kad stignete. „Storniraj“ i „Ukloni oznaku“ vraćaju torbu u prodaju.</p>';
   return $h;
 }

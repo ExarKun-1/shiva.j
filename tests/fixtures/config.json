@@ -45,5 +45,10 @@
   "password_hash": "",
   "login_fails": {},
   "order_seq": 0,
-  "pickup": "Osobno preuzimanje u Zaboku, po dogovoru"
+  "pickup": "Osobno preuzimanje u Zaboku, po dogovoru",
+  "limits": {
+    "holds_per_ip": 20,
+    "orders_per_ip": 20,
+    "unique_per_order": 2
+  }
 }
