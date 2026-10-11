@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v09');
+define('SJ_VERSION', 'admin v10');
 
 /* ---------- postavke ---------- */
 
@@ -101,11 +101,13 @@ function sj_short_ip(?string $ip = null): string {
 
 /* $short = true: adresa se sprema skraćeno (sj_short_ip) i čisti nakon sat vremena;
    koristi se za anonimni brojač, gdje nema razloga čuvati pravu adresu */
-function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false): bool {
+/* $record = false: samo provjera, bez upisa (npr. narudžba se upisuje tek kad je zaprimljena, pa odbijeni
+   pokušaji, 409 i slično, ne troše ograničenje); upis kasnije istim pozivom s $record = true */
+function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false, bool $record = true): bool {
   $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '?');
   if ($short) $ip = sj_short_ip($ip);
   $now = time();
-  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now) {
+  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
       $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|')) ? 3600 : 86400;
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
@@ -114,6 +116,7 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
     $k = $key . '|' . $ip;
     $recent = array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec);
     if (count($recent) >= $max) return false;
+    if (!$record) return true;
     $d[$k] = array_merge(array_values($recent), [$now]);
     return true;
   }, []);
@@ -184,6 +187,22 @@ function sj_site_url(): string {
   return ($https ? 'https://' : 'http://') . $host;
 }
 
+/* Adresa stranice za linkove u e-mailovima: postavka site_url, a dok je prazna samo host iz zahtjeva koji je
+   provjeren (domena adrese pošiljatelja, dopušteni izvori ili lokalno). Inače '' i linkovi se ne šalju, jer bi
+   zaglavlje Host mogao podmetnuti bilo tko. */
+function sj_site_url_trusted(): string {
+  $c = sj_config();
+  if (!empty($c['site_url'])) return rtrim($c['site_url'], '/');
+  $host = strtolower(explode(':', (string)($_SERVER['HTTP_HOST'] ?? ''))[0]);
+  if ($host === '' || !preg_match('/^[a-z0-9.-]+$/', $host)) return '';
+  $ok = in_array($host, ['localhost', '127.0.0.1'], true);
+  $fromHost = strtolower((string)substr(strrchr((string)sj_mail_from(), '@') ?: '', 1));
+  $bare = preg_replace('/^www\./', '', $host);
+  if ($fromHost !== '' && ($bare === $fromHost || str_ends_with($bare, '.' . $fromHost))) $ok = true;
+  foreach ((array)($c['allowed_origins'] ?? []) as $o) if (strtolower((string)parse_url((string)$o, PHP_URL_HOST)) === $host) $ok = true;
+  return $ok ? sj_site_url() : '';
+}
+
 /* ---------- JSON datoteke ---------- */
 
 function sj_read_json(string $path, $default) {
@@ -246,8 +265,25 @@ function sj_products(): array {
 }
 
 function sj_save_products(array $list): void {
-  $list = array_values($list);
-  sj_write_json(sj_products_path(), $list);
+  sj_products_update(function (array &$cur) use ($list) { $cur = $list; });
+}
+
+/* Izmjena popisa proizvoda pod bravom: čitanje, izmjena i zapis (glavni popis i javni torbe.json) u istoj
+   bravi, pa dvije istodobne izmjene u adminu (npr. dvije kartice) ne gube jedna drugu. $fn(array &$list)
+   smije baciti iznimku: tada se ništa ne zapisuje. Vraća što vrati $fn. */
+function sj_products_update(callable $fn) {
+  sj_products(); /* prvi prijenos: uvoz iz torbe.json ako glavnog popisa još nema */
+  return sj_with_lock(sj_products_path(), function (array &$list) use ($fn) {
+    $list = array_values($list);
+    $before = json_encode($list);
+    $r = $fn($list);
+    $list = array_values($list);
+    if (json_encode($list) !== $before || !is_file(SJ_PUBLIC_JSON)) sj_write_public_products($list);
+    return $r;
+  }, []);
+}
+
+function sj_write_public_products(array $list): void {
   $public = [];
   foreach ($list as $p) {
     if (!empty($p['hidden'])) continue;
@@ -396,6 +432,16 @@ function sj_valid_email(?string $v): ?string {
   $v = trim((string)$v);
   return ($v !== '' && strlen($v) <= 120 && filter_var($v, FILTER_VALIDATE_EMAIL)) ? $v : null;
 }
+
+/* poziv na broj za model HR00: broj narudžbe bez slovnog dijela (SJ-2026-0007 → 2026-0007);
+   HR00 dopušta samo znamenke i crticu, najviše 22 znaka, bez kontrolnog broja */
+function sj_payment_ref(string $no): string {
+  $ref = preg_replace('/[^0-9-]/', '', $no) ?? '';
+  return substr(trim($ref, '-'), 0, 22);
+}
+
+/* opis plaćanja za HUB-3 nalog: najviše 35 znakova, zato samo trgovina i broj narudžbe */
+function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
 /* „1 sat”, „24 sata”, „12 sati”, „48 sati” (kao hoursText na stranici) */
 function sj_hours_text(int $n): string {

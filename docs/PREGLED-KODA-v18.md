@@ -112,3 +112,20 @@ Ne diram: pravni tekst Uvjeta (T1, T2) osim ne-pravnih rečenica (T4, T5); OG oz
 - Skripta s `curl`: narudžba s krivim `total` → potvrda nosi preračunati iznos; e-mail s `\r\nBcc:` → odbijen; `reserve` s lažnim id-om → 400; 7 torbi → jasna greška; storno `sold` bez prijave → 403; prvi setup bez `data/setup.txt` → odbijen.
 - Admin: naziv s apostrofom i `<b>` → ispravno prikazano, brisanje traži potvrdu; naziv od 80 znakova → id ≤ 40, uređivanje ne pravi duplikat; „Trajno prodano” na već prodanoj torbi ostaje prodano; cijena 0 odbijena.
 - Stranica u headless Chromiumu (Playwright): prazna i primjer `torbe.json`, bez JS grešaka; BOX NOW skripta nije učitana prije klika; narudžba s ugašenim servisom → mailto grana prikazuje panel bez storno linka; brojač košarice s količinama; id „2024” prikazuje „Rezervirano”.
+
+---
+
+## Pregled softverskog inženjera, 11. 10. 2026. (stranica v30, api v09, admin v09): 7/10
+
+Jake strane: poslužitelj sam računa cijene i iznos, narudžba je idempotentna, upisi su atomski (tmp + rename) pod bravom
+s uvijek istim redom brava, ulaz se dosljedno čisti, CSRF i escaping. Nalazi i stanje u v31 (api v10, admin v10):
+
+| Nalaz | Težina | Stanje |
+|---|---|---|
+| Ispravljen e-mail nakon prekida blokira kupčevu torbu (rezervacija vezana uz e-mail) | treba | riješeno: tajni ključ rezervacije (`hold`) |
+| Svatko može držati ponudu rezerviranom (20 rezervacija/h po IP-u) | treba | riješeno: najviše 2 nenaručene po adresi, najviše pola slobodnih ukupno |
+| API bez rukovanja iznimkama; rezervacija ostaje „naručena” kad upis narudžbe padne | treba | riješeno: JSON 500 + `data/greske.log`, vraćanje rezervacije |
+| Odbijene narudžbe troše ograničenje | sitnica | riješeno: broji se samo zaprimljena |
+| Proizvodi se spremaju bez brave | sitnica | riješeno: `sj_products_update` |
+| Linkovi u e-mailovima iz zaglavlja `Host` | sitnica | riješeno: `sj_site_url_trusted`, upozorenje u Postavkama |
+| Održivost: 136 KB `index.html`, ista logika na ploči i u e-mailu, nema testova u repozitoriju | preporuka | testovi u `tests/`; izdvajanje JS-a i zajednički tekstovi ostaju za kasnije |
