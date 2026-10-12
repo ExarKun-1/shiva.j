@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v18');
+define('SJ_VERSION', 'admin v19');
 
 /* ---------- postavke ---------- */
 
@@ -127,8 +127,18 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
-    /* gornja granica veličine: najviše 5000 ključeva, najstariji (po zadnjem zahtjevu) se brišu */
-    if (count($d) >= 5000) { uasort($d, fn($a, $b) => max((array)$b) <=> max((array)$a)); $d = array_slice($d, 0, 4999, true); }
+    /* gornja granica veličine: najviše 5000 ključeva. v20: zaštitni ključevi 'sve|' (ukupne granice i granice po
+       primatelju) nikad se ne brišu; prvi ispadaju brojači posjeta i klikova ('visit|', 'count|'), zatim najstariji */
+    if (count($d) >= 5000) {
+      $keepAll = array_filter($d, fn($k) => str_starts_with((string)$k, 'sve|'), ARRAY_FILTER_USE_KEY);
+      $rest = array_diff_key($d, $keepAll);
+      uksort($rest, function ($a, $b) use ($rest) {
+        $pa = (str_starts_with($a, 'visit|') || str_starts_with($a, 'count|')) ? 0 : 1;
+        $pb = (str_starts_with($b, 'visit|') || str_starts_with($b, 'count|')) ? 0 : 1;
+        return $pa !== $pb ? $pb <=> $pa : max((array)$rest[$b]) <=> max((array)$rest[$a]);
+      });
+      $d = $keepAll + array_slice($rest, 0, max(0, 4999 - count($keepAll)), true);
+    }
     $k = $key . '|' . $ip;
     $recent = array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec);
     if (count($recent) >= $max) return false;
@@ -525,12 +535,14 @@ function sj_email_key(string $email): string {
 }
 
 /* Ukupna granica za cijelu stranicu (npr. potvrde kupcima na sat), bez obzira na adresu. true = smije. */
-function sj_global_limit(string $key, int $max, int $windowSec): bool {
+/* $record = false: samo provjera, bez upisa (v20: granice se upisuju tek kad je radnja uspjela) */
+function sj_global_limit(string $key, int $max, int $windowSec, bool $record = true): bool {
   $now = time();
-  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $max, $windowSec, $now) {
+  return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $max, $windowSec, $now, $record) {
     $k = 'sve|' . $key;
     $recent = array_values(array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec));
     if (count($recent) >= $max) { $d[$k] = $recent; return false; }
+    if (!$record) return true;
     $recent[] = $now; $d[$k] = $recent;
     return true;
   }, []);

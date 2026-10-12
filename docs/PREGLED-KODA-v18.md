@@ -242,3 +242,16 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | Mobitel: „Pogledaj torbe” ispod prvog ekrana; „e-/mailom” | riješeno: gumb odmah ispod torbe, krug `min(46vw,200px)`; `.nw` oko „e-mail…” u košarici i na ploči |
 | (usput) „Kako naručiti” i Uvjeti Ukratko: rezervacija „čim pošaljete” | ispravljeno: nakon potvrde linkom (v40) |
 
+## Recenzije v43 (12. 10. 2026.): sigurnost 7/10, dizajn 8/10 → v44 (api v20, admin v19)
+
+| Nalaz | Stanje u v44 |
+|---|---|
+| Ukupna granica 200 e-mailova/h i dalje zatvara narudžbe (~67 adresa/h) | riješeno: `sj_order_overload` — narudžba primljena bez e-maila i bez rezervacije (`noHold`), oznaka `unconfirmed`, sažetak vlasnici 1/h |
+| Napadač troši granicu po primatelju i blokira pravog kupca | riješeno: 2/h po paru adresa+primatelj (`sj_rate_limit`), 5/h po primatelju (`sj_global_limit`) |
+| Granice se troše na odbijenim/neposlanim pokušajima | riješeno: provjera bez upisa (`$record=false`), upis nakon uspješnog slanja |
+| Pri 5000 ključeva ispadaju i zaštitni ključevi | riješeno: `sve|` se nikad ne briše, prvo `visit|`/`count|` |
+| Obavijest prekriva obrazac na mobitelu | riješeno: `openCart` sakrije obavijest; u košarici 2,5 s |
+| „Kopiraj” ispod vrijednosti troši ~250 px na 360 px | riješeno: `.val-row` (vrijednost i gumb u istom redu) |
+| „Okrugla” dvaput na kartici | stil podnaslova (kurziv, isti font kao opis), pomoć i novi primjer u adminu; podatke mijenja vlasnica |
+| Potpis torbe na naslovnici u tri reda | riješeno: `.hb-tag` u svom redu, ime i cijena zajedno |
+

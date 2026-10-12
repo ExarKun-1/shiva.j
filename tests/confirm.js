@@ -95,6 +95,37 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const cpx = await post('confirm', { id: Lp.id, t: Lp.t });
     fs.writeFileSync(D + 'proizvodi.json', prods0);
     ok(cc.status === 409 && /Cijene/.test(cc.data.error || '') && cpx.status === 409 && JSON.stringify(cpx.data.taken) === '["nera"]' && !(read('rezervacije.json', {}).res || {}).nera, 'potvrda nakon promjene cijene ili prodaje torbe → 409, bez rezervacije');
+    // 7e) v44: granica po paru adresa+primatelj (2/h) i po primatelju (5/h); tuđa adresa ne blokira pravog kupca
+    const crypto = require('crypto');
+    const ekHash = e => crypto.createHash('sha256').update(e).digest('hex').slice(0, 20);
+    const nowE = Math.floor(Date.now() / 1000);
+    write('zahtjevi.json', { ['mailto-' + ekHash('par@primjer.hr') + '|nekaDrugaAdresa']: [nowE, nowE] });
+    const rPar = await post('order', order('potvrda-par-0001', 'par@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    write('zahtjevi.json', { ['sve|mailto-' + ekHash('pun@primjer.hr')]: Array(5).fill(nowE) });
+    const rPun = await post('order', order('potvrda-pun-0001', 'pun@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    ok(rPar.status === 200 && rPun.status === 429, 'napadač s druge adrese ne blokira kupca (par 2/h); po primatelju najviše 5/h');
+    // 7f) odbijena narudžba ne troši granicu po adresi
+    write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
+    write('zahtjevi.json', { ['sve|mailto-' + ekHash('pun@primjer.hr')]: Array(5).fill(nowE) });
+    await post('order', order('potvrda-pun-0002', 'pun@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const c3 = [];
+    for (let i = 0; i < 3; i++) c3.push((await post('order', order('potvrda-nova-' + i + '-xx', 'nova' + i + '@primjer.hr', [{ id: 'klasik', qty: 1 }], 60))).status);
+    ok(c3.every(c => c === 200), 'odbijena narudžba ne troši granicu po adresi: ' + c3.join(','));
+    write('config.json', Object.assign({}, cfg0, { require_confirm: true, confirm_minutes: 60 }));
+    // 7g) preopterećenje (200 e-mailova za potvrdu u satu): narudžba primljena bez e-maila i bez rezervacije; vlasnica dobiva jedan sažetak
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+    write('zahtjevi.json', { 'sve|confirm': Array(200).fill(nowE) });
+    const prodsO = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8'));
+    const mailBefore = mailLog().length;
+    const free1 = ['nera', 'vela', 'luna', 'tara'].find(id => !(read('rezervacije.json', {}).res || {})[id] && !(read('rezervacije.json', {}).sold || {})[id]) || 'nera';
+    const pr1 = prodsO.find(x => x.id === free1).price;
+    const o1 = await post('order', order('potvrda-preopt-01', 'preopt1@primjer.hr', [{ id: free1 }], pr1));
+    const o2 = await post('order', order('potvrda-preopt-02', 'preopt2@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const newMails = mailLog().slice(mailBefore);
+    const nOwner = (newMails.match(/narudžbe bez potvrde e-mailom/g) || []).length;
+    const ent = read('narudzbe.json', []).find(x => x.no === o1.data.orderNo) || {};
+    ok(o1.status === 200 && /^SJ-/.test(o1.data.orderNo || '') && !o1.data.pending && o1.data.unheld === true && !((read('rezervacije.json', {}).res || {})[free1]) && ent.unconfirmed === true, 'preopterećenje: narudžba primljena odmah, bez rezervacije, označena „bez potvrde”');
+    ok(o2.status === 200 && !/preopt1@primjer\.hr/.test(newMails.replace(/Prva takva narudžba[^\n]*/g, '')) && nOwner === 1, 'preopterećenje: kupcima se ne šalje e-mail, vlasnica dobiva jedan sažetak (' + nOwner + ')');
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

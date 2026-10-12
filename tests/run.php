@@ -117,6 +117,18 @@ $ok(array_column($list, 'no') === ['SJ-T-5', 'SJ-T-4', 'SJ-T-3'] && array_column
 @unlink(SJ_DATA . '/zahtjevi.json');
 $n = 0; for ($i = 0; $i < 5; $i++) if (sj_global_limit('proba', 3, 3600)) $n++;
 $ok($n === 3, 'ukupna granica: 3 od 5 propušteno');
+/* v20: provjera bez upisa; pri 5000 ključeva 'sve|' ostaje, a brojači posjeta ispadaju prvi */
+@unlink(SJ_DATA . '/zahtjevi.json');
+$chk = sj_global_limit('proba2', 1, 3600, false) && sj_global_limit('proba2', 1, 3600, false) && sj_global_limit('proba2', 1, 3600) && !sj_global_limit('proba2', 1, 3600, false);
+$ok($chk, 'ukupna granica: provjera bez upisa ne troši granicu');
+$big = ['sve|mailto-zrtva' => [time()]]; $old = time() - 60;
+for ($i = 0; $i < 3000; $i++) $big["t|10.$i"] = [$old + $i];
+for ($i = 0; $i < 2100; $i++) $big["visit|10.$i"] = [time()];
+file_put_contents(SJ_DATA . '/zahtjevi.json', json_encode($big));
+sj_rate_limit('t8', 5, 3600);
+$zj = sj_read_json(SJ_DATA . '/zahtjevi.json', []);
+$visits = count(array_filter(array_keys($zj), fn($k) => str_starts_with($k, 'visit|')));
+$ok(isset($zj['sve|mailto-zrtva']) && count($zj) <= 5000 && $visits < 2100 && count(array_filter(array_keys($zj), fn($k) => str_starts_with($k, 't|'))) === 3000, 'pri 5000 ključeva: sve| ostaje, ispadaju brojači posjeta (' . count($zj) . ' ključeva, ' . $visits . ' visit)');
 
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
