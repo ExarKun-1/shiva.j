@@ -48,10 +48,11 @@ Kontrolni panel → SSL → **Let's Encrypt** za domenu (i www). Uključiti preu
 
 1. Otvoriti domenu u pregledniku, na računalu i telefonu. Dok nema torbi piše „Ponuda se upravo priprema“; nakon unosa u adminu: fotografije, kategorije Torbe i Ostalo, košarica.
 2. Provjeriti da stranica čita `torbe.json`: u pregledniku desni klik → Inspect → Console → upisati `document.documentElement.dataset.products` → mora pisati `torbe.json`, ne `ugradjeno`.
-3. Probna narudžba do kraja: rezervacija, panel s podacima za uplatu, e-mail narudžbe, storno.
-4. U stranici zamijeniti `og:url` i `og:image` (dijeljenje linka) domenom, i prenijeti `img/og.jpg` (1200×630 px).
-5. Politika privatnosti od v16 već navodi hosting Croadria (Hrvatski Telekom d.d., EU); samo provjeriti da tekst odgovara stvarnom stanju.
-6. Link na domenu staviti u Instagram bio. GitHub ostaje samo za testiranje ili se ugasi.
+3. **Obavezno prije prve narudžbe:** admin → Postavke → „Adresa stranice” = domena (npr. `https://shivaj.hr`). Bez nje narudžbe se ne primaju, jer se od nje gradi link „potvrdite narudžbu” u e-mailu kupcu (v40+).
+4. Probna narudžba do kraja: e-mail „potvrdite narudžbu” i klik na link, rezervacija, panel s podacima za uplatu, e-mail narudžbe, storno.
+5. U stranici zamijeniti `og:url` i `og:image` (dijeljenje linka) domenom, i prenijeti `img/og.jpg` (1200×630 px).
+6. Politika privatnosti od v16 već navodi hosting Croadria (Hrvatski Telekom d.d., EU); samo provjeriti da tekst odgovara stvarnom stanju.
+7. Link na domenu staviti u Instagram bio. GitHub ostaje samo za testiranje ili se ugasi.
 
 ## 7. Rezervacije i narudžbe na hostingu
 

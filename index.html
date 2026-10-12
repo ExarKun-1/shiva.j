@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v40 (2026-10-12)
+     SHIVA.J WEBSHOP — v41 (2026-10-12)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v41 — uz api v19: po recenziji v40 — okvir „potvrdite narudžbu”: može se
+           zatvoriti stranica, link radi i na drugom uređaju, cijela rečenica
+           prije gumba za ponovno slanje, role=status (greška ostaje alert),
+           vidljiv fokus, duga adresa se lomi; „Sljedeći korak” u čekanju
      v40 — uz api v18, admin v18: potvrda narudžbe e-mailom — narudžba vrijedi
            (broj, rezervacija, podaci za uplatu) tek kad kupac klikne link iz
            e-maila; ?potvrda= otvara podatke za uplatu i na drugom uređaju;
@@ -716,9 +720,10 @@
     padding:12px 14px;font-size:.88rem;line-height:1.5;
   }
   .order-error:focus{outline:none}
+  .order-error:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
   /* v40: „potvrdite narudžbu” nije greška */
   .order-error.order-info{border-color:var(--thread);background:var(--paper);color:var(--ink)}
-  .order-error b.inline{display:inline;margin:0}
+  .order-error b.inline{display:inline;margin:0;overflow-wrap:anywhere}
   .order-error b{display:block;margin-bottom:2px}
   .order-note{font-size:.8rem;color:var(--ink-soft)}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
@@ -1065,7 +1070,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v40</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v41</p>
 </footer>
 
 <!-- Košarica -->
@@ -1936,14 +1941,20 @@ let heldRes = storeGet("hold");   /* { ids, until } — rezervacija koju je ovaj
 let lastMailOrder = null;          /* narudžba za gumb „Otvori e-mail ponovno” */
 const orderError = document.getElementById("orderError");
 /* poruka greške ostaje iznad gumba dok kupac ne pošalje ponovno (ne nestaje kao toast) */
-function showOrderError(html){
-  orderError.classList.remove("order-info");
+/* info=true: „potvrdite narudžbu” — obavijest (role=status), ne greška (role=alert) */
+function showOrderError(html, info = false){
+  orderError.classList.toggle("order-info", info);
+  orderError.setAttribute("role", info ? "status" : "alert");
   orderError.innerHTML = html;
   orderError.hidden = false;
   orderError.focus({ preventScroll: true });
   orderError.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
-function clearOrderError(){ orderError.hidden = true; orderError.innerHTML = ""; orderError.classList.remove("order-info"); }
+const nextStepEl = document.querySelector(".next-step"), NEXT_STEP = nextStepEl ? nextStepEl.textContent : "";
+function clearOrderError(){
+  orderError.hidden = true; orderError.innerHTML = ""; orderError.classList.remove("order-info"); orderError.setAttribute("role", "alert");
+  if(nextStepEl) nextStepEl.textContent = NEXT_STEP;
+}
 /* servis nije zaprimio narudžbu: kupac ne vidi „zaprimljeno” ni IBAN, nego što treba napraviti */
 function showMailFallback(o, rez){
   lastMailOrder = o;
@@ -2038,9 +2049,11 @@ function showOrderPending(srv, email){
     : `<b>Još jedan korak: potvrdite narudžbu.</b>
        Poslali smo e-mail na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu${until ? " do " + escHtml(until) : ""}.
        Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu.
-       <br>E-mail ne stiže? Pogledajte neželjenu poštu ili
-       <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji e-mail ponovno</button></div>`);
-  if(srv.mailCustomer !== false) orderError.classList.add("order-info");
+       Ovu stranicu možete zatvoriti: link radi i na mobitelu ili drugom računalu.
+       <br>E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:
+       <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji e-mail ponovno</button></div>`,
+    srv.mailCustomer !== false);
+  if(srv.mailCustomer !== false && nextStepEl) nextStepEl.textContent = "Narudžba je poslana i čeka vašu potvrdu iz e-maila.";
 }
 /* poruka uz potvrdu iz linka: u obrascu ako je košarica na ovom uređaju, inače u praznoj košarici */
 function confirmError(html){

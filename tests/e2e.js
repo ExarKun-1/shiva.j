@@ -315,6 +315,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p7.click('#orderBtn'); await p7.waitForSelector('.order-error.order-info', { timeout: 8000 }).catch(() => {});
   const pend7 = await p7.textContent('#orderError').catch(() => '');
   ok(/potvrdite narudžbu/.test(pend7) && /potvrda@primjer\.hr/.test(pend7) && await p7.locator('.pay-steps').count() === 0 && await p7.isVisible('#retrySend'), 'nakon slanja: „potvrdite narudžbu”, bez podataka za uplatu, gumb za ponovno slanje');
+  ok(/možete zatvoriti/.test(pend7) && /zatražite ponovno:/.test(pend7) && (await p7.getAttribute('#orderError', 'role')) === 'status' && /čeka vašu potvrdu/.test(await p7.textContent('.next-step')), 'v41: okvir kaže da se stranica može zatvoriti, role=status, „Sljedeći korak” u čekanju');
   await p7.screenshot({ path: OUT + 'm-40-potvrda.png' });
   const links = [...fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8').matchAll(/\?potvrda=([a-f0-9]{32}\.[a-f0-9]{32})/g)];
   const link = links.length ? links[links.length - 1][1] : '';

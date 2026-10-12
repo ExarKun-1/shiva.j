@@ -62,17 +62,50 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const real = await post('order', order('potvrda-key-0004', 'pravi@primjer.hr', [{ id: 'vela' }], 70));
     const Lr = lastLink(); const cr = await post('confirm', { id: Lr.id, t: Lr.t });
     ok(!(st2.ids || []).includes('vela') && cr.data.ok && (read('rezervacije.json', {}).res || {}).vela?.email === 'pravi@primjer.hr', 'nepotvrđene lažne narudžbe ne drže torbu; pravi kupac je potvrdi i dobiva');
-    // 7) ista adresa e-maila: nova nepotvrđena narudžba zamjenjuje staru
-    const pc = read('narudzbe-na-cekanju.json', []).filter(x => !x.no && x.ek === 'lazni0@primjer.hr').length;
-    await post('order', order('potvrda-lazna-zz-xx', 'lazni0@primjer.hr', [{ id: 'tara' }], 55));
-    const pc2 = read('narudzbe-na-cekanju.json', []).filter(x => !x.no && x.ek === 'lazni0@primjer.hr');
-    ok(pc === 1 && pc2.length === 1 && pc2[0].key === 'potvrda-lazna-zz-xx', 'ista adresa: najviše jedna nepotvrđena narudžba (nova zamjenjuje staru)');
+    // 7) v41: tuđi e-mail ne briše pravu nepotvrđenu narudžbu; po adresi najviše 3 nepotvrđene
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+    await post('order', order('potvrda-zrtva-0001', 'zrtva@primjer.hr', [{ id: 'tara' }], 55));
+    const Lz = lastLink();
+    await post('order', order('potvrda-napad-0001', 'zrtva@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const cz = await post('confirm', { id: Lz.id, t: Lz.t });
+    ok(cz.data.ok && /^SJ-/.test(cz.data.orderNo || ''), 'narudžba s tuđim e-mailom ne poništava žrtvin link (potvrda radi)');
+    const many = read('narudzbe-na-cekanju.json', []); for (let i = 0; i < 3; i++) many.unshift({ id: 'f'.repeat(31) + i, h: 'x', key: 'stari-' + i, at: '', until: new Date(Date.now() + 3e6).toISOString(), ek: 'puno@primjer.hr', P: {} }); write('narudzbe-na-cekanju.json', many);
+    await post('order', order('potvrda-puno-0001', 'puno@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const pu = read('narudzbe-na-cekanju.json', []).filter(x => !x.no && x.ek === 'puno@primjer.hr');
+    ok(pu.length === 3 && pu[0].key === 'potvrda-puno-0001' && !pu.some(x => x.key === 'stari-0'), 'po adresi najviše 3 nepotvrđene, najstarija ispada');
+    // 7b) najviše 2 e-maila za potvrdu na sat na istu adresu
+    const r3x = await post('order', order('potvrda-puno-0002', 'puno@primjer.hr', [{ id: 'klasik', qty: 2 }], 120));
+    const r4x = await post('order', order('potvrda-puno-0003', 'puno@primjer.hr', [{ id: 'klasik', qty: 3 }], 180));
+    ok(r3x.status === 200 && r4x.status === 429 && /već smo poslali/.test(r4x.data.error || ''), 'treći e-mail za potvrdu na istu adresu u satu → 429');
+    // 7c) 100 e-mailova za potvrdu u satu (s mnogo adresa): narudžba se i dalje prima, vlasnica je upozorena
+    const nowS = Math.floor(Date.now() / 1000);
+    write('zahtjevi.json', { 'sve|confirm': Array(100).fill(nowS), 'sve|confirm_warn': Array(100).fill(nowS) });
+    const r100 = await post('order', order('potvrda-mnogo-0001', 'mnogo@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    ok(r100.status === 200 && r100.data.pending && /mnogo narudžbi/.test(mailLog()), 'nakon 100 e-mailova za potvrdu u satu: narudžba primljena, vlasnica upozorena');
+    // 7d) potvrda ponovno čita katalog: promijenjena cijena ili ručno prodana torba → 409, bez rezervacije
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+    const prods0 = fs.readFileSync(D + 'proizvodi.json', 'utf8');
+    await post('order', order('potvrda-cijena-01', 'cijena@primjer.hr', [{ id: 'klasik', qty: 1 }], 60)); const Lc = lastLink();
+    const pp = JSON.parse(prods0); pp.find(x => x.id === 'klasik').price = 61; write('proizvodi.json', pp);
+    const cc = await post('confirm', { id: Lc.id, t: Lc.t });
+    fs.writeFileSync(D + 'proizvodi.json', prods0);
+    await post('order', order('potvrda-prod-0001', 'prodano@primjer.hr', [{ id: 'nera' }], JSON.parse(prods0).find(x => x.id === 'nera').price));
+    const Lp = lastLink();
+    const pp2 = JSON.parse(prods0); pp2.find(x => x.id === 'nera').sold = true; write('proizvodi.json', pp2);
+    const cpx = await post('confirm', { id: Lp.id, t: Lp.t });
+    fs.writeFileSync(D + 'proizvodi.json', prods0);
+    ok(cc.status === 409 && /Cijene/.test(cc.data.error || '') && cpx.status === 409 && JSON.stringify(cpx.data.taken) === '["nera"]' && !(read('rezervacije.json', {}).res || {}).nera, 'potvrda nakon promjene cijene ili prodaje torbe → 409, bez rezervacije');
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     const codes = [];
     for (let i = 0; i < 4; i++) codes.push((await post('order', order('potvrda-lim-' + i + '-xxxx', 'lim' + i + '@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20))).status);
     ok(codes.slice(0, 3).every(c => c === 200) && codes[3] === 429, 'najviše 3 e-maila za potvrdu na sat s iste adrese: ' + codes.join(','));
+    // 8b) bez provjerene adrese stranice: 503 (potvrda ne otpada tiho)
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+    const body = JSON.stringify(order('potvrda-host-0001', 'host@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const out503 = require('child_process').execFileSync('curl', ['-s', '-w', '\n%{http_code}', '-H', 'Host: zli.primjer.hr', '-X', 'POST', '--data-binary', body, U + 'order']).toString();
+    ok(/\n503$/.test(out503) && /trenutno nedostupne/.test(out503) && /narudžbe ne rade/.test(mailLog()), 'nepoznat Host bez upisane adrese stranice → 503 i upozorenje vlasnici');
     // 9) prekidač: require_confirm=false vraća staro ponašanje
     write('config.json', Object.assign({}, cfg0, { require_confirm: false }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
