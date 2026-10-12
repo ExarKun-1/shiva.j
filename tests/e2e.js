@@ -51,6 +51,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const lastUnique = await pd.evaluate(() => { const a = Array.from(document.querySelectorAll('#productGrid > .card')).filter(e => !e.classList.contains('made')); return Array.from(document.querySelectorAll('#productGrid > *')).indexOf(a[a.length - 1]); });
   ok(subIdx > lastUnique && firstMade === subIdx + 1, `podnaslov „Klasične torbe” iza zadnjeg unikata (${lastUnique} < ${subIdx} < ${firstMade})`);
   ok(/skaja/.test(await pd.textContent('#hero')) && /po narudžbi/.test(await pd.textContent('#kako')), 'hero i korak 01 usklađeni (skaj, po narudžbi)');
+  const rowBtns = await pd.evaluate(() => { const cs = [...document.querySelectorAll('#productGrid > .card')]; const top = cs[0].getBoundingClientRect().top; return cs.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 2).map(c => Math.round(c.querySelector('.add-btn').getBoundingClientRect().top)); });
+  ok(rowBtns.length > 1 && new Set(rowBtns).size === 1, 'v43: gumbi u istom redu kartica poravnati ' + rowBtns.join(','));
   const kl = pd.locator('.card:has(h3:text-is("Klasik crna"))');
   ok((await kl.locator('.unikat-tag').textContent()) === 'Po narudžbi' && /5 radnih dana/.test(await kl.textContent()) && (await kl.locator('.add-btn').textContent()).trim() === 'Naruči izradu', 'klasična torba: „Po narudžbi”, rok, gumb „Naruči izradu”');
   // narudžba samo s klasičnom torbom (desktop): bez rezervacije, 14 dana s ogradom, redak uplate iz postavki
