@@ -71,7 +71,7 @@ objavljen), ali sigurnosne stavke treba riješiti prije objave.
 | M10 | `index.html:858-863,893-900,936,954,1220,1243,1342,1483,58,825,895,30` | Komentari o Formspreeju, Cloudflare Workeru, „ugrađenom popisu PRODUCTS”, mapi `hosting/`, `shivaj_upute_rezervacije_v01.md` (postoji v03), `shivaj_worker_v01.js`. Prepisati. |
 | M11 | `index.html:851` | Ćirilična slova „ту” u riječi „karту” (komentar). |
 | M12 | `index.html:205` | `.card.sold .photo{cursor:default}`, a JS otvara lightbox i za prodane. Uskladiti (lightbox i za prodane je korisno → ukloniti CSS). |
-| M13 | `images/` | 8,7 MB originala iz v09, ništa ih ne koristi (`images/1784356525545.jpg` = duplikat `tara-1.jpg`). Obrisati iz repozitorija. |
+| M13 | `images/` | ~~8,7 MB originala iz v09, ništa ih ne koristi.~~ Riješeno u v47: mapa uklonjena. |
 | M14 | Dupli podaci | `PAYMENT` i tekst preuzimanja i e-mail vlasnice tvrdo su u `index.html` (885-891, 844, 1378, 1416, 1443) i odvojeno u `config.json`: promjena IBAN-a u adminu mijenja samo e-mail, ne stranicu. Prijedlog: `api/status` vraća `payment`, `pickup`, `ownerEmail`, JS ih koristi kad postoje. |
 | M15 | `api/index.php:153` = `admin/index.php:185` | Isti zapis „plaćeno” gradi se na dva mjesta; dvije različite HTTPS provjere (lib 75 vs 186). Jedan pomoćnik `sj_mark_paid()`, jedna `sj_is_https()`. |
 

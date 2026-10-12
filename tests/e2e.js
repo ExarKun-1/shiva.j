@@ -360,11 +360,21 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await m7.close(); await m8.close();
   fs.writeFileSync(cfgPath, cfg0);
 
+  // v47: brojač broji komade; „↓” u traci na mobitelu; poveznice u podnožju 44 px
+  const m9 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const p9 = await m9.newPage(); watch(p9);
+  await p9.goto(URL, { waitUntil: 'networkidle' }); await p9.waitForTimeout(300);
+  await p9.click('.card:has(h3:text-is("Klasik crna")) .add-btn'); await p9.click('.card:has(h3:text-is("Klasik crna")) .add-btn');
+  ok((await p9.textContent('#cartCount')).trim() === '2', 'v47: dvije klasične torbe → brojač 2');
+  ok(await p9.isVisible('.press-more') && !(await p9.isVisible('.press-more .pm-t')), 'v47: na mobitelu traka „Pisali su o nama” pokazuje „↓”');
+  const fh = await p9.$$eval('.foot-links a', els => Math.min(...els.map(e => e.getBoundingClientRect().height)));
+  ok(fh >= 44, 'v47: poveznice u podnožju barem 44 px (' + fh + ')');
+  await m9.close();
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 14 && day.ig === 1 && day.orders === 8 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 8 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
+  ok(day.visits === 15 && day.ig === 1 && day.orders === 8 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 9 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /Rezervacija vrijedi 24 sata/.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, 24 sata');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

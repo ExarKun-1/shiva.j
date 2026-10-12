@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v20)
+   SHIVA.J — javni API na hostingu   (api/index.php v21)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v21: e-mail „potvrdite narudžbu” kaže koliko link vrijedi („Link vrijedi 1 sat (do …)”), kao stranica.
    v20: po recenziji v43: preko ukupne granice e-mailova za potvrdu narudžba se prima bez e-maila i bez rezervacije
         (sj_order_overload, trgovina se ne zatvara); granica 2/h po paru adresa+primatelj i 5/h po primatelju; granice
         se upisuju tek kad je e-mail poslan.
@@ -473,7 +474,9 @@ function sj_order_pending(array $P): void {
   $t[] = '';
   $t[] = $link;
   $t[] = '';
-  $t[] = 'Link vrijedi do ' . sj_fmt_hr($until) . '. Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.';
+  $cm = sj_confirm_minutes();
+  /* v21: koliko link vrijedi, ne samo do kada (kao na stranici od v45) */
+  $t[] = 'Link vrijedi ' . ($cm % 60 === 0 ? sj_hours_text(intdiv($cm, 60)) : $cm . ' minuta') . ' (do ' . sj_fmt_hr($until) . '). Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.';
   $t[] = '';
   $t[] = 'NARUDŽBA';
   $t[] = $P['itemsText'];

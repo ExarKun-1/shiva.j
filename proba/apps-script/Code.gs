@@ -1,5 +1,5 @@
 /* =========================================================
-   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v41)
+   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v42)
    Za probnu stranicu na GitHub Pagesu (statična, bez PHP-a). Isti API kao api/index.php:
      GET  ?r=status   rezervirane i prodane torbe, dostava, podaci za uplatu
      POST ?r=reserve  (proba ne drži košaricu; stranica tada samo šalje narudžbu)
@@ -42,6 +42,12 @@ var PEND_HEAD = ['id', 'do', 'podaci'];
 function sjOut(status, obj) { obj._status = status; return obj; }
 function sjEur(n) { return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',') + ' €'; }
 function sjIso(ms) { return new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z'); }
+/* v42: „1 sat”, „2 sata”, „90 minuta” — koliko link vrijedi (kao na stranici) */
+function sjForText(min) {
+  if (min % 60) return min + ' minuta';
+  var n = min / 60, m10 = n % 10, m100 = n % 100;
+  return n + ' ' + (m10 === 1 && m100 !== 11 ? 'sat' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'sata' : 'sati'));
+}
 function sjHr(ms) {
   var d = new Date(ms), p = function (n) { return (n < 10 ? '0' : '') + n; };
   /* vrijeme u Hrvatskoj (CET/CEST) bez ovisnosti o postavkama računa */
@@ -170,7 +176,7 @@ function sjOrder(env, b) {
   var link = env.cfg.SITE_URL + '/?potvrda=' + pid + '.' + sec;
   var t = ['Dobar dan, ' + P.cust.name + ',', '',
     'primili smo vašu narudžbu. Da bismo je zaprimili' + (P.uniqueIds.length ? ' i rezervirali torbu za vas' : '') + ', potvrdite je klikom na link:', '',
-    link, '', 'Link vrijedi do ' + sjHr(until) + '. Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.', '',
+    link, '', 'Link vrijedi ' + sjForText(env.cfg.CONFIRM_MINUTES) + ' (do ' + sjHr(until) + '). Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.', '',
     'NARUDŽBA', sjItemsText(P), '- Dostava: ' + sjShipText(P), 'Ukupno: ' + sjEur(P.total), '',
     'Ako niste naručili vi, zanemarite ovaj e-mail: bez potvrde narudžba se ne zaprima i ništa se ne rezervira.', '',
     'Srdačan pozdrav,', SJ.shop];
