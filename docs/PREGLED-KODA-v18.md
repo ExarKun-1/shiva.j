@@ -255,6 +255,23 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | „Okrugla” dvaput na kartici | stil podnaslova (kurziv, isti font kao opis), pomoć i novi primjer u adminu; podatke mijenja vlasnica |
 | Potpis torbe na naslovnici u tri reda | riješeno: `.hb-tag` u svom redu, ime i cijena zajedno |
 
+## Recenzija web dizajnera (12. 10. 2026.): 8/10 → v46
+
+| # | Nalaz | Stanje u v46 |
+|---|---|---|
+| 1 | Nakon „potvrdite narudžbu” obrazac i gumb ostaju aktivni; drugi klik šalje novu tajnu i prvi link vraća 403 | riješeno: `.order-form.is-pending` skriva obrazac; „Promijeni podatke narudžbe”; promjena košarice ga vraća |
+| 2 | Mjere se ne vide na kartici; bez mjera red nestaje, a Uvjeti t. 2 kažu da su navedene | riješeno: „Mjere: …” na kartici; „na upit — pitajte nas…” u povećanom prikazu (podatak vlasnice) |
+| 3 | Polja < 16 px: iOS uvećava stranicu | riješeno: 16 px |
+| 4 | „U košarici ✓” ponovnim dodirom uklanja unikat | riješeno: otvara košaricu („U košarici ✓ · otvori”) |
+| 5 | Uz gumb nema iznosa | riješeno: `#orderSum` |
+| 6 | × u povećanom prikazu odlazi s ekrana; 1:1 reže uspravne fotografije | riješeno: × fiksan s podlogom; 4:5, ploča se pomiče kao cjelina |
+| 7 | Nema kontakta u košarici i povećanom prikazu | riješeno: „Pitanje prije narudžbe?” |
+| 8 | „Jedan primjerak” 10 px; „Fotografija uskoro” kontrast 2,9:1 | riješeno: 0.72rem, boja konca bez prozirnosti |
+| 9 | Povećani prikaz bez dostave i povrata | riješeno: „Ručni rad · dostava od … · 14 dana za povrat” |
+| 10 | ± 36 px, obrubi 1,4:1 | riješeno: 44 px, `#8F8D84` |
+| 11 | Tri bloka ponavljaju „e-mail s linkom” | riješeno: jednom, u „Sljedeći korak” |
+| 12 | Ništa ne sprječava objavu s `{NAPOMENA O PDV-u}` | riješeno: `tests/objava.js` (ručno prije objave) |
+
 ## Recenzija kupca (12. 10. 2026.): 7/10, „možda” → v45
 
 | Gdje je kupac zastao | Stanje u v45 |

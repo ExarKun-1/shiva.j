@@ -13,6 +13,7 @@ Svi testovi rade nad zasebnom probnom stranicom, složenom iz repozitorija i isp
 | `node tests/confirm.js` | potvrda narudžbe e-mailom (PHP): nepotvrđena ne rezervira, link, stara/kriva tajna, istek, ista adresa, granica mailova, `require_confirm: false` | Node 18+, pokrenut `serve.sh` |
 | `node tests/gas.js` | probni poslužitelj `proba/apps-script/Code.gs` u Nodeu (lažna tablica i pošta): narudžba, potvrda, granica pola ponude, „Plaćeno” iz tablice | Node 18+ |
 | `node tests/proba.js` | probna stranica (`proba/build.py`) u pregledniku s lažnim Apps Scriptom: traka, noindex, text/plain, `_status`, potvrda linkom | Node 18+, Playwright, Python 3 |
+| `node tests/objava.js [proizvodi.json]` | **prije objave, ručno** (ne u CI-ju): stranica bez vidljivih `{OZNAKA}` (npr. `{NAPOMENA O PDV-u}`), proizvodi bez djelomičnih oznaka; upozorenja za torbe bez mjera i unikate bez fotografije. Pada dok vlasnica ne upiše podatke | Node 18+ |
 | `node tests/e2e.js` | stranica u pregledniku (Playwright): prvi ekran, košarica, narudžba, ploča za uplatu, HUB-3 barkod, prekid veze, mobitel 360 i 390 px | Node 18+, Playwright s Chromiumom, **svježe** pokrenut `serve.sh` |
 
 `api.js` i `e2e.js` mijenjaju podatke probne stranice, pa prije svakog pokretanja ponovno pokrenite `serve.sh`
