@@ -15,3 +15,6 @@ reports/
 # ispitni podaci (tests/fixtures) idu u git
 !tests/fixtures/torbe.json
 _site/
+
+# paketi za prijenos na hosting (tools/paket.py)
+dist/

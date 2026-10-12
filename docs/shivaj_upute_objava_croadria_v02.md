@@ -1,4 +1,5 @@
 # Shiva.J — objava stranice na Croadria hostingu · upute v02
+> **Zamijenjeno uputama v03:** `docs/UPUTE-OBJAVA-CROADRIA-v03.md` (paket za prijenos `tools/paket.py`). Ovaj dokument ostaje radi povijesti.
 > **Dopuna 22. 9. 2026.:** na hosting se prenose `index.html` (v19), `img/`, `js/` (od v30: crtanje barkoda za uplatu), `api/`, `admin/`, `.htaccess`, mapa `data/` s datotekama `.htaccess` i `PRVA-PRIJAVA.txt`, te `torbe.json` (kopija `torbe.json.example`, prazna `[]`; kasnije je piše admin, zato više nije u gitu). Ne prenose se `docs/`, `*.md`, `torbe.primjer.json`, `router.php` (a `.htaccess` ih svejedno skriva). Odjeljak 7 dolje je zastario: rezervacije i narudžbe radi PHP servis u `api/`, Cloudflare i Formspree se ne koriste.
 
 
