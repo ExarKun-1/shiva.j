@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v42 (2026-10-12)
+     SHIVA.J WEBSHOP — v43 (2026-10-12)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v43 — gumbi „Dodaj u košaricu” u istom redu kartica poravnati (komentar
+           vlasnika na demo)
      v42 — po recenziji dizajna v41 (8/10): obavijest u otvorenoj košarici ispod
            zaglavlja (ne preko naslova), ✓ uz tekst; „Hvala vam!” kao naslov, rok
            rezervacije istaknut; „Kako naručiti” i Uvjeti
@@ -613,6 +615,8 @@
   }
   .add-btn:hover:not(:disabled),.add-btn:focus-visible:not(:disabled){background:var(--thread);border-color:var(--thread);color:var(--paper)}
   .add-btn:disabled{border-color:var(--sold);color:var(--sold-text);cursor:not-allowed}
+  /* v43: gumb na dnu kartice, pa su gumbi u istom redu poravnati i kad je opis jedne torbe dulji */
+  .card > .add-btn{margin-top:auto}
   .add-btn.in-cart{background:var(--ink);color:var(--paper)}
 
   /* ---------- Kako naručiti ---------- */
@@ -1083,7 +1087,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v42</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v43</p>
 </footer>
 
 <!-- Košarica -->
