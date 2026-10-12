@@ -5,6 +5,8 @@
   "site_url": "",
   "ttl_hours": 24,
   "confirm_customer": true,
+  "require_confirm": false,
+  "confirm_minutes": 60,
   "mail_mode": "log",
   "allowed_origins": [],
   "shipping": [

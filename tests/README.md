@@ -1,7 +1,8 @@
 # Testovi
 
 Svi testovi rade nad zasebnom probnom stranicom, složenom iz repozitorija i ispitnih podataka u `tests/fixtures/`
-(izmišljene torbe i cijene, `mail_mode: log`, bez lozinke). Prava mapa `data/` se ne dira.
+(izmišljene torbe i cijene, `mail_mode: log`, bez lozinke, `require_confirm: false` — staro ponašanje; potvrdu uključuju
+`confirm.js` i dio `e2e.js`). Prava mapa `data/` se ne dira.
 
 | Naredba | Što provjerava | Treba |
 |---|---|---|
@@ -9,6 +10,9 @@ Svi testovi rade nad zasebnom probnom stranicom, složenom iz repozitorija i isp
 | `php tests/admin.php` | admin preko pravog poslužitelja (port 8091) i prijave: „Plaćeno” za cijelu narudžbu, torba bez rezervacije pripada onome tko je prvi platio, upozorenja u Rezervacijama | PHP 8.1+, `curl` |
 | `sh tests/serve.sh` | složi probnu stranicu u `/tmp/shivaj-test` i pokrene poslužitelj na http://127.0.0.1:8090/ | PHP 8.1+ |
 | `node tests/api.js` | API preko HTTP-a: narudžba, ključ narudžbe, rezervacije i ključ rezervacije, 409/429/500, e-mailovi | Node 18+, pokrenut `serve.sh` |
+| `node tests/confirm.js` | potvrda narudžbe e-mailom (PHP): nepotvrđena ne rezervira, link, stara/kriva tajna, istek, ista adresa, granica mailova, `require_confirm: false` | Node 18+, pokrenut `serve.sh` |
+| `node tests/gas.js` | probni poslužitelj `proba/apps-script/Code.gs` u Nodeu (lažna tablica i pošta): narudžba, potvrda, granica pola ponude, „Plaćeno” iz tablice | Node 18+ |
+| `node tests/proba.js` | probna stranica (`proba/build.py`) u pregledniku s lažnim Apps Scriptom: traka, noindex, text/plain, `_status`, potvrda linkom | Node 18+, Playwright, Python 3 |
 | `node tests/e2e.js` | stranica u pregledniku (Playwright): prvi ekran, košarica, narudžba, ploča za uplatu, HUB-3 barkod, prekid veze, mobitel 360 i 390 px | Node 18+, Playwright s Chromiumom, **svježe** pokrenut `serve.sh` |
 
 `api.js` i `e2e.js` mijenjaju podatke probne stranice, pa prije svakog pokretanja ponovno pokrenite `serve.sh`
