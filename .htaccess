@@ -9,7 +9,7 @@ Options -Indexes
 # Datoteke iz repozitorija koje nisu za javnost (ako se na hosting prenese cijela mapa):
 # git, upute, dokumenti, primjeri, lokalni router, pomoćna PHP datoteka admina
 <IfModule mod_alias.c>
-  RedirectMatch 404 (?i)^/(\.git|\.gitignore|docs/|tests/|README\.md|[^/]+\.md|torbe\.primjer\.json|torbe\.json\.example|router\.php|admin/lib\.php|data/)
+  RedirectMatch 404 (?i)^/(\.git|\.gitignore|docs/|tests/|README\.md|[^/]+\.md|torbe\.primjer\.json|torbe\.json\.example|router\.php|admin/lib\.php|data/|PROCITAJ\.txt)
 </IfModule>
 
 <IfModule mod_headers.c>
