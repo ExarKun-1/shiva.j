@@ -46,6 +46,8 @@ Kontrolni panel → SSL → **Let's Encrypt** za domenu (i www). Uključiti preu
 
 ## 6. Nakon prijenosa
 
+0. **Provjera prije objave (v46):** `node tests/objava.js` (s preuzetim popisom proizvoda iz admina: `node tests/objava.js proizvodi.json`). Pada dok je na stranici vidljiva nepopunjena oznaka, npr. `{NAPOMENA O PDV-u}` u Uvjetima; upozorava na torbe bez mjera („na upit”) i unikate bez fotografije.
+
 1. Otvoriti domenu u pregledniku, na računalu i telefonu. Dok nema torbi piše „Ponuda se upravo priprema“; nakon unosa u adminu: fotografije, kategorije Torbe i Ostalo, košarica.
 2. Provjeriti da stranica čita `torbe.json`: u pregledniku desni klik → Inspect → Console → upisati `document.documentElement.dataset.products` → mora pisati `torbe.json`, ne `ugradjeno`.
 3. **Obavezno prije prve narudžbe:** admin → Postavke → „Adresa stranice” = domena (npr. `https://shivaj.hr`). Bez nje narudžbe se ne primaju, jer se od nje gradi link „potvrdite narudžbu” u e-mailu kupcu (v40+).
