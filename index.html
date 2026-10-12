@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v41 (2026-10-12)
+     SHIVA.J WEBSHOP — v42 (2026-10-12)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v42 — po recenziji dizajna v41 (8/10): obavijest u otvorenoj košarici ispod
+           zaglavlja (ne preko naslova), ✓ uz tekst; „Hvala vam!” kao naslov, rok
+           rezervacije istaknut; „Kako naručiti” i Uvjeti
+           Ukratko spominju potvrdu linkom (za pravnika); barkod na računalu odmah ispod „Podaci za
+           uplatu”; gumbi „Kopiraj” 44 px; mobitel: „Pogledaj torbe” ispod torbe
+           (prvi ekran), manji krug; „e-mail” se ne lomi na crtici
      v41 — uz api v19: po recenziji v40 — okvir „potvrdite narudžbu”: može se
            zatvoriti stranica, link radi i na drugom uređaju, cijela rečenica
            prije gumba za ponovno slanje, role=status (greška ostaje alert),
@@ -767,6 +773,10 @@
   .empty-cart.pay-mode{padding:8px 0 24px;text-align:left}
   .pay-thanks:focus{outline:none}
   .pay-thanks{font-family:'Marcellus',serif;font-size:1.15rem;line-height:1.4;margin-bottom:22px}
+  .pay-hello{font-family:'Marcellus',serif;font-weight:400;font-size:1.6rem;line-height:1.2;margin:0 0 8px;color:var(--thread)}
+  .pay-thanks p{margin:0}
+  .pay-thanks b{font-weight:400;border-bottom:1.5px dashed var(--thread)}
+  .nw{white-space:nowrap}
   .pay-title{
     font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
     color:var(--thread);margin-bottom:12px;display:flex;align-items:center;gap:10px;
@@ -778,6 +788,7 @@
   .pay-data div{display:flex;gap:10px;align-items:baseline}
   .pay-data dt{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);min-width:7.5rem;flex:none}
   .pay-data dd br + .copy-btn{margin-left:0;margin-top:6px}
+  .pay-data .copy-btn{min-height:44px}
   .pay-data .amount{font-weight:700;font-size:1.1rem}
   .pay-data .iban,.nowrap{white-space:nowrap}
   .retry-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
@@ -816,8 +827,9 @@
   }
   .toast.show{opacity:1;transform:translate(-50%,0)}
   /* dok je košarica otvorena, obavijest ide na vrh, da ne prekrije gumbe i podatke za uplatu */
-  body.cart-open .toast{top:20px;bottom:auto;transform:translate(-50%,-20px)}
-  body.cart-open .toast.show{transform:translate(-50%,0)}
+  /* v42: unutar ladice, ispod njezina zaglavlja (ne preko naslova „Vaša košarica”) */
+  body.cart-open .toast{top:76px;bottom:auto;left:auto;right:20px;max-width:min(400px,calc(100vw - 40px));transform:translateY(-12px)}
+  body.cart-open .toast.show{transform:none}
   .field-hint{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:4px}
 
   @media (max-width:820px){
@@ -831,10 +843,11 @@
     .hero.has-bag .hero-text{display:contents}
     .hero.has-bag .eyebrow{order:1}
     .hero.has-bag h1{order:2}
-    .hero.has-bag .hero-bag{order:3;width:min(52vw,230px);margin-top:30px}
-    .hero.has-bag .hero-text > p:not(.eyebrow){order:4}
-    .hero.has-bag .seam{order:5}
-    .hero.has-bag .hero-cta{order:6;justify-self:start}
+    .hero.has-bag .hero-bag{order:3;width:min(46vw,200px);margin-top:26px}
+    /* v42: gumb odmah ispod torbe, da je na prvom ekranu mobitela */
+    .hero.has-bag .hero-cta{order:4;justify-self:start}
+    .hero.has-bag .hero-text > p:not(.eyebrow){order:5}
+    .hero.has-bag .seam{order:6}
     .hero.has-bag h1{font-size:clamp(2rem,9vw,2.6rem)}
     .hero.has-bag .seam{margin-top:28px}
     .steps{grid-template-columns:1fr;gap:22px}
@@ -921,7 +934,7 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim pošaljete narudžbu, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi ne treba rezervirati.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete i potvrdite linkom iz e-maila, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi ne treba rezervirati.</p>
       </div>
       <div class="step">
         <span class="num">03</span>
@@ -973,7 +986,7 @@
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
       <hr class="seam">
-      <p>Ukratko: naručite obrascem u košarici; šarenu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (artikle po narudžbi kad ih izradimo). Ako vam ne odgovara, možete je vratiti u roku 14 dana (osim artikala izrađenih po vašoj želji). Detalji su u nastavku.</p>
+      <p>Ukratko: naručite obrascem u košarici i potvrdite narudžbu linkom iz e-maila; tada šarenu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (artikle po narudžbi kad ih izradimo). Ako vam ne odgovara, možete je vratiti u roku 14 dana (osim artikala izrađenih po vašoj želji). Detalji su u nastavku.</p>
 
       <details><summary><h3>1. Prodavatelj</h3></summary>
       <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi uvjeti vrijede za sve narudžbe putem ove stranice; slanjem narudžbe prihvaćate ih.</p>
@@ -1070,7 +1083,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v41</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v42</p>
 </footer>
 
 <!-- Košarica -->
@@ -1136,7 +1149,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note">Nakon slanja stiže vam e-mail s linkom: kliknite ga da potvrdite narudžbu i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod), koje šaljemo i e-mailom.<span id="orderNoteHold"> Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde.</span> Artikle po narudžbi izrađujemo nakon uplate.</p>
+      <p class="order-note">Nakon slanja stiže vam <span class="nw">e-mail</span> s linkom: kliknite ga da potvrdite narudžbu i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod), koje šaljemo i <span class="nw">e-mailom</span>.<span id="orderNoteHold"> Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde.</span> Artikle po narudžbi izrađujemo nakon uplate.</p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: e-mail s linkom za potvrdu, zatim podaci za uplatu.</p>
@@ -1476,13 +1489,13 @@ function toggleCartItem(id){
   const entry = cart.find(c => c.id === p.id);
   if(p.made){
     if(entry){ entry.qty = Math.min(10, qtyOf(entry) + 1); showToast(`„${p.name}” — ${entry.qty} kom. u košarici`); }
-    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`U košarici: „${p.name}” ✓`); }
+    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`U košarici: „${p.name}”\u00a0✓`); }
   } else if(entry){
     cart = cart.filter(c => c.id !== p.id);
     showToast(`Uklonjeno iz košarice: „${p.name}”`);
   } else {
     cart.push({ ...p, qty: 1, note: "" }); /* unikat — uvijek količina 1 */
-    showToast(`U košarici: „${p.name}” ✓`);
+    showToast(`U košarici: „${p.name}”\u00a0✓`);
   }
   renderGrid(); renderCart();
   if(lbCurrent) updateLbButton();
@@ -1687,7 +1700,7 @@ drawer.addEventListener("click", e => {
     countOnce("copy");
     const label = cb.dataset.label || "Podaci";
     if(navigator.clipboard) navigator.clipboard.writeText(cb.dataset.copy)
-      .then(() => showToast(`${label} — kopirano ✓`), () => showToast("Kopiranje nije uspjelo — označite tekst i kopirajte ručno."));
+      .then(() => showToast(`${label} — kopirano\u00a0✓`), () => showToast("Kopiranje nije uspjelo — označite tekst i kopirajte ručno."));
     else showToast("Kopiranje nije uspjelo — označite tekst i kopirajte ručno.");
     return;
   }
@@ -1914,7 +1927,7 @@ function loadBoxnowWidget(onReady){
       document.getElementById("fLocker").value = txt;
       clearBoxnowMap();
       mapBtn.textContent = "Promijeni paketomat na karti";
-      showToast("Paketomat odabran ✓");
+      showToast("Paketomat odabran\u00a0✓");
     }
   };
   if(BOXNOW.partnerId) window._bn_map_widget_config.partnerId = BOXNOW.partnerId;
@@ -2047,7 +2060,7 @@ function showOrderPending(srv, email){
     ? `<b>E-mail za potvrdu nismo uspjeli poslati.</b> Provjerite adresu ${escHtml(email)} i pošaljite narudžbu ponovno ili nam pišite na ${escHtml(OWNER_EMAIL)}.
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button></div>`
     : `<b>Još jedan korak: potvrdite narudžbu.</b>
-       Poslali smo e-mail na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu${until ? " do " + escHtml(until) : ""}.
+       Poslali smo <span class="nw">e-mail</span> na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu${until ? " do " + escHtml(until) : ""}.
        Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu.
        Ovu stranicu možete zatvoriti: link radi i na mobitelu ili drugom računalu.
        <br>E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:
@@ -2193,9 +2206,9 @@ function paymentPanel(last){
   const heldN = uq.filter(p => !unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
   const unheldN = uq.filter(p => unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
   const thanks = anyUnique && untilIso && unheldN.length
-    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do ${fmtDateTime(untilIso)}. ${unheldN.length > 1 ? "Torbe " : "Torbu "}${unheldN.join(" i ")} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
+    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do <b>${fmtDateTime(untilIso)}</b>. ${unheldN.length > 1 ? "Torbe " : "Torbu "}${unheldN.join(" i ")} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
     : anyUnique && untilIso
-    ? `${many ? "Torbe su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do ${fmtDateTime(untilIso)}.`
+    ? `${many ? "Torbe su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do <b>${fmtDateTime(untilIso)}</b>.`
     : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate."
     : "Narudžba je zaprimljena. Artikle izrađujemo po narudžbi; rok izrade teče od primitka uplate.";
@@ -2236,21 +2249,24 @@ function paymentPanel(last){
         <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">
         <figcaption><span class="bc-text">${genericCap}</span> Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
       </figure>` : "";
+  /* v42: na računalu (širok zaslon, miš) barkod je odmah ispod naslova — najbrže ga je skenirati mobitelom; na mobitelu na dnu */
+  const barcodeFirst = !!(window.matchMedia && matchMedia("(min-width:768px) and (pointer:fine)").matches);
   const mailSent = srv.mailCustomer === false
-    ? `Potvrdu narudžbe e-mailom nismo uspjeli poslati automatski; javit ćemo vam se sami e-mailom. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`
-    : `Potvrdu narudžbe s istim podacima šaljemo vam i e-mailom; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`;
+    ? `Potvrdu narudžbe <span class="nw">e-mailom</span> nismo uspjeli poslati automatski; javit ćemo vam se sami <span class="nw">e-mailom</span>. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`
+    : `Potvrdu narudžbe s istim podacima šaljemo vam i <span class="nw">e-mailom</span>; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`;
   return `
     <div class="pay">
-      <p class="pay-thanks" tabindex="-1">Hvala vam!<br>${thanks}</p>
+      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!</h3><p>${thanks}</p></div>
       <ol class="pay-steps" aria-label="Što slijedi">
-        <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo e-mailom"} i pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : ""}.</li>
+        <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"} i pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : ""}.</li>
         <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : " u roku navedenom uz svaki") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
         <li><b>Kod vas</b>Ako se predomislite, ${allBags ? (items.length > 1 ? "torbe" : "torbu") : (items.length > 1 ? "artikle" : "artikl")} možete vratiti u roku 14 dana od primitka${anyMade ? ", osim artikala rađenih po vašoj boji ili mjeri" : ""} (Uvjeti kupnje, t.\u00a06).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
-      ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam e-mailom.</p>`}
+      ${payOk && barcodeFirst ? barcode : ""}
+      ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
       ${payOk ? `<dl class="pay-data">${orderNo}
         <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}<br>${copyBtn(PAYMENT.recipient, "Primatelj")}</dd></div>
         <div><dt>IBAN</dt><dd><span class="mono-val iban">${ibanPretty(PAYMENT.iban)}</span><br>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</dd></div>
@@ -2259,7 +2275,7 @@ function paymentPanel(last){
         ${refRow}
         <div><dt>Opis</dt><dd>${escHtml(desc)}</dd></div>
       </dl>` : orderNo ? `<dl class="pay-data">${orderNo}</dl>` : ""}
-      ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcode}` : ""}
+      ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}
       <p class="pay-note">${mailSent}</p>
     </div>`;
 }

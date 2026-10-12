@@ -231,3 +231,14 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | Probna tablica: tekst s `=` izvršava se kao formula | riješeno: `'` ispred vrijednosti koje počinju s `= + - @` |
 | Dizajn: prekinuta rečenica, nejasno smije li se zatvoriti, `role=alert`, nevidljiv fokus, duga adresa | riješeno u `showOrderPending` / CSS |
 
+## Recenzija dizajna v41 (12. 10. 2026.): 8/10, „spremno” → v42
+
+| Nalaz | Stanje u v42 |
+|---|---|
+| Obavijest prekriva naslov košarice, ✓ prelazi u novi red | riješeno: `body.cart-open .toast` ispod zaglavlja ladice, desno; neprelomivi razmak prije ✓ |
+| „Hvala vam!” bez vlastite težine | riješeno: `h3.pay-hello` (1.6rem), rok rezervacije u `<b>`; fokus i dalje na `.pay-thanks` |
+| Barkod na dnu i na računalu | riješeno: `(min-width:768px) and (pointer:fine)` → barkod ispod „Podaci za uplatu” |
+| „Kopiraj” 36 px | riješeno: `.pay-data .copy-btn{min-height:44px}` |
+| Mobitel: „Pogledaj torbe” ispod prvog ekrana; „e-/mailom” | riješeno: gumb odmah ispod torbe, krug `min(46vw,200px)`; `.nw` oko „e-mail…” u košarici i na ploči |
+| (usput) „Kako naručiti” i Uvjeti Ukratko: rezervacija „čim pošaljete” | ispravljeno: nakon potvrde linkom (v40) |
+
