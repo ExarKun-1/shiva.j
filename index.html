@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v44 (2026-10-12)
+     SHIVA.J WEBSHOP — v45 (2026-10-12)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v45 — po recenziji kupca: unikat bez fotografije se ne može naručiti
+           („Fotografija uskoro”, pitajte na Instagramu); okvir potvrde kaže
+           koliko link vrijedi; korak „Kod vas”: trošak povrata; Uvjeti t. 5
+           (barkod popuni sve) i t. 4 (potvrda odmah) — za pravnika
      v44 — uz api v20, admin v19 (recenzije v43): obavijest se sakrije kad se
            košarica otvori, u košarici traje 2,5 s; „Kopiraj” u istom redu s
            IBAN-om, iznosom i pozivom na broj; podnaslov kartice u kurzivu;
@@ -577,6 +581,8 @@
   .card.made .unikat-tag::before{border-top-style:solid}
   .card .tagline{font-style:italic;font-size:.9rem;color:var(--thread);margin-top:-6px}
   .card .ship-from{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
+  .card .ask-ig{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
+  .card .ask-ig a{border-bottom:1.5px dashed var(--thread)}
   /* placeholder kad nema fotografije */
   .photo .ph{
     position:absolute;inset:0;
@@ -1013,11 +1019,11 @@
 
       </details>
       <details><summary><h3>4. Narudžba i rezervacija</h3></summary>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja” i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon potvrde narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Potvrdom narudžbe unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja” i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon potvrde narudžbe, a e-mailom vam odmah nakon potvrde šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata); ugovor je sklopljen kad primite tu potvrdu. Potvrdom narudžbe unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
       </details>
       <details><summary><h3>5. Plaćanje</h3></summary>
-      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon potvrde narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj i IBAN popune se sami, a iznos, model i poziv na broj upisujete sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon potvrde narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
 
       </details>
       <details><summary><h3>6. Pravo na jednostrani raskid ugovora</h3></summary>
@@ -1095,7 +1101,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v44</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v45</p>
 </footer>
 
 <!-- Košarica -->
@@ -1362,7 +1368,7 @@ function restoreCart(){
   if(Array.isArray(saved)){
     saved.forEach(sv => {
       const p = PRODUCTS.find(x => x.id === String(sv && sv.id));
-      if(!p || isGone(p) || cart.some(c => c.id === p.id)) return;
+      if(!p || isGone(p) || noPhoto(p) || cart.some(c => c.id === p.id)) return;
       cart.push({ ...p, qty: p.made ? Math.max(1, Math.min(10, Number(sv.qty) || 1)) : 1, note: p.made ? String(sv.note || "").slice(0, 120) : "" });
     });
   }
@@ -1443,7 +1449,9 @@ function renderGrid(){
     }
     const card = document.createElement("article");
     card.className = "card" + (gone ? " sold" : "") + (p.made ? " made" : "");
+    const wait = !gone && noPhoto(p);
     const btnText = gone ? statusLabel(p)
+      : wait ? "Fotografija uskoro"
       : p.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Naruči izradu")
       : entry ? "U košarici ✓" : "Dodaj u košaricu";
     card.innerHTML = `
@@ -1462,8 +1470,9 @@ function renderGrid(){
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
       ${p.made && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(p.lead)}</p>` : ""}
-      ${!gone && shipFrom !== null ? `<p class="ship-from">Ručni rad · dostava od ${fmt(shipFrom)}</p>` : ""}
-      <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone ? "disabled" : ""}>
+      ${!gone && !wait && shipFrom !== null ? `<p class="ship-from">Ručni rad · dostava od ${fmt(shipFrom)}</p>` : ""}
+      ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
+      <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
         ${escHtml(btnText)}
       </button>`;
     grid.appendChild(card);
@@ -1494,9 +1503,11 @@ grid.addEventListener("keydown", e => {
   if(photo && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openLightbox(photo.dataset.view); }
 });
 
+/* v45: šarena torba (unikat) bez fotografije još se ne prodaje — kupac ne kupuje torbu koju nije vidio */
+function noPhoto(p){ return !!p && !p.made && !(Array.isArray(p.imgs) && p.imgs.length); }
 function toggleCartItem(id){
   const p = PRODUCTS.find(x => x.id === id);
-  if(!p || isGone(p)) return;
+  if(!p || isGone(p) || noPhoto(p)) return;
   if(!cart.find(c => c.id === p.id)) countOnce("cart");
   const entry = cart.find(c => c.id === p.id);
   if(p.made){
@@ -1629,11 +1640,12 @@ function stepLb(d){
 function updateLbButton(){
   const b = document.getElementById("lbAdd");
   if(!lbCurrent) return;
-  const gone = isGone(lbCurrent);
+  const gone = isGone(lbCurrent), wait = !gone && noPhoto(lbCurrent);
   const entry = cart.find(c => c.id === lbCurrent.id);
-  b.disabled = gone;
+  b.disabled = gone || wait;
   b.classList.toggle("in-cart", !!entry && !gone && !lbCurrent.made);
   b.textContent = gone ? statusLabel(lbCurrent)
+    : wait ? "Fotografija uskoro"
     : lbCurrent.made ? (entry ? `U košarici (${qtyOf(entry)}) · dodaj još` : "Naruči izradu")
     : entry ? "U košarici ✓" : "Dodaj u košaricu";
 }
@@ -2069,12 +2081,15 @@ function sendMailto(o){
    e-mailom tako nikad ne rezerviraju torbe). Košarica ostaje dok narudžba ne bude potvrđena. */
 function showOrderPending(srv, email){
   const until = srv.confirmUntil ? fmtDateTime(srv.confirmUntil) : "";
+  /* v45: koliko link vrijedi, ne samo do kada (60 → „1 sat”, 90 → „90 minuta”) */
+  const cm = Number(srv.confirmMinutes) || 0;
+  const linkFor = !cm ? "" : cm % 60 === 0 ? hoursText(cm / 60) : cm + " minuta";
   const anyUnique = cart.some(p => !p.made);
   showOrderError(srv.mailCustomer === false
     ? `<b>E-mail za potvrdu nismo uspjeli poslati.</b> Provjerite adresu ${escHtml(email)} i pošaljite narudžbu ponovno ili nam pišite na ${escHtml(OWNER_EMAIL)}.
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button></div>`
     : `<b>Još jedan korak: potvrdite narudžbu.</b>
-       Poslali smo <span class="nw">e-mail</span> na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu${until ? " do " + escHtml(until) : ""}.
+       Poslali smo <span class="nw">e-mail</span> na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu. ${linkFor ? "Link vrijedi " + escHtml(linkFor) + (until ? " (do " + escHtml(until) + ")" : "") + "." : until ? "Link vrijedi do " + escHtml(until) + "." : ""}
        Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu.
        Ovu stranicu možete zatvoriti: link radi i na mobitelu ili drugom računalu.
        <br>E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:
@@ -2276,7 +2291,7 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : " u roku navedenom uz svaki") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Kod vas</b>Ako se predomislite, ${allBags ? (items.length > 1 ? "torbe" : "torbu") : (items.length > 1 ? "artikle" : "artikl")} možete vratiti u roku 14 dana od primitka${anyMade ? ", osim artikala rađenih po vašoj boji ili mjeri" : ""} (Uvjeti kupnje, t.\u00a06).</li>
+        <li><b>Kod vas</b>Ako se predomislite, ${allBags ? (items.length > 1 ? "torbe" : "torbu") : (items.length > 1 ? "artikle" : "artikl")} možete vratiti u roku 14 dana od primitka; trošak povrata snosite vi${anyMade ? ", osim artikala rađenih po vašoj boji ili mjeri" : ""} (Uvjeti kupnje, t.\u00a06).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}

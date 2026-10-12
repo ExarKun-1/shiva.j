@@ -255,3 +255,14 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | „Okrugla” dvaput na kartici | stil podnaslova (kurziv, isti font kao opis), pomoć i novi primjer u adminu; podatke mijenja vlasnica |
 | Potpis torbe na naslovnici u tri reda | riješeno: `.hb-tag` u svom redu, ime i cijena zajedno |
 
+## Recenzija kupca (12. 10. 2026.): 7/10, „možda” → v45
+
+| Gdje je kupac zastao | Stanje u v45 |
+|---|---|
+| Unikat bez fotografije može se kupiti | riješeno: `noPhoto()` — „Fotografija uskoro”, neaktivno, „pitajte nas na Instagramu”; i u povećanom prikazu i pri vraćanju košarice |
+| Nema mjera torbe | podatak vlasnice (admin → mjere); stranica ne prikazuje {DIMENZIJE} |
+| {NAPOMENA O PDV-u} u Uvjetima t. 3 | podatak vlasnice/knjigovođe, obavezno prije objave |
+| Barkod „popune se sami” vs. Uvjeti t. 5 „upisujete sami” | riješeno: Uvjeti t. 5 usklađeni (za pravnika) |
+| Link vrijedi „do 20:25” bez trajanja; „nekoliko minuta” vs. „24 sata” | riješeno: „Link vrijedi 1 sat (do …)”; Uvjeti t. 4 „odmah nakon potvrde (najkasnije u roku 24 sata)” (za pravnika) |
+| Povrat: tko plaća poštarinu | riješeno: korak „Kod vas” — „trošak povrata snosite vi” |
+
