@@ -36,6 +36,7 @@ ok(s0.ok && Array.isArray(s0.shipping) && s0.payment.iban && s0.ids.length === 0
 const o1 = H(env, 'order', order('gas-key-00001', 'ana@primjer.hr', [{ id: 'luna' }], 65));
 ok(o1.ok && o1.pending && o1._status === 200 && env.rows.length === 0 && env.mails.length === 1 && /potvrdite narudžbu/.test(env.mails[0].subject), 'narudžba čeka potvrdu, e-mail kupcu s linkom, bez upisa');
 ok(env.mails[0].body.includes('https://primjer.github.io/shiva.j/?potvrda='), 'link vodi na probnu stranicu');
+ok(/Link vrijedi 1 sat \(do /.test(env.mails[0].body) && ctx.sjForText(90) === '90 minuta' && ctx.sjForText(120) === '2 sata', 'v42: e-mail kaže koliko link vrijedi');
 const bad = H(env, 'order', order('gas-key-00002', 'ana@primjer.hr', [{ id: 'luna' }], 1));
 ok(bad._status === 409 && /Cijene/.test(bad.error), 'kriva cijena iz preglednika → 409');
 const L = link(env);

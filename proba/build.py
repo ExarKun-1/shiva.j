@@ -15,7 +15,7 @@ if api and not (api.startswith('https://script.google.com/') and api.endswith('/
 
 shutil.rmtree(out, ignore_errors=True)
 os.makedirs(out)
-for d in ('js', 'img', 'images'):
+for d in ('js', 'img'):
     if os.path.isdir(os.path.join(root, d)):
         shutil.copytree(os.path.join(root, d), os.path.join(out, d))
 shutil.copy(os.path.join(root, 'torbe.primjer.json'), os.path.join(out, 'torbe.json'))

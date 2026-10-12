@@ -29,6 +29,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     ok(r1.data.ok && r1.data.pending && !r1.data.orderNo && r1.data.mailCustomer === true, 'narudžba (text/plain) → čeka potvrdu, bez broja');
     ok(!(st.ids || []).includes('luna') && !read('rezervacije.json', {}).res?.luna && read('narudzbe.json', []).length === 0, 'nepotvrđena narudžba ne rezervira i ne ulazi u Narudžbe');
     ok(/potvrdite narudžbu/i.test(newMail) && /kupac@primjer\.hr/.test(newMail) && !/shivaj\.handmade@gmail\.com\nSubject: =\?UTF-8\?B\?.*Narud/.test(newMail) && !/Nova narudžba/.test(newMail), 'kupac dobiva e-mail s linkom, vlasnica ne');
+    ok(/Link vrijedi 1 sat \(do /.test(newMail), 'v21: e-mail kaže koliko link vrijedi');
     const L1 = lastLink();
     // 2) ponovno slanje istim ključem: isti zapis, nova tajna, stari link ne vrijedi
     const r2 = await post('order', order('potvrda-key-0001', 'kupac@primjer.hr', [{ id: 'luna' }], 65));
