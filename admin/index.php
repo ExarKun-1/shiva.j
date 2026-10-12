@@ -409,7 +409,7 @@ function sj_view_form(array $c, string $id): string {
   $h .= '<label>Dimenzije <input name="dims" maxlength="80" value="' . e($p['dims']) . '" placeholder="npr. 30 × 30 × 10 cm"></label>';
   $h .= '<label>Materijal <input name="material" maxlength="160" value="' . e($p['material']) . '"></label>';
   $h .= '<label>Rok izrade (samo po narudžbi) <input name="lead" maxlength="60" value="' . e($p['lead'] ?? '') . '" placeholder="npr. 5 radnih dana"></label>';
-  $h .= '<label>Karakter u jednom retku (na kartici, do 60 znakova) <input name="tagline" maxlength="60" value="' . e($p['tagline'] ?? '') . '" placeholder="npr. Okrugla, mirna, s jednim zlatnim odsjajem."></label>';
+  $h .= '<label>Karakter u jednom retku (na kartici, do 60 znakova) <input name="tagline" maxlength="60" value="' . e($p['tagline'] ?? '') . '" placeholder="npr. Mirna, s jednim zlatnim odsjajem."><small class="muted">Jedna rečenica o karakteru torbe; ne ponavljajte vrstu torbe (okrugla, ruksak…), ona je već u opisu.</small></label>';
   $h .= '<div class="stack">';
   $h .= '<label class="check"><input type="checkbox" name="sold" value="1"' . (!empty($p['sold']) ? ' checked' : '') . '> Prodano / trenutno nedostupno</label>';
   $h .= '<label class="check"><input type="checkbox" name="reserved" value="1"' . (!empty($p['reserved']) ? ' checked' : '') . '> Rezervirano ručno (npr. dogovor porukom)</label>';
@@ -490,7 +490,7 @@ function sj_view_orders(): string {
     /* aktivna rezervacija se označuje kod rezervacija (torba ode iz ponude); istekla ima gumb ovdje */
     $unheldO = array_filter((array)($o['order']['unheld'] ?? []), 'is_string'); /* starije narudžbe imaju samo true/false */
     if (!empty($o['paidAt'])) $paid = e(sj_fmt_hr($o['paidAt'])) . ' ' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true);
-    else $paid = ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">rezervacija istekla</span><br>' : '') . ($unheldO ? '<span class="muted">bez rezervacije: ' . e(implode(', ', $unheldO)) . '</span><br>' : '') . sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
+    else $paid = (!empty($o['unconfirmed']) ? '<span class="muted">bez potvrde e-mailom</span><br>' : '') . ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">rezervacija istekla</span><br>' : '') . ($unheldO ? '<span class="muted">bez rezervacije: ' . e(implode(', ', $unheldO)) . '</span><br>' : '') . sj_btn('order_paid', ['no' => $no], 'Plaćeno', '?s=narudzbe');
     $h .= '<tr><td class="mono">' . e($no) . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span></td><td><pre>' . e($o['items'] ?? '') . '</pre></td><td>' . e($o['shipping'] ?? '') . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
   return $h . '</tbody></table></div><p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Plaćeno” ovdje označuje cijelu narudžbu: torbe s rezervacijom postaju plaćene, a torbe bez rezervacije (ili s isteklom) pripadaju ovom kupcu ako je uplatio prvi; ako je torbu u međuvremenu držao ili kupio drugi kupac, admin to javi.</p>';

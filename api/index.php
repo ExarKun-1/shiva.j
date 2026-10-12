@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v19)
+   SHIVA.J — javni API na hostingu   (api/index.php v20)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,9 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v20: po recenziji v43: preko ukupne granice e-mailova za potvrdu narudžba se prima bez e-maila i bez rezervacije
+        (sj_order_overload, trgovina se ne zatvara); granica 2/h po paru adresa+primatelj i 5/h po primatelju; granice
+        se upisuju tek kad je e-mail poslan.
    v19: po recenziji v40: e-mail za potvrdu ograničen po primatelju (2/h) i adresi (3/h), ukupno 200/h uz upozorenje
         vlasnici od 100/h (trgovina se ne zatvara); bez provjerene adrese stranice 503 + upozorenje (potvrda ne otpada
         tiho); tuđi e-mail ne briše tuđu nepotvrđenu narudžbu (do 3 po adresi); potvrda ponovno provjerava katalog,
@@ -420,19 +423,19 @@ function sj_order_pending(array $P): void {
       if (!empty($x['ordered']) && !in_array((string)$rid, $P['uniqueIds'], true) && sj_email_key((string)($x['email'] ?? '')) === $ek)
         sj_json_out(['ok' => false, 'error' => 'Već imate narudžbu sa šarenom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću; za više torbi odjednom javite nam se e-mailom ili na Instagramu.'], 409);
   }
-  /* e-mail za potvrdu (stranica ne smije slati poštu na tuđe adrese): najviše 3 na sat s iste skraćene adrese i 2 na sat
-     na istu e-mail adresu; ukupna granica je visoka krajnja zaštita, da napadač s više adresa ne zatvori trgovinu.
-     Od 100 na sat vlasnica dobiva upozorenje (najviše jednom na sat). */
+  /* e-mail za potvrdu (stranica ne smije slati poštu na tuđe adrese). v20: sve granice se najprije samo provjeravaju,
+     a upisuju tek kad je e-mail stvarno poslan (odbijen ili neposlan pokušaj ne troši granicu):
+     - 3 na sat s iste skraćene adrese;
+     - 2 na sat za par adresa + primatelj, 5 na sat po primatelju (tuđa adresa ne može sat vremena blokirati pravog kupca);
+     - ukupno SJ_CONFIRM_TOTAL na sat: preko toga se narudžba ipak prima, ali BEZ e-maila i BEZ rezervacije
+       (torbu dobiva tko prvi uplati), pa napadač s mnogo adresa ne može zatvoriti trgovinu ni držati torbe. */
   $ekC = sj_email_key((string)$cust['email']);
-  if (!sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600))
+  $rk = 'mailto-' . substr(hash('sha256', $ekC), 0, 20);
+  if (!sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600, false, false))
     sj_json_out(['ok' => false, 'error' => 'Previše narudžbi u kratkom vremenu. Pokušajte ponovno za sat vremena ili nam pišite e-mailom.'], 429);
-  if (!sj_global_limit('mailto-' . substr(hash('sha256', $ekC), 0, 20), 2, 3600))
+  if (!sj_rate_limit($rk, 2, 3600, false, false) || !sj_global_limit($rk, 5, 3600, false))
     sj_json_out(['ok' => false, 'error' => 'Na ovu adresu već smo poslali e-mail za potvrdu. Pogledajte i neželjenu poštu (spam) ili pokušajte ponovno za sat vremena.'], 429);
-  if (!sj_global_limit('confirm', SJ_CONFIRM_TOTAL, 3600))
-    sj_json_out(['ok' => false, 'error' => 'Previše narudžbi u kratkom vremenu. Pokušajte ponovno za sat vremena ili nam pišite e-mailom.'], 429);
-  if (!sj_global_limit('confirm_warn', 100, 3600) && sj_global_limit('alert_c', 1, 3600))
-    sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — PAŽNJA: mnogo narudžbi', 'U zadnjih sat vremena poslano je više od 100 e-mailova „potvrdite narudžbu”. Ako to nisu pravi kupci, netko zlorabi obrazac; narudžbe se i dalje primaju, a nepotvrđene ništa ne drže. Ova poruka stiže najviše jednom na sat.');
-  sj_rate_limit('order', PHP_INT_MAX, 3600);
+  if (!sj_global_limit('confirm', SJ_CONFIRM_TOTAL, 3600, false)) sj_order_overload($P);
 
   $sec = sj_token();
   $until = sj_iso(time() + sj_confirm_minutes() * 60);
@@ -482,7 +485,24 @@ function sj_order_pending(array $P): void {
   $t[] = 'Srdačan pozdrav,';
   $t[] = $c['shop'];
   $sent = sj_send_mail((string)$cust['email'], $c['shop'] . ' — potvrdite narudžbu', implode("\n", $t), null, (string)$c['owner_email']);
+  if ($sent) {
+    sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600);
+    sj_rate_limit($rk, 2, 3600);
+    sj_global_limit($rk, 5, 3600);
+    sj_global_limit('confirm', SJ_CONFIRM_TOTAL, 3600);
+    if (!sj_global_limit('confirm_warn', 100, 3600) && sj_global_limit('alert_c', 1, 3600))
+      sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — PAŽNJA: mnogo narudžbi', 'U zadnjih sat vremena poslano je više od 100 e-mailova „potvrdite narudžbu”. Ako to nisu pravi kupci, netko zlorabi obrazac; narudžbe se i dalje primaju, a nepotvrđene ništa ne drže. Ova poruka stiže najviše jednom na sat.');
+  }
+  sj_rate_limit('order', PHP_INT_MAX, 3600);
   sj_json_out(['ok' => true, 'pending' => true, 'confirmUntil' => $until, 'confirmMinutes' => sj_confirm_minutes(), 'mailCustomer' => $sent]);
+}
+
+/* v20: preopterećenje (ukupna granica e-mailova za potvrdu): narudžba se prima odmah, bez e-maila i bez rezervacije —
+   trgovina ostaje otvorena, a lažne narudžbe ništa ne drže. Vlasnica dobiva jedan sažetak na sat, ne e-mail po narudžbi. */
+function sj_order_overload(array $P): void {
+  $P['noHold'] = true;
+  $done = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($P) { return sj_place_order($P); }, []);
+  sj_finish_order($done, $P);
 }
 
 /* Jedna narudžba u isto vrijeme (poziva se pod bravom narudzba-u-tijeku.json, koja je uvijek prva, pa nema zastoja):
@@ -491,11 +511,12 @@ function sj_order_pending(array $P): void {
    3) broj narudžbe i upis. E-mailovi idu nakon brave (sj_finish_order). */
 function sj_place_order(array $P): array {
   extract($P, EXTR_SKIP);
+  $noHold = !empty($P['noHold']);
   if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (($prev['key'] ?? '') === $key) return ['prev' => $prev];
 
   $res = null; $unheld = null; $back = null;
   if ($uniqueIds) {
-    $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $myIps, $freeIds) {
+    $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $myIps, $freeIds, $noHold) {
       $d = array_replace(sj_res_default(), $d);
       sj_res_prune($d);
       $blocking = sj_blocking_ids($d, $freeIds);
@@ -529,7 +550,7 @@ function sj_place_order(array $P): array {
       $cap = $free >= 2 ? max(1, intdiv($free, 2)) : 0;
       $heldIds = 0;
       foreach ($d['res'] as $rid => $x) if (!empty($x['ordered']) && isset($freeSet[(string)$rid]) && !in_array((string)$rid, $uniqueIds, true)) $heldIds++;
-      $room = max(0, $cap - $heldIds);
+      $room = !empty($noHold) ? 0 : max(0, $cap - $heldIds); /* v20: preopterećenje — bez rezervacije */
       $holdIds = []; $unheldIds = [];
       foreach ($uniqueIds as $id) {
         if (!in_array($id, $contested, true) && $room > 0) { $holdIds[] = $id; $room--; } else $unheldIds[] = $id;
@@ -560,7 +581,8 @@ function sj_place_order(array $P): array {
         'goods' => round($goods, 2), 'total' => $total, 'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'hours' => $res['hours']] : null, 'unheld' => $unheld ? array_values($unheld['unheldIds']) : []];
   $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time()), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
             'total' => sj_fmt_eur($total), 'items' => $itemsText, 'shipping' => $shipText, 'address' => trim($cust['street'] . ', ' . $cust['city'], ', '),
-            'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o];
+            'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o]
+          + ($noHold ? ['unconfirmed' => true] : []);
   try {
     sj_orders_prepend($entry);
   } catch (Throwable $e) {
@@ -605,7 +627,9 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
 
   /* najviše 30 automatskih potvrda kupcima na sat za cijelu stranicu: stranica se ne smije koristiti za slanje pošte */
   /* potvrđena narudžba je već prošla tu granicu pri slanju e-maila za potvrdu */
-  $capped = !$confirmed && !empty($c['confirm_customer']) && (!sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600) || !sj_global_limit('confirm', 30, 3600));
+  /* v20: narudžba primljena u preopterećenju (bez potvrde e-mailom): bez e-mailova, vlasnica dobiva sažetak najviše jednom na sat */
+  $quiet = !empty($P['noHold']);
+  $capped = !$quiet && !$confirmed && !empty($c['confirm_customer']) && (!sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600) || !sj_global_limit('confirm', 30, 3600));
 
   /* e-mail vlasnici */
   $lines = ["Nova narudžba $no — " . $c['shop'], ""];
@@ -639,11 +663,15 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   }
   if ($manyOrders) $lines[] = 'PAŽNJA: u zadnjih sat vremena stiglo je više od ' . SJ_UNIQUE_ORDERS_PER_HOUR . ' narudžbi sa šarenim torbama. Provjerite jesu li prave (ova napomena stiže najviše jednom na sat).';
   $subject = (($unheld || $manyOrders) ? 'PAŽNJA, mnogo rezervacija — ' : '') . "Narudžba $no — " . $cust['name'] . ' — ' . implode(', ', array_map(fn($it) => $it['name'], $items));
+  if ($quiet) {
+    $sentOwner = sj_global_limit('alert_nc', 1, 3600) && sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — PAŽNJA: narudžbe bez potvrde e-mailom',
+      "U zadnjih sat vremena stiglo je toliko narudžbi da se e-mailovi za potvrdu više ne šalju (zaštita od zlouporabe). Narudžbe se i dalje primaju, ali bez potvrde e-mailom i bez rezervacije (torbu dobiva tko prvi uplati); u adminu → Narudžbe označene su „bez potvrde e-mailom”. Prava kupca prepoznat ćete po uplati. Ova poruka stiže najviše jednom na sat.\n\nPrva takva narudžba: $no — " . $cust['name'] . ' — ' . sj_fmt_eur($total));
+  } else
   $sentOwner = sj_send_mail((string)$c['owner_email'], $subject, implode("\n", $lines), null, $cust['email']);
 
   /* automatska potvrda kupcu */
   $sentCust = false;
-  if (!empty($c['confirm_customer']) && !$capped) {
+  if (!$quiet && !empty($c['confirm_customer']) && !$capped) {
     $bar = SJ_ROOT . '/' . ltrim((string)($c['payment']['barcode'] ?? ''), '/');
     $text = sj_customer_mail($o, $no, $c, is_file($bar));
     $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, is_file($bar) ? $bar : null, (string)$c['owner_email']);
