@@ -55,12 +55,14 @@ Tok narudžbe je isti kao na pravoj stranici:
 ## Na pravoj stranici (Croadria)
 Isto radi PHP, pa Google tablica tamo nije potrebna:
 - Potvrda je uključena zadano (`require_confirm: true` u `data/config.json`, rok `confirm_minutes: 60`).
-- Za link u e-mailu mora biti upisana **adresa stranice** u admin → Postavke. Dok je nema, narudžbe idu bez potvrde,
-  a vlasnica u e-mailu dobiva upozorenje.
+- **Obavezno** upišite **adresu stranice** u admin → Postavke (npr. `https://shivaj.hr`): od nje se gradi link u
+  e-mailu. Dok je nema, narudžbe se ne primaju (kupac vidi „pišite nam e-mailom”), a vlasnica dobiva upozorenje
+  najviše jednom na sat.
 - U nuždi se potvrda isključuje s `"require_confirm": false` u `data/config.json`.
 
 ## Ograničenja probe
-- Proba ne zna IP adresu kupca. Granice su: jedna nepotvrđena narudžba po e-mail adresi, jedna neplaćena narudžba sa
-  šarenom torbom po adresi i najviše 30 mailova za potvrdu na sat ukupno.
+- Proba ne zna IP adresu kupca. Granice su: najviše 3 nepotvrđene narudžbe i 2 maila za potvrdu na sat po e-mail
+  adresi, jedna neplaćena narudžba sa šarenom torbom po adresi i najviše 200 mailova za potvrdu na sat ukupno. Na
+  pravoj stranici (PHP) vrijedi i granica od 3 na sat po mrežnoj adresi.
 - Gmail dopušta oko 100 poslanih mailova dnevno.
 - Nema admina. Narudžbe se vide u tablici, a „Plaćeno” se upisuje ručno.

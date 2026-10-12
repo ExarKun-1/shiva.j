@@ -70,10 +70,27 @@ const results = [];
 free.forEach((id, i) => { const p = list.find(x => String(x.id) === id); H(env, 'order', order('gas-cap-' + i + '-xxxx', 'kup' + i + '@primjer.hr', [{ id }], p.price)); results.push(H(env, 'confirm', link(env))); });
 const heldN = results.filter(r => r.ok && r.reserved).length, unheldN = results.filter(r => r.ok && r.unheld).length;
 ok(heldN === cap && unheldN === free.length - cap && results.every(r => r.ok), `granica: od ${free.length} slobodnih rezervirano ${heldN} (pola), ostalo bez rezervacije`);
-// granica e-mailova za potvrdu (30 na sat ukupno)
-env = makeEnv(); let last;
-for (let i = 0; i < 31; i++) last = H(env, 'order', order('gas-lim-' + i + '-xxxx', 'l' + i + '@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], list.find(p => p.id === 'kozmeticka').price));
-ok(last._status === 429, '31. e-mail za potvrdu u satu → 429');
+// v41: po primatelju najviše 2 e-maila za potvrdu na sat; tuđi e-mail ne briše pravu nepotvrđenu narudžbu
+env = makeEnv();
+const kz = list.find(p => p.id === 'kozmeticka').price;
+H(env, 'order', order('gas-zrtva-0001', 'zrtva@primjer.hr', [{ id: 'luna' }], 65)); const Lz = link(env);
+H(env, 'order', order('gas-napad-0001', 'zrtva@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], kz));
+const third = H(env, 'order', order('gas-napad-0002', 'zrtva@primjer.hr', [{ id: 'kozmeticka', qty: 2 }], kz * 2));
+const cz = H(env, 'confirm', Lz);
+ok(cz.ok && cz.items[0].id === 'luna', 'narudžba s tuđim e-mailom ne poništava žrtvin link');
+ok(third._status === 429 && /već smo poslali/.test(third.error), 'treći e-mail za potvrdu na istu adresu u satu → 429');
+// 31 narudžba s različitih adresa: bez ukupnog 429
+env = makeEnv(); let all = true;
+for (let i = 0; i < 31; i++) if (H(env, 'order', order('gas-lim-' + i + '-xxxx', 'l' + i + '@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], kz))._status !== 200) all = false;
+ok(all, '31 narudžba s različitih adresa: sve primljene');
+// potvrda ponovno čita cijene
+env = makeEnv();
+H(env, 'order', order('gas-cijena-0001', 'cijena@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], kz)); const Lc = link(env);
+const orig = env.products; env.products = () => list.map(p => p.id === 'kozmeticka' ? Object.assign({}, p, { price: p.price + 1 }) : p);
+const cc = H(env, 'confirm', Lc); env.products = orig;
+ok(cc._status === 409 && /Cijene/.test(cc.error) && env.rows.length === 0, 'potvrda nakon promjene cijene → 409, bez upisa');
+// zaštita od formula u tablici (sjEnv.appendOrder)
+ok(/\/\^\[=\+\\-@/.test(code) && /"'" \+ v/.test(code), "appendOrder dodaje ' ispred vrijednosti koje počinju s = + - @");
 
 console.log(R.join('\n'));
 const f = R.filter(l => l.startsWith('FAIL')).length;

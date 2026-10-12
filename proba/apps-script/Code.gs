@@ -1,5 +1,5 @@
 /* =========================================================
-   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v40)
+   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v41)
    Za probnu stranicu na GitHub Pagesu (statična, bez PHP-a). Isti API kao api/index.php:
      GET  ?r=status   rezervirane i prodane torbe, dostava, podaci za uplatu
      POST ?r=reserve  (proba ne drži košaricu; stranica tada samo šalje narudžbu)
@@ -21,7 +21,8 @@
 var SJ = {
   shop: 'Shiva.J',
   maxItems: 6, maxQty: 10, maxUnique: 2,
-  confirmMailsPerHour: 30,
+  confirmMailsPerHour: 200,   /* krajnja zaštita; po primatelju najviše 2 na sat */
+  mailsPerRecipient: 2,
   shipping: [
     { id: 'boxnow', label: 'BOX NOW paketomat', price: 4.00, address: false, locker: true,
       note: 'Paket stiže u paketomat po vašem izboru; kod za preuzimanje dobivate SMS-om ili e-mailom.' },
@@ -151,15 +152,18 @@ function sjOrder(env, b) {
     for (var id in st.held) if (P.uniqueIds.indexOf(id) < 0 && sjEmailKey(st.held[id].email) === ek)
       return sjOut(409, { ok: false, error: 'Već imate narudžbu sa šarenom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću; za više torbi odjednom javite nam se e-mailom ili na Instagramu.' });
   }
+  if (!env.rate('mailto_' + env.sha256(ek).slice(0, 20), SJ.mailsPerRecipient, 3600)) return sjOut(429, { ok: false, error: 'Na ovu adresu već smo poslali e-mail za potvrdu. Pogledajte i neželjenu poštu (spam) ili pokušajte ponovno za sat vremena.' });
   if (!env.rate('confirm', SJ.confirmMailsPerHour, 3600)) return sjOut(429, { ok: false, error: 'Previše narudžbi u kratkom vremenu. Pokušajte ponovno za sat vremena ili nam pišite e-mailom.' });
   var now = env.now(), sec = env.token(), until = now + env.cfg.CONFIRM_MINUTES * 60000;
   var list = env.pending(), keep = [], pid = '';
   list.forEach(function (x) {
     if (Date.parse(x.until) < now - 86400000) return;
     if (!x.no && P.key && x.key === P.key) { pid = x.id; return; }
-    if (!x.no && x.ek === ek) return;
     keep.push(x);
   });
+  /* tuđa nepotvrđena narudžba s istim e-mailom se ne briše; po adresi najviše 3 nepotvrđene, najstarija ispada */
+  var same = 0;
+  keep = keep.filter(function (x) { return x.no || x.ek !== ek || ++same <= 2; });
   if (!pid) pid = env.token();
   keep.unshift({ id: pid, h: env.sha256(sec), key: P.key, at: sjIso(now), until: sjIso(until), ek: ek, P: P });
   env.savePending(keep.slice(0, 500));
@@ -189,6 +193,13 @@ function sjConfirm(env, b) {
   var P = e.P, ek = sjEmailKey(P.cust.email);
   for (var j = 0; j < orders.length; j++) if (P.key && orders[j].key === P.key) return sjRepeat(orders[j]);
   var st = sjState(env), prods = sjProducts(env), taken = [], mine = [];
+  /* od narudžbe je moglo proći do sat vremena: ponuda i cijene provjeravaju se ponovno */
+  for (var k = 0; k < P.items.length; k++) {
+    var it = P.items[k], cp = prods[it.id];
+    if (!cp) return sjOut(409, { ok: false, error: 'Proizvod „' + it.name + '” više nije u ponudi. Narudžba nije potvrđena; pošaljite je ponovno bez njega.' });
+    if (it.made && cp.sold) return sjOut(409, { ok: false, error: '„' + it.name + '” trenutno nije dostupan za narudžbu. Narudžba nije potvrđena; pošaljite je ponovno bez njega.' });
+    if (Math.abs(Math.round(Number(cp.price || 0) * 100) / 100 - it.price) > 0.005) return sjOut(409, { ok: false, error: 'Cijene su se u međuvremenu promijenile, pa narudžba nije potvrđena. Osvježite stranicu i pošaljite je ponovno.' });
+  }
   P.uniqueIds.forEach(function (id) {
     var h = st.held[id], p = prods[id];
     if (st.sold[id] || !p || p.sold || p.reserved) taken.push(id);
@@ -288,7 +299,9 @@ function sjEnv() {
       return ordersCache;
     },
     appendOrder: function (o) {
-      sjSheet('Narudžbe', ORDER_HEAD).appendRow([o.no, o.at, o.name, o.email, o.phone, o.items, o.shipping, o.total, o.until, '', o.note, o.key, JSON.stringify(o.data)]);
+      /* tekst kupca nikad kao formula: vrijednost koja počinje s = + - @ dobiva ' ispred */
+      var t = function (v) { v = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; };
+      sjSheet('Narudžbe', ORDER_HEAD).appendRow([o.no, o.at, t(o.name), t(o.email), t(o.phone), t(o.items), t(o.shipping), o.total, o.until, '', t(o.note), o.key, JSON.stringify(o.data)]);
       ordersCache = null;
     },
     pending: function () {

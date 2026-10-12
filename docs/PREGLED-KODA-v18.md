@@ -218,3 +218,16 @@ Jamstva: trgovina se ne može zatvoriti (nove rezervacije najviše pola stvarno 
 | Osobni podaci nepotvrđenih | `data/narudzbe-na-cekanju.json`, najviše 500 zapisa, brišu se dan nakon isteka (pri narudžbi i najviše jednom na sat pri `status`) |
 | Probna stranica | `proba/apps-script/Code.gs` (isti API, Google tablica, LockService; uvijek HTTP 200 pa stranica čita `_status`), `proba/build.py` (noindex, traka, `window.SJ_API`) |
 
+## Recenzije v40 (12. 10. 2026.): sigurnost 6/10, dizajn 7/10 → v41 (api v19)
+
+Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe ne mogu dobiti istu torbu — da; slanje pošte na tuđe adrese ograničeno — da; link se ne može pogoditi — da.
+
+| Nalaz | Stanje u v41 |
+|---|---|
+| Ukupna granica 30 e-mailova za potvrdu/h vraća 429 svima (napadač s ~10 adresa zatvara trgovinu) | riješeno: po primatelju 2/h, po adresi 3/h, ukupno 200/h (`confirm_total`), upozorenje vlasnici od 100/h |
+| Bez provjerene adrese stranice potvrda tiho otpada | riješeno: 503 + upozorenje vlasnici (najviše 1/h) + `greske.log`; upute: adresa obavezna |
+| Tuđi e-mail briše žrtvinu nepotvrđenu narudžbu | riješeno: zamjena samo istim ključem; do 3 nepotvrđene po adresi (PHP i Code.gs) |
+| Potvrda koristi stari katalog i cijene | riješeno: `sj_order_recheck` (stavke, prodano/rezervirano, cijene, dostava, `freeIds`); Code.gs isto |
+| Probna tablica: tekst s `=` izvršava se kao formula | riješeno: `'` ispred vrijednosti koje počinju s `= + - @` |
+| Dizajn: prekinuta rečenica, nejasno smije li se zatvoriti, `role=alert`, nevidljiv fokus, duga adresa | riješeno u `showOrderPending` / CSS |
+
