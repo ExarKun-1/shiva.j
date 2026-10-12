@@ -1,0 +1,36 @@
+# Probna stranica na GitHub Pagesu: statična stranica + probni poslužitelj na Google Apps Scriptu.
+# Postavljanje: docs/UPUTE-PROBA-APPS-SCRIPT.md (Settings → Pages → Source: GitHub Actions;
+# Settings → Secrets and variables → Actions → Variables: PROBA_API_URL).
+name: Probna stranica
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Složi probnu stranicu
+        env:
+          PROBA_API_URL: ${{ vars.PROBA_API_URL }}
+        run: python3 proba/build.py _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

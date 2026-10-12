@@ -207,3 +207,14 @@ Jamstva: trgovina se ne može zatvoriti (nove rezervacije najviše pola stvarno 
 | `order_paid` ne čita katalog: ručno prodana torba tiho se upisuje kao plaćena za kupca | riješeno: torba koja nije na prodaji (prodana, rezervirana, skrivena, obrisana) se ne upisuje, nego se navodi u upozorenju |
 | „Ukloni oznaku” briše samo datum uplate, torbe ostaju „prodane” | riješeno: torbe te narudžbe (isti token ili broj narudžbe) vraćaju se u prodaju, poruka to kaže |
 | `order_paid` ne nalazi narudžbe iz arhive | riješeno: `sj_order_find` / `sj_order_edit` traže i u `narudzbe-arhiva-GGGG.json`; i brojač „plaćeno” (`sj_order_paid_once`) |
+
+## v40 (api v18, admin v18): potvrda narudžbe e-mailom, 12. 10. 2026.
+
+| Promjena | Kako |
+|---|---|
+| Rizik „bez potvrde e-mailom” (lažne narudžbe drže do pola ponude) | zatvoren: `api/order` → `sj_order_pending` (nepotvrđena, bez rezervacije), `api/confirm` → `sj_place_order` + `sj_finish_order` pod istom bravom kao narudžba |
+| Tajna u linku | 128 bita, na poslužitelju samo SHA-256; ponovno slanje istim ključem daje novu tajnu (stari link 403); istek 410; ponovni klik vraća istu narudžbu |
+| Slanje pošte na tuđe adrese | e-mail za potvrdu: 3/h po skraćenoj adresi, 30/h ukupno; jedna nepotvrđena po normaliziranom e-mailu (nova zamjenjuje staru) |
+| Osobni podaci nepotvrđenih | `data/narudzbe-na-cekanju.json`, najviše 500 zapisa, brišu se dan nakon isteka (pri narudžbi i najviše jednom na sat pri `status`) |
+| Probna stranica | `proba/apps-script/Code.gs` (isti API, Google tablica, LockService; uvijek HTTP 200 pa stranica čita `_status`), `proba/build.py` (noindex, traka, `window.SJ_API`) |
+

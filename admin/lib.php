@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v17');
+define('SJ_VERSION', 'admin v18');
 
 /* ---------- postavke ---------- */
 
@@ -27,6 +27,8 @@ function sj_defaults(): array {
     'site_url'         => '',                          // npr. https://shivaj.hr; prazno = automatski
     'ttl_hours'        => 24,                          // koliko sati traje rezervacija
     'confirm_customer' => true,                        // automatska potvrda kupcu
+    'require_confirm'  => true,                        // narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila
+    'confirm_minutes'  => 60,                          // koliko minuta vrijedi link za potvrdu
     'mail_mode'        => 'mail',                      // 'mail' = PHP mail(); 'log' = data/mail-log.txt (test)
     'allowed_origins'  => [],                          // dodatni dopušteni izvori za API (npr. testni)
     /* Načini dostave — jedini izvor istine: stranica ih čita iz api/status, a servis

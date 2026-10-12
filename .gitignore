@@ -14,3 +14,4 @@ reports/
 
 # ispitni podaci (tests/fixtures) idu u git
 !tests/fixtures/torbe.json
+_site/

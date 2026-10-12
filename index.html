@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v39 (2026-10-11)
+     SHIVA.J WEBSHOP — v40 (2026-10-12)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v40 — uz api v18, admin v18: potvrda narudžbe e-mailom — narudžba vrijedi
+           (broj, rezervacija, podaci za uplatu) tek kad kupac klikne link iz
+           e-maila; ?potvrda= otvara podatke za uplatu i na drugom uređaju;
+           API_BASE/apiUrl i window.SJ_API za probnu stranicu (GitHub Pages +
+           Google Apps Script), POST kao text/plain, status i u polju _status;
+           tekstovi o tijeku narudžbe, Uvjeti t. 4 i privatnost (za pravnika)
      v39 — uz admin v17: „Plaćeno” provjerava katalog, „Ukloni oznaku”
            vraća torbe u prodaju (stranica nepromijenjena osim verzije)
      v38 — uz api v17, admin v16: dodijeljena rezervacija vrijedi do
@@ -710,6 +716,9 @@
     padding:12px 14px;font-size:.88rem;line-height:1.5;
   }
   .order-error:focus{outline:none}
+  /* v40: „potvrdite narudžbu” nije greška */
+  .order-error.order-info{border-color:var(--thread);background:var(--paper);color:var(--ink)}
+  .order-error b.inline{display:inline;margin:0}
   .order-error b{display:block;margin-bottom:2px}
   .order-note{font-size:.8rem;color:var(--ink-soft)}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
@@ -912,7 +921,7 @@
       <div class="step">
         <span class="num">03</span>
         <h3>Uplatite i pričekajte torbu</h3>
-        <p>IBAN, iznos i barkod za uplatu vidite odmah nakon narudžbe, a potvrdu šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.</p>
+        <p>Nakon narudžbe stiže vam e-mail s linkom za potvrdu; kad ga kliknete, vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.</p>
       </div>
     </div>
   </div>
@@ -974,11 +983,11 @@
 
       </details>
       <details><summary><h3>4. Narudžba i rezervacija</h3></summary>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon slanja narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Slanjem narudžbe unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja” i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon potvrde narudžbe, a u roku 24 sata e-mailom vam šaljemo i potvrdu narudžbe; ugovor je sklopljen kad primite tu potvrdu. Potvrdom narudžbe unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
       </details>
       <details><summary><h3>5. Plaćanje</h3></summary>
-      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon slanja narudžbe i u potvrdi narudžbe (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj i IBAN popune se sami, a iznos, model i poziv na broj upisujete sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon potvrde narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj i IBAN popune se sami, a iznos, model i poziv na broj upisujete sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
 
       </details>
       <details><summary><h3>6. Pravo na jednostrani raskid ugovora</h3></summary>
@@ -1013,7 +1022,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
 
       </details>
       <details><summary><h3>Tko još dolazi u dodir s podacima</h3></summary>
-      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju i šalje nam e-mailom, a vama se automatski šalje potvrda narudžbe. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
+      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju; vama se automatski šalje e-mail s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
 
       </details>
       <details><summary><h3>Koliko dugo čuvamo podatke</h3></summary>
@@ -1056,7 +1065,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v39</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v40</p>
 </footer>
 
 <!-- Košarica -->
@@ -1122,10 +1131,10 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note">Odmah nakon narudžbe vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod); potvrdu s istim podacima šaljemo i e-mailom.<span id="orderNoteHold"> Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span>.</span> Artikle po narudžbi izrađujemo nakon uplate.</p>
+      <p class="order-note">Nakon slanja stiže vam e-mail s linkom: kliknite ga da potvrdite narudžbu i odmah vidite podatke za uplatu (IBAN, iznos, poziv na broj, barkod), koje šaljemo i e-mailom.<span id="orderNoteHold"> Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde.</span> Artikle po narudžbi izrađujemo nakon uplate.</p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
-      <p class="next-step">Sljedeći korak: podaci za uplatu, odmah na ekranu.</p>
+      <p class="next-step">Sljedeći korak: e-mail s linkom za potvrdu, zatim podaci za uplatu.</p>
     </form>
     <div class="empty-cart" id="emptyCart">Košarica je prazna.<br>Šarena torba postoji samo jednom — kad je vaša, samo je vaša.</div>
   </div>
@@ -1166,7 +1175,22 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
    torbi. Prazno "" = bez servisa: narudžba se otvara u kupčevu
    e-mail programu (mailto), ništa se ne gubi.
    ========================================================= */
-const ORDER_ENDPOINT = "api/order";
+/* Adresa poslužitelja: "api" (PHP na istom hostingu) ili, na probnoj stranici, adresa Google Apps Script
+   web-aplikacije (…/exec) iz window.SJ_API. apiUrl("status", "v=1") → api/status?v=1 ili …/exec?r=status&v=1 */
+const API_BASE = (typeof window.SJ_API === "string" && window.SJ_API) ? window.SJ_API : "api";
+function apiUrl(path, query){
+  if(/\/exec$/.test(API_BASE)) return API_BASE + "?r=" + path + (query ? "&" + query : "");
+  return API_BASE + "/" + path + (query ? "?" + query : "");
+}
+/* POST kao text/plain: preglednik tada ne šalje CORS predzahtjev (Apps Script ga ne podržava); PHP čita tijelo isto */
+const POST_JSON = { "Content-Type": "text/plain;charset=UTF-8", "Accept": "application/json" };
+const ORDER_ENDPOINT = apiUrl("order");
+/* odgovor poslužitelja: Apps Script uvijek vraća HTTP 200, pa pravi status (409, 410, 429…) nosi u polju _status */
+async function apiRead(res){
+  const data = await res.json().catch(() => ({}));
+  const status = Number(data && data._status) || res.status;
+  return { status, ok: status >= 200 && status < 300, data };
+}
 
 /* E-mail vlasnice za mailto rezervu i upute kupcu; servis (api/status)
    ga pri otvaranju stranice zamjenjuje adresom iz postavki admina. */
@@ -1245,7 +1269,7 @@ const PAYMENT = {
    blokira torbu za druge kupce. Prazno "" = bez rezervacija; tada
    stranica ni ne čita dostavu i podatke za uplatu iz postavki.
    ========================================================= */
-const RESERVATION_ENDPOINT = "api";
+const RESERVATION_ENDPOINT = API_BASE;
 /* Skripta koja crta HUB-3 barkod za svaku narudžbu (PDF417, izdvojeno iz bwip-js, licenca MIT). Učitava se s vlastitog
    poslužitelja tek kad se prikažu podaci za uplatu. Prazno "" = samo opći barkod iz Postavki (PAYMENT.barcode). */
 const HUB3_SCRIPT = "js/hub3-barcode.js";
@@ -1482,7 +1506,7 @@ const counted = new Set();
 function countOnce(key, once = true){
   if(!RESERVATION_ENDPOINT || (once && counted.has(key))) return;
   counted.add(key);
-  const u = RESERVATION_ENDPOINT + "/status?c=" + key;
+  const u = apiUrl("status", "c=" + key);
   if(!(navigator.sendBeacon && navigator.sendBeacon(u))) fetch(u, { keepalive: true }).catch(() => {});
 }
 document.querySelectorAll(".press-list a").forEach(a => a.addEventListener("click", () => countOnce("press", false)));
@@ -1685,7 +1709,7 @@ function renderCart(){
   const hold = document.getElementById("orderHold");
   hold.hidden = !(RESERVATION_ENDPOINT && uniques.length);
   const q = n => `„${n}”`;
-  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od slanja narudžbe.`;
+  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od potvrde narudžbe.`;
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden;
   cart.forEach(p => {
@@ -1754,8 +1778,8 @@ function applyServerSettings(data){
 async function refreshReservations(first = false){
   if(!RESERVATION_ENDPOINT || submitting) return;
   try {
-    const q = first ? "?v=1" + (new URLSearchParams(location.search).get("izvor") === "ig" ? "&src=ig" : "") : "";
-    const res = await fetch(RESERVATION_ENDPOINT + "/status" + q, { cache: "no-store" });
+    const q = first ? "v=1" + (new URLSearchParams(location.search).get("izvor") === "ig" ? "&src=ig" : "") : "";
+    const res = await fetch(apiUrl("status", q), { cache: "no-store" });
     if(!res.ok) return;
     const data = await res.json();
     if(submitting) return; /* odgovor stigao usred slanja narudžbe — ne diraj košaricu */
@@ -1801,17 +1825,17 @@ async function reserveCart(o){
   if(!ids.length) return null;
   /* ponovno slanje nakon kvara: rezervacija iz prvog pokušaja još vrijedi */
   if(heldRes && Date.parse(heldRes.until) > Date.now() && ids.every(id => heldRes.ids.includes(id))) return { ok: true, until: heldRes.until };
-  const res = await fetch(RESERVATION_ENDPOINT + "/reserve", {
+  const res = await fetch(apiUrl("reserve"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: POST_JSON,
     body: JSON.stringify({ ids, name: o.name, email: o.email })
   });
-  const data = await res.json().catch(() => ({}));
-  if(res.status === 409 && Array.isArray(data.taken)){ markTaken(data.taken); return { taken: true }; }
+  const { status, ok: resOk, data } = await apiRead(res);
+  if(status === 409 && Array.isArray(data.taken)){ markTaken(data.taken); return { taken: true }; }
   /* 429 (previše rezervacija): narudžba ipak ide, jer poslužitelj pri narudžbi sam provjerava i rezervira torbu */
-  if(res.status === 429) return null;
-  if(res.status >= 400 && res.status < 500){ showOrderError(`<b>Rezervacija nije prihvaćena.</b> ${escHtml(data.error || "Osvježite stranicu i pokušajte ponovno.")}`); return { taken: true }; } /* servis je odbio s razlogom — kupac vidi poruku, narudžba se ne šalje */
-  if(!res.ok || !data.ok) throw new Error("HTTP " + res.status);
+  if(status === 429) return null;
+  if(status >= 400 && status < 500){ showOrderError(`<b>Rezervacija nije prihvaćena.</b> ${escHtml(data.error || "Osvježite stranicu i pokušajte ponovno.")}`); return { taken: true }; } /* servis je odbio s razlogom — kupac vidi poruku, narudžba se ne šalje */
+  if(!resOk || !data.ok) throw new Error("HTTP " + status);
   if(data.ttlHours) setTtlText(data.ttlHours);
   /* hold = tajni ključ rezervacije: narudžba njime dokazuje da je rezervacija njezina i kad kupac ispravi e-mail */
   heldRes = { ids, until: data.until, hold: String(data.hold || "") }; storeSet("hold", heldRes);
@@ -1913,12 +1937,13 @@ let lastMailOrder = null;          /* narudžba za gumb „Otvori e-mail ponovno
 const orderError = document.getElementById("orderError");
 /* poruka greške ostaje iznad gumba dok kupac ne pošalje ponovno (ne nestaje kao toast) */
 function showOrderError(html){
+  orderError.classList.remove("order-info");
   orderError.innerHTML = html;
   orderError.hidden = false;
   orderError.focus({ preventScroll: true });
   orderError.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
-function clearOrderError(){ orderError.hidden = true; orderError.innerHTML = ""; }
+function clearOrderError(){ orderError.hidden = true; orderError.innerHTML = ""; orderError.classList.remove("order-info"); }
 /* servis nije zaprimio narudžbu: kupac ne vidi „zaprimljeno” ni IBAN, nego što treba napraviti */
 function showMailFallback(o, rez){
   lastMailOrder = o;
@@ -2002,10 +2027,52 @@ function sendMailto(o){
   showToast("Otvara se vaš e-mail program s narudžbom…");
 }
 
+/* v40: narudžba je poslana, ali vrijedi tek kad kupac klikne link u e-mailu (lažne narudžbe s tuđim ili izmišljenim
+   e-mailom tako nikad ne rezerviraju torbe). Košarica ostaje dok narudžba ne bude potvrđena. */
+function showOrderPending(srv, email){
+  const until = srv.confirmUntil ? fmtDateTime(srv.confirmUntil) : "";
+  const anyUnique = cart.some(p => !p.made);
+  showOrderError(srv.mailCustomer === false
+    ? `<b>E-mail za potvrdu nismo uspjeli poslati.</b> Provjerite adresu ${escHtml(email)} i pošaljite narudžbu ponovno ili nam pišite na ${escHtml(OWNER_EMAIL)}.
+       <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button></div>`
+    : `<b>Još jedan korak: potvrdite narudžbu.</b>
+       Poslali smo e-mail na <b class="inline">${escHtml(email)}</b>. Kliknite link „potvrdite narudžbu” u njemu${until ? " do " + escHtml(until) : ""}.
+       Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu.
+       <br>E-mail ne stiže? Pogledajte neželjenu poštu ili
+       <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji e-mail ponovno</button></div>`);
+  if(srv.mailCustomer !== false) orderError.classList.add("order-info");
+}
+/* poruka uz potvrdu iz linka: u obrascu ako je košarica na ovom uređaju, inače u praznoj košarici */
+function confirmError(html){
+  if(cart.length){ showOrderError(html); return; }
+  const empty = document.getElementById("emptyCart");
+  empty.classList.add("pay-mode");
+  empty.innerHTML = `<div class="order-error" role="alert">${html}</div>`;
+  empty.hidden = false;
+}
+/* link iz e-maila: ?potvrda=<id>.<tajna> → poslužitelj potvrđuje narudžbu, a stranica pokazuje podatke za uplatu */
+async function confirmFromLink(){
+  const m = /^([a-f0-9]{32})\.([a-f0-9]{32})$/.exec(new URLSearchParams(location.search).get("potvrda") || "");
+  if(!m) return;
+  history.replaceState(null, "", location.pathname + location.hash); /* link se ne ponavlja pri osvježavanju */
+  openCart();
+  try {
+    const res = await fetch(apiUrl("confirm"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ id: m[1], t: m[2] }) });
+    const { ok: resOk, data } = await apiRead(res);
+    if(resOk && data.ok){ showOrderSuccess(data); refreshReservations(); return; }
+    if(Array.isArray(data.taken)){ markTaken(data.taken); confirmError(`<b>Narudžba nije potvrđena.</b> Torbu je u međuvremenu naručio ili kupio drugi kupac. Uklonite je iz košarice i pošaljite ostatak, ili nam pišite na ${escHtml(OWNER_EMAIL)}.`); return; }
+    confirmError(`<b>Narudžba nije potvrđena.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}`);
+  } catch(err){
+    confirmError(`<b>Potvrda trenutno nije moguća.</b> Provjerite vezu i otvorite link iz e-maila ponovno.`);
+  }
+}
+
 function showOrderSuccess(srv){
-  const items = cart.slice();
+  /* potvrda linkom iz e-maila (možda na drugom uređaju): stavke i dostava stižu od poslužitelja, ne iz košarice */
+  const fromSrv = Array.isArray(srv.items) && srv.items.length;
+  const items = fromSrv ? srv.items.map(it => { const p = PRODUCTS.find(x => x.id === String(it.id)); return { ...it, id: String(it.id), cat: p ? p.cat : "torbe" }; }) : cart.slice();
   const so = shipSel();
-  const ship = so ? { id: so.id, label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
+  const ship = fromSrv ? (srv.ship || null) : so ? { id: so.id, label: so.label, price: Number(so.price) || 0, locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
   /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu (osim kad narudžba nije dobila rezervaciju) */
   const unheldIds = Array.isArray(srv.unheldIds) ? srv.unheldIds.map(String) : [];
   items.forEach(item => {
@@ -2013,6 +2080,8 @@ function showOrderSuccess(srv){
     if(p && !p.made && !unheldIds.includes(p.id)) p.reserved = true;
   });
   cart = [];
+  saveCart();
+  storeSet("okey", null);
   document.getElementById("fNote").value = "";
   clearOrderError();
   /* podaci za uplatu ostaju dostupni 24 sata i nakon osvježavanja (bez osobnih podataka) */
@@ -2238,20 +2307,22 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
     const timer = setTimeout(() => ctrl.abort(), 15000);
     const res = await fetch(ORDER_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      headers: POST_JSON,
       signal: ctrl.signal,
       body: JSON.stringify({ _gotcha: document.getElementById("fWeb").value, Napomena: o.note, _order: orderData })
     });
     clearTimeout(timer);
-    const data = await res.json().catch(() => ({}));
-    if (res.status >= 400 && res.status < 500) {
+    const { status, ok: resOk, data } = await apiRead(res);
+    if (status >= 400 && status < 500) {
       /* servis je narudžbu odbio s razlogom (cijena se promijenila, torba prodana, previše zahtjeva) — nije kvar, ne ide mailto */
       if (Array.isArray(data.taken)) { markTaken(data.taken); }
       else { showOrderError(`<b>Narudžba nije prihvaćena.</b> ${escHtml(data.error || "Osvježite stranicu i pokušajte ponovno.")}`); }
-      if (res.status === 409) refreshReservations();
+      if (status === 409) refreshReservations();
       return;
     }
-    if (!res.ok || !data.ok) throw new Error("HTTP " + res.status);
+    if (!resOk || !data.ok) throw new Error("HTTP " + status);
+    /* v40: narudžba čeka da je kupac potvrdi linkom iz e-maila; košarica i ključ ostaju (ponovno slanje = novi link) */
+    if (data.pending) { showOrderPending(data, o.email); return; }
     heldRes = null; storeSet("hold", null);
     storeSet("okey", null); /* narudžba je prošla: sljedeća dobiva novi ključ */
     showOrderSuccess(data);
@@ -2288,6 +2359,7 @@ loadProducts().then(() => {
     toShop(); setTimeout(toShop, 120);
   }
   refreshReservations(true);
+  confirmFromLink();
 });
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") refreshReservations(); });
 </script>
