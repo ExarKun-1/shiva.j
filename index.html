@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v49 (2026-10-13)
+     SHIVA.J WEBSHOP — v50 (2026-10-13)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v50 — po recenziji kupca (8/10): Uvjeti t. 2 „ili ih javljamo na upit”
+           (za pravnika); „Mjere: na upit” na kartici torbe; rok slanja iz
+           Postavki vidi se prije narudžbe (Kako naručiti, uz gumb); artikl po
+           narudžbi bez fotografije: „pitajte nas za izgled”
      v49 — Uvjeti t. 3: obrt nije u sustavu PDV-a (čl. 90. st. 1. ZPDV),
            cijene su konačne — umjesto {NAPOMENA O PDV-u}; za knjigovođu
      v48 — po probnom korisniku: poruka odbijanja bez „osvježite stranicu”
@@ -616,6 +620,7 @@
   .card .tagline{font-style:italic;font-size:.9rem;color:var(--thread);margin-top:-6px}
   .card .ship-from{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
   .card .dims{font-size:.8rem;color:var(--ink);margin-top:-6px}
+  .card .dims.ask{color:var(--ink-soft)}
   .card .ask-ig{font-size:.8rem;color:var(--ink-soft);margin-top:-6px}
   .card .ask-ig a{border-bottom:1.5px dashed var(--thread)}
   /* placeholder kad nema fotografije */
@@ -788,6 +793,7 @@
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
+  .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-8px}
   .order-fix{font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px}
   .order-sum{font-family:'Space Mono',monospace;font-size:.85rem;text-align:center;color:var(--ink)}
   /* v46: dok narudžba čeka potvrdu iz e-maila, obrazac se skrije — drugi klik bi poslao novi link i poništio prvi */
@@ -1006,7 +1012,7 @@
       <div class="step">
         <span class="num">03</span>
         <h3>Uplatite i pričekajte torbu</h3>
-        <p>Nakon narudžbe stiže vam e-mail s linkom za potvrdu; kad ga kliknete, vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.</p>
+        <p>Nakon narudžbe stiže vam e-mail s linkom za potvrdu; kad ga kliknete, vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.<span class="lead-kako" data-ship-lead hidden></span></p>
       </div>
     </div>
   </div>
@@ -1062,7 +1068,7 @@
 
       </details>
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Torbe označene „Jedan primjerak” ručno su rađeni unikati i postoje u jednom primjerku. Artikli označeni „po narudžbi” (klasične torbe u jednoj boji, zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz svaki artikl.</p>
+      <p>Torbe označene „Jedan primjerak” ručno su rađeni unikati i postoje u jednom primjerku. Artikli označeni „po narudžbi” (klasične torbe u jednoj boji, zamjenski remeni, kozmetičke torbice, platnene torbe) izrađuju se po narudžbi, u više primjeraka; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
 
       </details>
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -1152,7 +1158,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v49</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v50</p>
 </footer>
 
 <!-- Košarica -->
@@ -1222,6 +1228,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <p class="order-note" id="orderNote"><span id="orderNoteHold">Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde. </span><span id="orderNoteMade">Artikle po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <p class="order-sum" id="orderSum"></p>
+      <p class="order-lead" data-ship-lead hidden></p>
       <p class="order-fix" id="orderFix" role="alert" hidden></p>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: <span class="nw">e-mail</span> s linkom za potvrdu, zatim podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
@@ -1531,9 +1538,10 @@ function renderGrid(){
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
       ${p.made && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(p.lead)}</p>` : ""}
-      ${filled(p.dims) ? `<p class="dims">Mjere: ${escHtml(filled(p.dims))}</p>` : ""}
+      ${filled(p.dims) ? `<p class="dims">Mjere: ${escHtml(filled(p.dims))}</p>` : (p.cat || "torbe") === "torbe" && !gone ? `<p class="dims ask">Mjere: na upit</p>` : ""}
       ${!gone && !wait && shipFrom !== null ? `<p class="ship-from">Ručni rad · dostava od ${fmt(shipFrom)}</p>` : ""}
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
+      ${p.made && !gone && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
         ${escHtml(btnText)}
       </button>`;
@@ -1900,6 +1908,13 @@ document.getElementById("cartItems").addEventListener("input", e => {
 let submitting = false; /* dok traje slanje narudžbe, osvježavanje ne dira košaricu */
 /* postavke iz admina (api/status): načini dostave, podaci za uplatu, e-mail — stranica ih preuzima
    da kupac vidi iste cijene po kojima servis računa iznos */
+/* v50: rok slanja iz Postavki vidi se prije narudžbe, ne tek na ploči za uplatu (prazno = ne prikazuje se) */
+function renderShipLead(){
+  document.querySelectorAll("[data-ship-lead]").forEach(el => {
+    el.hidden = !SHIP_LEAD;
+    el.textContent = SHIP_LEAD ? (el.classList.contains("lead-kako") ? " " : "") + "Slanje obično " + SHIP_LEAD + " nakon uplate." : "";
+  });
+}
 function applyServerSettings(data){
   if(Array.isArray(data.shipping) && data.shipping.length){
     const list = data.shipping.filter(o => o && o.id).map(o => ({ id: String(o.id), label: String(o.label || o.id), price: Number(o.price) || 0, address: !!o.address, locker: !!o.locker, note: String(o.note || "") }));
@@ -1916,6 +1931,7 @@ function applyServerSettings(data){
   }
   if(typeof data.ownerEmail === "string" && data.ownerEmail.includes("@")) OWNER_EMAIL = data.ownerEmail;
   if(typeof data.shipLead === "string") SHIP_LEAD = data.shipLead.trim();
+  renderShipLead();
   if(typeof data.pickup === "string" && data.pickup){ const o = SHIPPING_OPTIONS.find(x => x.id === "pickup"); if(o && !o.note) o.note = data.pickup; }
 }
 /* first=true samo pri otvaranju stranice: servis tada broji jedan posjet (anonimno, bez osobnih
