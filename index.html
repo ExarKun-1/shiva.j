@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v51 (2026-10-13)
+     SHIVA.J WEBSHOP — v52 (2026-10-13)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,11 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v52 — po recenziji kupca (8,5/10): torba bez materijala „Materijal: na
+           upit”; artikl po narudžbi bez roka „Izrada: rok na upit” (kartica i
+           povećani prikaz), ploča za uplatu bez „u roku navedenom uz svaki”
+           kad roka nema; traka u košarici s artiklom po narudžbi: „14 dana za
+           raskid (osim izrade po vašim željama)”, kao Uvjeti t. 6
      v51 — uz admin v20 (recenzije v50): povećani prikaz artikla po narudžbi
            bez „14 dana” (pravo na raskid tamo ne vrijedi), kod unikata
            „14 dana za raskid”; promjena napomene dok narudžba čeka potvrdu
@@ -1170,7 +1175,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v51</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v52</p>
 </footer>
 
 <!-- Košarica -->
@@ -1186,7 +1191,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <span>Ukupno</span><span id="totalAmount"></span>
     </div>
     <form class="order-form" id="orderForm" hidden>
-      <p class="trust-line">Bez registracije · Plaćanje uplatom · 14 dana za raskid ugovora</p>
+      <p class="trust-line">Bez registracije · Plaćanje uplatom · <span id="trustRaskid">14 dana za raskid ugovora</span></p>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
       <div class="hp-field" aria-hidden="true">
@@ -1549,7 +1554,7 @@ function renderGrid(){
       </div>
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
-      ${p.made && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(p.lead)}</p>` : ""}
+      ${p.made && !gone ? `<p class="lead">Izrada: ${filled(p.lead) ? escHtml(filled(p.lead)) : "rok na upit"}</p>` : ""}
       ${(() => { /* v51: mjere i dostava u jednom retku (manje sitnih redaka na kartici) */
         const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : (p.cat || "torbe") === "torbe" && !gone ? "Mjere: na upit" : "";
         const sh = !gone && !wait && shipFrom !== null ? (dm ? "dostava od " : "Dostava od ") + fmt(shipFrom) : "";
@@ -1686,11 +1691,17 @@ function openLightbox(id){
   /* v51: artikl po narudžbi bez fotografije — napomena i u povećanom prikazu */
   document.getElementById("lbAskLead").textContent = lbCurrent.made && !(lbCurrent.imgs || []).length
     ? "Fotografija modela uskoro — za izgled i boje pitajte nas." : "Pitanje prije narudžbe?";
-  document.getElementById("lbMaterialRow").hidden = !mat;
+  /* v52: torba bez upisanog materijala — „na upit”, kao mjere (ništa se ne izmišlja) */
+  const askMat = !mat && (lbCurrent.cat || "torbe") === "torbe" && !isGone(lbCurrent);
+  document.getElementById("lbMaterial").textContent = mat || (askMat ? "na upit" : "");
+  document.getElementById("lbMaterial").classList.toggle("ask-dd", askMat);
+  document.getElementById("lbMaterialRow").hidden = !mat && !askMat;
   const tl = document.getElementById("lbTagline"); tl.textContent = filled(lbCurrent.tagline); tl.hidden = !tl.textContent;
   const st = document.getElementById("lbStory"); st.textContent = filled(lbCurrent.story); st.hidden = !st.textContent;
-  document.getElementById("lbLeadRow").hidden = !(lbCurrent.made && filled(lbCurrent.lead));
-  document.getElementById("lbLead").textContent = filled(lbCurrent.lead);
+  /* v52: artikl po narudžbi bez upisanog roka izrade — „rok na upit” */
+  document.getElementById("lbLeadRow").hidden = !lbCurrent.made || !!lbCurrent.sold;
+  document.getElementById("lbLead").textContent = lbCurrent.made ? filled(lbCurrent.lead) || "rok na upit" : "";
+  document.getElementById("lbLead").classList.toggle("ask-dd", !filled(lbCurrent.lead));
   /* bez dimenzija, materijala i roka izrade ne ostaje prazna crtkana linija */
   document.querySelector(".lb-specs").hidden = ["lbDimsRow", "lbMaterialRow", "lbLeadRow"].every(id => document.getElementById(id).hidden);
   document.getElementById("lbTag").textContent = statusLabel(lbCurrent);
@@ -1879,6 +1890,8 @@ function renderCart(){
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
+  /* v52: Uvjeti t. 6 — pravo na raskid ne vrijedi za izradu po posebnim željama */
+  document.getElementById("trustRaskid").textContent = anyMade ? "14 dana za raskid (osim izrade po vašim željama)" : "14 dana za raskid ugovora";
   document.getElementById("orderNoteMade").hidden = !anyMade;
   document.getElementById("orderNote").hidden = document.getElementById("orderNoteHold").hidden && !anyMade;
   /* v46: promijenjena košarica → obrazac se vraća (stari link vrijedi za staru košaricu) */
@@ -2455,7 +2468,7 @@ function paymentPanel(last){
       <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!</h3><p>${thanks}</p></div>
       <ol class="pay-steps" aria-label="Što slijedi">
         <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"} i pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : ""}.</li>
-        <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : " u roku navedenom uz svaki") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
+        <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : "") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
         <li><b>Kod vas</b>Ako se predomislite, ${allBags ? (items.length > 1 ? "torbe" : "torbu") : (items.length > 1 ? "artikle" : "artikl")} možete vratiti u roku 14 dana od primitka; trošak povrata snosite vi${anyMade ? ", osim artikala rađenih po vašoj boji ili mjeri" : ""} (Uvjeti kupnje, t.\u00a06).</li>
