@@ -113,7 +113,7 @@ najskupljem mjestu, brojač pri ovom prometu ne razlikuje učinak trake od šuma
 i signal identiteta uz IBAN. Umjetnički direktor našao mrtvo CSS pravilo (mobilni blok za traku stajao
 prije osnovnih pravila).
 
-Vlasnik projekta dodao činjenice: skaj umjesto kože; šarene torbe od izrezanih komada su unikati,
+Vlasnik projekta dodao činjenice: umjetna koža umjesto prave kože; šarene torbe od izrezanih komada su unikati,
 klasične u jednoj boji šiju se i po narudžbi; „s torbom u ruci” i „Zadatak sam predala, torbu zadržala.”
 ostaju.
 

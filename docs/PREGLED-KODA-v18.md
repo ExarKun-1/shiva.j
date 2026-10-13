@@ -336,4 +336,4 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | D7 kartice bez natpisa, „Plaćeno” bez potvrde | riješeno |
 | D9 „·” u mjerama | riješeno: „ — dostava od” |
 | D10 podnaslovi | riješeno |
-| Kupac: materijal „skaj” automatski | čeka potvrdu vlasnice |
+| Kupac: materijal „umjetna koža” automatski | čeka potvrdu vlasnice |
