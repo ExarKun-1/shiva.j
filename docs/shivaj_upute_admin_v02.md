@@ -12,7 +12,7 @@ Datum: 2026-09-08 · vrijedi uz `shivaj_webshop_v17.html` i mapu `hosting/` (adm
 
 Admin je dio stranice na istom hostingu (Croadria, Linux paket) kroz koji vlasnica bez dodirivanja koda:
 - dodaje, uređuje i skriva torbe i artikle te im prenosi fotografije s telefona (smanjuju se same),
-- vidi rezervacije i klikom označava „Plaćeno“, „Storniraj“ ili „Označi trajno prodanom“ (od admin v21 jednosmjerno; natrag samo „Vrati u prodaju“ uz potvrdu),
+- vidi rezervacije i klikom označava „Označi plaćenom“, „Storniraj“ ili „Označi trajno prodanom“ (od admin v21 jednosmjerno; natrag samo „Vrati u prodaju“ uz potvrdu),
 - vidi zadnjih 300 narudžbi,
 - mijenja rok rezervacije, e-mail adrese i podatke za uplatu.
 
@@ -54,9 +54,9 @@ Mapa `data/` mora biti zapisiva (na Croadriji jest). Provjera zaštite: `https:/
 
 **Narudžba je stigla** (e-mail + Narudžbe u adminu): kupac je već dobio automatsku potvrdu s IBAN-om, iznosom i barkodom. Ništa ne treba slati ručno, osim ako želite dodati osobnu poruku.
 
-**Kupac poslao potvrdu uplate ili uplata sjela**: Rezervacije → **Plaćeno** (ili link iz e-maila narudžbe). Torba ostaje „Prodano“ i nakon isteka rezervacije. Kad torbu pošaljete ili predate: **Označi trajno prodanom**. Torba tada ima oznaku „Trajno prodana ✓“, a ponovni klik ništa ne mijenja. Oznaku „Plaćeno“ tada **ne uklanjate** (gumb „Ukloni oznaku“ se za trajno prodanu torbu i ne prikazuje). Ako je torba greškom označena, vraća se samo gumbom **Vrati u prodaju**, uz potvrdu.
+**Kupac poslao potvrdu uplate ili uplata sjela**: Rezervacije ili Narudžbe → **Označi plaćenom** (ili link iz e-maila narudžbe). U Narudžbama stupac „Uplata” pokazuje „nije plaćeno” ili „plaćeno” s datumom. Torba ostaje „Prodano“ i nakon isteka rezervacije. Kad torbu pošaljete ili predate: **Označi trajno prodanom**. Torba tada ima oznaku „Trajno prodana ✓“, a ponovni klik ništa ne mijenja. Oznaku „Plaćeno“ tada **ne uklanjate** (gumb „Ukloni oznaku“ se za trajno prodanu torbu i ne prikazuje). Ako je torba greškom označena, vraća se samo gumbom **Vrati u prodaju**, uz potvrdu.
 
-**Rezervacija „košarica, nije narudžba“**: kupac je torbu stavio u košaricu, ali narudžbu nije potvrdio. Za nju nema „Plaćeno“, samo „Ukloni“; inače sama istekne.
+**Rezervacija „košarica, nije narudžba“**: kupac je torbu stavio u košaricu, ali narudžbu nije potvrdio. Za nju nema „Označi plaćenom“, samo „Ukloni“; inače sama istekne.
 
 **Torba prodana izvan stranice** (npr. na sajmu): Rezervacije → „Ručno: torba prodana izvan stranice“ → odaberite torbu → **Označi odabranu torbu prodanom** (uz potvrdu).
 

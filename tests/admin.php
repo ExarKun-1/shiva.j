@@ -110,6 +110,20 @@ $ok(!str_contains($fake, 'zlo@primjer.hr'), 'v22: poruka iz adrese (?m=) se ne p
 $ok(str_contains($fake, 'class="cards t-tor"') && str_contains($fake, 'Označi trajno prodanom') || str_contains($fake, 'Vrati u prodaju'), 'v22: Torbe kao kartice, isti nazivi gumba');
 $ok(preg_match('/^Content-Security-Policy: .*frame-ancestors \'none\'/mi', $fake) === 1, 'v22: CSP zaglavlje u adminu');
 
+/* v23: obrazac Uredi bez „Prodano” briše i zapis plaćeno; ručna prodaja odbija artikl po narudžbi; potvrde bez inline JS-a */
+$form = $req('GET', ['s' => 'uredi', 'id' => 'luna']);
+preg_match('/name="csrf" value="([^"]+)"/', $form, $cm);
+$curl(['--data-urlencode', 'csrf=' . ($cm[1] ?? ''), '--data-urlencode', 'act=save_product', '--data-urlencode', 'id=luna', '--data-urlencode', 'name=Luna', '--data-urlencode', 'price=65', '--data-urlencode', 'cat=torbe', '--data-urlencode', 'back=?s=torbe', "http://127.0.0.1:$port/admin/"]);
+$ok($prodSold('luna') === false && !isset($rd()['sold']['luna']), 'v23: Uredi bez „Prodano” — briše i zapis plaćeno');
+$out7 = $req('POST', ['act' => 'res_sold_manual', 'id' => 'klasik', 'back' => '?s=rez']);
+$ok(str_contains($out7, 'po narudžbi ne prodaju se ručno') && !isset($rd()['sold']['klasik']), 'v23: ručna prodaja odbija artikl po narudžbi');
+$pg = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
+$ok(preg_match("/^Content-Security-Policy: .*script-src 'nonce-[a-f0-9]+';/mi", $pg) === 1 && !str_contains($pg, 'onsubmit=') && str_contains($pg, 'data-confirm='), 'v23: CSP s nonceom, potvrde bez inline JS-a');
+$ok(str_contains($pg, '<th>Uplata</th>') && (str_contains($pg, 'nije plaćeno') || str_contains($pg, '<b>plaćeno</b>')), 'v23: Narudžbe — „Uplata”, „nije plaćeno” / „Označi plaćenom”');
+$tg = $req('POST', ['act' => 'toggle', 'id' => 'kozmeticka', 'field' => 'hidden', 'to' => '1', 'back' => '?s=torbe']);
+$ok(str_contains($tg, 'Artikl „Kozmetička torbica” je skriven i'), 'v23: poruka s imenicom i ispravnim rodom');
+$req('POST', ['act' => 'toggle', 'id' => 'kozmeticka', 'field' => 'hidden', 'to' => '0', 'back' => '?s=torbe']);
+
 /* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));

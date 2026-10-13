@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v22');
+define('SJ_VERSION', 'admin v23');
 
 /* ---------- postavke ---------- */
 
@@ -76,6 +76,11 @@ function sj_config_corrupt(): bool {
 
 /* Prva prijava (postavljanje lozinke) dopuštena je samo dok postoji ova datoteka; briše se
    čim je lozinka postavljena, pa se admin ne može „preuzeti” ako se config.json ošteti. */
+/* v23: imenica uz ime u porukama admina — „Torba „Luna” je skrivena”, „Artikl „Remen” je skriven” (rod slaže imenica) */
+function sj_kind(array $p): array {
+  $art = (($p['cat'] ?? 'torbe') === 'ostalo');
+  return $art ? ['Artikl', false] : ['Torba', true];
+}
 function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
 /* v20: kod za prvu lozinku — redak „kod: …” (barem 12 znakova) u data/PRVA-PRIJAVA.txt. Bez koda prvi posjetitelj
    admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
