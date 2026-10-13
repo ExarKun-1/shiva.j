@@ -212,6 +212,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   // ---------- v29: statično ----------
   ok((await pm.getAttribute('meta[property="og:image:width"]', 'content')) === '1200' && (await pm.getAttribute('meta[property="og:image:height"]', 'content')) === '630' && /Torbe koje postoje/.test(await pm.getAttribute('meta[property="og:image:alt"]', 'content')), 'og:image širina, visina i opis');
   ok((await pm.textContent('label[for="fPhone"]')).trim() === 'Telefon' && /za dostavu ili dogovor preuzimanja/.test(await pm.textContent('#fPhoneHint')) && await pm.locator('fieldset.ship-field legend').count() === 1 && /pričekajte torbu/.test(await pm.textContent('#kako')), 'telefon, fieldset/legend, „pričekajte torbu”');
+  ok(/nije u sustavu PDV-a/.test(await pm.textContent('#uvjeti')) && !/\{NAPOMENA/.test(await pm.textContent('#uvjeti')), 'v49: Uvjeti t. 3 — nije u sustavu PDV-a, bez {oznake}');
   ok(/što prije/.test(await pm.textContent('#uvjeti')) && /gotovo u istom trenutku/.test(await pm.textContent('#uvjeti')) && /unikatna se torba/.test(await pm.textContent('#uvjeti')), 'Uvjeti: pravopis');
   const soldCol = await pd.locator('.card.sold .add-btn').first().evaluate(el => getComputedStyle(el).color).catch(() => '');
   ok(soldCol === 'rgb(112, 110, 102)', 'tekst „Prodano” na gumbu tamniji (kontrast 4,7:1): ' + soldCol);
