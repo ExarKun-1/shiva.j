@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v50 (2026-10-13)
+     SHIVA.J WEBSHOP — v51 (2026-10-13)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,16 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v51 — uz admin v20 (recenzije v50): povećani prikaz artikla po narudžbi
+           bez „14 dana” (pravo na raskid tamo ne vrijedi), kod unikata
+           „14 dana za raskid”; promjena napomene dok narudžba čeka potvrdu
+           vraća obrazac; rok slanja uz gumb bez preuzimanja i s „artikle po
+           narudžbi nakon izrade”; uz gumb samo ukupno i rok (rezervacija i
+           napomena iznad privole); kartica: mjere i dostava u jednom retku;
+           „Rezervirane i prodane”; „Ispravite” na vrhu obrasca (polite);
+           fokus nakon „Pogledajte slobodne torbe”; prodana torba bez „na upit”
+           i bez drugog gumba; „Mjere” i u povećanom prikazu; naziv dostave
+           kroz escHtml
      v50 — po recenziji kupca (8/10): Uvjeti t. 2 „ili ih javljamo na upit”
            (za pravnika); „Mjere: na upit” na kartici torbe; rok slanja iz
            Postavki vidi se prije narudžbe (Kako naručiti, uz gumb); artikl po
@@ -752,6 +762,7 @@
     background:#fff;font-family:inherit;font-size:16px;color:var(--ink);
   }
   .cart-item .qty-l{font-family:'Karla',sans-serif;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+  @media (max-width:420px){ .cart-item .qty-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} }
   .cart-note-l{flex:1 1 100%;margin-top:6px;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
   .cart-note:focus{outline:2px solid var(--thread);outline-offset:-1px}
   .cart-item .remove{background:none;border:none;color:var(--ink-soft);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;min-height:44px;padding:0 4px;margin:-14px 0;text-decoration:underline dashed var(--line);text-underline-offset:4px}
@@ -793,9 +804,9 @@
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
-  .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-8px}
+  .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-6px}
   .order-fix{font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px}
-  .order-sum{font-family:'Space Mono',monospace;font-size:.85rem;text-align:center;color:var(--ink)}
+  .order-sum{font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;text-align:center;color:var(--ink);margin-top:6px}
   /* v46: dok narudžba čeka potvrdu iz e-maila, obrazac se skrije — drugi klik bi poslao novi link i poništio prvi */
   .order-form.is-pending > :not(#orderError):not(.next-step){display:none}
   .edit-order{background:none;border:none;padding:0;min-height:44px;color:var(--thread);font:inherit;text-decoration:underline dashed;text-underline-offset:4px}
@@ -906,6 +917,7 @@
     .menu-btn{display:flex}
     /* v47: poveznice u podnožju dovoljno visoke za prst */
     .foot-links{gap:0}
+    .foot-links > :not(a){padding:6px 0}
     .foot-links a{min-height:44px;display:inline-flex;align-items:center}
     .about-inner{grid-template-columns:1fr;padding:64px 24px}
     .about-inner > div:first-child{position:static}
@@ -1158,7 +1170,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v50</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v51</p>
 </footer>
 
 <!-- Košarica -->
@@ -1176,6 +1188,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
     <form class="order-form" id="orderForm" hidden>
       <p class="trust-line">Bez registracije · Plaćanje uplatom · 14 dana za raskid ugovora</p>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
+      <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
       <div class="hp-field" aria-hidden="true">
         <label for="fWeb">Web stranica (ostavite prazno)</label>
         <input id="fWeb" name="website" tabindex="-1" autocomplete="off">
@@ -1220,16 +1233,15 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <label for="fNote">Napomena (neobavezno)</label>
         <textarea id="fNote" rows="2" maxlength="500"></textarea>
       </div>
+      <p class="order-hold" id="orderHold" hidden></p>
+      <p class="order-note" id="orderNote"><span id="orderNoteHold">Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde. </span><span id="orderNoteMade">Artikle po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="consent">
         <input id="fConsent" type="checkbox" required>
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
       </div>
-      <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note" id="orderNote"><span id="orderNoteHold">Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde. </span><span id="orderNoteMade">Artikle po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <p class="order-sum" id="orderSum"></p>
       <p class="order-lead" data-ship-lead hidden></p>
-      <p class="order-fix" id="orderFix" role="alert" hidden></p>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: <span class="nw">e-mail</span> s linkom za potvrdu, zatim podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
     </form>
@@ -1254,13 +1266,13 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <p class="desc" id="lbDesc"></p>
       <p class="story" id="lbStory" hidden></p>
       <dl class="lb-specs">
-        <div id="lbDimsRow"><dt>Dimenzije</dt><dd id="lbDims"></dd></div>
+        <div id="lbDimsRow"><dt>Mjere</dt><dd id="lbDims"></dd></div>
         <div id="lbMaterialRow"><dt>Materijal</dt><dd id="lbMaterial"></dd></div>
         <div id="lbLeadRow" hidden><dt>Izrada</dt><dd id="lbLead"></dd></div>
       </dl>
       <p class="lb-ship" id="lbShip" hidden></p>
       <p class="lb-gone" id="lbGone" hidden><span id="lbGoneText"></span> <button type="button" class="lb-more" id="lbMore">Pogledajte slobodne torbe</button></p>
-      <p class="ask" id="lbAsk">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
+      <p class="ask" id="lbAsk"><span id="lbAskLead">Pitanje prije narudžbe?</span> Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <button class="add-btn" id="lbAdd"></button>
     </div>
   </div>
@@ -1513,7 +1525,7 @@ function renderGrid(){
       const sub = document.createElement("p"); sub.className = "grid-sub"; sub.innerHTML = `<span>Klasične torbe</span><small>šijemo po narudžbi · rok izrade piše uz svaku</small>`; grid.appendChild(sub);
     }
     if(!p.made && isGone(p) && list.some(x => x.made) && !grid.querySelector(".grid-sub.gone")){
-      const sub = document.createElement("p"); sub.className = "grid-sub gone"; sub.innerHTML = `<span>Već su otišle</span><small>šarene torbe postoje samo jednom</small>`; grid.appendChild(sub);
+      const sub = document.createElement("p"); sub.className = "grid-sub gone"; sub.innerHTML = `<span>Rezervirane i prodane</span><small>šarene torbe postoje samo jednom</small>`; grid.appendChild(sub);
     }
     const card = document.createElement("article");
     card.className = "card" + (gone ? " sold" : "") + (p.made ? " made" : "");
@@ -1526,7 +1538,7 @@ function renderGrid(){
       <div class="photo" data-view="${escHtml(p.id)}" role="button" tabindex="0" aria-label="Pogledaj torbu: ${escHtml(p.name)}">
         ${cover
           ? `<img src="${escHtml(cover)}" alt="${escHtml(p.name)}" loading="lazy">`
-          : `<div class="ph"><span class="ph-mark">${escHtml(String(p.name)[0])}</span><span class="ph-note">Fotografija uskoro</span></div>`}
+          : `<div class="ph"><span class="ph-mark">${escHtml(String(p.name)[0])}</span>${p.made ? "" : `<span class="ph-note">Fotografija uskoro</span>`}</div>`}
         ${imgs.length > 1 ? `<img class="alt" src="${escHtml(imgs[1])}" alt="" loading="lazy">` : ""}
         ${imgs.length > 1 ? `<span class="count" aria-hidden="true">1/${imgs.length} foto</span>` : ""}
       </div>
@@ -1538,8 +1550,11 @@ function renderGrid(){
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
       ${p.made && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(p.lead)}</p>` : ""}
-      ${filled(p.dims) ? `<p class="dims">Mjere: ${escHtml(filled(p.dims))}</p>` : (p.cat || "torbe") === "torbe" && !gone ? `<p class="dims ask">Mjere: na upit</p>` : ""}
-      ${!gone && !wait && shipFrom !== null ? `<p class="ship-from">Ručni rad · dostava od ${fmt(shipFrom)}</p>` : ""}
+      ${(() => { /* v51: mjere i dostava u jednom retku (manje sitnih redaka na kartici) */
+        const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : (p.cat || "torbe") === "torbe" && !gone ? "Mjere: na upit" : "";
+        const sh = !gone && !wait && shipFrom !== null ? (dm ? "dostava od " : "Dostava od ") + fmt(shipFrom) : "";
+        return dm || sh ? `<p class="ship-from">${[dm, sh].filter(Boolean).join(" · ")}</p>` : "";
+      })()}
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       ${p.made && !gone && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
@@ -1654,7 +1669,7 @@ function openLightbox(id){
   document.getElementById("lbDesc").textContent = lbCurrent.desc;
   const dims = filled(lbCurrent.dims), mat = filled(lbCurrent.material);
   /* v46: torbe bez upisanih mjera pokazuju „na upit” — ništa se ne izmišlja, a kupac zna da može pitati */
-  const dd = document.getElementById("lbDims"), askDims = !dims && (lbCurrent.cat || "torbe") === "torbe";
+  const dd = document.getElementById("lbDims"), askDims = !dims && (lbCurrent.cat || "torbe") === "torbe" && !isGone(lbCurrent);
   dd.classList.toggle("ask-dd", askDims);
   if(askDims) dd.innerHTML = `na upit — pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>`;
   else dd.textContent = dims;
@@ -1666,7 +1681,11 @@ function openLightbox(id){
   document.getElementById("lbGoneText").textContent = !goneLb ? ""
     : resLb ? "Ova je torba rezervirana za drugog kupca. Ako je ne uplati u roku, vraća se u ponudu."
     : lbCurrent.made ? "Ovaj artikl trenutno ne izrađujemo." : "Ova je torba otišla — svaka postoji samo jednom.";
-  document.getElementById("lbAsk").hidden = askDims || goneLb; /* kontakt je već u redu „Dimenzije” */
+  document.getElementById("lbAsk").hidden = askDims || goneLb; /* kontakt je već u redu „Mjere” */
+  document.getElementById("lbAdd").hidden = goneLb; /* v51: uz „Pogledajte slobodne torbe” nema drugog (neaktivnog) gumba */
+  /* v51: artikl po narudžbi bez fotografije — napomena i u povećanom prikazu */
+  document.getElementById("lbAskLead").textContent = lbCurrent.made && !(lbCurrent.imgs || []).length
+    ? "Fotografija modela uskoro — za izgled i boje pitajte nas." : "Pitanje prije narudžbe?";
   document.getElementById("lbMaterialRow").hidden = !mat;
   const tl = document.getElementById("lbTagline"); tl.textContent = filled(lbCurrent.tagline); tl.hidden = !tl.textContent;
   const st = document.getElementById("lbStory"); st.textContent = filled(lbCurrent.story); st.hidden = !st.textContent;
@@ -1740,13 +1759,17 @@ function updateLbButton(){
     : entry ? "U košarici ✓ · otvori" : "Dodaj u košaricu";
   const so = shipFromPrice(), ship = document.getElementById("lbShip");
   ship.hidden = gone || wait || so === null;
-  ship.textContent = ship.hidden ? "" : `Ručni rad · dostava od ${fmt(so)} · 14 dana za povrat`;
+  /* v51: artikl po narudžbi (izrada po željama) nema 14 dana za raskid — vidi Uvjete; unikat: isti izraz kao u košarici */
+  ship.textContent = ship.hidden ? "" : `Ručni rad · dostava od ${fmt(so)}` + (lbCurrent.made ? "" : " · 14 dana za raskid");
 }
 document.getElementById("lbClose").addEventListener("click", closeLightbox);
 document.getElementById("lbMore").addEventListener("click", () => {
+  lbReturnFocus = null; /* v51: fokus ne skače natrag na prodanu karticu */
   closeLightbox();
   if(currentCat !== "torbe"){ location.hash = "#torbe"; return; }
   document.getElementById("torbe").scrollIntoView({ behavior: "smooth" });
+  const free = [...grid.querySelectorAll(".card:not(.sold):not(.made) .photo")][0];
+  if(free) free.focus({ preventScroll: true });
 });
 document.getElementById("lbPrev").addEventListener("click", () => stepLb(-1));
 document.getElementById("lbNext").addEventListener("click", () => stepLb(1));
@@ -1876,15 +1899,16 @@ function renderCart(){
   const ship = document.createElement("div");
   ship.className = "cart-item";
   const so = shipSel();
-  ship.innerHTML = `<span class="n" style="font-family:'Karla',sans-serif;color:var(--ink-soft)">Dostava${so ? " · " + so.label : ""}</span>
+  ship.innerHTML = `<span class="n" style="font-family:'Karla',sans-serif;color:var(--ink-soft)">Dostava${so ? " · " + escHtml(so.label) : ""}</span>
     <span class="price">${so ? (so.price ? fmt(so.price) : "besplatno") : "po dogovoru"}</span><span></span>`;
   box.appendChild(ship);
   const goods = cart.reduce((s,p)=>s+p.price*qtyOf(p),0), total = goods + shipPrice();
   document.getElementById("totalAmount").textContent = fmt(total);
+  renderShipLead();
   /* v46: iznos uz gumb — na mobitelu je „Ukupno” daleko iznad */
   document.getElementById("orderSum").textContent = `Ukupno ${fmt(total)}` + (shipPrice() ? ` (${fmt(goods)} + dostava ${fmt(shipPrice())})` : "");
 }
-function cartSig(){ return cart.map(p => p.id + "×" + qtyOf(p)).join(","); }
+function cartSig(){ return cart.map(p => p.id + "×" + qtyOf(p) + "|" + (p.note || "")).join(","); }
 var pendingSig = "";
 document.getElementById("cartItems").addEventListener("click", e => {
   const qb = e.target.closest(".q");
@@ -1901,7 +1925,9 @@ document.getElementById("cartItems").addEventListener("click", e => {
 });
 document.getElementById("cartItems").addEventListener("input", e => {
   const n = e.target.closest(".cart-note");
-  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ it.note = n.value.slice(0, 120); saveCart(); } }
+  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ it.note = n.value.slice(0, 120); saveCart();
+    /* v51: promijenjena napomena dok narudžba čeka potvrdu — link iz e-maila vrijedi za staru, pa se obrazac vraća */
+    if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError(); } }
 });
 
 /* ---------- rezervacije u stvarnom vremenu (PHP servis api/) ---------- */
@@ -1911,8 +1937,11 @@ let submitting = false; /* dok traje slanje narudžbe, osvježavanje ne dira ko�
 /* v50: rok slanja iz Postavki vidi se prije narudžbe, ne tek na ploči za uplatu (prazno = ne prikazuje se) */
 function renderShipLead(){
   document.querySelectorAll("[data-ship-lead]").forEach(el => {
-    el.hidden = !SHIP_LEAD;
-    el.textContent = SHIP_LEAD ? (el.classList.contains("lead-kako") ? " " : "") + "Slanje obično " + SHIP_LEAD + " nakon uplate." : "";
+    const kako = el.classList.contains("lead-kako"), so = shipSel();
+    /* v51: uz gumb ne kod osobnog preuzimanja (nema slanja); artikli po narudžbi šalju se tek nakon izrade */
+    const hide = !SHIP_LEAD || (!kako && so && so.id === "pickup");
+    el.hidden = hide;
+    el.textContent = hide ? "" : (kako ? " " : "") + "Slanje obično " + SHIP_LEAD + " nakon uplate" + (!kako && cart.some(p => p.made) ? " (artikle po narudžbi nakon izrade)" : "") + ".";
   });
 }
 function applyServerSettings(data){
@@ -2159,7 +2188,9 @@ const FIX_NAME = { fName: "ime i prezime", fEmail: "e-mail", fPhone: "telefon", 
 function updateOrderFix(){
   const bad = [...orderFormEl.querySelectorAll("input,textarea")].filter(el => FIX_NAME[el.id] && el.offsetParent !== null && !el.checkValidity());
   const fix = document.getElementById("orderFix");
-  fix.hidden = !bad.length; fix.textContent = bad.length ? "Ispravite: " + bad.map(el => FIX_NAME[el.id]).join(", ") + "." : "";
+  const txt = bad.length ? "Ispravite: " + bad.map(el => FIX_NAME[el.id]).join(", ") + "." : "";
+  if(fix.textContent !== txt) fix.textContent = txt; /* v51: čitač zaslona čita samo promjenu */
+  fix.hidden = !bad.length;
 }
 document.getElementById("orderBtn").addEventListener("click", updateOrderFix);
 orderFormEl.addEventListener("input", () => { if(!document.getElementById("orderFix").hidden) updateOrderFix(); });

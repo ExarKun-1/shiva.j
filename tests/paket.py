@@ -17,6 +17,8 @@ ok(not [n for n in un if n.startswith(('data/', 'img/')) or n == 'torbe.json'], 
 ok('data/.htaccess' in fn and 'data/PRVA-PRIJAVA.txt' in fn and first.read('torbe.json').strip() == b'[]', 'prvi paket: zaštita data/, prva prijava, prazna ponuda')
 bad = re.compile(r'(^|/)(\.git|docs|tests|proba|tools)/|\.md$|primjer|router\.php|\.example$')
 ok(not [n for n in fn + un if bad.search(n)], 'bez uputa, testova, primjera i lokalnog routera')
+kod = re.search(r'^kod: (\S{12,})$', first.read('data/PRVA-PRIJAVA.txt').decode(), re.M)
+ok(kod and kod.group(1) in open(os.path.join(ROOT, 'dist', f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt'), encoding='utf-8').read(), 'v51: prvi paket nosi nasumičan kod za prvu prijavu, kod je i u dist/')
 ok(v in first.read('PROCITAJ.txt').decode() and 'NEMA' in upd.read('PROCITAJ.txt').decode(), 'PROCITAJ.txt s verzijom ' + v)
 
 print('\n'.join(R))

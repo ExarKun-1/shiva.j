@@ -73,6 +73,25 @@ file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
   'tara' => ['id' => 'tara', 'token' => 't2', 'name' => 'Y', 'email' => 'y@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z']], 'sold' => ['vela' => ['id' => 'vela', 'paidAt' => '2026-10-11T00:00:00Z']]]));
 $ok(str_contains($req('GET', ['s' => 'rez']), 'više od pola'), 'Rezervacije: upozorenje kad neplaćene drže više od pola slobodnih');
 
+/* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
+$c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
+file_put_contents($D . '/config.json', json_encode($c));
+$ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'name="password"'), 'v20: nakon promjene lozinke stara sesija više ne vrijedi');
+/* v20: prva lozinka traži kod iz PRVA-PRIJAVA.txt */
+$c['password_hash'] = ''; file_put_contents($D . '/config.json', json_encode($c));
+file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\n");
+$ok(str_contains($curl(["http://127.0.0.1:$port/admin/"]), 'nema koda za prvu prijavu'), 'v20: bez koda u datoteci admin ne nudi postavljanje lozinke');
+file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\nkod: tajni-kod-12345\n");
+$bad = $curl(['--data-urlencode', 'setup_code=krivi-kod-0000', '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
+$c2 = json_decode(file_get_contents($D . '/config.json'), true);
+$ok(str_contains($bad, 'Kod nije točan') && ($c2['password_hash'] ?? '') === '' && is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: krivi kod — lozinka se ne postavlja');
+$good = $curl(['--data-urlencode', 'setup_code=tajni-kod-12345', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
+$c2 = json_decode(file_get_contents($D . '/config.json'), true);
+$ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: točan kod — lozinka postavljena, datoteka obrisana');
+file_put_contents($D . '/PRVA-PRIJAVA.txt', "kod: zaostali-kod-999\n");
+$curl(["http://127.0.0.1:$port/admin/"]);
+$ok(!is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: zaostala PRVA-PRIJAVA.txt se briše kad lozinka postoji');
+
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
 $f = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
