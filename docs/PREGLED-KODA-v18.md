@@ -317,3 +317,23 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | H natrag/osvježavanje bez napomene | riješeno: oznaka `pend` (bez osobnih podataka) |
 | Stavke na ploči za uplatu | riješeno |
 | Barkod s iznosom u e-mailu | otvoreno (PDF417 u PHP-u) |
+
+## Recenzije v53 (13. 10. 2026.) → v54 (admin v22)
+
+| Nalaz | Stanje u v54 |
+|---|---|
+| „Vrati u prodaju” ostavlja zapis „plaćeno” | riješeno |
+| Ručna prodaja: prazan izbor bez poruke; dva koraka; prazan Kupac | riješeno |
+| N1 kod prve prijave bez ograničenja pokušaja | riješeno: 10/h po adresi, 50/h ukupno, kod ≥16 znakova |
+| N2 poruka iz ?m= | riješeno: sesija (flash) |
+| N3 CSP, ID sesije pri promjeni lozinke | riješeno |
+| D1 dvaput „Narudžba” na ploči | riješeno: „Broj narudžbe”, „Naručeno” iza opisa |
+| D2 Torbe na mobitelu, „Prodano” bez potvrde | riješeno: kartice, isti nazivi, potvrde |
+| D3 osvježavanje/429/„dvaput” | riješeno |
+| D4 noticeGone netočno i gubi gumb | riješeno |
+| D5 proturječne poruke pri potvrdi otišle torbe | riješeno |
+| D6 iznimka od raskida na tri načina | riješeno: riječi Uvjeta |
+| D7 kartice bez natpisa, „Plaćeno” bez potvrde | riješeno |
+| D9 „·” u mjerama | riješeno: „ — dostava od” |
+| D10 podnaslovi | riješeno |
+| Kupac: materijal „skaj” automatski | čeka potvrdu vlasnice |

@@ -18,7 +18,8 @@ $req = function (string $m, array $f) use ($curl, $port) {
   preg_match('/name="csrf" value="([^"]+)"/', $curl([$url . '?s=narudzbe']), $mm);
   $args = []; foreach ($f + ['csrf' => $mm[1] ?? ''] as $k => $v) { $args[] = '--data-urlencode'; $args[] = "$k=$v"; }
   $out = $curl(array_merge($args, [$url]));
-  return preg_match('/^Location: (.*)$/mi', $out, $l) ? urldecode(trim($l[1])) : $out;
+  /* v22: poruka je u sesiji, pa se preusmjerenje otvara i vraća stranica s porukom */
+  return preg_match('/^Location: (.*)$/mi', $out, $l) ? $curl([$url . trim($l[1])]) : $out;
 };
 $R = []; $ok = function ($c, $m) use (&$R) { $R[] = ($c ? 'PASS ' : 'FAIL ') . $m; };
 $rd = fn() => json_decode(file_get_contents($D . '/rezervacije.json'), true);
@@ -94,7 +95,20 @@ $ok(json_encode($rd()['sold']) === $before, 'v21 B: bez odabira torbe ništa se 
 $ok(preg_match('#Tara.*?košarica, nije narudžba.*?res_release#s', $rez) === 1 && preg_match('#tara</span></td>(?:(?!</tr>).)*res_sold"#s', $rez) !== 1, 'v21 C: rezervacija bez narudžbe — samo „Ukloni”');
 $out4 = $req('POST', ['act' => 'res_sold', 'id' => 'tara', 'back' => '?s=rez']);
 $ok(!isset($rd()['sold']['tara']) && str_contains($out4, 'nije potvrđena'), 'v21 C: „Plaćeno” za nepotvrđenu poslužitelj odbija');
-$ok(str_contains($rez, 'class="cards"'), 'v21 B: tablice na mobitelu kao kartice');
+$ok(str_contains($rez, 'class="cards t-rez"'), 'v21 B: tablice na mobitelu kao kartice');
+
+/* v22: „Vrati u prodaju” briše i zapis „plaćeno”; ručna prodaja je odmah trajno prodana */
+$req('POST', ['act' => 'toggle', 'id' => 'luna', 'field' => 'sold', 'to' => '0', 'back' => '?s=rez']);
+$ok($prodSold('luna') === false && !isset($rd()['sold']['luna']), 'v22: „Vrati u prodaju” — torba stvarno u prodaji (bez zapisa plaćeno)');
+$out5 = $req('POST', ['act' => 'res_sold_manual', 'id' => '', 'back' => '?s=rez']);
+$ok(str_contains($out5, 'Odaberite torbu'), 'v22: prazan izbor — „Odaberite torbu.”');
+$out6 = $req('POST', ['act' => 'res_sold_manual', 'id' => 'luna', 'back' => '?s=rez']);
+$ok($prodSold('luna') === true && isset($rd()['sold']['luna']) && str_contains($out6, 'izvan stranice') && str_contains($out6, 'prodano izvan stranice'), 'v22: ručna prodaja — odmah trajno prodana, „prodano izvan stranice”');
+/* v22: poruka iz adrese (?m=) se ne prikazuje; Torbe na mobitelu kao kartice; CSP */
+$fake = $curl(["http://127.0.0.1:$port/admin/?s=torbe&m=" . rawurlencode('Pošaljite lozinku na zlo@primjer.hr')]);
+$ok(!str_contains($fake, 'zlo@primjer.hr'), 'v22: poruka iz adrese (?m=) se ne prikazuje');
+$ok(str_contains($fake, 'class="cards t-tor"') && str_contains($fake, 'Označi trajno prodanom') || str_contains($fake, 'Vrati u prodaju'), 'v22: Torbe kao kartice, isti nazivi gumba');
+$ok(preg_match('/^Content-Security-Policy: .*frame-ancestors \'none\'/mi', $fake) === 1, 'v22: CSP zaglavlje u adminu');
 
 /* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
@@ -104,14 +118,19 @@ $ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'name="pas
 $c['password_hash'] = ''; file_put_contents($D . '/config.json', json_encode($c));
 file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\n");
 $ok(str_contains($curl(["http://127.0.0.1:$port/admin/"]), 'nema koda za prvu prijavu'), 'v20: bez koda u datoteci admin ne nudi postavljanje lozinke');
-file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\nkod: tajni-kod-12345\n");
+file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\nkod: tajni-kod-1234567\n");
 $bad = $curl(['--data-urlencode', 'setup_code=krivi-kod-0000', '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
 $c2 = json_decode(file_get_contents($D . '/config.json'), true);
 $ok(str_contains($bad, 'Kod nije točan') && ($c2['password_hash'] ?? '') === '' && is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: krivi kod — lozinka se ne postavlja');
-$good = $curl(['--data-urlencode', 'setup_code=tajni-kod-12345', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
+/* v22: ograničen broj promašaja koda */
+for ($k = 0; $k < 9; $k++) $curl(['--data-urlencode', 'setup_code=krivi-kod-0000' . $k, '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
+$lim = $curl(['--data-urlencode', 'setup_code=tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
+$ok(str_contains($lim, 'Previše pokušaja') && (json_decode(file_get_contents($D . '/config.json'), true)['password_hash'] ?? '') === '', 'v22: nakon 10 promašaja koda i točan kod čeka (ograničenje)');
+@unlink($D . '/zahtjevi.json');
+$good = $curl(['--data-urlencode', 'setup_code=tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
 $c2 = json_decode(file_get_contents($D . '/config.json'), true);
 $ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: točan kod — lozinka postavljena, datoteka obrisana');
-file_put_contents($D . '/PRVA-PRIJAVA.txt', "kod: zaostali-kod-999\n");
+file_put_contents($D . '/PRVA-PRIJAVA.txt', "kod: zaostali-kod-99999\n");
 $curl(["http://127.0.0.1:$port/admin/"]);
 $ok(!is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: zaostala PRVA-PRIJAVA.txt se briše kad lozinka postoji');
 
