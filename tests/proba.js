@@ -41,7 +41,7 @@ const api = http.createServer((q, s) => {
     p.on('pageerror', e => errors.push(e.message)); p.on('console', x => { if (x.type() === 'error' && !/bunny|ERR_TUNNEL|Failed to load resource/.test(x.text())) errors.push(x.text()); });
     await p.goto(SITE + '/', { waitUntil: 'networkidle' }); await p.waitForTimeout(300);
     ok(/PROBNA STRANICA/.test(await p.textContent('body')) && await p.locator('meta[name=robots][content*=noindex]').count() === 1, 'traka „PROBNA STRANICA” i noindex');
-    await p.click('.card:has(h3:text-is("Luna")) .add-btn'); await p.click('#openCart'); await p.waitForTimeout(300);
+    await p.click('.card:has(h3:has(.card-name:text-is("Luna"))) .add-btn'); await p.click('#openCart'); await p.waitForTimeout(300);
     await p.check('#shipOptions input[value="pickup"]');
     await p.fill('#fName', 'Proba Kupac'); await p.fill('#fEmail', 'proba@primjer.hr'); await p.fill('#fPhone', '091 111 2222'); await p.check('#fConsent');
     await p.click('#orderBtn'); await p.waitForSelector('.order-error.order-info', { timeout: 8000 }).catch(() => {});
@@ -53,8 +53,8 @@ const api = http.createServer((q, s) => {
     ok(/SJ-2026-0001|SJ-\d{4}-0001/.test(pay) && /Torba „Luna” je rezervirana/.test(pay) && rows.length === 1, 'link: podaci za uplatu, Luna rezervirana, red u tablici');
     const p2 = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
     await p2.goto(SITE + '/', { waitUntil: 'networkidle' }); await p2.waitForTimeout(500);
-    ok(/Rezervirano/i.test(await p2.textContent('.card:has(h3:text-is("Luna"))')), 'drugi posjetitelj vidi Lunu kao rezerviranu');
-    await p2.click('.card:has(h3:text-is("Tara")) .add-btn'); await p2.click('#openCart'); await p2.waitForTimeout(300);
+    ok(/Rezervirano/i.test(await p2.textContent('.card:has(h3:has(.card-name:text-is("Luna")))')), 'drugi posjetitelj vidi Lunu kao rezerviranu');
+    await p2.click('.card:has(h3:has(.card-name:text-is("Tara"))) .add-btn'); await p2.click('#openCart'); await p2.waitForTimeout(300);
     await p2.check('#shipOptions input[value="pickup"]');
     await p2.fill('#fName', 'Proba Dva'); await p2.fill('#fEmail', 'proba@primjer.hr'); await p2.fill('#fPhone', '091 111 3333'); await p2.check('#fConsent');
     await p2.click('#orderBtn'); await p2.waitForTimeout(1200);

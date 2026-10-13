@@ -1,4 +1,5 @@
 # Shiva.J — rezervacije u stvarnom vremenu · upute v03
+> **Zastarjelo (v48):** opisuje stari Cloudflare worker i rezervaciju odmah pri slanju. Od v40 torba se rezervira tek kad kupac potvrdi narudžbu linkom iz e-maila (PHP `api/index.php`); vidi `ODLUKE-I-PODACI.md` i `docs/UPUTE-OBJAVA-CROADRIA-v03.md`.
 
 Datum: 2026-09-06 · vrijedi uz `shivaj_webshop_v12.html` i `shivaj_worker_v03.js` · v03: rezervacija traje 24 sata, gumb „Plaćeno“
 
