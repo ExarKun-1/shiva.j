@@ -79,7 +79,7 @@ objavljen), ali sigurnosne stavke treba riješiti prije objave.
 
 | # | Gdje | Što |
 |---|---|---|
-| T1 | `index.html:640` | `{NAPOMENA O PDV-u …}` javno vidljiv nacrt (poznato, čeka knjigovođu). |
+| T1 | `index.html:640` | ~~`{NAPOMENA O PDV-u …}` javno vidljiv nacrt.~~ Riješeno u v49: obrt nije u sustavu PDV-a (formulaciju potvrđuje knjigovođa). |
 | T2 | `index.html:631,643` | Sažetak Uvjeta: „e-mailom vam pošaljemo podatke za uplatu”, „u roku 24 sata potvrdu; ugovor sklopljen kad primite potvrdu”, „na vašu adresu”. Stvarno: podaci odmah, potvrda automatska i trenutna, dostava i paketomat/preuzimanje. Pravno pitanje (uz S3). |
 | T3 | `index.html:676,679` vs `api:153`, `admin:185`, `narudzbe.json` | Privatnost obećava brisanje podataka rezervacije po isteku i nerealiziranih narudžbi u 30 dana; „Plaćeno” trajno čuva ime/e-mail, narudžbe se čuvaju bez roka, `login_fails` čuva IP-ove, admin nema brisanje. Dodati automatsko čišćenje (narudžbe > 30 dana bez oznake plaćeno; ime/e-mail iz `sold` kod „Trajno prodano”) ili promijeniti tekst. |
 | T4 | `index.html:596,780` | „24 sata rezervirana, nitko je drugi ne može naručiti” i za košaricu samo s artiklima „ostalo”. |
@@ -278,7 +278,7 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 |---|---|
 | Unikat bez fotografije može se kupiti | riješeno: `noPhoto()` — „Fotografija uskoro”, neaktivno, „pitajte nas na Instagramu”; i u povećanom prikazu i pri vraćanju košarice |
 | Nema mjera torbe | podatak vlasnice (admin → mjere); stranica ne prikazuje {DIMENZIJE} |
-| {NAPOMENA O PDV-u} u Uvjetima t. 3 | podatak vlasnice/knjigovođe, obavezno prije objave |
+| {NAPOMENA O PDV-u} u Uvjetima t. 3 | riješeno u v49: „nije u sustavu PDV-a (čl. 90. st. 1. ZPDV)… cijene su konačne” |
 | Barkod „popune se sami” vs. Uvjeti t. 5 „upisujete sami” | riješeno: Uvjeti t. 5 usklađeni (za pravnika) |
 | Link vrijedi „do 20:25” bez trajanja; „nekoliko minuta” vs. „24 sata” | riješeno: „Link vrijedi 1 sat (do …)”; Uvjeti t. 4 „odmah nakon potvrde (najkasnije u roku 24 sata)” (za pravnika) |
 | Povrat: tko plaća poštarinu | riješeno: korak „Kod vas” — „trošak povrata snosite vi” |
