@@ -1,5 +1,5 @@
 /* =========================================================
-   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v42)
+   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v43)
    Za probnu stranicu na GitHub Pagesu (statična, bez PHP-a). Isti API kao api/index.php:
      GET  ?r=status   rezervirane i prodane torbe, dostava, podaci za uplatu
      POST ?r=reserve  (proba ne drži košaricu; stranica tada samo šalje narudžbu)
@@ -225,7 +225,7 @@ function sjConfirm(env, b) {
   P.uniqueIds.forEach(function (u) { if (room > 0) { held.push(u); room--; } else unheld.push(u); });
   var now = env.now(), until = held.length ? sjIso(now + env.cfg.TTL_HOURS * 3600000) : '';
   var no = 'SJ-' + new Date(now).getUTCFullYear() + '-' + ('000' + env.nextNo()).slice(-4);
-  var data = { ids: P.uniqueIds, held: held, unheld: unheld, total: P.total, items: P.items.map(function (it) { return { id: it.id, name: it.name, qty: it.qty, price: it.price, made: it.made, lead: it.lead }; }), ship: P.ship };
+  var data = { ids: P.uniqueIds, held: held, unheld: unheld, total: P.total, items: P.items.map(function (it) { return { id: it.id, name: it.name, qty: it.qty, price: it.price, made: it.made, lead: it.lead, note: it.note || '' }; }), ship: P.ship };
   var row = { no: no, at: sjIso(now), name: P.cust.name, email: P.cust.email, phone: P.cust.phone, items: sjItemsText(P), shipping: sjShipText(P) + (P.cust.street ? ' — ' + P.cust.street + ', ' + P.cust.city : ''),
     total: P.total, until: until, paid: '', note: P.note, key: P.key, data: data };
   env.appendOrder(row);

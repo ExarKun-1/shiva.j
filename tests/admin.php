@@ -73,6 +73,29 @@ file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
   'tara' => ['id' => 'tara', 'token' => 't2', 'name' => 'Y', 'email' => 'y@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z']], 'sold' => ['vela' => ['id' => 'vela', 'paidAt' => '2026-10-11T00:00:00Z']]]));
 $ok(str_contains($req('GET', ['s' => 'rez']), 'više od pola'), 'Rezervacije: upozorenje kad neplaćene drže više od pola slobodnih');
 
+/* v21: A — „Označi trajno prodanom” je jednosmjerno; dvostruki klik ne vraća torbu u prodaju */
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
+  'tara' => ['id' => 'tara', 'token' => 'tK', 'name' => 'Kosara K', 'email' => 'k@p.hr', 'ordered' => false, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z']],
+  'sold' => ['luna' => ['id' => 'luna', 'token' => 'tL', 'name' => 'Lea L', 'email' => 'l@p.hr', 'paidAt' => '2026-10-11T00:00:00Z']]]));
+$prodSold = function (string $id) use ($D) { foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $p) if (($p['id'] ?? '') === $id) return !empty($p['sold']); return null; };
+$req('POST', ['act' => 'toggle', 'id' => 'luna', 'field' => 'sold', 'to' => '1', 'back' => '?s=rez']);
+$out2 = $req('POST', ['act' => 'toggle', 'id' => 'luna', 'field' => 'sold', 'to' => '1', 'back' => '?s=rez']);
+$ok($prodSold('luna') === true && str_contains($out2, 'trajno prodana'), 'v21 A: dvaput „Označi trajno prodanom” — torba ostaje prodana, poruka običnom rečenicom');
+$rez = $req('GET', ['s' => 'rez']);
+$ok(str_contains($rez, 'Trajno prodana ✓') && preg_match('#luna.*?res_unsold#s', $rez) !== 1, 'v21 A: za trajno prodanu nema „Ukloni oznaku”, samo „Vrati u prodaju”');
+$out3 = $req('POST', ['act' => 'res_unsold', 'id' => 'luna', 'back' => '?s=rez']);
+$ok(isset($rd()['sold']['luna']) && str_contains($out3, 'trajno prodana'), 'v21 A: „Ukloni oznaku” za trajno prodanu poslužitelj odbija');
+/* B — ručni obrazac: prazan prvi izbor, bez odabira ništa */
+$ok(str_contains($rez, '— odaberite torbu —') && str_contains($rez, 'Označi odabranu torbu prodanom'), 'v21 B: ručni obrazac s praznim prvim izborom i jasnim gumbom');
+$before = json_encode($rd()['sold']);
+$req('POST', ['act' => 'res_sold_manual', 'id' => '', 'back' => '?s=rez']);
+$ok(json_encode($rd()['sold']) === $before, 'v21 B: bez odabira torbe ništa se ne označava');
+/* C — rezervacija bez narudžbe nema „Plaćeno”, poslužitelj ga odbija */
+$ok(preg_match('#Tara.*?košarica, nije narudžba.*?res_release#s', $rez) === 1 && preg_match('#tara</span></td>(?:(?!</tr>).)*res_sold"#s', $rez) !== 1, 'v21 C: rezervacija bez narudžbe — samo „Ukloni”');
+$out4 = $req('POST', ['act' => 'res_sold', 'id' => 'tara', 'back' => '?s=rez']);
+$ok(!isset($rd()['sold']['tara']) && str_contains($out4, 'nije potvrđena'), 'v21 C: „Plaćeno” za nepotvrđenu poslužitelj odbija');
+$ok(str_contains($rez, 'class="cards"'), 'v21 B: tablice na mobitelu kao kartice');
+
 /* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));

@@ -302,3 +302,18 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | D6 „Već su otišle” iznad rezerviranih | riješeno: „Rezervirane i prodane” |
 | D7 „Ispravite” se ne vidi / ponavlja | riješeno: vrh obrasca, polite, samo promjene |
 | D8–D10 fokus, prodana torba, dvostruka napomena, „Količina” | riješeno |
+
+## Probni korisnik s PHP-om (dopuna, 13. 10. 2026.) → v53
+
+| Nalaz | Stanje u v53 |
+|---|---|
+| A „Trajno prodano” prekidač — drugi klik vraća plaćenu torbu u prodaju | riješeno: jednosmjerno (`to=1`), „Vrati u prodaju” uz potvrdu, „Ukloni oznaku” skriven i odbijen |
+| B na mobitelu krivi „Plaćeno” (prva torba unaprijed odabrana) | riješeno: prazan izbor, jasan gumb, potvrda; tablice kao kartice |
+| C „Plaćeno” za rezervaciju bez narudžbe | riješeno: samo „Ukloni”, poslužitelj odbija |
+| D `heldRes` nakon potvrđene narudžbe | riješeno: briše se u `showOrderSuccess` |
+| E poruka o nestaloj torbi 2,5 s | riješeno: `noticeGone`, trajna |
+| F e-mail bez točke / fokus | riješeno (v48 provjera + v53 fokus) |
+| G 429 pri ponovnom slanju briše „čeka potvrdu” | riješeno |
+| H natrag/osvježavanje bez napomene | riješeno: oznaka `pend` (bez osobnih podataka) |
+| Stavke na ploči za uplatu | riješeno |
+| Barkod s iznosom u e-mailu | otvoreno (PDF417 u PHP-u) |

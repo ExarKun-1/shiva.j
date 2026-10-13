@@ -71,6 +71,10 @@ const results = [];
 free.forEach((id, i) => { const p = list.find(x => String(x.id) === id); H(env, 'order', order('gas-cap-' + i + '-xxxx', 'kup' + i + '@primjer.hr', [{ id }], p.price)); results.push(H(env, 'confirm', link(env))); });
 const heldN = results.filter(r => r.ok && r.reserved).length, unheldN = results.filter(r => r.ok && r.unheld).length;
 ok(heldN === cap && unheldN === free.length - cap && results.every(r => r.ok), `granica: od ${free.length} slobodnih rezervirano ${heldN} (pola), ostalo bez rezervacije`);
+// v43: napomena stavke (boja, duljina) vraća se uz potvrdu (ploča za uplatu)
+{ const e9 = makeEnv(); const kzp = list.find(p => p.id === 'kozmeticka').price;
+  H(e9, 'order', order('gas-napomena-01', 'nap@primjer.hr', [{ id: 'kozmeticka', qty: 1, note: 'plava' }], kzp));
+  const c9 = H(e9, 'confirm', link(e9)); ok(c9.ok && c9.items[0].note === 'plava', 'v43: potvrda vraća napomenu stavke'); }
 // v41: po primatelju najviše 2 e-maila za potvrdu na sat; tuđi e-mail ne briše pravu nepotvrđenu narudžbu
 env = makeEnv();
 const kz = list.find(p => p.id === 'kozmeticka').price;
