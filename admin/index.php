@@ -25,9 +25,16 @@ if ($c['password_hash'] === '') {
     sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.txt</code> ne postoji. Prenesite je iz paketa (ili napravite praznu datoteku tog imena u mapi <code>data/</code>) i osvježite ovu stranicu.</p>', $c, '', '', false);
     exit;
   }
+  $code = sj_setup_code();
+  if ($code === '') {
+    sj_layout('Admin nije postavljen', '<p>U datoteci <code>data/PRVA-PRIJAVA.txt</code> nema koda za prvu prijavu. Otvorite je u File Manageru i dodajte redak <code>kod: </code> s barem 12 znakova po vašem izboru (npr. <code>kod: ljubicasta-torba-2026</code>), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
+    exit;
+  }
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['setup_password'])) {
     $p1 = (string)$_POST['setup_password']; $p2 = (string)($_POST['setup_password2'] ?? '');
-    if (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
+    usleep(300000);
+    if (!hash_equals($code, trim((string)($_POST['setup_code'] ?? '')))) $err = 'Kod nije točan. Prepišite ga iz datoteke data/PRVA-PRIJAVA.txt.';
+    elseif (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
     elseif ($p1 !== $p2) $err = 'Lozinke se ne podudaraju.';
     else {
       $c['password_hash'] = password_hash($p1, PASSWORD_DEFAULT);
@@ -38,14 +45,18 @@ if ($c['password_hash'] === '') {
     }
   }
   sj_layout('Prva prijava', '
-    <p>Ovo je prvo otvaranje admina. Odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
+    <p>Ovo je prvo otvaranje admina. Prepišite kod iz datoteke <code>data/PRVA-PRIJAVA.txt</code> (redak „kod: …”), odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
     <form method="post" class="card">
+      <label>Kod iz datoteke data/PRVA-PRIJAVA.txt <input name="setup_code" required autocomplete="off" spellcheck="false"></label>
       <label>Nova lozinka <input type="password" name="setup_password" required minlength="10" autocomplete="new-password"></label>
       <label>Ponovite lozinku <input type="password" name="setup_password2" required minlength="10" autocomplete="new-password"></label>
       <button>Spremi lozinku</button>
     </form>', $c, '', $err, false);
   exit;
 }
+
+/* v20: lozinka postoji — zaostala PRVA-PRIJAVA.txt (npr. paket „prvi” raspakiran preko žive stranice) se briše */
+if (is_file(sj_setup_path())) @unlink(sj_setup_path());
 
 /* ---------- prijava / odjava ---------- */
 if (isset($_GET['odjava'])) { sj_logout(); header('Location: ./'); exit; }
@@ -327,7 +338,9 @@ function sj_handle_action(string $act, array &$c): string {
       if ($n1 !== $n2) throw new RuntimeException('Nove lozinke se ne podudaraju.');
       $c['password_hash'] = password_hash($n1, PASSWORD_DEFAULT);
       sj_save_config($c);
-      return 'Lozinka promijenjena';
+      /* v20: ovaj preglednik ostaje prijavljen, svi ostali se odjavljuju */
+      $_SESSION['sj_pw'] = hash('sha256', 'sj-sesija|' . $c['password_hash']);
+      return 'Lozinka promijenjena (ostali preglednici su odjavljeni)';
     }
 
     case 'test_mail': {

@@ -7,19 +7,22 @@
 
 Raspakirati u public_html (File Manager → Upload → Extract, ili FileZilla nakon raspakiravanja na računalu).
 """
-import os, re, sys, zipfile
+import os, re, secrets, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
 CODE = ['index.html', '.htaccess', 'js', 'api', 'admin']          # uvijek
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
 FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.txt']
-NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$')
+NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$'
+                   r'|\.(log|bak|swp|tmp|orig)$|~$|(^|/)\.DS_Store$|(^|/)Thumbs\.db$')
 
 README = {
     'prvi': """Shiva.J {v} — PRVO POSTAVLJANJE
 1. Raspakirajte sve u public_html (korijen web stranice).
-2. Otvorite https://vasa-domena.hr/admin i postavite lozinku.
+   NIJE za nadogradnju žive stranice: prepisao bi ponudu (torbe.json). Za novu verziju uzmite paket „nadogradnja”.
+2. Otvorite https://vasa-domena.hr/admin, upišite KOD (ispisan pri izradi paketa i spremljen u dist/ pokraj zipa,
+   ne na hostingu) i postavite lozinku.
 3. Admin → Postavke: upišite adresu stranice (npr. https://shivaj.hr), e-mail, primatelja i IBAN. Bez adrese stranice
    narudžbe se ne primaju.
 Upute: docs/UPUTE-OBJAVA-CROADRIA-v03.md u repozitoriju.
@@ -28,7 +31,9 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v03.md u repozitoriju.
 1. Raspakirajte u public_html i dopustite zamjenu postojećih datoteka.
 2. Paket namjerno NEMA mapa data/ i img/ ni datoteke torbe.json: narudžbe, lozinka, postavke, ponuda i fotografije
    ostaju kakve jesu. Ako changelog kaže da je nova i slika, nju prenesite zasebno.
-3. Otvorite stranicu i u podnožju provjerite da piše {v}.
+3. Paket zamjenjuje i .htaccess: ako vam je hosting dodao svoja pravila (npr. preusmjeravanje na https), ponovno ih
+   uključite u panelu.
+4. Otvorite stranicu i u podnožju provjerite da piše {v}.
 """,
 }
 
@@ -56,12 +61,16 @@ def files(paths):
             sys.exit('nedostaje: ' + p)
 
 
-def build(kind, v):
+def build(kind, v, code=''):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'shivaj-{v}-{kind}.zip')
     names = list(files(CODE + (FIRST if kind == 'prvi' else [])))
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         for n in names:
+            if n == 'data/PRVA-PRIJAVA.txt':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
+                txt = open(os.path.join(ROOT, n), encoding='utf-8').read().rstrip('\n') + f'\nkod: {code}\n'
+                z.writestr(n, txt)
+                continue
             z.write(os.path.join(ROOT, n), n)
         if kind == 'prvi':
             z.writestr('torbe.json', '[]\n')
@@ -71,6 +80,11 @@ def build(kind, v):
 
 if __name__ == '__main__':
     v = version()
+    code = secrets.token_hex(8)
     for kind in ('prvi', 'nadogradnja'):
-        path, n = build(kind, v)
+        path, n = build(kind, v, code)
         print(f'{os.path.relpath(path, ROOT)}  ({n} datoteka)')
+    kf = os.path.join(OUT, f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt')
+    with open(kf, 'w', encoding='utf-8') as f:
+        f.write(f'Kod za prvu prijavu u admin (paket shivaj-{v}-prvi.zip): {code}\nNe prenosite ovu datoteku na hosting.\n')
+    print(f'KOD ZA PRVU PRIJAVU: {code}   (spremljen u {os.path.relpath(kf, ROOT)})')

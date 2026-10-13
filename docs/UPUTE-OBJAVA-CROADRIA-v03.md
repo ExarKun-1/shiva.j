@@ -21,7 +21,8 @@ se paket „nadogradnja”, koji nikad ne dira narudžbe, ponudu ni fotografije.
 ### 3. Paket za prijenos
 - [ ] U repozitoriju pokrenite `python3 tools/paket.py`. U mapi `dist/` nastaju dva paketa:
   - `shivaj-vNN-prvi.zip`: **samo za prvo postavljanje**;
-  - `shivaj-vNN-nadogradnja.zip`: za svaku sljedeću verziju (odjeljak C).
+  - `shivaj-vNN-nadogradnja.zip`: za svaku sljedeću verziju (odjeljak C);
+  - `shivaj-vNN-KOD-PRVE-PRIJAVE.txt`: **kod za prvu prijavu** u admin. Zapišite ga, a datoteku ne prenosite na hosting.
 
   Paket vam može pripremiti i Claude.
 - [ ] Panel → **File Manager** → mapa `public_html` (korijen web stranice) → **Upload** paketa `…-prvi.zip` →
@@ -29,8 +30,9 @@ se paket „nadogradnja”, koji nikad ne dira narudžbe, ponudu ni fotografije.
   - Bez File Managera: raspakirajte zip na računalu i u FileZilli prenesite sadržaj u `public_html`.
 
 ### 4. Admin
-- [ ] Otvorite `https://vasa-domena.hr/admin` i postavite lozinku (barem 10 znakova). Spremite je u upravitelj
-  lozinki.
+- [ ] Otvorite `https://vasa-domena.hr/admin`, upišite **kod za prvu prijavu** i postavite lozinku (barem 10 znakova).
+  Spremite je u upravitelj lozinki. Kod sprječava da netko drugi prvi postavi lozinku dok datoteka čeka na hostingu;
+  nakon postavljanja datoteka se sama briše.
 - [ ] **Postavke** (obavezno prije prve narudžbe):
   - **Adresa stranice**, npr. `https://shivaj.hr`. Bez nje se narudžbe ne primaju, jer se od nje gradi link
     „potvrdite narudžbu”.
@@ -101,7 +103,7 @@ Spremite kopiju na računalo, npr. `C:\SHIVAJ.HANDMADE\kopije\2026-11.zip`.
 | E-mail „potvrdite narudžbu” ne stiže | neželjena pošta ili hosting ne šalje poštu | provjerite spam; u panelu provjerite slanje e-maila; adresa pošiljatelja na domeni |
 | Preglednik upozorava „nije sigurno” | SSL nije uključen | Panel → SSL → Let's Encrypt |
 | Nakon nadogradnje i dalje stara verzija | preglednik pamti staru stranicu | Ctrl+F5; na mobitelu zatvorite i ponovno otvorite karticu |
-| Admin ne prima lozinku | zaboravljena lozinka | File Manager → `data/config.json` → Edit: vrijednost `"password_hash"` promijenite u `""` i spremite. Zatim u `data/` stvorite datoteku `PRVA-PRIJAVA.txt` i otvorite admin, koji traži novu lozinku. Ostale postavke ostaju. |
+| Admin ne prima lozinku | zaboravljena lozinka | File Manager → `data/config.json` → Edit: vrijednost `"password_hash"` promijenite u `""` i spremite. Zatim u `data/` stvorite datoteku `PRVA-PRIJAVA.txt` s retkom `kod: ` i barem 12 znakova po izboru (npr. `kod: ljubicasta-torba-2026`), otvorite admin, upišite taj kod i novu lozinku. Ostale postavke ostaju, a svi preglednici se odjavljuju. |
 | Ponuda je prazna | `torbe.json` je prepisana | vratite `torbe.json` i `data/` iz sigurnosne kopije |
 
 Za sve ostalo otvorite Claude Code sesiju u repozitoriju `ExarKun-1/shiva.j` i opišite što vidite.

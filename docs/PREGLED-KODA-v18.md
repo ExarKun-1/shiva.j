@@ -283,3 +283,22 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | Link vrijedi „do 20:25” bez trajanja; „nekoliko minuta” vs. „24 sata” | riješeno: „Link vrijedi 1 sat (do …)”; Uvjeti t. 4 „odmah nakon potvrde (najkasnije u roku 24 sata)” (za pravnika) |
 | Povrat: tko plaća poštarinu | riješeno: korak „Kod vas” — „trošak povrata snosite vi” |
 
+
+## Recenzije v50 (13. 10. 2026.): sigurnost bez visokih nalaza, dizajn 8/10 → v51
+
+| Nalaz | Stanje u v51 |
+|---|---|
+| S1 prva lozinka bez tajne (prozor dok postoji PRVA-PRIJAVA.txt) | riješeno: kod iz datoteke (`sj_setup_code`), paket upisuje nasumičan |
+| S2 promjena lozinke ne odjavljuje sesije | riješeno: `sj_pw_mark` u sesiji |
+| N1 `so.label` u innerHTML | riješeno: `escHtml` |
+| N2 zaostala PRVA-PRIJAVA.txt | riješeno: briše se kad lozinka postoji; upozorenje u PROCITAJ |
+| N3 .htaccess pri prijenosu cijelog repozitorija | riješeno: tools/, proba/, dist/, .github/, .md/.py/.gs/.zip |
+| N4 smeće u paketu | riješeno: .log/.bak/.swp/.DS_Store isključeni |
+| D1 „14 dana za povrat” kod artikla po narudžbi | riješeno |
+| D2 napomena se mijenja dok narudžba čeka potvrdu | riješeno: `cartSig` s napomenom |
+| D3 rok slanja kod preuzimanja i po narudžbi | riješeno |
+| D4 gužva uz gumb | riješeno: rezervacija i napomena iznad privole |
+| D5 previše redaka na kartici | riješeno: mjere i dostava u jednom retku |
+| D6 „Već su otišle” iznad rezerviranih | riješeno: „Rezervirane i prodane” |
+| D7 „Ispravite” se ne vidi / ponavlja | riješeno: vrh obrasca, polite, samo promjene |
+| D8–D10 fokus, prodana torba, dvostruka napomena, „Količina” | riješeno |

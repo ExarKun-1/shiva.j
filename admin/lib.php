@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v19');
+define('SJ_VERSION', 'admin v20');
 
 /* ---------- postavke ---------- */
 
@@ -77,6 +77,12 @@ function sj_config_corrupt(): bool {
 /* Prva prijava (postavljanje lozinke) dopuštena je samo dok postoji ova datoteka; briše se
    čim je lozinka postavljena, pa se admin ne može „preuzeti” ako se config.json ošteti. */
 function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
+/* v20: kod za prvu lozinku — redak „kod: …” (barem 12 znakova) u data/PRVA-PRIJAVA.txt. Bez koda prvi posjetitelj
+   admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
+function sj_setup_code(): string {
+  $t = (string)@file_get_contents(sj_setup_path());
+  return preg_match('/^\s*kod:\s*(\S{12,})\s*$/mi', $t, $m) ? $m[1] : '';
+}
 
 function sj_shipping(): array {
   $out = [];
@@ -455,9 +461,13 @@ function sj_session_start(): void {
   session_start();
 }
 
+/* v20: sesija vrijedi samo uz lozinku s kojom je otvorena — promjena ili reset lozinke odjavljuje sve preglednike */
+function sj_pw_mark(): string { return hash('sha256', 'sj-sesija|' . (string)(sj_config()['password_hash'] ?? '')); }
 function sj_logged_in(): bool {
   sj_session_start();
-  return !empty($_SESSION['sj_admin']);
+  if (empty($_SESSION['sj_admin'])) return false;
+  if (!hash_equals(sj_pw_mark(), (string)($_SESSION['sj_pw'] ?? ''))) { $_SESSION = []; return false; }
+  return true;
 }
 
 function sj_login(string $password): bool {
@@ -473,6 +483,7 @@ function sj_login(string $password): bool {
     sj_session_start();
     session_regenerate_id(true);
     $_SESSION['sj_admin'] = true;
+    $_SESSION['sj_pw'] = hash('sha256', 'sj-sesija|' . $c['password_hash']);
     $_SESSION['sj_csrf'] = sj_token();
     sj_config_update(function (array &$d) use ($ip) { unset($d['login_fails'][$ip]); });
     return true;
