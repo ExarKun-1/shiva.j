@@ -12,6 +12,8 @@ let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
   .replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '').replace(/<[^>]*>/g, ' ');
 const tags = [...html.matchAll(/\{[^{}]{1,200}\}/g)].map(m => m[0].replace(/\s+/g, ' '));
 ok(!tags.length, 'stranica bez nepopunjenih oznaka' + (tags.length ? ': ' + tags.join(' | ') : ''));
+/* v56: materijal se zove „umjetna koža”, nikad „skaj” (ODLUKE 1a) */
+ok(!/skaj/i.test(html), 'stranica bez riječi „skaj”');
 
 const file = process.argv[2] || path.join(root, 'torbe.json');
 let list = [];
@@ -24,6 +26,9 @@ list.forEach(p => {
     const v = String(p[k] ?? '').trim();
     if (/\{[^}]*\}/.test(v) && !/^\{.*\}$/.test(v)) ok(false, `${p.id}: ${k} sadrži oznaku: ${v}`);
   });
+  if (/skaj/i.test(String(p.material || '') + ' ' + String(p.desc || ''))) ok(false, `${p.id}: piše „skaj” — pišite „umjetna koža”`);
+  /* stranica kaže „Šijem od umjetne kože, ne od prave” — „kožni”, „koža” bez „umjetn…” proturječi tome */
+  if (/kož/i.test(String(p.material || '')) && !/umjetn/i.test(String(p.material || ''))) warn(`${p.id}: materijal „${p.material}” — prava koža? Stranica kaže da je sve od umjetne kože`);
   if (p.hidden || p.sold) return;
   const empty = v => !String(v ?? '').trim() || /^\{.*\}$/.test(String(v).trim());
   if ((p.cat || 'torbe') === 'torbe' && empty(p.dims)) warn(`${p.id}: nema mjera (kupac vidi „na upit”)`);

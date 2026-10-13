@@ -337,3 +337,25 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | D9 „·” u mjerama | riješeno: „ — dostava od” |
 | D10 podnaslovi | riješeno |
 | Kupac: materijal „umjetna koža” automatski | čeka potvrdu vlasnice |
+
+## Recenzije v55 (13. 10. 2026.) → v56 (admin v23, api v23)
+
+| Nalaz | Stanje u v56 |
+|---|---|
+| Uredi bez „Prodano” ostavlja zapis plaćeno | riješeno |
+| Storno link uklanja oznaku trajno prodanoj | riješeno: 409 |
+| Ukupna granica koda zaključava i vlasnicu | riješeno: samo usporava |
+| Storno stranica bez zaštite od okvira | riješeno: X-Frame-Options, CSP |
+| Ručna prodaja artikla po narudžbi / nepostojećeg | riješeno: odbija |
+| CSP 'unsafe-inline' za skripte | riješeno: data-confirm + nonce |
+| „Plaćeno” natpis i gumb na mobitelu | riješeno: „Uplata”, „nije plaćeno”, „Označi plaćenom” |
+| „Adresa” = oznaka veze | riješeno: „Veza (oznaka)” |
+| Rod u porukama admina | riješeno: imenica + rod |
+| Broj narudžbe među podacima za uplatu | riješeno: uz „Hvala vam!” |
+| Ručna prodaja: potvrda bez imena | riješeno |
+| Prazni natpisi na karticama | riješeno |
+| Meta opis | riješeno |
+| Poruke admina bez točke / s oznakom | riješeno |
+| Kupac: obećanje potvrde linkom kad je isključena | riješeno: requireConfirm |
+| Kupac: „kožni” u podacima | riješeno u primjerima; objava.js upozorava |
+| Kupac: rok povrata kod dvostruke narudžbe | otvoreno (pravnik/vlasnica) |

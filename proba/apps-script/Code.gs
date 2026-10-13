@@ -1,5 +1,5 @@
 /* =========================================================
-   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v43)
+   SHIVA.J — PROBNI poslužitelj na Google Apps Scriptu (v44)
    Za probnu stranicu na GitHub Pagesu (statična, bez PHP-a). Isti API kao api/index.php:
      GET  ?r=status   rezervirane i prodane torbe, dostava, podaci za uplatu
      POST ?r=reserve  (proba ne drži košaricu; stranica tada samo šalje narudžbu)
@@ -90,7 +90,7 @@ function sjFreeIds(prods, st) {
 function sjStatus(env) {
   var st = sjState(env);
   return sjOut(200, { ok: true, ttlHours: env.cfg.TTL_HOURS, ids: Object.keys(st.held), sold: Object.keys(st.sold), shipping: SJ.shipping,
-    payment: SJ.payment, pickup: SJ.pickup, ownerEmail: env.cfg.OWNER_EMAIL, shipLead: '' });
+    payment: SJ.payment, pickup: SJ.pickup, ownerEmail: env.cfg.OWNER_EMAIL, shipLead: '', requireConfirm: true });
 }
 
 /* provjera narudžbe iz preglednika: cijene, dostava i iznos iz vlastitog popisa */

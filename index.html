@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v55 (2026-10-13)
+     SHIVA.J WEBSHOP — v56 (2026-10-13)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v56 — uz api v23, admin v23 (recenzije v55): broj narudžbe uz „Hvala
+           vam!”, ne među podacima za uplatu (kupac ga ne prepisuje kao poziv
+           na broj); tekst o potvrdi linkom prati postavku servisa
+           (requireConfirm); opis stranice „iz Zaboka, od umjetne kože”
      v55 — materijal se svugdje zove „umjetna koža”, ne „skaj” (odluka
            vlasnika projekta): opis stranice, hero, Radionica
      v54 — uz admin v22 (recenzije v53): ploča za uplatu „Broj narudžbe” i
@@ -338,7 +342,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
-<meta name="description" content="Shiva.J — ručno šivane torbe od umjetne kože iz Zaboka. Šarene torbe postoje samo jednom, klasične šijemo i po narudžbi.">
+<meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Šarene torbe postoje samo jednom, klasične šijemo i po narudžbi.">
 <!-- Favicon: prošiveni "S" u boji konca -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%23F6F6F3'/%3E%3Crect x='7' y='7' width='50' height='50' rx='3' fill='none' stroke='%232E4A3A' stroke-width='2.5' stroke-dasharray='5 4'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='32' text-anchor='middle' fill='%232E4A3A'%3ES%3C/text%3E%3C/svg%3E">
 <!-- Open Graph — pregled linka na Instagramu/WhatsAppu/Facebooku.
@@ -828,6 +832,7 @@
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
   .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-6px}
   .pend-note{margin:0 0 8px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+  body.no-confirm [data-if-confirm], body:not(.no-confirm) [data-if-noconfirm]{display:none}
   .order-fix{font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px}
   .order-sum{font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;text-align:center;color:var(--ink);margin-top:6px}
   /* v46: dok narudžba čeka potvrdu iz e-maila, obrazac se skrije — drugi klik bi poslao novi link i poništio prvi */
@@ -883,6 +888,7 @@
   .pay-title::after{content:"";flex:1;border-top:1.5px dashed var(--thread)}
   .pay-who{font-size:.85rem;color:var(--ink-soft);margin:-6px 0 12px}
   .pay-who a{border-bottom:1.5px dashed var(--thread)}
+  .pay-hello .pay-no{display:block;font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.06em;color:var(--ink-soft);margin-top:4px}
   .pay-data{display:flex;flex-direction:column;gap:9px;font-size:.9rem;margin-bottom:18px}
   .pay-data div{display:flex;gap:10px;align-items:baseline}
   .pay-data dt{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);min-width:7.5rem;flex:none}
@@ -1041,13 +1047,13 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete i potvrdite linkom iz e-maila, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi ne treba rezervirati.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, šarena torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Artikle po narudžbi ne treba rezervirati.</p>
         <p class="ship-list" id="shipList" hidden></p>
       </div>
       <div class="step">
         <span class="num">03</span>
         <h3>Uplatite i pričekajte torbu</h3>
-        <p>Nakon narudžbe stiže vam e-mail s linkom za potvrdu; kad ga kliknete, vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom. Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.<span class="lead-kako" data-ship-lead hidden></span></p>
+        <p><span data-if-confirm>Nakon narudžbe stiže vam e-mail s linkom za potvrdu; kad ga kliknete, vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom.</span><span data-if-noconfirm>Odmah nakon narudžbe vidite IBAN, iznos i barkod za uplatu, a iste podatke šaljemo i e-mailom.</span> Nakon uplate torbu pažljivo pakiramo i šaljemo (artikle po narudžbi kad ih izradimo), ili je preuzimate u radionici.<span class="lead-kako" data-ship-lead hidden></span></p>
       </div>
     </div>
   </div>
@@ -1193,7 +1199,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v55</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v56</p>
 </footer>
 
 <!-- Košarica -->
@@ -1257,7 +1263,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <textarea id="fNote" rows="2" maxlength="500"></textarea>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note" id="orderNote"><span id="orderNoteHold">Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od potvrde. </span><span id="orderNoteMade">Artikle po narudžbi izrađujemo nakon uplate.</span></p>
+      <p class="order-note" id="orderNote"><span id="orderNoteHold">Šarenu torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span>. </span><span id="orderNoteMade">Artikle po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="consent">
         <input id="fConsent" type="checkbox" required>
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
@@ -1266,7 +1272,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <p class="order-sum" id="orderSum"></p>
       <p class="order-lead" data-ship-lead hidden></p>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
-      <p class="next-step">Sljedeći korak: <span class="nw">e-mail</span> s linkom za potvrdu, zatim podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
+      <p class="next-step">Sljedeći korak: <span data-if-confirm><span class="nw">e-mail</span> s linkom za potvrdu, zatim </span>podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
     </form>
     <div class="empty-cart" id="emptyCart">Košarica je prazna.<br>Šarena torba postoji samo jednom — kad je vaša, samo je vaša.</div>
   </div>
@@ -1446,6 +1452,8 @@ const qtyOf = c => Math.max(1, Number(c.qty) || 1);
 /* nepopunjeno polje iz torbe.json ({DIMENZIJE} i sl.) kupac ne smije vidjeti */
 const filled = v => { const t = String(v ?? "").trim(); return t && !/^\{.*\}$/.test(t) ? t : ""; };
 let SHIP_LEAD = ""; /* rok slanja nakon uplate iz postavki admina (api/status) */
+/* v56: potvrda narudžbe linkom iz e-maila (zadano uključena); servis javlja stvarnu postavku, tekst se prilagođava */
+let REQUIRE_CONFIRM = true;
 let cart = [];
 
 /* ---------- pamćenje u pregledniku — samo na ovom uređaju ----------
@@ -1905,7 +1913,7 @@ function renderCart(){
   const hold = document.getElementById("orderHold");
   hold.hidden = !(RESERVATION_ENDPOINT && uniques.length);
   const q = n => `„${n}”`;
-  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od potvrde narudžbe.`;
+  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe.`;
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
@@ -1992,6 +2000,7 @@ function applyServerSettings(data){
   }
   if(typeof data.ownerEmail === "string" && data.ownerEmail.includes("@")) OWNER_EMAIL = data.ownerEmail;
   if(typeof data.shipLead === "string") SHIP_LEAD = data.shipLead.trim();
+  if(typeof data.requireConfirm === "boolean"){ REQUIRE_CONFIRM = data.requireConfirm; document.body.classList.toggle("no-confirm", !REQUIRE_CONFIRM); }
   renderShipLead();
   if(typeof data.pickup === "string" && data.pickup){ const o = SHIPPING_OPTIONS.find(x => x.id === "pickup"); if(o && !o.note) o.note = data.pickup; }
 }
@@ -2509,7 +2518,7 @@ function paymentPanel(last){
     : `Potvrdu narudžbe s istim podacima šaljemo vam i <span class="nw">e-mailom</span>; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju 24 sata.`;
   return `
     <div class="pay">
-      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!</h3><p>${thanks}</p></div>
+      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p></div>
       <ol class="pay-steps" aria-label="Što slijedi">
         <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"} i pošaljite nam potvrdu uplate (snimku zaslona) na ${escHtml(OWNER_EMAIL)}${anyUnique && untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : ""}.</li>
         <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : "") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
@@ -2520,7 +2529,7 @@ function paymentPanel(last){
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
-      ${payOk ? `<dl class="pay-data">${orderNo}
+      ${payOk ? `<dl class="pay-data">
         <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}<br>${copyBtn(PAYMENT.recipient, "Primatelj")}</dd></div>
         <div><dt>IBAN</dt><dd><span class="val-row"><span class="mono-val iban">${ibanPretty(PAYMENT.iban)}</span>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</span></dd></div>
         <div><dt>Iznos</dt><dd>${amount}</dd></div>${shipRow}

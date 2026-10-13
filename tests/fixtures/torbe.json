@@ -45,7 +45,7 @@
     "desc": "Torba preko ramena · lan i pluto",
     "price": 70,
     "dims": "28 × 22 × 8 cm · podesivi remen",
-    "material": "Lan, pluto, metalna kopča",
+    "material": "Umjetna koža, podstava od lana, metalna kopča",
     "imgs": [
       "img/tara-1.jpg"
     ],
@@ -57,7 +57,7 @@
     "desc": "Mala večernja torbica · vez ručnim koncem",
     "price": 48,
     "dims": "22 × 14 × 6 cm",
-    "material": "Saten, ručni vez pamučnim koncem, magnetsko zatvaranje",
+    "material": "Umjetna koža, ručni vez pamučnim koncem, magnetsko zatvaranje",
     "imgs": [],
     "sold": false,
     "reserved": true
@@ -68,7 +68,7 @@
     "desc": "Ruksak · voskirano platno",
     "price": 85,
     "dims": "30 × 40 × 14 cm · stane laptop 15\"",
-    "material": "Voskirano platno, kožni remeni, mesingani okovi",
+    "material": "Umjetna koža, remeni od umjetne kože, mesingani okovi",
     "imgs": [
       "img/tara-1.jpg"
     ],

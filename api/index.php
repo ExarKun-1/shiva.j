@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v22)
+   SHIVA.J — javni API na hostingu   (api/index.php v23)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v23: status javlja requireConfirm (stranica prilagođava tekst o potvrdi linkom); storno link ne dira trajno
+        prodanu torbu; stranica storna ne smije se otvarati u okviru (X-Frame-Options, CSP).
    v22: odgovor potvrde (sj_order_view) nosi i napomenu stavke (boja, duljina) za ploču za uplatu.
    v21: e-mail „potvrdite narudžbu” kaže koliko link vrijedi („Link vrijedi 1 sat (do …)”), kao stranica.
    v20: po recenziji v43: preko ukupne granice e-mailova za potvrdu narudžba se prima bez e-maila i bez rezervacije
@@ -173,6 +175,7 @@ if ($a === 'status') {
     'pickup' => (string)$c['pickup_info'],
     'ownerEmail' => (string)$c['owner_email'],
     'shipLead' => (string)($c['ship_lead'] ?? ''),
+    'requireConfirm' => !empty($c['require_confirm']),
   ]);
 }
 
@@ -709,6 +712,9 @@ if ($a === 'storno') {
   $sold = array_filter($d['sold'], fn($r) => ($r['token'] ?? '') === $token);
 
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    /* v23: trajno prodana torba (zastavica u katalogu) se linkom ne vraća — samo „Vrati u prodaju” u adminu */
+    if ($action === 'unsold') foreach ($sold as $sid => $_) foreach (sj_products() as $p) if (($p['id'] ?? '') === (string)$sid && !empty($p['sold']))
+      sj_html_page('Rezervacija', '<p>Torba je u adminu označena kao trajno prodana. Ako je zaista treba vratiti u prodaju, u adminu kliknite „Vrati u prodaju”.</p>', 409);
     if (!$loggedIn) sj_html_page('Rezervacija', '<p>Za ovu radnju potrebna je prijava u admin.</p><p><a href="' . e($adminUrl) . '">Prijava u admin</a></p>', 403);
     if (!sj_check_csrf()) sj_html_page('Rezervacija', '<p>Obrazac je zastario. Otvorite link iz e-maila ponovno.</p>', 400);
     /* u bravi se radi samo nad zapisima koji nose ovaj token (rezervacija je u međuvremenu mogla isteći i pripasti drugom kupcu) */
@@ -845,6 +851,8 @@ function sj_html_page(string $title, string $body, int $status = 200): void {
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-store');
   header('Referrer-Policy: no-referrer');
+  header('X-Frame-Options: DENY');
+  header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
   echo '<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . e($title) . ' — Shiva.J</title>
 <style>body{margin:0;background:#F6F6F3;color:#1B1A17;font:16px/1.6 system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:40px 20px}h1{font-weight:400;font-size:1.5rem;letter-spacing:.04em;border-bottom:1.5px dashed #2E4A3A;padding-bottom:12px}button{background:#2E4A3A;color:#F6F6F3;border:1.5px solid #2E4A3A;border-radius:2px;padding:9px 14px;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}button.alt{background:none;color:#2E4A3A;border-style:dashed}button[disabled]{opacity:.45;cursor:not-allowed}.row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.muted{color:#5C5A53;font-size:.85rem}a{color:#2E4A3A}</style></head><body><main><h1>' . e($title) . '</h1>' . $body . '</main></body></html>';
   exit;
