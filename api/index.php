@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v21)
+   SHIVA.J — javni API na hostingu   (api/index.php v22)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v22: odgovor potvrde (sj_order_view) nosi i napomenu stavke (boja, duljina) za ploču za uplatu.
    v21: e-mail „potvrdite narudžbu” kaže koliko link vrijedi („Link vrijedi 1 sat (do …)”), kao stranica.
    v20: po recenziji v43: preko ukupne granice e-mailova za potvrdu narudžba se prima bez e-maila i bez rezervacije
         (sj_order_overload, trgovina se ne zatvara); granica 2/h po paru adresa+primatelj i 5/h po primatelju; granice
@@ -690,7 +691,7 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
 /* stavke i dostava za ploču s podacima za uplatu (kupac može potvrditi na drugom uređaju, bez košarice) */
 function sj_order_view(array $o): array {
   $items = [];
-  foreach ((array)($o['items'] ?? []) as $it) $items[] = ['id' => (string)($it['id'] ?? ''), 'name' => (string)($it['name'] ?? ''), 'qty' => (int)($it['qty'] ?? 1), 'price' => (float)($it['price'] ?? 0), 'made' => !empty($it['made']), 'lead' => (string)($it['lead'] ?? '')];
+  foreach ((array)($o['items'] ?? []) as $it) $items[] = ['id' => (string)($it['id'] ?? ''), 'name' => (string)($it['name'] ?? ''), 'qty' => (int)($it['qty'] ?? 1), 'price' => (float)($it['price'] ?? 0), 'made' => !empty($it['made']), 'lead' => (string)($it['lead'] ?? ''), 'note' => (string)($it['note'] ?? '')];
   $s = is_array($o['shipping'] ?? null) ? $o['shipping'] : null;
   return ['items' => $items, 'ship' => $s ? ['id' => (string)$s['id'], 'label' => (string)$s['label'], 'price' => (float)$s['price'], 'locker' => (string)($s['locker'] ?? '')] : null];
 }
