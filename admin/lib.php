@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v21');
+define('SJ_VERSION', 'admin v22');
 
 /* ---------- postavke ---------- */
 
@@ -81,7 +81,7 @@ function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
    admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
 function sj_setup_code(): string {
   $t = (string)@file_get_contents(sj_setup_path());
-  return preg_match('/^\s*kod:\s*(\S{12,})\s*$/mi', $t, $m) ? $m[1] : '';
+  return preg_match('/^\s*kod:\s*(\S{16,})\s*$/mi', $t, $m) ? $m[1] : '';
 }
 
 function sj_shipping(): array {

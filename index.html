@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v53 (2026-10-13)
+     SHIVA.J WEBSHOP — v54 (2026-10-13)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,14 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v54 — uz admin v22 (recenzije v53): ploča za uplatu „Broj narudžbe” i
+           „Naručeno” (iza opisa); nakon osvježavanja „novi e-mail poništava
+           prethodni link”, 429 i tada zadržava okvir; poruka o nestaloj torbi
+           bez netočnog „ostale su u ponudi” i bez gubitka gumba s podacima
+           za uplatu; potvrda linkom za otišlu torbu bez proturječja; iznimka
+           od raskida istim riječima kao Uvjeti; kartica „Mjere … — dostava od”;
+           podnaslovi „šijemo po narudžbi”, „Rezervirane i prodane” i bez
+           klasičnih
      v53 — uz api v22, admin v21 (probni korisnik s PHP-om): preglednik
            nakon potvrđene narudžbe zaboravlja svoju rezervaciju; nestala
            torba iz košarice — trajna poruka (ne 2,5 s); odbijen e-mail —
@@ -1183,7 +1191,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v53</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v54</p>
 </footer>
 
 <!-- Košarica -->
@@ -1535,9 +1543,9 @@ function renderGrid(){
     const cover = imgs.length ? imgs[0] : null;
     const shipFrom = shipFromPrice();
     if(p.made && currentCat === "torbe" && !grid.querySelector(".grid-sub")){
-      const sub = document.createElement("p"); sub.className = "grid-sub"; sub.innerHTML = `<span>Klasične torbe</span><small>šijemo po narudžbi · rok izrade piše uz svaku</small>`; grid.appendChild(sub);
+      const sub = document.createElement("p"); sub.className = "grid-sub"; sub.innerHTML = `<span>Klasične torbe</span><small>šijemo po narudžbi</small>`; grid.appendChild(sub);
     }
-    if(!p.made && isGone(p) && list.some(x => x.made) && !grid.querySelector(".grid-sub.gone")){
+    if(!p.made && isGone(p) && list.some(x => x.made || !isGone(x)) && !grid.querySelector(".grid-sub.gone")){
       const sub = document.createElement("p"); sub.className = "grid-sub gone"; sub.innerHTML = `<span>Rezervirane i prodane</span><small>šarene torbe postoje samo jednom</small>`; grid.appendChild(sub);
     }
     const card = document.createElement("article");
@@ -1566,7 +1574,8 @@ function renderGrid(){
       ${(() => { /* v51: mjere i dostava u jednom retku (manje sitnih redaka na kartici) */
         const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : (p.cat || "torbe") === "torbe" && !gone ? "Mjere: na upit" : "";
         const sh = !gone && !wait && shipFrom !== null ? (dm ? "dostava od " : "Dostava od ") + fmt(shipFrom) : "";
-        return dm || sh ? `<p class="ship-from">${[dm, sh].filter(Boolean).join(" · ")}</p>` : "";
+        /* v54: mjere mogu i same sadržavati „·”, pa dostava ide iza crtice, u komadu koji se ne prelama */
+        return dm || sh ? `<p class="ship-from">${dm}${dm && sh ? " — " : ""}${sh ? `<span class="nw">${sh}</span>` : ""}</p>` : "";
       })()}
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       ${p.made && !gone && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
@@ -1899,7 +1908,7 @@ function renderCart(){
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
   /* v52: Uvjeti t. 6 — pravo na raskid ne vrijedi za izradu po posebnim željama */
-  document.getElementById("trustRaskid").textContent = anyMade ? "14 dana za raskid (osim izrade po vašim željama)" : "14 dana za raskid ugovora";
+  document.getElementById("trustRaskid").textContent = anyMade ? "14 dana za raskid (osim izrade po vašim posebnim željama)" : "14 dana za raskid ugovora";
   document.getElementById("orderNoteMade").hidden = !anyMade;
   document.getElementById("orderNote").hidden = document.getElementById("orderNoteHold").hidden && !anyMade;
   /* v46: promijenjena košarica → obrazac se vraća (stari link vrijedi za staru košaricu) */
@@ -2028,7 +2037,9 @@ function noticeGone(names){
   if(cart.length){ showOrderError(html + " Ostatak narudžbe možete poslati."); return; }
   const empty = document.getElementById("emptyCart");
   empty.classList.add("pay-mode");
-  empty.innerHTML = `<div class="order-error order-info" role="status">${html} Ostale šarene torbe su u ponudi.</div>`;
+  /* v54: „ostale su u ponudi” samo kad je to istina; gumb s podacima za uplatu prethodne narudžbe ostaje */
+  const anyFree = PRODUCTS.some(p => !p.made && !isGone(p) && !noPhoto(p));
+  empty.innerHTML = `<div class="order-error order-info" role="status">${html}${anyFree ? " Ostale šarene torbe su u ponudi." : ""}</div>` + emptyHtml();
   empty.hidden = false;
 }
 function markTaken(ids){
@@ -2303,7 +2314,7 @@ function showPendingAfterReload(){
   if(!pd || !cart.length || /potvrda=/.test(location.search)) return;
   const until = pd.until ? Date.parse(pd.until) : 0;
   if(!until || until < Date.now() || pd.sig !== cartSig()){ storeSet("pend", null); return; }
-  showOrderError(`<b>Ovu narudžbu ste već poslali.</b> Potvrdite je linkom iz <span class="nw">e-maila</span> (vrijedi do ${escHtml(fmtDateTime(pd.until))}). Ako <span class="nw">e-mail</span> nije stigao, pogledajte neželjenu poštu ili ispunite obrazac i pošaljite ponovno.`, true);
+  showOrderError(`<b>Ovu narudžbu ste već poslali.</b> Potvrdite je linkom iz <span class="nw">e-maila</span> (vrijedi do ${escHtml(fmtDateTime(pd.until))}). Ako <span class="nw">e-mail</span> nije stigao, pogledajte neželjenu poštu ili ispunite obrazac i pošaljite ponovno (novi <span class="nw">e-mail</span> poništava prethodni link).`, true);
 }
 /* poruka uz potvrdu iz linka: u obrascu ako je košarica na ovom uređaju, inače u praznoj košarici */
 function confirmError(html){
@@ -2323,7 +2334,7 @@ async function confirmFromLink(){
     const res = await fetch(apiUrl("confirm"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ id: m[1], t: m[2] }) });
     const { ok: resOk, data } = await apiRead(res);
     if(resOk && data.ok){ showOrderSuccess(data); refreshReservations(); return; }
-    if(Array.isArray(data.taken)){ markTaken(data.taken); confirmError(`<b>Narudžba nije potvrđena.</b> Torbu je u međuvremenu naručio ili kupio drugi kupac. Uklonite je iz košarice i pošaljite ostatak, ili nam pišite na ${escHtml(OWNER_EMAIL)}.`); return; }
+    if(Array.isArray(data.taken)){ markTaken(data.taken); confirmError(`<b>Narudžba nije potvrđena.</b> Torbu je u međuvremenu naručio ili kupio drugi kupac${cart.length ? ", pa smo je uklonili iz košarice. Ostatak narudžbe možete poslati ponovno" : ""}. Pitanja: ${escHtml(OWNER_EMAIL)}.`); return; }
     confirmError(`<b>Narudžba nije potvrđena.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}`);
   } catch(err){
     confirmError(`<b>Potvrda trenutno nije moguća.</b> Provjerite vezu i otvorite link iz e-maila ponovno.`);
@@ -2452,7 +2463,7 @@ function paymentPanel(last){
     : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate."
     : "Narudžba je zaprimljena. Artikle izrađujemo po narudžbi; rok izrade teče od primitka uplate.";
-  const orderNo = srv.orderNo ? `<div><dt>Narudžba</dt><dd class="mono-val">${escHtml(srv.orderNo)}</dd></div>` : "";
+  const orderNo = srv.orderNo ? `<div><dt>Broj narudžbe</dt><dd class="mono-val">${escHtml(srv.orderNo)}</dd></div>` : "";
   /* bez popunjenog primatelja i IBAN-a (npr. {…} iz postavki) ne prikazujemo podatke za uplatu */
   const payOk = !!(filled(PAYMENT.recipient) && filled(PAYMENT.iban));
   const goods = items.reduce((s, p) => s + p.price * qtyOf(p), 0);
@@ -2502,20 +2513,20 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? "Artikle po narudžbi izrađujemo" + (leads.length ? " u roku izrade (" + escHtml(leads.join(", ")) + ")" : "") + ", zatim " + (pickup ? "ih pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "ih pažljivo pakiramo i šaljemo; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Kod vas</b>Ako se predomislite, ${allBags ? (items.length > 1 ? "torbe" : "torbu") : (items.length > 1 ? "artikle" : "artikl")} možete vratiti u roku 14 dana od primitka${anyMade ? " (osim artikala rađenih po vašoj boji ili mjeri)" : ""}; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a06).</li>
+        <li><b>Kod vas</b>Ako se predomislite, ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim posebnim željama)" : ""}; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a06).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
       ${payOk ? `<dl class="pay-data">${orderNo}
-        ${itemsHtml ? `<div><dt>Narudžba</dt><dd>${itemsHtml}</dd></div>` : ""}
         <div><dt>Primatelj</dt><dd>${escHtml(PAYMENT.recipient)}<br>${escHtml(PAYMENT.address)}<br>${copyBtn(PAYMENT.recipient, "Primatelj")}</dd></div>
         <div><dt>IBAN</dt><dd><span class="val-row"><span class="mono-val iban">${ibanPretty(PAYMENT.iban)}</span>${copyBtn(PAYMENT.iban.replace(/\s+/g, ""), "IBAN")}</span></dd></div>
         <div><dt>Iznos</dt><dd>${amount}</dd></div>${shipRow}
         <div><dt>Model</dt><dd class="mono-val">${escHtml(PAYMENT.model)}</dd></div>
         ${refRow}
         <div><dt>Opis</dt><dd>${escHtml(desc)}</dd></div>
-      </dl>` : orderNo ? `<dl class="pay-data">${orderNo}${itemsHtml ? `<div><dt>Narudžba</dt><dd>${itemsHtml}</dd></div>` : ""}</dl>` : ""}
+        ${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}
+      </dl>` : orderNo ? `<dl class="pay-data">${orderNo}${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}</dl>` : ""}
       ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}
       <p class="pay-note">${mailSent}</p>
     </div>`;
@@ -2527,7 +2538,11 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
   /* honeypot — botovi ispune skriveno polje, ljudi ne */
   if (document.getElementById("fWeb").value !== "") return;
 
-  const wasPending = orderFormEl.classList.contains("is-pending"); /* v53: ponovno slanje iz okvira „čeka potvrdu” */
+  /* v53: ponovno slanje iz okvira „čeka potvrdu”; v54: i nakon osvježavanja (oznaka čekanja na ovom uređaju) */
+  const pd0 = storeGet("pend");
+  const pendValid = !!(pd0 && pd0.until && Date.parse(pd0.until) > Date.now() && pd0.sig === cartSig());
+  const wasPending = orderFormEl.classList.contains("is-pending") || pendValid;
+  if(pendValid && !lastPending) lastPending = { srv: { confirmUntil: pd0.until, mailCustomer: true }, email: document.getElementById("fEmail").value.trim() };
   clearOrderError();
   const o = buildOrder();
   const btn = e.target.querySelector(".order-btn");
@@ -2589,7 +2604,7 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
       if (Array.isArray(data.taken)) { markTaken(data.taken); }
       else if (wasPending && status === 429 && lastPending) {
         /* v53: već poslana dva e-maila — narudžba i dalje čeka, zadnji link vrijedi; ne „Narudžba nije prihvaćena” */
-        showOrderPending(lastPending.srv, lastPending.email, `<p class="pend-note"><b>E-mail za potvrdu već smo poslali dvaput u zadnjih sat vremena.</b> Zadnji link iz e-maila vrijedi; pogledajte i neželjenu poštu (spam).</p>`);
+        showOrderPending(lastPending.srv, lastPending.email, `<p class="pend-note"><b>E-mail za potvrdu već smo poslali više puta u zadnjih sat vremena.</b> Zadnji link iz e-maila vrijedi; pogledajte i neželjenu poštu (spam).</p>`);
       }
       else if (/e-mail/i.test(data.error || "")) {
         /* v53: poslužitelj je odbio e-mail adresu — fokus na to polje, poruka kaže koje */
