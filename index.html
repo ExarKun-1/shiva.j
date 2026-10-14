@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v56 (2026-10-13)
+     SHIVA.J WEBSHOP — v57 (2026-10-14)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v57 — uz api v25, admin v25 (recenzije v56): podnožje, Uvjeti
+           (Ukratko, t. 4, t. 5) i Privatnost prate potvrdu linkom
+           (data-if-confirm, za pravnika); hub3Text reže po znakovima
+           (isto kao PHP u e-mailu)
      v56 — uz api v23, admin v23 (recenzije v55): broj narudžbe uz „Hvala
            vam!”, ne među podacima za uplatu (kupac ga ne prepisuje kao poziv
            na broj); tekst o potvrdi linkom prati postavku servisa
@@ -1102,7 +1106,7 @@
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
       <hr class="seam">
-      <p>Ukratko: naručite obrascem u košarici i potvrdite narudžbu linkom iz e-maila; tada šarenu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (artikle po narudžbi kad ih izradimo). Ako vam ne odgovara, možete je vratiti u roku 14 dana (osim artikala izrađenih po vašoj želji). Detalji su u nastavku.</p>
+      <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada šarenu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (artikle po narudžbi kad ih izradimo). Ako vam ne odgovara, možete je vratiti u roku 14 dana (osim artikala izrađenih po vašoj želji). Detalji su u nastavku.</p>
 
       <details><summary><h3>1. Prodavatelj</h3></summary>
       <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi uvjeti vrijede za sve narudžbe putem ove stranice; slanjem narudžbe prihvaćate ih.</p>
@@ -1117,11 +1121,11 @@
 
       </details>
       <details><summary><h3>4. Narudžba i rezervacija</h3></summary>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja” i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon potvrde narudžbe, a e-mailom vam odmah nakon potvrde šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata); ugovor je sklopljen kad primite tu potvrdu. Potvrdom narudžbe unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena</span>. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a e-mailom vam odmah nakon <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata); ugovor je sklopljen kad primite tu potvrdu. <span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
       </details>
       <details><summary><h3>5. Plaćanje</h3></summary>
-      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon potvrde narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
 
       </details>
       <details><summary><h3>6. Pravo na jednostrani raskid ugovora</h3></summary>
@@ -1156,7 +1160,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
 
       </details>
       <details><summary><h3>Tko još dolazi u dodir s podacima</h3></summary>
-      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju; vama se automatski šalje e-mail s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
+      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju; <span data-if-confirm>vama se automatski šalje e-mail s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka.</span><span data-if-noconfirm>nama se automatski šalje narudžba, a vama potvrda narudžbe.</span> Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
 
       </details>
       <details><summary><h3>Koliko dugo čuvamo podatke</h3></summary>
@@ -1193,13 +1197,13 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
     <div class="foot-links">
       <span class="mono" style="color:var(--thread)">Informacije</span>
       <span>Dostava: BOX NOW paketomat, GLS ili preuzimanje u radionici</span>
-      <span>Plaćanje uplatom na račun — IBAN i barkod odmah nakon narudžbe</span>
+      <span>Plaćanje uplatom na račun — IBAN i barkod <span data-if-confirm>nakon potvrde narudžbe</span><span data-if-noconfirm>odmah nakon narudžbe</span></span>
       <a href="#uvjeti">Uvjeti kupnje i pravo na raskid</a>
       <a href="#privatnost">Politika privatnosti</a>
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v56</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v57</p>
 </footer>
 
 <!-- Košarica -->
@@ -2386,7 +2390,8 @@ function showOrderSuccess(srv){
 let pendingHub3 = "";
 let hub3Lib = null;
 function hub3Text(d){
-  const cut = (t, n) => String(t || "").replace(/[\r\n]+/g, " ").trim().slice(0, n);
+  /* v57: rezanje po znakovima (ne UTF-16 jedinicama) — isto kao PHP mb_substr u e-mailu */
+  const cut = (t, n) => Array.from(String(t || "").replace(/[\r\n]+/g, " ").trim()).slice(0, n).join("");
   const addr = String(d.address || ""), i = addr.lastIndexOf(",");
   const street = i > 0 ? addr.slice(0, i) : addr, place = i > 0 ? addr.slice(i + 1) : "";
   const cents = Math.round(Number(d.amount) * 100);

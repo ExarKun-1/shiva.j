@@ -39,6 +39,8 @@ se paket „nadogradnja”, koji nikad ne dira narudžbe, ponudu ni fotografije.
   - **E-mail vlasnice**: ovamo stižu narudžbe.
   - **Primatelj** i **IBAN**. Primatelja upišite točno kako ga vodi banka, jer banke provjeravaju ime primatelja.
   - Načini dostave i rok slanja nakon uplate.
+  - **OIB obrta** (neobavezno): ispisuje se u potpisu potvrde kupcu.
+  - Dok adresa stranice ili adresa pošiljatelja nisu upisane, admin na vrhu svakog ekrana to upozorava.
 - [ ] **Torbe → + Nova torba / artikl**: naziv, cijena, kratki opis, **dimenzije**, materijal i fotografije. Unikat
   bez fotografije ne može se naručiti.
 
@@ -103,6 +105,7 @@ Spremite kopiju na računalo, npr. `C:\SHIVAJ.HANDMADE\kopije\2026-11.zip`.
 | E-mail „potvrdite narudžbu” ne stiže | neželjena pošta ili hosting ne šalje poštu | provjerite spam; u panelu provjerite slanje e-maila; adresa pošiljatelja na domeni |
 | Preglednik upozorava „nije sigurno” | SSL nije uključen | Panel → SSL → Let's Encrypt |
 | Nakon nadogradnje i dalje stara verzija | preglednik pamti staru stranicu | Ctrl+F5; na mobitelu zatvorite i ponovno otvorite karticu |
+| Admin piše „Previše pogrešnih pokušaja” | 8 pogrešnih lozinki s iste veze | pričekajte 15 minuta, pa upišite lozinku pažljivo |
 | Admin ne prima lozinku | zaboravljena lozinka | File Manager → `data/config.json` → Edit: vrijednost `"password_hash"` promijenite u `""` i spremite. Zatim u `data/` stvorite datoteku `PRVA-PRIJAVA.txt` s retkom `kod: ` i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki, ne riječi koje se mogu pogoditi), otvorite admin, upišite taj kod i novu lozinku. Ostale postavke ostaju, a svi preglednici se odjavljuju. |
 | Ponuda je prazna | `torbe.json` je prepisana | vratite `torbe.json` i `data/` iz sigurnosne kopije |
 

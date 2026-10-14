@@ -10,12 +10,15 @@ declare(strict_types=1);
 
 /* Tekst HUB-3 naloga — isto kao hub3Text() u index.html (polja, duljine, iznos u centima na 15 znamenki). */
 function sj_hub3_text(array $d): string {
-  $cut = fn($t, int $n) => mb_substr(trim((string)preg_replace('/[\r\n]+/', ' ', (string)$t)), 0, $n);
+  /* v25: isto kao JS — trim i Unicode razmaka (npr. NBSP), rezanje po znakovima (kodnim točkama), ne po bajtovima */
+  $cut = fn($t, int $n) => mb_substr((string)preg_replace('/^[\s\p{Z}\x{FEFF}]+|[\s\p{Z}\x{FEFF}]+$/u', '', (string)preg_replace('/[\r\n]+/', ' ', (string)$t)), 0, $n);
   $addr = (string)($d['address'] ?? '');
   $i = mb_strrpos($addr, ',');
   $street = $i !== false && $i > 0 ? mb_substr($addr, 0, $i) : $addr;
   $place = $i !== false && $i > 0 ? mb_substr($addr, $i + 1) : '';
   $cents = (int)round((float)($d['amount'] ?? 0) * 100);
+  /* v25: iznos mora stati u 15 znamenki i biti veći od nule; inače se šalje opći barkod */
+  if ($cents <= 0 || $cents > 999999999999999) throw new RangeException('HUB-3: iznos izvan raspona');
   return implode("\n", ['HRVHUB30', 'EUR', str_pad((string)$cents, 15, '0', STR_PAD_LEFT), '', '', '',
     $cut($d['recipient'] ?? '', 25), $cut($street, 25), $cut($place, 27), $cut(preg_replace('/\s+/', '', (string)($d['iban'] ?? '')), 21),
     $cut(($d['model'] ?? '') !== '' ? $d['model'] : 'HR00', 4), $cut($d['ref'] ?? '', 22), 'OTHR', $cut($d['desc'] ?? '', 35)]) . "\n";

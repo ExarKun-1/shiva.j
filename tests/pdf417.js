@@ -1,4 +1,4 @@
-/* PDF417 / HUB-3 barkod iz PHP-a (admin/pdf417.php), v24:  node tests/pdf417.js
+/* PDF417 / HUB-3 barkod iz PHP-a (admin/pdf417.php), v24/v25:  node tests/pdf417.js
    1) PHP i stranica (hub3Text u index.html) daju isti tekst naloga;
    2) matrica iz PHP-a se dekodira: uzorci → kodne riječi (obrnute tablice), indikatori redaka, Reed–Solomon
       (sindromi = 0), bajtovi = UTF-8 tekst naloga. Provjereno i neovisnim čitačem (ZXing) pri izradi v24. */
@@ -15,6 +15,8 @@ const cases = [
   { amount: 69, recipient: 'SHIVA. J, obrt za dizajn', address: 'Matije Gupca 33, 49210 Zabok', iban: 'HR98 2360 0001 1027 9044 2', model: 'HR00', ref: '2026-0007', desc: 'Shiva.J 2026-0007' },
   { amount: 1234.5, recipient: 'Šivalec Đurđa Žač ćć', address: 'Ulica Čađavca 7, 10000 Zagreb', iban: 'HR1210010051863000160', model: 'HR00', ref: '2026-0123', desc: 'Shiva.J 2026-0123 čćžšđ' },
   { amount: 99999.99, recipient: 'W'.repeat(40), address: 'Y'.repeat(40) + ',' + 'Z'.repeat(40), iban: 'HR1210010051863000160', model: 'HR99', ref: '9'.repeat(30), desc: 'Q'.repeat(50) },
+  /* v25: NBSP na rubovima i znakovi izvan BMP-a (emoji) na granici reza — PHP i stranica moraju rezati jednako */
+  { amount: 45, recipient: '\u00a0Đurđa 🧵\u00a0', address: '\u00a0Ulica 1,\u00a010000 Zagreb\u00a0', iban: 'HR1210010051863000160', model: 'HR00', ref: '2026-0009', desc: 'Shiva.J ' + '🧵'.repeat(40) },
 ];
 const T = JSON.parse(php('echo json_encode(require "' + ROOT + '/admin/pdf417_tablice.php");'));
 const rev = T.map(t => { const m = new Map(); t.forEach((v, i) => m.set(v.toString(2).padStart(17, '0'), i)); return m; });
@@ -64,6 +66,9 @@ cases.forEach((c, i) => {
     ok(d.cols === 9 && d.bytes.toString('utf8') === t, `slučaj ${i + 1}: matrica ${d.rows}×${d.cols} se dekodira (RS ispravan) u isti UTF-8 tekst`);
   } catch (e) { ok(false, `slučaj ${i + 1}: dekodiranje — ${e.message}`); }
 });
+ok(php('try { sj_hub3_text(["amount"=>0,"iban"=>"HR1210010051863000160"]); echo "0"; } catch (RangeException $e) { echo "1"; }') === '1'
+  && php('try { sj_hub3_text(["amount"=>1e14,"iban"=>"HR1210010051863000160"]); echo "0"; } catch (RangeException $e) { echo "1"; }') === '1',
+  'iznos 0 ili predug baca RangeException (e-mail tada šalje opći barkod)');
 const png = path.join(require('os').tmpdir(), 'sj-pdf417-test.png');
 ok(php('echo sj_pdf417_png(sj_hub3_text(["amount"=>69,"iban"=>"HR1210010051863000160","ref"=>"2026-0001"]), "' + png + '") ? "1" : "0";') === '1' && fs.readFileSync(png).slice(1, 4).toString() === 'PNG', 'PNG barkoda nastaje (GD)');
 

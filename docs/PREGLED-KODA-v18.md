@@ -359,3 +359,25 @@ Jamstva sigurnosti nakon v41: trgovina se ne može zatvoriti — da; dvije osobe
 | Kupac: obećanje potvrde linkom kad je isključena | riješeno: requireConfirm |
 | Kupac: „kožni” u podacima | riješeno u primjerima; objava.js upozorava |
 | Kupac: rok povrata kod dvostruke narudžbe | otvoreno (pravnik/vlasnica) |
+
+## Recenzije v56 (14. 10. 2026.) → v57 (admin v25, api v25)
+
+Sigurnost: samo niski nalazi. Dizajn: trgovina 8,5/10, admin 6,5/10, e-mail 7,5/10. Kupac: 9/10, „možda”.
+
+| Nalaz | Stanje u v57 |
+|---|---|
+| Kod prve prijave na mobitelu (veliko prvo slovo) | riješeno: bez obzira na veličinu slova, autocapitalize="none" |
+| Blokada prijave javlja „Pogrešna lozinka” (F17) | riješeno: posebna poruka |
+| E-mail: „broj vaše narudžbe” uz poziv na broj | riješeno: „bez „SJ-”” |
+| E-mail: potvrda i rok pri dnu | riješeno: u uvodu |
+| E-mail: raskid proturječan, iznimka uz unikate | riješeno: jedna rečenica, samo kad ima artikala po narudžbi |
+| Admin na mobitelu: uvećavanje polja, mali gumbi | riješeno: 16 px, 44/40 px |
+| Ekrani prije prve prijave (prazna datoteka) | riješeno |
+| Podnožje i Uvjeti obećavaju link kad je potvrda isključena | riješeno: data-if-confirm (za pravnika) |
+| Ime privitka s nasumičnim nastavkom | riješeno: barkod-za-uplatu-….png |
+| Upozorenje za praznu adresu stranice / pošiljatelja | riješeno: na vrhu admina |
+| OIB u potpisu | riješeno: polje u Postavkama (vlasnica upisuje) |
+| N1 rezanje polja JS/PHP (emoji, NBSP) | riješeno: po znakovima, Unicode trim |
+| N2 iznos bez provjere raspona | riješeno: RangeException → opći barkod |
+| N3 privremena slika ostaje kad slanje padne | riješeno: try/finally |
+| HUB-3 UTF-8 u bankovnim aplikacijama | otvoreno: jedno skeniranje u ZABA aplikaciji |

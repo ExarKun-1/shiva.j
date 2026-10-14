@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v24)
+   SHIVA.J — javni API na hostingu   (api/index.php v25)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v25: e-mail kupcu — potvrda i rok rezervacije na vrhu, „bez SJ-” uz poziv na broj, raskid istim riječima kao Uvjeti,
+        OIB u potpisu (ako je upisan), privitak „barkod-za-uplatu-….png”; privremena slika briše se i kad slanje padne
    v24: e-mail kupcu nosi HUB-3 barkod narudžbe (iznos, model, poziv na broj, opis) kao privitak — PHP ga crta sam
         (admin/pdf417.php); bez GD-a ostaje opći barkod iz Postavki.
    v23: status javlja requireConfirm (stranica prilagođava tekst o potvrdi linkom); storno link ne dira trajno
@@ -688,17 +690,26 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
     if (!empty($pay['iban']) && (float)($o['total'] ?? 0) > 0) {
       $tmpDir = SJ_DATA . '/tmp';
       if (!is_dir($tmpDir)) @mkdir($tmpDir, 0755, true);
-      $tmp = $tmpDir . '/barkod-' . preg_replace('/[^A-Za-z0-9-]/', '', $no) . '-' . bin2hex(random_bytes(4)) . '.png';
+      $tmp = '';
       try {
+        $tmp = $tmpDir . '/barkod-' . preg_replace('/[^A-Za-z0-9-]/', '', $no) . '-' . bin2hex(random_bytes(4)) . '.png';
         $hub = sj_hub3_text(['amount' => (float)$o['total'], 'recipient' => (string)($pay['recipient'] ?? ''), 'address' => (string)($pay['address'] ?? ''),
           'iban' => (string)$pay['iban'], 'model' => (string)($pay['model'] ?? 'HR00'), 'ref' => sj_payment_ref($no), 'desc' => sj_payment_desc($no)]);
         if (sj_pdf417_png($hub, $tmp)) { $bar = $tmp; $barKind = 'order'; }
       } catch (Throwable $e) { /* opći barkod */ }
+      if ($barKind !== 'order' && $tmp !== '') @unlink($tmp); /* djelomično zapisana slika ne ostaje */
     }
     if ($bar === '') { $g = SJ_ROOT . '/' . ltrim((string)($pay['barcode'] ?? ''), '/'); if (is_file($g)) { $bar = $g; $barKind = 'generic'; } }
-    $text = sj_customer_mail($o, $no, $c, $barKind);
-    $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, $bar !== '' ? $bar : null, (string)$c['owner_email']);
-    if ($barKind === 'order') @unlink($bar);
+    /* v25: privremena slika briše se i kad slanje baci grešku */
+    try {
+      $text = sj_customer_mail($o, $no, $c, $barKind);
+      $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, $bar !== '' ? $bar : null, (string)$c['owner_email'],
+        $bar !== '' ? 'barkod-za-uplatu-' . preg_replace('/[^0-9-]/', '', sj_payment_ref($no)) . '.png' : null);
+    } catch (Throwable $e) {
+      $sentCust = false;
+    } finally {
+      if ($barKind === 'order') @unlink($bar);
+    }
   }
   /* ishod e-mailova ostaje uz narudžbu, da ponovljeni zahtjev s istim ključem kaže istinu */
   sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no, $sentOwner, $sentCust) {
@@ -797,12 +808,13 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $total = (float)($o['total'] ?? 0);
   $p = $c['payment'];
   $ibanPretty = trim(chunk_split(preg_replace('/\s+/', '', (string)$p['iban']) ?? '', 4, ' '));
-  $torba = $nUnique > 1 ? 'Torbe su rezervirane za vas — svaka postoji samo u jednom primjerku i čeka vašu uplatu.' : 'Torba je rezervirana za vas — postoji samo u jednom primjerku i čeka vašu uplatu.';
+  $until = ($res && !empty($res['until'])) ? ' do ' . sj_fmt_hr((string)$res['until']) : '';
+  $torba = $nUnique > 1 ? "Torbe su rezervirane za vas$until — svaka postoji samo u jednom primjerku i čeka vašu uplatu." : "Torba je rezervirana za vas$until — postoji samo u jednom primjerku i čeka vašu uplatu.";
 
   $t = [];
   $t[] = 'Dobar dan, ' . (string)($cust['name'] ?? '') . ',';
   $t[] = '';
-  $t[] = "hvala vam na narudžbi br. $no!" . ($anyUnique && $res && empty($o['unheld']) ? ' ' . $torba : ($anyMade && !$anyUnique ? ' Artikle izrađujemo po narudžbi, posebno za vas.' : ''));
+  $t[] = "hvala vam na narudžbi br. $no! Ova poruka je potvrda vaše narudžbe." . ($anyUnique && $res && empty($o['unheld']) ? ' ' . $torba : ($anyMade && !$anyUnique ? ' Artikle izrađujemo po narudžbi, posebno za vas.' : ''));
   $t[] = '';
   $t[] = 'SAŽETAK NARUDŽBE';
   foreach ($lines as $l) $t[] = $l;
@@ -819,14 +831,14 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $t[] = '- IBAN: ' . $ibanPretty;
   $t[] = '- Iznos: ' . sj_fmt_eur($total);
   $t[] = '- Model: ' . $p['model'];
-  $t[] = '- Poziv na broj: ' . sj_payment_ref($no) . ' (broj vaše narudžbe)';
+  $t[] = '- Poziv na broj: ' . sj_payment_ref($no) . ' (upišite točno ovako, bez „SJ-”)';
   $t[] = '- Opis plaćanja: ' . sj_payment_desc($no);
   $t[] = '';
   if ($bar === 'order') {
-    $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka — primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami; samo potvrdite plaćanje. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke prepišite.';
+    $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka — primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami; samo potvrdite plaćanje. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke kopirajte.';
     $t[] = '';
   } elseif ($bar === 'generic') {
-    $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka. Primatelj i IBAN popune se sami, a vi upišite još iznos (' . sj_fmt_eur($total) . '), model ' . $p['model'] . ' i poziv na broj ' . sj_payment_ref($no) . '. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke prepišite.';
+    $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka. Primatelj i IBAN popune se sami, a vi upišite još iznos (' . sj_fmt_eur($total) . '), model ' . $p['model'] . ' i poziv na broj ' . sj_payment_ref($no) . '. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke kopirajte.';
     $t[] = '';
   }
   /* torbe iz narudžbe koje nisu dobile rezervaciju (mnogo narudžbi na čekanju): poimence, prije rezerviranih */
@@ -839,14 +851,15 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $t[] = '';
   }
   if ($res && !empty($res['until'])) {
-    $t[] = ($unheldNames ? 'Ostale torbe iz narudžbe rezervirane su za vas. ' : '') . 'Rezervacija vrijedi ' . sj_hours_text(max(1, (int)($res['hours'] ?? $c['ttl_hours']))) . ', do ' . sj_fmt_hr((string)$res['until']) . '. Molimo vas da uplatite odmah i da nam čim platite pošaljete potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail: ' . $torbu . ' tada čuvamo za vas i nakon isteka rezervacije, bez obzira na to kad banka proknjiži uplatu. Ako u tom roku ne primimo uplatu ni potvrdu, rezervacija automatski istječe i ' . ($nUnique > 1 ? 'torbe se ponovno nude' : 'torba se ponovno nudi') . ' drugim kupcima.';
+    $t[] = ($unheldNames ? 'Ostale torbe iz narudžbe rezervirane su za vas. ' : '') . 'Rezervacija vrijedi ' . sj_hours_text(max(1, (int)($res['hours'] ?? $c['ttl_hours']))) . ', do ' . sj_fmt_hr((string)$res['until']) . '. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail. Tada ' . $torbu . ' čuvamo za vas i nakon isteka rezervacije, bez obzira na to kad banka proknjiži uplatu.';
+    $t[] = 'Ako u tom roku ne primimo uplatu ni potvrdu, rezervacija automatski istječe i ' . ($nUnique > 1 ? 'torbe se ponovno nude' : 'torba se ponovno nudi') . ' drugim kupcima.';
     $t[] = '';
   } elseif ($anyUnique && !$unheldNames) {
     $t[] = 'Molimo vas da uplatite odmah i da nam pošaljete potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail; ' . $torbu . ' tada čuvamo za vas.';
     $t[] = '';
   }
   if ($anyMade) {
-    $t[] = 'Rok izrade' . ($leads ? ' (' . implode(', ', array_unique($leads)) . ')' : '') . ' teče od primitka uplate. Artikle po vašim posebnim željama (boja, duljina, mjera) šijemo samo za vas, pa za njih ne vrijedi pravo na jednostrani raskid.';
+    $t[] = 'Rok izrade' . ($leads ? ' (' . implode(', ', array_unique($leads)) . ')' : '') . ' teče od primitka uplate.';
     $t[] = '';
   }
   $pickup = (($o['shipping']['id'] ?? '') === 'pickup');
@@ -856,12 +869,13 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     . ($pickup ? ($pickupCalls ? '' : ' Javit ćemo vam se kad bude spremno za preuzimanje i dogovoriti termin.') : ' Poslat ćemo vam poruku s potvrdom slanja.');
   $t[] = '';
   $what = !$anyMade ? ($nUnique > 1 ? 'Torbe' : 'Torbu') : (count($items) > 1 ? 'Artikle' : 'Artikl');
-  $t[] = 'Ova poruka je potvrda vaše narudžbe. Ako se predomislite, ugovor možete jednostrano raskinuti u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga: dovoljna je nedvosmislena izjava e-mailom (obrazac je u Uvjetima kupnje, t. 6). ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos vraćamo u roku i na način iz t. 6 Uvjeta kupnje.' . ($anyMade ? '' : ' Za artikle rađene po vašim posebnim željama pravo na raskid ne vrijedi.') . (sj_site_url_trusted() !== '' ? ' Uvjeti kupnje: ' . sj_site_url_trusted() . '/#uvjeti' : '');
+  $t[] = 'Ako se predomislite, ugovor možete jednostrano raskinuti' . ($anyMade ? ' (osim artikala izrađenih po vašim posebnim željama)' : '') . ' u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga: dovoljna je nedvosmislena izjava e-mailom (obrazac je u Uvjetima kupnje, t. 6). ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos vraćamo u roku i na način iz t. 6 Uvjeta kupnje.' . (sj_site_url_trusted() !== '' ? ' Uvjeti kupnje: ' . sj_site_url_trusted() . '/#uvjeti' : '');
   $t[] = 'Za bilo kakva pitanja odgovorite na ovaj e-mail ili nam se javite porukom na Instagramu (@shiva.j_handmade).';
   $t[] = '';
   $t[] = 'Srdačan pozdrav,';
   $t[] = $c['shop'];
   $t[] = 'Ručno šivane torbe iz Zaboka';
+  if (preg_match('/^\d{11}$/', (string)($c['oib'] ?? ''))) $t[] = 'OIB: ' . $c['oib'];
   return implode("\n", $t);
 }
 

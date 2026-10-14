@@ -139,14 +139,26 @@ $ok(str_contains($bad, 'Kod nije točan') && ($c2['password_hash'] ?? '') === ''
 /* v22: ograničen broj promašaja koda */
 for ($k = 0; $k < 9; $k++) $curl(['--data-urlencode', 'setup_code=krivi-kod-0000' . $k, '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
 $lim = $curl(['--data-urlencode', 'setup_code=tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
-$ok(str_contains($lim, 'Previše pokušaja') && (json_decode(file_get_contents($D . '/config.json'), true)['password_hash'] ?? '') === '', 'v22: nakon 10 promašaja koda i točan kod čeka (ograničenje)');
+$ok(str_contains($lim, 'Previše pogrešnih pokušaja koda') && (json_decode(file_get_contents($D . '/config.json'), true)['password_hash'] ?? '') === '', 'v22: nakon 10 promašaja koda i točan kod čeka (ograničenje)');
 @unlink($D . '/zahtjevi.json');
-$good = $curl(['--data-urlencode', 'setup_code=tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
+$setupPg = $curl(["http://127.0.0.1:$port/admin/"]);
+$ok(str_contains($setupPg, 'autocapitalize="none"') && str_contains($setupPg, 'KOD-PRVE-PRIJAVE.txt'), 'v25: polje koda bez automatskog velikog slova, uputa na datoteku iz paketa');
+/* v25: kod s velikim prvim slovom (mobilna tipkovnica) vrijedi jednako */
+$good = $curl(['--data-urlencode', 'setup_code=Tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
 $c2 = json_decode(file_get_contents($D . '/config.json'), true);
-$ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: točan kod — lozinka postavljena, datoteka obrisana');
+$ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.txt'), 'v20/v25: točan kod (i s velikim prvim slovom) — lozinka postavljena, datoteka obrisana');
 file_put_contents($D . '/PRVA-PRIJAVA.txt', "kod: zaostali-kod-99999\n");
 $curl(["http://127.0.0.1:$port/admin/"]);
 $ok(!is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: zaostala PRVA-PRIJAVA.txt se briše kad lozinka postoji');
+
+/* v25: upozorenje dok adresa stranice / pošiljatelja nisu upisani (probni config: obje prazne) */
+$ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'Nije upisano: adresa stranice i adresa pošiljatelja'), 'v25: upozorenje za praznu adresu stranice i pošiljatelja');
+/* v25: za vrijeme blokade (8 promašaja) i točna lozinka dobiva poruku o blokadi, ne „Pogrešna lozinka” */
+$anon = fn(string $pw) => (string)shell_exec('curl -s -i --data-urlencode ' . escapeshellarg('password=' . $pw) . ' ' . escapeshellarg("http://127.0.0.1:$port/admin/"));
+$first = $anon('kriva-1');
+for ($k = 0; $k < 7; $k++) $anon('kriva-x' . $k);
+$locked = $anon('vlasnica-123456');
+$ok(str_contains($first, 'Pogrešna lozinka.') && str_contains($locked, 'Previše pogrešnih pokušaja s ove veze') && !str_contains($locked, 'Pogrešna lozinka'), 'v25: blokada prijave ima vlastitu poruku');
 
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
