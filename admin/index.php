@@ -53,7 +53,7 @@ if ($c['password_hash'] === '') {
   }
   sj_layout('Prva prijava', '
     <p>Ovo je prvo otvaranje admina. Prepišite kod iz datoteke <code>data/PRVA-PRIJAVA.txt</code> (redak „kod: …”), odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
-    <form method="post" class="card">
+    <form method="post" class="card form">
       <label>Kod iz datoteke data/PRVA-PRIJAVA.txt <input name="setup_code" required autocomplete="off" spellcheck="false"></label>
       <label>Nova lozinka <input type="password" name="setup_password" required minlength="10" autocomplete="new-password"></label>
       <label>Ponovite lozinku <input type="password" name="setup_password2" required minlength="10" autocomplete="new-password"></label>
@@ -73,7 +73,7 @@ if (!sj_logged_in()) {
     $err = 'Pogrešna lozinka.';
   }
   sj_layout('Prijava', '
-    <form method="post" class="card">
+    <form method="post" class="card form">
       <label>Lozinka <input type="password" name="password" required autocomplete="current-password" autofocus></label>
       <button>Prijava</button>
     </form>', $c, '', $err, false);
