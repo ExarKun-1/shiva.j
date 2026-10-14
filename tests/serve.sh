@@ -7,7 +7,7 @@ R=$(cd "$(dirname "$0")/.." && pwd)
 S=${1:-${SHIVAJ_SITE:-/tmp/shivaj-test}}
 rm -rf "$S" && mkdir -p "$S/admin" "$S/api" "$S/data" "$S/js" "$S/img"
 cp "$R/index.html" "$R/router.php" "$S/"
-cp "$R/admin/index.php" "$R/admin/lib.php" "$S/admin/"
+cp "$R/admin/index.php" "$R/admin/lib.php" "$R/admin/pdf417.php" "$R/admin/pdf417_tablice.php" "$S/admin/"
 cp "$R/api/index.php" "$S/api/"
 cp "$R/js/"*.js "$S/js/"
 cp "$R/img/"*.jpg "$R/img/"*.png "$S/img/"
