@@ -28,6 +28,9 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     ok(r1.data.ok && r2.data.repeated && r1.data.orderNo === r2.data.orderNo && n1.length === 1, 'isti ključ dvaput: jedna narudžba ' + r1.data.orderNo);
     ok(n1[0].mail && n1[0].mail.customer === true && r2.data.mailCustomer === true, 'ishod e-mailova spremljen i vraćen u ponovljenom odgovoru');
     ok(!/ROK IZRADE/.test(fs.readFileSync(D + 'mail-log.txt', 'utf8')), 'nepopunjen {ROK IZRADE} ne ide u e-mail');
+    { const ml0 = fs.readFileSync(D + 'mail-log.txt', 'utf8'); const cust = ml0.split(/^=== /m).filter(x => /potvrda narudžbe/.test(x)).pop() || '';
+      const leftover = fs.existsSync(D + 'tmp') ? fs.readdirSync(D + 'tmp').filter(f => /\.png$/.test(f)) : [];
+      ok(/Attachment: barkod-SJ-\d{4}-\d{4}-[a-f0-9]{8}\.png/.test(cust) && /iznos, model, poziv na broj i opis popune se sami/.test(cust) && !leftover.length, 'v24: e-mail kupcu nosi barkod narudžbe (sve popunjeno), privremena slika obrisana'); }
     // 2) kratka rezervacija, puni rok nakon narudžbe, tuđa torba
     const rs = await post('reserve', { ids: ['luna'], name: 'Ana', email: 'ana@primjer.hr' });
     ok(rs.data.ok && hrs(rs.data.until) > 1.9 && hrs(rs.data.until) <= 2.01 && /^[a-f0-9]{32}$/.test(rs.data.hold || ''), 'api/reserve: 2 sata i tajni ključ rezervacije');
@@ -173,7 +176,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     setLimits({ confirm_per_ip: 100 });
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/Rezervacija vrijedi 24 sata/.test(ml) && /upišite još iznos/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, „upišite”, „na Instagramu”, preuzimanje, t. 6');
+    ok(/Rezervacija vrijedi 24 sata/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
     ok(/kliknite „Plaćeno” prije isteka rezervacije/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }
   console.log(R.join('\n'));

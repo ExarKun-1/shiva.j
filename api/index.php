@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v23)
+   SHIVA.J — javni API na hostingu   (api/index.php v24)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v24: e-mail kupcu nosi HUB-3 barkod narudžbe (iznos, model, poziv na broj, opis) kao privitak — PHP ga crta sam
+        (admin/pdf417.php); bez GD-a ostaje opći barkod iz Postavki.
    v23: status javlja requireConfirm (stranica prilagođava tekst o potvrdi linkom); storno link ne dira trajno
         prodanu torbu; stranica storna ne smije se otvarati u okviru (X-Frame-Options, CSP).
    v22: odgovor potvrde (sj_order_view) nosi i napomenu stavke (boja, duljina) za ploču za uplatu.
@@ -74,6 +76,7 @@
    ========================================================= */
 declare(strict_types=1);
 require __DIR__ . '/../admin/lib.php';
+require __DIR__ . '/../admin/pdf417.php';
 
 /* greške ne smiju pokvariti JSON odgovor ni otkriti putanje; neuhvaćena iznimka → 500 i kratki zapis u log */
 ini_set('display_errors', '0');
@@ -679,9 +682,23 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   /* automatska potvrda kupcu */
   $sentCust = false;
   if (!$quiet && !empty($c['confirm_customer']) && !$capped) {
-    $bar = SJ_ROOT . '/' . ltrim((string)($c['payment']['barcode'] ?? ''), '/');
-    $text = sj_customer_mail($o, $no, $c, is_file($bar));
-    $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, is_file($bar) ? $bar : null, (string)$c['owner_email']);
+    /* v24: barkod narudžbe (sve popunjeno); ako ga nije moguće nacrtati, opći iz Postavki (samo primatelj i IBAN) */
+    $pay = (array)($c['payment'] ?? []);
+    $bar = ''; $barKind = '';
+    if (!empty($pay['iban']) && (float)($o['total'] ?? 0) > 0) {
+      $tmpDir = SJ_DATA . '/tmp';
+      if (!is_dir($tmpDir)) @mkdir($tmpDir, 0755, true);
+      $tmp = $tmpDir . '/barkod-' . preg_replace('/[^A-Za-z0-9-]/', '', $no) . '-' . bin2hex(random_bytes(4)) . '.png';
+      try {
+        $hub = sj_hub3_text(['amount' => (float)$o['total'], 'recipient' => (string)($pay['recipient'] ?? ''), 'address' => (string)($pay['address'] ?? ''),
+          'iban' => (string)$pay['iban'], 'model' => (string)($pay['model'] ?? 'HR00'), 'ref' => sj_payment_ref($no), 'desc' => sj_payment_desc($no)]);
+        if (sj_pdf417_png($hub, $tmp)) { $bar = $tmp; $barKind = 'order'; }
+      } catch (Throwable $e) { /* opći barkod */ }
+    }
+    if ($bar === '') { $g = SJ_ROOT . '/' . ltrim((string)($pay['barcode'] ?? ''), '/'); if (is_file($g)) { $bar = $g; $barKind = 'generic'; } }
+    $text = sj_customer_mail($o, $no, $c, $barKind);
+    $sentCust = sj_send_mail($cust['email'], $c['shop'] . " — potvrda narudžbe $no", $text, $bar !== '' ? $bar : null, (string)$c['owner_email']);
+    if ($barKind === 'order') @unlink($bar);
   }
   /* ishod e-mailova ostaje uz narudžbu, da ponovljeni zahtjev s istim ključem kaže istinu */
   sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($no, $sentOwner, $sentCust) {
@@ -761,7 +778,7 @@ exit;
 
 
 /* ---------- potvrda kupcu (svi podaci su već provjereni na poslužitelju) ---------- */
-function sj_customer_mail(array $o, string $no, array $c, bool $hasBar = true): string {
+function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic'): string {
   $cust = $o['customer'] ?? [];
   $items = is_array($o['items'] ?? null) ? $o['items'] : [];
   $ship = is_array($o['shipping'] ?? null) ? $o['shipping'] : [];
@@ -805,7 +822,10 @@ function sj_customer_mail(array $o, string $no, array $c, bool $hasBar = true): 
   $t[] = '- Poziv na broj: ' . sj_payment_ref($no) . ' (broj vaše narudžbe)';
   $t[] = '- Opis plaćanja: ' . sj_payment_desc($no);
   $t[] = '';
-  if ($hasBar) {
+  if ($bar === 'order') {
+    $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka — primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami; samo potvrdite plaćanje. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke prepišite.';
+    $t[] = '';
+  } elseif ($bar === 'generic') {
     $t[] = 'Najbrže: u aplikaciji svoje banke skenirajte barkod iz privitka. Primatelj i IBAN popune se sami, a vi upišite još iznos (' . sj_fmt_eur($total) . '), model ' . $p['model'] . ' i poziv na broj ' . sj_payment_ref($no) . '. Ako ovaj e-mail čitate na mobitelu, spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili podatke prepišite.';
     $t[] = '';
   }
