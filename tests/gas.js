@@ -65,12 +65,12 @@ const s2 = H(env, 'status');
 ok(s2.sold.includes('luna') && !s2.ids.includes('luna'), 'upisan datum u „Plaćeno” → torba prodana');
 // granica pola ponude: slobodni unikati iz ispitnog popisa
 env = makeEnv();
-const free = list.filter(p => !p.made && !p.sold && !p.reserved && !p.hidden).map(p => String(p.id));
-const cap = free.length >= 2 ? Math.max(1, Math.floor(free.length / 2)) : 0;
+const free = list.filter(p => !p.made && !p.sold && !p.reserved && !p.hidden && (p.imgs || []).length).map(p => String(p.id));
+const cap = Math.max(Math.min(free.length, 3), Math.floor(free.length / 2)); /* v26: u maloj ponudi barem tri */
 const results = [];
 free.forEach((id, i) => { const p = list.find(x => String(x.id) === id); H(env, 'order', order('gas-cap-' + i + '-xxxx', 'kup' + i + '@primjer.hr', [{ id }], p.price)); results.push(H(env, 'confirm', link(env))); });
 const heldN = results.filter(r => r.ok && r.reserved).length, unheldN = results.filter(r => r.ok && r.unheld).length;
-ok(heldN === cap && unheldN === free.length - cap && results.every(r => r.ok), `granica: od ${free.length} slobodnih rezervirano ${heldN} (pola), ostalo bez rezervacije`);
+ok(heldN === cap && unheldN === free.length - cap && results.every(r => r.ok), `granica: od ${free.length} slobodnih rezervirano ${heldN} (granica ${cap}), ostalo bez rezervacije`);
 // v43: napomena stavke (boja, duljina) vraća se uz potvrdu (ploča za uplatu)
 { const e9 = makeEnv(); const kzp = list.find(p => p.id === 'kozmeticka').price;
   H(e9, 'order', order('gas-napomena-01', 'nap@primjer.hr', [{ id: 'kozmeticka', qty: 1, note: 'plava' }], kzp));

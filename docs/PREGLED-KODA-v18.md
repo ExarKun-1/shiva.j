@@ -381,3 +381,24 @@ Sigurnost: samo niski nalazi. Dizajn: trgovina 8,5/10, admin 6,5/10, e-mail 7,5/
 | N2 iznos bez provjere raspona | riješeno: RangeException → opći barkod |
 | N3 privremena slika ostaje kad slanje padne | riješeno: try/finally |
 | HUB-3 UTF-8 u bankovnim aplikacijama | otvoreno: jedno skeniranje u ZABA aplikaciji |
+
+## Probni korisnik s PHP-om na v57 (14. 10. 2026.) → v58 (admin v26, api v26)
+
+Vlasnica 6/10, kupac 7/10, bez kritičnih nalaza.
+
+| Nalaz | Stanje u v58 |
+|---|---|
+| V1 „pola ponude” u maloj ponudi: drugi kupac bez rezervacije | riješeno: barem 3 (hold_min), istinit razlog |
+| V2 „Plaćeno” se razilazi između Rezervacija i Narudžbi | riješeno: trajna oznaka SUKOB, potvrda s imenom kupca |
+| V3 storno izgleda kao istek | riješeno: cancelledAt → „stornirano”, „javite se kupcu” |
+| S1 unikat bez fotografije „u prodaji” | riješeno: oznaka, ne broji se u ponudu |
+| S1 kategorija „Ostalo” bez „po narudžbi” | otvoreno |
+| S2 OIB/IBAN/e-mail na dva mjesta | djelomično: napomena u Postavkama; odluka vlasnika projekta |
+| S3 Postavke: adresa, napola primijenjeno, probni e-mail | riješeno |
+| S4 prijava: preostali pokušaji, zaboravljena lozinka, istek sesije | riješeno (uputa); duža sesija otvoreno |
+| S5 granica potvrda po adresi | riješeno: 10 |
+| S6 puni naziv obrta i obrazac u potvrdi | otvoreno: pravnik/knjigovođa |
+| N1 prava datoteka u paketu | riješeno: 0644 |
+| N2 „vNN”, N3 cijena, N4 materijal, N5 nazivi gumba, N6 poziv na broj vlasnici, N7 oznake, N8 Mjerenje (MJERENJE.md), N9 ručna prodaja, N10 prvi e-mail i rok slanja | riješeno |
+| N8 Mjerenje na mobitelu (široka tablica), N11 prijenos radionica.jpg | otvoreno |
+

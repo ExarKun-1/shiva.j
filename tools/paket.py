@@ -7,7 +7,7 @@
 
 Raspakirati u public_html (File Manager → Upload → Extract, ili FileZilla nakon raspakiravanja na računalu).
 """
-import os, re, secrets, sys, zipfile
+import os, re, secrets, sys, time, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
@@ -61,6 +61,14 @@ def files(paths):
             sys.exit('nedostaje: ' + p)
 
 
+def put(z, name, text):
+    # v58: datoteke napisane u paketu dobivaju prava 0644 (inače 0600, pa ih Apache na hostingu ne poslužuje)
+    zi = zipfile.ZipInfo(name, date_time=time.localtime()[:6])
+    zi.compress_type = zipfile.ZIP_DEFLATED
+    zi.external_attr = 0o100644 << 16
+    z.writestr(zi, text)
+
+
 def build(kind, v, code=''):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'shivaj-{v}-{kind}.zip')
@@ -69,12 +77,12 @@ def build(kind, v, code=''):
         for n in names:
             if n == 'data/PRVA-PRIJAVA.txt':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
                 txt = open(os.path.join(ROOT, n), encoding='utf-8').read().rstrip('\n') + f'\nkod: {code}\n'
-                z.writestr(n, txt)
+                put(z, n, txt)
                 continue
             z.write(os.path.join(ROOT, n), n)
         if kind == 'prvi':
-            z.writestr('torbe.json', '[]\n')
-        z.writestr('PROCITAJ.txt', README[kind].format(v=v))
+            put(z, 'torbe.json', '[]\n')
+        put(z, 'PROCITAJ.txt', README[kind].format(v=v))
     return path, len(names)
 
 

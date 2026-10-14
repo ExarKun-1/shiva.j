@@ -84,7 +84,7 @@ function sjProducts(env) {
   return by;
 }
 function sjFreeIds(prods, st) {
-  return Object.keys(prods).filter(function (id) { var p = prods[id]; return !p.made && !p.sold && !p.reserved && !st.sold[id]; });
+  return Object.keys(prods).filter(function (id) { var p = prods[id]; return !p.made && !p.sold && !p.reserved && (p.imgs || []).length > 0 && !st.sold[id]; });
 }
 
 function sjStatus(env) {
@@ -175,7 +175,7 @@ function sjOrder(env, b) {
   env.savePending(keep.slice(0, 500));
   var link = env.cfg.SITE_URL + '/?potvrda=' + pid + '.' + sec;
   var t = ['Dobar dan, ' + P.cust.name + ',', '',
-    'primili smo vašu narudžbu. Da bismo je zaprimili' + (P.uniqueIds.length ? ' i rezervirali torbu za vas' : '') + ', potvrdite je klikom na link:', '',
+    'hvala na narudžbi! Da bismo je zaprimili' + (P.uniqueIds.length ? ' i rezervirali torbu za vas' : '') + ', potvrdite je klikom na link:', '',
     link, '', 'Link vrijedi ' + sjForText(env.cfg.CONFIRM_MINUTES) + ' (do ' + sjHr(until) + '). Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.', '',
     'NARUDŽBA', sjItemsText(P), '- Dostava: ' + sjShipText(P), 'Ukupno: ' + sjEur(P.total), '',
     'Ako niste naručili vi, zanemarite ovaj e-mail: bez potvrde narudžba se ne zaprima i ništa se ne rezervira.', '',
@@ -219,7 +219,8 @@ function sjConfirm(env, b) {
   /* granica: neplaćene narudžbe drže najviše pola stvarno slobodnih unikata; ostatak bez rezervacije (tko prvi uplati) */
   var free = sjFreeIds(prods, st), freeSet = {};
   free.forEach(function (f) { freeSet[f] = true; });
-  var cap = free.length >= 2 ? Math.max(1, Math.floor(free.length / 2)) : 0;
+  /* v26: u maloj ponudi barem tri (kao sj_hold_cap u PHP-u) */
+  var cap = Math.max(Math.min(free.length, 3), Math.floor(free.length / 2));
   var heldN = Object.keys(st.held).filter(function (h) { return freeSet[h]; }).length;
   var room = Math.max(0, cap - heldN), held = [], unheld = [];
   P.uniqueIds.forEach(function (u) { if (room > 0) { held.push(u); room--; } else unheld.push(u); });
@@ -240,7 +241,7 @@ function sjConfirm(env, b) {
   if (P.note) lo.push('', 'Napomena: ' + P.note);
   lo.push('', 'Kupac je prihvatio Uvjete kupnje (narudžba s obvezom plaćanja) i potvrdio narudžbu linkom iz e-maila.');
   if (held.length) lo.push('Rezervacija (' + names(held) + ') vrijedi do: ' + sjHr(Date.parse(until)) + '. Kad stigne uplata, u tablici upišite datum u stupac „Plaćeno”.');
-  if (unheld.length) lo.push('PAŽNJA: bez rezervacije (dobiva ih tko prvi uplati): ' + names(unheld) + '. Neplaćene narudžbe već drže pola slobodne ponude.');
+  if (unheld.length) lo.push('PAŽNJA: bez rezervacije (dobiva ih tko prvi uplati): ' + names(unheld) + '. Neplaćene narudžbe već drže najviše dopušteno.');
   var sentOwner = env.mail(env.cfg.OWNER_EMAIL, 'Narudžba ' + no + ' — ' + P.cust.name + ' — ' + P.items.map(function (it) { return it.name; }).join(', '), lo.join('\n'), P.cust.email);
 
   var pay = SJ.payment, ref = sjRef(no);
@@ -248,7 +249,7 @@ function sjConfirm(env, b) {
     'SAŽETAK NARUDŽBE', sjItemsText(P), '- Dostava: ' + sjShipText(P), 'Ukupno za uplatu: ' + sjEur(P.total), '',
     'PODACI ZA UPLATU', '- Primatelj: ' + pay.recipient + ', ' + pay.address, '- IBAN: ' + pay.iban.replace(/(.{4})/g, '$1 ').trim(), '- Iznos: ' + sjEur(P.total), '- Model: ' + pay.model,
     '- Poziv na broj: ' + ref + ' (broj vaše narudžbe)', '- Opis plaćanja: ' + ('Shiva.J ' + ref).slice(0, 35), ''];
-  if (unheld.length) lc.push((unheld.length > 1 ? 'Torbe ' : 'Torbu ') + names(unheld) + ' trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ' + (unheld.length > 1 ? 'ih' : 'je') + ' tko prvi uplati.', '');
+  if (unheld.length) lc.push((unheld.length > 1 ? 'Torbe ' : 'Torbu ') + names(unheld) + ' trenutno ne možemo rezervirati jer druge narudžbe već čekaju uplatu: dobiva ' + (unheld.length > 1 ? 'ih' : 'je') + ' tko prvi uplati.', '');
   lc.push('Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail.', '',
     'Ovo je PROBNA stranica: narudžba nije prava i ništa ne trebate uplatiti.', '', 'Srdačan pozdrav,', SJ.shop);
   var sentCust = env.mail(P.cust.email, SJ.shop + ' — potvrda narudžbe ' + no, lc.join('\n'), env.cfg.OWNER_EMAIL);

@@ -19,6 +19,7 @@ const clearRes = () => fs.writeFileSync(D + 'rezervacije.json', JSON.stringify({
 const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { if (r.res[id]) r.res[id].until = '2000-01-01T00:00:00Z'; }); fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r)); };
 (async () => {
   const orig = fs.readFileSync(D + 'proizvodi.json', 'utf8');
+  /* ispitni config ima hold_min: 0 (staro pravilo „pola ponude”); v26 zadano (barem tri) ispituje se u 15b */
   try {
     // 1) idempotentnost i ishod e-mailova
     const remen = [{ id: 'remen', qty: 1, note: 'crna' }];
@@ -174,6 +175,14 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     for (let i = 0; i < 4; i++) cf.push(await post('order', order('api-key-cf' + i + '-bbbb', 'cf' + i + '@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)));
     ok(cf.slice(0, 3).every(r => r.data.mailCustomer === true) && cf[3].data.ok && cf[3].data.mailCustomer === false, '4. potvrda u satu s iste adrese ne ide kupcu');
     setLimits({ confirm_per_ip: 100 });
+    // 15b) v26: u maloj ponudi rezervaciju dobivaju barem tri narudžbe (zadano hold_min = 3)
+    clearRes(); clearLimits(); setLimits({ hold_min: 3 });
+    const hm1 = await post('order', order('api-key-hm1-cccc', 'hm1@primjer.hr', [{ id: 'luna', qty: 1 }], 65));
+    const hm2 = await post('order', order('api-key-hm2-cccc', 'hm2@primjer.hr', [{ id: 'tara', qty: 1 }], 55));
+    const hm3 = await post('order', order('api-key-hm3-cccc', 'hm3@primjer.hr', [{ id: 'vela', qty: 1 }], 70));
+    /* 4 slobodne: staro pravilo (pola) dalo bi rezervaciju samo dvjema, novo trima */
+    ok([hm1, hm2, hm3].every(r => r.data.ok && r.data.reserved && !r.data.unheld), 'v26: od 4 slobodne torbe rezervaciju dobivaju tri kupca (granica barem 3, ne samo pola)');
+    setLimits({ hold_min: 0, orders_per_ip: 20, unique_orders_per_hour: 100 }); clearRes();
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Rezervacija vrijedi 24 sata/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
@@ -183,7 +192,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         'v25: e-mail kupcu — potvrda na vrhu, poziv na broj „bez SJ-”, „kopirajte”');
       ok(uniq.length > 0 && uniq.every(x => !/posebnim željama/.test(x) && /rezervirana za vas do \d/.test(x)), 'v25: narudžba samo s unikatima — rok u uvodu, bez rečenice o izradi po željama');
       ok(made.length > 0 && made.every(x => /raskinuti \(osim artikala izrađenih po vašim posebnim željama\) u roku 14 dana/.test(x) && !/ne vrijedi pravo na jednostrani raskid/.test(x)), 'v25: narudžba s artiklom po narudžbi — jedna iznimka, istim riječima kao Uvjeti'); }
-    ok(/kliknite „Plaćeno” prije isteka rezervacije/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
+    ok(/kliknite „Označi plaćenom” prije isteka rezervacije/.test(ml) && /Poziv na broj \(za usporedbu s izvodom banke\): \d{4}-\d{4}/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }
   console.log(R.join('\n'));
   const fails = R.filter(l => l.startsWith('FAIL')).length;

@@ -49,6 +49,7 @@
   "order_seq": 0,
   "pickup": "Osobno preuzimanje u Zaboku, po dogovoru",
   "limits": {
+    "hold_min": 0,
     "holds_per_ip": 20,
     "orders_per_ip": 20,
     "unique_per_order": 2,

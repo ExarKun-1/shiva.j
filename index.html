@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v57 (2026-10-14)
+     SHIVA.J WEBSHOP — v58 (2026-10-14)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v58 — uz api v26, admin v26 (probni korisnik s PHP-om, v57): torba
+           bez rezervacije — istinit razlog („druge narudžbe već čekaju
+           uplatu”); u maloj ponudi rezervaciju dobivaju barem tri narudžbe
      v57 — uz api v25, admin v25 (recenzije v56): podnožje, Uvjeti
            (Ukratko, t. 4, t. 5) i Privatnost prate potvrdu linkom
            (data-if-confirm, za pravnika); hub3Text reže po znakovima
@@ -1203,7 +1206,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v57</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v58</p>
 </footer>
 
 <!-- Košarica -->
@@ -2473,10 +2476,10 @@ function paymentPanel(last){
   const heldN = uq.filter(p => !unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
   const unheldN = uq.filter(p => unheldSet.has(String(p.id))).map(p => "„" + escHtml(p.name) + "”");
   const thanks = anyUnique && untilIso && unheldN.length
-    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do <b>${fmtDateTime(untilIso)}</b>. ${unheldN.length > 1 ? "Torbe " : "Torbu "}${unheldN.join(" i ")} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
+    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do <b>${fmtDateTime(untilIso)}</b>. ${unheldN.length > 1 ? "Torbe " : "Torbu "}${unheldN.join(" i ")} trenutno ne možemo rezervirati jer druge narudžbe već čekaju uplatu: dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
     : anyUnique && untilIso
     ? `${many ? "Torbe su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do <b>${fmtDateTime(untilIso)}</b>.`
-    : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
+    : anyUnique && srv.unheld ? `Narudžba je zaprimljena, ali ${many ? "torbe" : "torbu"} trenutno ne možemo rezervirati jer druge narudžbe već čekaju uplatu: dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite odmah i pošaljite nam potvrdu uplate.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate."
     : "Narudžba je zaprimljena. Artikle izrađujemo po narudžbi; rok izrade teče od primitka uplate.";
   const orderNo = srv.orderNo ? `<div><dt>Broj narudžbe</dt><dd class="mono-val">${escHtml(srv.orderNo)}</dd></div>` : "";

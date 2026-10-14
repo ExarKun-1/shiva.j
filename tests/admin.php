@@ -124,6 +124,30 @@ $tg = $req('POST', ['act' => 'toggle', 'id' => 'kozmeticka', 'field' => 'hidden'
 $ok(str_contains($tg, 'Artikl „Kozmetička torbica” je skriven i'), 'v23: poruka s imenicom i ispravnim rodom');
 $req('POST', ['act' => 'toggle', 'id' => 'kozmeticka', 'field' => 'hidden', 'to' => '0', 'back' => '?s=torbe']);
 
+/* v26: SUKOB — plaćena narudžba čija torba je zapisana kao plaćena za drugog kupca; storno upisuje „stornirano” */
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0502', 'at' => '2026-10-12T11:00:00Z', 'name' => 'Iva I', 'email' => 'i@p.hr', 'paidAt' => '2026-10-12T12:00:00Z', 'reservation' => ['token' => 'tI'], 'items' => 'Tara', 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'made' => false]], 'unheld' => []]],
+  ['no' => 'SJ-2026-0501', 'at' => '2026-10-12T10:00:00Z', 'name' => 'Marko M', 'email' => 'm@p.hr', 'paidAt' => '2026-10-12T11:30:00Z', 'reservation' => ['token' => 'tM'], 'items' => 'Tara', 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'made' => false]], 'unheld' => []]],
+  ['no' => 'SJ-2026-0503', 'at' => '2026-10-12T13:00:00Z', 'name' => 'Lea L', 'email' => 'lea@p.hr', 'reservation' => ['token' => 'tL'], 'items' => 'Luna', 'order' => ['items' => [['id' => 'luna', 'name' => 'Luna', 'made' => false]], 'unheld' => []]],
+]));
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => ['luna' => ['id' => 'luna', 'token' => 'tL', 'name' => 'Lea L', 'email' => 'lea@p.hr', 'since' => '2026-10-12T13:00:00Z', 'at' => '2026-10-12T13:00:00Z', 'until' => '2099-01-01T00:00:00Z', 'ordered' => true]],
+  'sold' => ['tara' => ['id' => 'tara', 'token' => 'tM', 'name' => 'Marko M', 'email' => 'm@p.hr', 'paidAt' => '2026-10-12T11:30:00Z']]]));
+$nar = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
+$okI = preg_match('/SJ-2026-0502.*?<\/tr>/s', $nar, $mI) && str_contains($mI[0], 'SUKOB');
+$okM = preg_match('/SJ-2026-0501.*?<\/tr>/s', $nar, $mM) && !str_contains($mM[0], 'SUKOB');
+$ok($okI && $okM, 'v26: Narudžbe trajno označuju SUKOB samo kod narudžbe za koju torba nije zapisana kao plaćena');
+$rel = $req('POST', ['act' => 'res_release', 'id' => 'luna', 'back' => '?s=rez']);
+$nar = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
+$ok(str_contains($rel, 'javite mu se (lea@p.hr)') && preg_match('/SJ-2026-0503.*?<\/tr>/s', $nar, $mL) && str_contains($mL[0], '<b>stornirano</b>') && !str_contains($mL[0], 'rezervacija istekla'), 'v26: storno — poruka „javite se kupcu”, u Narudžbama „stornirano”');
+/* v26: adresa stranice bez https:// dobiva ga; neispravna se ne sprema */
+$cfg0 = file_get_contents($D . '/config.json');
+$set = ['act' => 'save_settings', 'back' => '?s=postavke', 'owner_email' => 'v@p.hr', 'from_email' => '', 'ttl_hours' => '24', 'iban' => 'HR1210010051863000160', 'recipient' => 'R', 'address' => 'A', 'model' => 'HR00', 'shipping' => "pickup | Osobno | 0 | ne | ne |\n"];
+$req('POST', $set + ['site_url' => 'shivaj.hr']);
+$ok((json_decode(file_get_contents($D . '/config.json'), true)['site_url'] ?? '') === 'https://shivaj.hr', 'v26: adresa stranice bez https:// sprema se s https://');
+$bad = $req('POST', $set + ['site_url' => 'https://ne valja', 'oib' => '123']);
+$ok(str_contains($bad, 'nije ispravna') && (json_decode(file_get_contents($D . '/config.json'), true)['site_url'] ?? '') === 'https://shivaj.hr', 'v26: neispravna adresa se ne sprema');
+file_put_contents($D . '/config.json', $cfg0);
+
 /* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));
@@ -156,7 +180,10 @@ $ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'Nije upis
 /* v25: za vrijeme blokade (8 promašaja) i točna lozinka dobiva poruku o blokadi, ne „Pogrešna lozinka” */
 $anon = fn(string $pw) => (string)shell_exec('curl -s -i --data-urlencode ' . escapeshellarg('password=' . $pw) . ' ' . escapeshellarg("http://127.0.0.1:$port/admin/"));
 $first = $anon('kriva-1');
-for ($k = 0; $k < 7; $k++) $anon('kriva-x' . $k);
+$ok(!str_contains($first, 'Još '), 'v26: nakon prvog promašaja bez odbrojavanja');
+for ($k = 0; $k < 5; $k++) $anon('kriva-x' . $k);
+$ok(str_contains($anon('kriva-y'), 'Još 1 pokušaj'), 'v26: prije blokade admin kaže koliko je pokušaja ostalo');
+$anon('kriva-z');
 $locked = $anon('vlasnica-123456');
 $ok(str_contains($first, 'Pogrešna lozinka.') && str_contains($locked, 'Previše pogrešnih pokušaja s ove veze') && !str_contains($locked, 'Pogrešna lozinka'), 'v25: blokada prijave ima vlastitu poruku');
 
