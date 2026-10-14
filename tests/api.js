@@ -183,6 +183,13 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     /* 4 slobodne: staro pravilo (pola) dalo bi rezervaciju samo dvjema, novo trima */
     ok([hm1, hm2, hm3].every(r => r.data.ok && r.data.reserved && !r.data.unheld), 'v26: od 4 slobodne torbe rezervaciju dobivaju tri kupca (granica barem 3, ne samo pola)');
     setLimits({ hold_min: 0, orders_per_ip: 20, unique_orders_per_hour: 100 }); clearRes();
+    // 15c) v27: granica neplaćenih narudžbi s iste veze — kupac dobiva razumljiv razlog, vlasnica poruku
+    clearRes(); clearLimits(); setLimits({ orders_per_ip: 1 });
+    await post('order', order('api-key-ip1-dddd', 'ip1@primjer.hr', [{ id: 'luna', qty: 1 }], 65));
+    const ip2 = await post('order', order('api-key-ip2-dddd', 'ip2@primjer.hr', [{ id: 'tara', qty: 1 }], 55));
+    const mlIp = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+    ok(ip2.status === 429 && /iste internetske veze/.test(ip2.data.error || '') && /narudžba odbijena \(ista veza\)/.test(mlIp) && /ip2@primjer\.hr/.test(mlIp), 'v27: odbijena narudžba s iste veze — razlog kupcu, poruka vlasnici');
+    setLimits({ orders_per_ip: 20 }); clearRes(); clearLimits();
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Rezervacija vrijedi 24 sata/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');

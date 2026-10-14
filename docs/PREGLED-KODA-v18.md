@@ -402,3 +402,23 @@ Vlasnica 6/10, kupac 7/10, bez kritičnih nalaza.
 | N2 „vNN”, N3 cijena, N4 materijal, N5 nazivi gumba, N6 poziv na broj vlasnici, N7 oznake, N8 Mjerenje (MJERENJE.md), N9 ručna prodaja, N10 prvi e-mail i rok slanja | riješeno |
 | N8 Mjerenje na mobitelu (široka tablica), N11 prijenos radionica.jpg | otvoreno |
 
+## Ponovljeni probni korisnik s PHP-om na v58 (15. 10. 2026.) → v59 (admin v27, api v27)
+
+Vlasnica 7/10 (prije 6), kupac 7/10.
+
+| Nalaz | Stanje u v59 |
+|---|---|
+| Treći kupac s iste veze ne može potvrditi narudžbu | riješeno: granica 6, razlog kupcu, poruka vlasnici |
+| „Ukloni oznaku” u Rezervacijama ostavlja narudžbu „plaćeno” (lažni SUKOB) | riješeno |
+| „rezervacija istekla” i kad je uklonjena | riješeno: „rezervacija uklonjena” |
+| Obećanje rezervacije u košarici | riješeno u košarici; Uvjeti t. 4 za pravnika |
+| OIB bez kontrolne znamenke | riješeno |
+| „Vrati u prodaju” bez kupca | riješeno |
+| Storno link bez potvrde i „javite se kupcu” | riješeno |
+| Upozorenje „više od pola” u normalnom stanju | riješeno: prema granici |
+| Oznake umjesto naziva, broj narudžbe u Rezervacijama | riješeno |
+| Unikat bez fotografije prvi u ponudi | riješeno |
+| Rok slanja u e-mailu na krivom mjestu | riješeno; mješovita narudžba bez roka (ne izmišljamo) |
+| Postavke odbacuju sve pri grešci | otvoreno |
+| Ispis broja datoteka u paketu | riješeno |
+

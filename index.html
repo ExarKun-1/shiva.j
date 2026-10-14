@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v58 (2026-10-14)
+     SHIVA.J WEBSHOP — v59 (2026-10-15)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v59 — uz api v27, admin v27 (ponovljeni probni korisnik s PHP-om):
+           unikat bez fotografije iza onih koje se mogu naručiti; košarica
+           ne obećava rezervaciju bezuvjetno
      v58 — uz api v26, admin v26 (probni korisnik s PHP-om, v57): torba
            bez rezervacije — istinit razlog („druge narudžbe već čekaju
            uplatu”); u maloj ponudi rezervaciju dobivaju barem tri narudžbe
@@ -1206,7 +1209,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v58</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v59</p>
 </footer>
 
 <!-- Košarica -->
@@ -1540,7 +1543,7 @@ function renderGrid(){
   grid.innerHTML = "";
   /* slobodni unikati prvi, zatim artikli po narudžbi (u Torbama s podnaslovom), na kraju prodani i rezervirani
      unikati (v48: klasične torbe ne smiju biti iza svih otišlih) */
-  const rank = p => p.made ? 1 : isGone(p) ? 2 : 0;
+  const rank = p => p.made ? 1.5 : isGone(p) ? 2 : noPhoto(p) ? 1 : 0; /* v59: unikat bez fotografije iza onih koje se mogu naručiti */
   const list = PRODUCTS.filter(p => (p.cat || "torbe") === currentCat).sort((a, b) => rank(a) - rank(b));
   if(!list.length){
     grid.innerHTML = `
@@ -1920,7 +1923,7 @@ function renderCart(){
   const hold = document.getElementById("orderHold");
   hold.hidden = !(RESERVATION_ENDPOINT && uniques.length);
   const q = n => `„${n}”`;
-  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe.`;
+  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) + " bit će rezervirane" : "Torba " + q(uniques[0]) + " bit će rezervirana"} za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe (ako u tom trenutku previše narudžbi već čeka uplatu, odmah ćemo vam to napisati).`;
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
