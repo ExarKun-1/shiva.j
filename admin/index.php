@@ -23,7 +23,7 @@ if ($c['password_hash'] === '') {
   /* lozinka se smije postaviti samo dok postoji data/PRVA-PRIJAVA.txt (u paketu za prijenos);
      briše se čim je lozinka postavljena */
   if (!is_file(sj_setup_path())) {
-    sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.txt</code> ne postoji. Prenesite je iz paketa (ili napravite praznu datoteku tog imena u mapi <code>data/</code>) i osvježite ovu stranicu.</p>', $c, '', '', false);
+    sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.txt</code> ne postoji. Prenesite je iz paketa „prvi” ili je napravite sami u mapi <code>data/</code>: upišite redak <code>kod: </code> i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
     exit;
   }
   $code = sj_setup_code();
@@ -35,10 +35,11 @@ if ($c['password_hash'] === '') {
     $p1 = (string)$_POST['setup_password']; $p2 = (string)($_POST['setup_password2'] ?? '');
     usleep(300000);
     /* v22: ograničen broj promašaja koda (po adresi i ukupno); broje se samo promašaji */
-    $codeOk = hash_equals($code, trim((string)($_POST['setup_code'] ?? '')));
+    /* v25: bez obzira na velika i mala slova (mobilna tipkovnica prvo slovo sama pretvori u veliko) */
+    $codeOk = hash_equals(strtolower($code), strtolower(trim((string)($_POST['setup_code'] ?? ''))));
     /* v23: ukupna granica samo usporava (napadač s mnogo adresa ne smije zaključati i vlasnicu), po adresi blokira */
     if (!sj_global_limit('setup', 50, 3600, false)) sleep(3);
-    if (!sj_rate_limit('setup', 10, 3600, false, false)) $err = 'Previše pokušaja. Pokušajte ponovno za sat vremena.';
+    if (!sj_rate_limit('setup', 10, 3600, false, false)) $err = 'Previše pogrešnih pokušaja koda s ove veze. Pričekajte sat vremena i pokušajte ponovno.';
     elseif (!$codeOk) { sj_rate_limit('setup', 10, 3600); sj_global_limit('setup', 50, 3600); $err = 'Kod nije točan. Prepišite ga iz datoteke data/PRVA-PRIJAVA.txt.'; }
     elseif (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
     elseif ($p1 !== $p2) $err = 'Lozinke se ne podudaraju.';
@@ -52,9 +53,9 @@ if ($c['password_hash'] === '') {
     }
   }
   sj_layout('Prva prijava', '
-    <p>Ovo je prvo otvaranje admina. Prepišite kod iz datoteke <code>data/PRVA-PRIJAVA.txt</code> (redak „kod: …”), odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
+    <p>Ovo je prvo otvaranje admina. Upišite kod za prvu prijavu: isti je u datoteci <code>shivaj-vNN-KOD-PRVE-PRIJAVE.txt</code> uz paket i u <code>data/PRVA-PRIJAVA.txt</code> (redak „kod: …”). Zatim odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
     <form method="post" class="card form">
-      <label>Kod iz datoteke data/PRVA-PRIJAVA.txt <input name="setup_code" required autocomplete="off" spellcheck="false"></label>
+      <label>Kod iz datoteke data/PRVA-PRIJAVA.txt <input name="setup_code" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
       <label>Nova lozinka <input type="password" name="setup_password" required minlength="10" autocomplete="new-password"></label>
       <label>Ponovite lozinku <input type="password" name="setup_password2" required minlength="10" autocomplete="new-password"></label>
       <button>Spremi lozinku</button>
@@ -70,7 +71,7 @@ if (isset($_GET['odjava'])) { sj_logout(); header('Location: ./'); exit; }
 if (!sj_logged_in()) {
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['password'])) {
     if (sj_login((string)$_POST['password'])) { header('Location: ?s=torbe'); exit; }
-    $err = 'Pogrešna lozinka.';
+    $err = sj_login_locked() ? 'Previše pogrešnih pokušaja s ove veze. Pričekajte 15 minuta i pokušajte ponovno.' : 'Pogrešna lozinka.';
   }
   sj_layout('Prijava', '
     <form method="post" class="card form">
@@ -346,6 +347,9 @@ function sj_handle_action(string $act, array &$c): string {
       $c['owner_email'] = $owner;
       $c['from_email'] = $from;
       $c['site_url'] = rtrim(sj_clean((string)($_POST['site_url'] ?? ''), 120), '/');
+      $oib = preg_replace('/\s+/', '', (string)($_POST['oib'] ?? '')) ?? '';
+      if ($oib !== '' && !preg_match('/^\d{11}$/', $oib)) throw new RuntimeException('OIB mora imati 11 znamenki (ili ostavite prazno).');
+      $c['oib'] = $oib;
       $c['ttl_hours'] = $ttl;
       $c['confirm_customer'] = !empty($_POST['confirm_customer']);
       $c['mail_mode'] = (($_POST['mail_mode'] ?? 'mail') === 'log') ? 'log' : 'mail';
@@ -618,6 +622,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Adresa primatelja <input name="address" value="' . e($p['address']) . '"></label>';
   $h .= '<label>IBAN <input name="iban" value="' . e($p['iban']) . '"></label>';
   $h .= '<label>Model <input name="model" value="' . e($p['model']) . '" maxlength="4"></label>';
+  $h .= '<label>OIB obrta (u potpisu potvrde kupcu; prazno = ne prikazuje se) <input name="oib" inputmode="numeric" maxlength="11" value="' . e((string)($c['oib'] ?? '')) . '"></label>';
   $h .= '</div>';
   $h .= '<label>Osobno preuzimanje (tekst u potvrdi) <input name="pickup_info" value="' . e($c['pickup_info']) . '"></label>';
   $h .= '<label>Rok slanja nakon uplate (prikazuje se kupcu nakon narudžbe; prazno = ne prikazuje se) <input name="ship_lead" maxlength="60" value="' . e((string)($c['ship_lead'] ?? '')) . '" placeholder="npr. 1–2 radna dana"></label>';
@@ -663,7 +668,10 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   main{max-width:1100px;margin:0 auto;padding:24px 20px 60px}h1{font-weight:400;font-size:1.5rem;margin:0 0 14px}h3{font-weight:400;font-size:1.05rem;margin:22px 0 8px;letter-spacing:.03em}
   .msg{background:#E4EAE5;border:1.5px dashed var(--thread);padding:10px 14px;border-radius:2px;margin:0 0 16px}.err{background:#F3E1DC;border:1.5px dashed #8A3B2E;padding:10px 14px;border-radius:2px;margin:0 0 16px}
   .card{background:#fff;border:1px solid var(--line);border-radius:2px;padding:18px;margin:0 0 18px}
-  .form label{display:block;margin:0 0 12px;font-size:.85rem;color:var(--soft)}.form input:not([type=checkbox]):not([type=radio]),.form select{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit;color:var(--ink);background:#fff}
+  .form label{display:block;margin:0 0 12px;font-size:.85rem;color:var(--soft)}.form input:not([type=checkbox]):not([type=radio]),.form select{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit;font-size:16px;color:var(--ink);background:#fff}
+  /* v25: polja 16 px (iOS ne uvećava stranicu pri upisu), na mobitelu gumbi dovoljno veliki za prst */
+  .form textarea{font-size:16px!important}
+  @media (max-width:700px){button,.btn{min-height:44px}td.acts button,.btn.small,button.small{min-height:40px;padding:8px 12px;font-size:.8rem}}
   .form input[type=file]{padding:6px 0}.form input:focus,.form select:focus{outline:2px solid var(--thread);outline-offset:-1px}
   label.check{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--ink)}label.check input{margin:0}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.stack{display:flex;flex-direction:column;gap:8px;margin:8px 0 12px}
@@ -692,6 +700,13 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
 <main><h1>' . e($title) . '</h1>';
   if ($msg !== '') echo '<div class="msg">' . e($msg) . '</div>';
   if ($err !== '') echo '<div class="err">' . e($err) . '</div>';
+  /* v25: upozorenje na svakom ekranu dok adresa stranice ili adresa pošiljatelja nisu upisane */
+  if ($nav && $s !== 'postavke') {
+    $miss = [];
+    if (trim((string)($c['site_url'] ?? '')) === '') $miss[] = 'adresa stranice';
+    if (trim((string)($c['from_email'] ?? '')) === '') $miss[] = 'adresa pošiljatelja na domeni';
+    if ($miss) echo '<div class="err">Nije upisano: ' . e(implode(' i ', $miss)) . '. Bez toga narudžbe ili potvrde kupcima mogu zapeti. <a href="?s=postavke">Postavke →</a></div>';
+  }
   /* v23: jedna skripta za sve potvrde (data-confirm, data-confirm-sel s imenom odabrane torbe) */
   echo $content . '</main><script nonce="' . $nonce . '">document.addEventListener("submit",function(e){var f=e.target,m=f.getAttribute("data-confirm");'
     . 'var ms=f.getAttribute("data-confirm-sel");if(ms){var sel=f.querySelector("select");if(!sel||!sel.value){e.preventDefault();return;}m=ms.replace("%s",sel.options[sel.selectedIndex].text);}'

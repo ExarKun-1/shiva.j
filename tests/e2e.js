@@ -174,6 +174,9 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok((await pm.locator('#fName').evaluate(el => getComputedStyle(el).fontSize)) === '16px', 'v46: polja 16 px (iPhone ne uvećava)');
   ok(await pm.isVisible('.cart-ask a[href*="instagram"]'), 'v46: kontakt prije narudžbe u košarici');
   ok(await pm.evaluate(() => document.body.classList.contains('no-confirm')) && !(await pm.isVisible('.next-step [data-if-confirm]')) && /Odmah nakon narudžbe vidite IBAN/.test(await pm.evaluate(() => document.querySelector('#kako [data-if-noconfirm]').textContent)), 'v56: bez potvrde e-mailom (postavka) stranica ne obećava link');
+  { const v = await pm.evaluate(() => { const q = s => [...document.querySelectorAll(s)]; const shown = el => getComputedStyle(el).display !== 'none';
+      return { conf: q('#uvjeti [data-if-confirm], #privatnost [data-if-confirm], footer [data-if-confirm]').map(shown), nc: q('#uvjeti [data-if-noconfirm], #privatnost [data-if-noconfirm], footer [data-if-noconfirm]').map(shown) }; });
+    ok(v.conf.length >= 6 && v.conf.every(x => !x) && v.nc.length >= 4 && v.nc.every(x => x), 'v57: bez potvrde e-mailom Uvjeti, Privatnost i podnožje ne spominju link (' + v.conf.length + '/' + v.nc.length + ')'); }
   await pm.click('#closeCart'); await pm.waitForTimeout(300);
   const lunaBtn = pm.locator('.card:has(h3:has(.card-name:text-is("Luna"))) .add-btn');
   ok(/U košarici ✓ · otvori/.test(await lunaBtn.textContent()), 'v46: gumb „U košarici ✓ · otvori”');
@@ -346,6 +349,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p7.goto(URL, { waitUntil: 'networkidle' }); await p7.waitForTimeout(300);
   await p7.click('.card:has(h3:has(.card-name:text-is("Klasik crna"))) .add-btn'); await p7.click('#openCart'); await p7.waitForTimeout(300);
   ok(/e-mail s linkom za potvrdu/.test(await p7.textContent('.next-step')), 'obrazac najavljuje e-mail s linkom za potvrdu');
+  ok(await p7.evaluate(() => [...document.querySelectorAll('#uvjeti [data-if-noconfirm], #privatnost [data-if-noconfirm], footer [data-if-noconfirm]')].every(el => getComputedStyle(el).display === 'none'))
+    && /nakon potvrde narudžbe/.test(await p7.evaluate(() => document.querySelector('footer').innerText)), 'v57: s potvrdom e-mailom podnožje i Uvjeti govore o potvrdi');
   await p7.check('#shipOptions input[value="pickup"]');
   await p7.fill('#fName', 'Potvrda Mailom'); await p7.fill('#fEmail', 'potvrda@primjer.hr'); await p7.fill('#fPhone', '091 777 4444'); await p7.check('#fConsent');
   await p7.click('#orderBtn'); await p7.waitForSelector('.order-error.order-info', { timeout: 8000 }).catch(() => {});

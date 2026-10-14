@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v24');
+define('SJ_VERSION', 'admin v25');
 
 /* ---------- postavke ---------- */
 
@@ -25,6 +25,7 @@ function sj_defaults(): array {
     'owner_email'      => 'shivaj.handmade@gmail.com', // kamo stižu narudžbe
     'from_email'       => '',                          // npr. info@shivaj.hr; prazno = owner_email
     'site_url'         => '',                          // npr. https://shivaj.hr; prazno = automatski
+    'oib'              => '',                          // v25: OIB obrta za potpis u e-mailu kupcu; prazno = ne prikazuje se
     'ttl_hours'        => 24,                          // koliko sati traje rezervacija
     'confirm_customer' => true,                        // automatska potvrda kupcu
     'require_confirm'  => true,                        // narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila
@@ -82,7 +83,7 @@ function sj_kind(array $p): array {
   return $art ? ['Artikl', false] : ['Torba', true];
 }
 function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
-/* v20: kod za prvu lozinku — redak „kod: …” (barem 12 znakova) u data/PRVA-PRIJAVA.txt. Bez koda prvi posjetitelj
+/* v20: kod za prvu lozinku — redak „kod: …” (barem 16 znakova) u data/PRVA-PRIJAVA.txt. Bez koda prvi posjetitelj
    admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
 function sj_setup_code(): string {
   $t = (string)@file_get_contents(sj_setup_path());
@@ -475,11 +476,15 @@ function sj_logged_in(): bool {
   return true;
 }
 
+/* v25: je li prijava s ove adrese u pauzi (8 promašaja, 15 min) — ekran tada javlja blokadu, ne „pogrešna lozinka” */
+function sj_login_locked(): bool {
+  $f = sj_config(true)['login_fails'][sj_short_ip()] ?? ['n' => 0, 't' => 0];
+  return (int)$f['n'] >= 8 && time() - (int)$f['t'] < 900;
+}
 function sj_login(string $password): bool {
   $c = sj_config(true);
   $ip = sj_short_ip(); /* skraćena adresa: u postavkama ne ostaje prava adresa */
-  $fails = $c['login_fails'][$ip] ?? ['n' => 0, 't' => 0];
-  if ((int)$fails['n'] >= 8 && time() - (int)$fails['t'] < 900) return false; /* 15 min pauze nakon 8 promašaja */
+  if (sj_login_locked()) return false; /* 15 min pauze nakon 8 promašaja */
   /* ukupno za cijelu prijavu (napad s mnogo adresa): iznad 30 promašaja na sat svaki pokušaj čeka 3 s; prijava se ne
      zaključava potpuno, da napadač ne može vlasnicu zaključati izvan admina */
   $all = array_filter((array)($c['login_fails_all'] ?? []), fn($t) => (int)$t > time() - 3600);
@@ -655,7 +660,7 @@ function sj_mail_from(): string {
 }
 
 /* Šalje običan tekstualni e-mail (UTF-8), s neobaveznim privitkom. U mail_mode 'log' zapisuje u data/mail-log.txt. */
-function sj_send_mail(string $to, string $subject, string $text, ?string $attachmentPath = null, ?string $replyTo = null): bool {
+function sj_send_mail(string $to, string $subject, string $text, ?string $attachmentPath = null, ?string $replyTo = null, ?string $attachmentName = null): bool {
   $c = sj_config();
   /* adrese u zaglavljima moraju biti ispravne e-mail adrese: bez novih redova, bez dodatnih zaglavlja */
   $to = sj_valid_email($to);
@@ -669,10 +674,12 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
   $boundary = 'sj-' . bin2hex(random_bytes(8));
   $headers = ["From: $fromHeader", "Reply-To: " . ($replyTo ?: $from), "Return-Path: <$from>", "MIME-Version: 1.0", "X-Mailer: Shiva.J"];
 
+  /* v25: prikazno ime privitka (kupac vidi npr. barkod-za-uplatu-2026-0007.png, ne ime privremene datoteke) */
+  $attName = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($attachmentName ?: ($attachmentPath ? basename($attachmentPath) : ''))) ?: 'privitak.png';
   if ($attachmentPath && is_file($attachmentPath)) {
     $headers[] = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
     $body  = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n" . $text . "\r\n";
-    $body .= "--$boundary\r\nContent-Type: image/png; name=\"" . basename($attachmentPath) . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . basename($attachmentPath) . "\"\r\n\r\n";
+    $body .= "--$boundary\r\nContent-Type: image/png; name=\"" . $attName . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $attName . "\"\r\n\r\n";
     $body .= chunk_split(base64_encode((string)file_get_contents($attachmentPath))) . "--$boundary--\r\n";
   } else {
     $headers[] = "Content-Type: text/plain; charset=UTF-8";
@@ -682,7 +689,7 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
 
   if (($c['mail_mode'] ?? 'mail') === 'log') {
     if (!is_dir(SJ_DATA)) mkdir(SJ_DATA, 0755, true);
-    $entry = "=== " . date('c') . " | To: $to | Subject: $subject | Attachment: " . ($attachmentPath ? basename($attachmentPath) : '-') . "\n" . $text . "\n\n";
+    $entry = "=== " . date('c') . " | To: $to | Subject: $subject | Attachment: " . ($attachmentPath ? $attName : '-') . "\n" . $text . "\n\n";
     return (bool)file_put_contents(SJ_DATA . '/mail-log.txt', $entry, FILE_APPEND | LOCK_EX);
   }
   /* -f = adresa pošiljatelja na omotnici (Return-Path); bez nje poslužitelj šalje kao korisnik hostinga,
