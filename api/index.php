@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v25)
+   SHIVA.J — javni API na hostingu   (api/index.php v26)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v26: granica rezervacija u maloj ponudi barem tri (sj_hold_cap); istinit razlog kad torba ostane bez rezervacije;
+        storno upisuje cancelledAt; poziv na broj u e-mailu vlasnici; granica potvrda po adresi 10
    v25: e-mail kupcu — potvrda i rok rezervacije na vrhu, „bez SJ-” uz poziv na broj, raskid istim riječima kao Uvjeti,
         OIB u potpisu (ako je upisan), privitak „barkod-za-uplatu-….png”; privremena slika briše se i kad slanje padne
    v24: e-mail kupcu nosi HUB-3 barkod narudžbe (iznos, model, poziv na broj, opis) kao privitak — PHP ga crta sam
@@ -126,7 +128,7 @@ define('SJ_HOLDS_PER_IP', sj_limit('holds_per_ip', 2));             /* nenaruče
 define('SJ_MAX_UNIQUE_PER_ORDER', sj_limit('unique_per_order', 2)); /* šarene torbe (unikati) u jednoj narudžbi */
 define('SJ_ORDERS_PER_IP', sj_limit('orders_per_ip', 2));           /* neplaćene narudžbe s unikatom s iste adrese */
 define('SJ_UNIQUE_ORDERS_PER_HOUR', sj_limit('unique_orders_per_hour', 6)); /* nove narudžbe sa šarenom torbom na sat, ukupno */
-define('SJ_CONFIRM_PER_IP', sj_limit('confirm_per_ip', 3));         /* automatske potvrde kupcima na sat s iste adrese */
+define('SJ_CONFIRM_PER_IP', sj_limit('confirm_per_ip', 10));         /* automatske potvrde kupcima na sat s iste adrese */
 define('SJ_CONFIRM_TOTAL', sj_limit('confirm_total', 200));        /* e-mailovi za potvrdu na sat ukupno (krajnja zaštita) */
 
 function sj_unique_words(int $n): string { return $n === 1 ? 'može biti najviše jedna šarena torba' : ($n <= 4 ? 'mogu biti najviše ' . [2 => 'dvije', 3 => 'tri', 4 => 'četiri'][$n] . ' šarene torbe' : 'može biti najviše ' . $n . ' šarenih torbi'); }
@@ -479,7 +481,7 @@ function sj_order_pending(array $P): void {
   $t = [];
   $t[] = 'Dobar dan, ' . $cust['name'] . ',';
   $t[] = '';
-  $t[] = 'primili smo vašu narudžbu. Da bismo je zaprimili' . ($P['uniqueIds'] ? ' i rezervirali torbu za vas' : '') . ', potvrdite je klikom na link:';
+  $t[] = 'hvala na narudžbi! Da bismo je zaprimili' . ($P['uniqueIds'] ? ' i rezervirali torbu za vas' : '') . ', potvrdite je klikom na link:';
   $t[] = '';
   $t[] = $link;
   $t[] = '';
@@ -559,7 +561,7 @@ function sj_place_order(array $P): array {
          ostale torbe iz narudžbe primaju se BEZ rezervacije (ostaju na prodaji, dobiva ih tko prvi uplati). */
       $freeSet = []; foreach ($freeIds as $f) if (!isset($d['sold'][$f])) $freeSet[$f] = true;
       $free = count($freeSet);
-      $cap = $free >= 2 ? max(1, intdiv($free, 2)) : 0;
+      $cap = sj_hold_cap($free);
       $heldIds = 0;
       foreach ($d['res'] as $rid => $x) if (!empty($x['ordered']) && isset($freeSet[(string)$rid]) && !in_array((string)$rid, $uniqueIds, true)) $heldIds++;
       $room = !empty($noHold) ? 0 : max(0, $cap - $heldIds); /* v20: preopterećenje — bez rezervacije */
@@ -569,7 +571,7 @@ function sj_place_order(array $P): array {
       }
       /* kupčeva vlastita košarica na torbi koja nije dobila rezervaciju ne smije ostati kao oznaka */
       foreach ($unheldIds as $id) if ($prev[$id] && empty($prev[$id]['ordered']) && !in_array($id, $contested, true)) unset($d['res'][$id]);
-      $out = ['unheldIds' => $unheldIds, 'contested' => $contested, 'held' => $heldIds, 'prev' => $prev];
+      $out = ['unheldIds' => $unheldIds, 'contested' => $contested, 'held' => $heldIds, 'cap' => $cap, 'prev' => $prev];
       if (!$holdIds) return $out + ['unheld' => true];
       $now = time();
       $rec = ['token' => $tok !== '' ? $tok : sj_token(), 'ip' => $ip, 'ip_prev' => $ipPrev, 'name' => $cust['name'], 'email' => $cust['email'], 'since' => $since !== '' ? $since : sj_iso($now),
@@ -654,12 +656,13 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   $lines[] = $itemsText;
   $lines[] = 'Dostava: ' . $shipText;
   $lines[] = 'Ukupno: ' . sj_fmt_eur($total);
+  $lines[] = 'Poziv na broj (za usporedbu s izvodom banke): ' . sj_payment_ref($no);
   if ($note !== '') { $lines[] = ''; $lines[] = 'Napomena: ' . $note; }
   $lines[] = '';
   $lines[] = 'Kupac je prihvatio Uvjete kupnje (narudžba s obvezom plaćanja)' . ($confirmed ? ' i potvrdio narudžbu linkom iz e-maila.' : '.');
   if ($res) {
     $lines[] = 'Rezervacija vrijedi do: ' . sj_fmt_hr($res['until']);
-    $lines[] = 'Kad stigne potvrda uplate, kliknite „Plaćeno” prije isteka rezervacije: kupcu smo obećali da torbu tada čuvamo i nakon isteka.';
+    $lines[] = 'Kad stigne potvrda uplate, kliknite „Označi plaćenom” prije isteka rezervacije: kupcu smo obećali da torbu tada čuvamo i nakon isteka.';
 
     $lines[] = $stornoUrl !== '' ? 'Plaćeno / storno rezervacije (uz prijavu u admin): ' . $stornoUrl : 'Plaćeno / storno rezervacije: u adminu pod „Rezervacije” (upišite adresu stranice u Postavkama, pa će ovdje stajati izravan link).';
   }
@@ -670,7 +673,7 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   if (sj_site_url_trusted() !== '') $lines[] = 'Narudžbe i rezervacije: ' . sj_site_url_trusted() . '/admin/';
   if ($unheld) {
     $nm = []; foreach ($items as $it) if (in_array((string)$it['id'], array_map('strval', $unheld['unheldIds']), true)) $nm[] = $it['name'];
-    $lines[] = 'PAŽNJA: bez rezervacije (dobiva ih tko prvi uplati): ' . implode(', ', $nm) . '. Neplaćene narudžbe već drže ' . (int)$unheld['held'] . ' šarenih torbi, a smiju najviše pola slobodne ponude. Kupcu smo to napisali. Ako sumnjate na lažne narudžbe, u adminu → Rezervacije stornirajte ih gumbom „Storniraj sve s ove adrese”.';
+    $lines[] = 'PAŽNJA: bez rezervacije (dobiva ih tko prvi uplati): ' . implode(', ', $nm) . '. Šarene torbe u neplaćenim narudžbama: ' . (int)$unheld['held'] . ' (granica: ' . (int)($unheld['cap'] ?? 0) . '). Kupcu smo to napisali. Ako sumnjate na lažne narudžbe, u adminu → Rezervacije stornirajte ih gumbom „Storniraj sve s ove adrese”.';
     if (!empty($unheld['contested'])) $lines[] = 'Od toga je već u ranijoj neplaćenoj narudžbi: ' . implode(', ', $unheld['contested']) . ' — torbu dobiva tko prvi uplati.';
   }
   if ($manyOrders) $lines[] = 'PAŽNJA: u zadnjih sat vremena stiglo je više od ' . SJ_UNIQUE_ORDERS_PER_HOUR . ' narudžbi sa šarenim torbama. Provjerite jesu li prave (ova napomena stiže najviše jednom na sat).';
@@ -750,6 +753,7 @@ if ($a === 'storno') {
       $d = array_replace(sj_res_default(), $d);
       $ids = [];
       if ($action === 'release') { foreach ($d['res'] as $id => $r) if (($r['token'] ?? '') === $token) { unset($d['res'][$id]); $ids[] = $id; } }
+      if ($action === 'release' && $ids) sj_order_cancelled($token);
       elseif ($action === 'sold') { foreach ($d['res'] as $id => $r) if (($r['token'] ?? '') === $token) { sj_mark_paid($d, (string)$id); $ids[] = $id; } }
       elseif ($action === 'unsold') { foreach ($d['sold'] as $id => $r) if (($r['token'] ?? '') === $token) { unset($d['sold'][$id]); $ids[] = $id; } }
       return $ids;
@@ -769,10 +773,10 @@ if ($a === 'storno') {
     foreach ($mine as $r) $rows .= '<li><b>' . e($r['id']) . '</b> — ' . e($r['name']) . ' (' . e($r['email']) . '), rezervirano ' . e(sj_fmt_hr($r['since'])) . ', vrijedi do ' . e(sj_fmt_hr($r['until'])) . '</li>';
     sj_html_page('Rezervacija', '<p>Ova narudžba drži rezervaciju:</p><ul>' . $rows . '</ul>' . $loginNote . '
       <div class="row">
-        <form method="post">' . $csrf . '<input type="hidden" name="token" value="' . e($token) . '"><input type="hidden" name="action" value="sold"><button' . $dis . '>Plaćeno — torba ostaje prodana</button></form>
-        <form method="post">' . $csrf . '<input type="hidden" name="token" value="' . e($token) . '"><input type="hidden" name="action" value="release"><button class="alt"' . $dis . '>Storniraj — vrati u prodaju</button></form>
+        <form method="post">' . $csrf . '<input type="hidden" name="token" value="' . e($token) . '"><input type="hidden" name="action" value="sold"><button' . $dis . '>Označi plaćenom</button></form>
+        <form method="post">' . $csrf . '<input type="hidden" name="token" value="' . e($token) . '"><input type="hidden" name="action" value="release"><button class="alt"' . $dis . '>Storniraj</button></form>
       </div>
-      <p class="muted">„Plaćeno“ drži torbu kao prodanu i nakon isteka rezervacije. „Storniraj“ odmah vraća torbu u prodaju. Sve to vidite i u <a href="' . e($adminUrl) . '">adminu</a>.</p>');
+      <p class="muted">„Označi plaćenom“ drži torbu kao prodanu i nakon isteka rezervacije. „Storniraj“ odmah vraća torbu u prodaju (kupcu se javite sami). Sve to vidite i u <a href="' . e($adminUrl) . '">adminu</a>.</p>');
   }
   if ($sold) {
     sj_html_page('Rezervacija', '<p>Označeno kao plaćeno / prodano: <b>' . e(implode(', ', array_keys($sold))) . '</b>.</p>' . $loginNote . '
@@ -847,7 +851,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   foreach ($items as $it) if (in_array((string)($it['id'] ?? ''), array_map('strval', $unheldIds), true)) $unheldNames[] = '„' . $it['name'] . '”';
   if ($unheldNames) {
     $one = count($unheldNames) === 1;
-    $t[] = ($one ? 'Torbu ' : 'Torbe ') . implode(' i ', $unheldNames) . ' trenutno ne možemo rezervirati jer je mnogo narudžbi na čekanju, pa ' . ($one ? 'je' : 'su') . ' i dalje na prodaji: dobiva ' . ($one ? 'je' : 'ih') . ' tko prvi uplati. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail; javit ćemo vam se čim provjerimo.';
+    $t[] = ($one ? 'Torbu ' : 'Torbe ') . implode(' i ', $unheldNames) . ' trenutno ne možemo rezervirati jer druge narudžbe već čekaju uplatu, pa ' . ($one ? 'je' : 'su') . ' i dalje na prodaji: dobiva ' . ($one ? 'je' : 'ih') . ' tko prvi uplati. Molimo vas da uplatite odmah i pošaljete nam potvrdu uplate (snimku zaslona) odgovorom na ovaj e-mail; javit ćemo vam se čim provjerimo.';
     $t[] = '';
   }
   if ($res && !empty($res['until'])) {
@@ -870,6 +874,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $t[] = '';
   $what = !$anyMade ? ($nUnique > 1 ? 'Torbe' : 'Torbu') : (count($items) > 1 ? 'Artikle' : 'Artikl');
   $t[] = 'Ako se predomislite, ugovor možete jednostrano raskinuti' . ($anyMade ? ' (osim artikala izrađenih po vašim posebnim željama)' : '') . ' u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga: dovoljna je nedvosmislena izjava e-mailom (obrazac je u Uvjetima kupnje, t. 6). ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos vraćamo u roku i na način iz t. 6 Uvjeta kupnje.' . (sj_site_url_trusted() !== '' ? ' Uvjeti kupnje: ' . sj_site_url_trusted() . '/#uvjeti' : '');
+  if (trim((string)($c['ship_lead'] ?? '')) !== '' && !$pickup && !$anyMade) $t[] = 'Slanje nakon uplate: obično ' . trim((string)$c['ship_lead']) . '.';
   $t[] = 'Za bilo kakva pitanja odgovorite na ovaj e-mail ili nam se javite porukom na Instagramu (@shiva.j_handmade).';
   $t[] = '';
   $t[] = 'Srdačan pozdrav,';

@@ -20,6 +20,7 @@ ok(not [n for n in fn + un if bad.search(n)], 'bez uputa, testova, primjera i lo
 kod = re.search(r'^kod: (\S{12,})$', first.read('data/PRVA-PRIJAVA.txt').decode(), re.M)
 ok(kod and kod.group(1) in open(os.path.join(ROOT, 'dist', f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt'), encoding='utf-8').read(), 'v51: prvi paket nosi nasumičan kod za prvu prijavu, kod je i u dist/')
 ok(v in first.read('PROCITAJ.txt').decode() and 'NEMA' in upd.read('PROCITAJ.txt').decode(), 'PROCITAJ.txt s verzijom ' + v)
+ok(all(((first.getinfo(n).external_attr >> 16) & 0o444) == 0o444 for n in ('torbe.json', 'PROCITAJ.txt', 'data/PRVA-PRIJAVA.txt')), 'v58: datoteke napisane u paketu čitljive su poslužitelju (0644)')
 
 print('\n'.join(R))
 f = sum(l.startswith('FAIL') for l in R)

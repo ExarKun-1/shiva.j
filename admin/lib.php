@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v25');
+define('SJ_VERSION', 'admin v26');
 
 /* ---------- postavke ---------- */
 
@@ -163,7 +163,8 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
 /* Unikati koji su u katalogu na prodaji (nisu artikli po narudžbi, prodani, ručno rezervirani ni skriveni) */
 function sj_free_unique_ids(array $prodsById): array {
   $out = [];
-  foreach ($prodsById as $id => $p) if (empty($p['made']) && empty($p['sold']) && empty($p['reserved'])) $out[] = (string)$id;
+  /* v26: unikat bez fotografije se ne može naručiti, pa se ne broji u ponudu */
+  foreach ($prodsById as $id => $p) if (empty($p['made']) && empty($p['sold']) && empty($p['reserved']) && !empty($p['imgs'])) $out[] = (string)$id;
   return $out;
 }
 
@@ -230,6 +231,16 @@ function sj_order_edit(array $by, callable $fn): bool {
 
 /* Narudžba se u brojač „plaćeno” upisuje najviše jednom: traži narudžbu po tokenu rezervacije ili broju
    (i u arhivi), upisuje paidAt (ako nema) i paidCounted; vraća true samo prvi put. */
+/* v26: storno rezervacije ostaje zapisan uz narudžbu (Narudžbe prikazuju „stornirano”, ne „rezervacija istekla”) */
+function sj_order_cancelled(string $token): void {
+  if ($token !== '') sj_order_edit(['token' => $token], function (array &$o) { if (empty($o['cancelledAt'])) $o['cancelledAt'] = sj_iso(time()); });
+}
+/* v26: granica rezervacija iz neplaćenih narudžbi — pola slobodnih unikata, ali u maloj ponudi barem tri (inače
+   već drugi kupac ostaje bez rezervacije); zaštitu od jednog napadača i dalje čine granice po e-mailu i adresi */
+function sj_hold_cap(int $free): int {
+  $min = max(0, (int)(sj_config()['limits']['hold_min'] ?? 3)); /* 0 = staro pravilo (samo pola) */
+  return max(min($free, $min), $free >= 2 ? intdiv($free, 2) : 0);
+}
 function sj_order_paid_once(array $by): bool {
   $first = false;
   sj_order_edit($by, function (array &$o) use (&$first) {
@@ -480,6 +491,10 @@ function sj_logged_in(): bool {
 function sj_login_locked(): bool {
   $f = sj_config(true)['login_fails'][sj_short_ip()] ?? ['n' => 0, 't' => 0];
   return (int)$f['n'] >= 8 && time() - (int)$f['t'] < 900;
+}
+function sj_login_left(): int {
+  $f = sj_config(true)['login_fails'][sj_short_ip()] ?? ['n' => 0, 't' => 0];
+  return time() - (int)$f['t'] < 900 ? max(0, 8 - (int)$f['n']) : 8;
 }
 function sj_login(string $password): bool {
   $c = sj_config(true);
