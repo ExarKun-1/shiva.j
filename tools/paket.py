@@ -83,7 +83,8 @@ def build(kind, v, code=''):
         if kind == 'prvi':
             put(z, 'torbe.json', '[]\n')
         put(z, 'PROCITAJ.txt', README[kind].format(v=v))
-    return path, len(names)
+    with zipfile.ZipFile(path) as zr:
+        return path, len(zr.namelist())  # v59: broj unosa u zipu (i datoteke dodane pri izradi)
 
 
 if __name__ == '__main__':

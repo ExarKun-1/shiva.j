@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v26');
+define('SJ_VERSION', 'admin v27');
 
 /* ---------- postavke ---------- */
 
@@ -240,6 +240,13 @@ function sj_order_cancelled(string $token): void {
 function sj_hold_cap(int $free): int {
   $min = max(0, (int)(sj_config()['limits']['hold_min'] ?? 3)); /* 0 = staro pravilo (samo pola) */
   return max(min($free, $min), $free >= 2 ? intdiv($free, 2) : 0);
+}
+/* v27: OIB — 11 znamenki i ispravna kontrolna znamenka (ISO 7064, MOD 11,10) */
+function sj_oib_ok(string $oib): bool {
+  if (!preg_match('/^\d{11}$/', $oib)) return false;
+  $a = 10;
+  for ($i = 0; $i < 10; $i++) { $a = ($a + (int)$oib[$i]) % 10; if ($a === 0) $a = 10; $a = ($a * 2) % 11; }
+  return (11 - $a) % 10 === (int)$oib[10];
 }
 function sj_order_paid_once(array $by): bool {
   $first = false;

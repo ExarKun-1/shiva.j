@@ -36,7 +36,7 @@ file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
 @unlink($D . '/brojac.json');
 
 $view = $req('GET', ['s' => 'narudzbe']);
-$ok(preg_match('#SJ-2026-0401.*?bez rezervacije: nera.*?order_paid#s', $view) === 1 && preg_match('#SJ-2026-0403.*?order_paid#s', $view) === 1, 'Narudžbe: gumb „Plaćeno” i za narudžbu bez rezervacije i za aktivnu');
+$ok(preg_match('#SJ-2026-0401.*?bez rezervacije: Nera.*?order_paid#s', $view) === 1 && preg_match('#SJ-2026-0403.*?order_paid#s', $view) === 1, 'Narudžbe: gumb „Plaćeno” i za narudžbu bez rezervacije i za aktivnu');
 $out = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0401', 'back' => '?s=narudzbe']);
 $r = $rd();
 $ok(($r['sold']['nera']['email'] ?? '') === 'b@p.hr' && !isset($r['res']['nera']) && str_contains($out, 'Ana A'), 'B platio prvi: Nera prodana B-u, A-ova rezervacija uklonjena, vlasnica upozorena');
@@ -53,7 +53,7 @@ file_put_contents($D . '/narudzbe.json', json_encode([
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
 $out = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0410', 'back' => '?s=narudzbe']);
 $r = $rd();
-$ok(!isset($r['sold']['zora']) && !isset($r['sold']['mira']) && ($r['sold']['luna']['no'] ?? '') === 'SJ-2026-0410' && str_contains($out, 'pa nisu označene: zora, mira'), 'Plaćeno: ručno prodana/rezervirana torba se ne upisuje i navodi se u upozorenju, slobodna (luna) se upisuje');
+$ok(!isset($r['sold']['zora']) && !isset($r['sold']['mira']) && ($r['sold']['luna']['no'] ?? '') === 'SJ-2026-0410' && str_contains($out, 'pa nisu označene: „Zora”, „Mira”'), 'Plaćeno: ručno prodana/rezervirana torba se ne upisuje i navodi se u upozorenju, slobodna (luna) se upisuje');
 /* v39: „Ukloni oznaku” vraća torbe ove narudžbe u prodaju, tuđe ne dira */
 $r['sold']['tara'] = ['id' => 'tara', 'token' => 'tX', 'email' => 'x@p.hr', 'paidAt' => '2026-10-11T00:00:00Z'];
 file_put_contents($D . '/rezervacije.json', json_encode($r));
@@ -72,7 +72,7 @@ $ok(($rd()['sold']['vela']['email'] ?? '') === 'e@p.hr' && !empty($a['paidAt']) 
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
   'luna' => ['id' => 'luna', 'token' => 't1', 'name' => 'X', 'email' => 'x@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z'],
   'tara' => ['id' => 'tara', 'token' => 't2', 'name' => 'Y', 'email' => 'y@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z']], 'sold' => ['vela' => ['id' => 'vela', 'paidAt' => '2026-10-11T00:00:00Z']]]));
-$ok(str_contains($req('GET', ['s' => 'rez']), 'više od pola'), 'Rezervacije: upozorenje kad neplaćene drže više od pola slobodnih');
+$ok(str_contains($req('GET', ['s' => 'rez']), 'Pažnja: neplaćene narudžbe drže'), 'Rezervacije: upozorenje kad neplaćene drže više od pola slobodnih');
 
 /* v21: A — „Označi trajno prodanom” je jednosmjerno; dvostruki klik ne vraća torbu u prodaju */
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
@@ -136,6 +136,12 @@ $nar = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
 $okI = preg_match('/SJ-2026-0502.*?<\/tr>/s', $nar, $mI) && str_contains($mI[0], 'SUKOB');
 $okM = preg_match('/SJ-2026-0501.*?<\/tr>/s', $nar, $mM) && !str_contains($mM[0], 'SUKOB');
 $ok($okI && $okM, 'v26: Narudžbe trajno označuju SUKOB samo kod narudžbe za koju torba nije zapisana kao plaćena');
+$rz = $req('GET', ['s' => 'rez']);
+$ok(str_contains($rz, 'SJ-2026-0503'), 'v27: Rezervacije pokazuju broj narudžbe');
+/* v27: „Ukloni oznaku” u Rezervacijama skida i oznaku plaćeno s narudžbe (nema lažnog SUKOB-a) */
+$req('POST', ['act' => 'res_unsold', 'id' => 'tara', 'back' => '?s=rez']);
+$nl = json_decode(file_get_contents($D . '/narudzbe.json'), true); $byNo = []; foreach ($nl as $o) $byNo[$o['no']] = $o;
+$ok(empty($byNo['SJ-2026-0501']['paidAt']) && !empty($byNo['SJ-2026-0502']['paidAt']), 'v27: „Ukloni oznaku” u Rezervacijama uklanja oznaku plaćeno i s narudžbe tog kupca');
 $rel = $req('POST', ['act' => 'res_release', 'id' => 'luna', 'back' => '?s=rez']);
 $nar = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
 $ok(str_contains($rel, 'javite mu se (lea@p.hr)') && preg_match('/SJ-2026-0503.*?<\/tr>/s', $nar, $mL) && str_contains($mL[0], '<b>stornirano</b>') && !str_contains($mL[0], 'rezervacija istekla'), 'v26: storno — poruka „javite se kupcu”, u Narudžbama „stornirano”');
@@ -144,6 +150,8 @@ $cfg0 = file_get_contents($D . '/config.json');
 $set = ['act' => 'save_settings', 'back' => '?s=postavke', 'owner_email' => 'v@p.hr', 'from_email' => '', 'ttl_hours' => '24', 'iban' => 'HR1210010051863000160', 'recipient' => 'R', 'address' => 'A', 'model' => 'HR00', 'shipping' => "pickup | Osobno | 0 | ne | ne |\n"];
 $req('POST', $set + ['site_url' => 'shivaj.hr']);
 $ok((json_decode(file_get_contents($D . '/config.json'), true)['site_url'] ?? '') === 'https://shivaj.hr', 'v26: adresa stranice bez https:// sprema se s https://');
+$ob = $req('POST', $set + ['site_url' => 'https://shivaj.hr', 'oib' => '12345678901']);
+$ok(str_contains($ob, 'OIB nije ispravan') && ($req('POST', $set + ['site_url' => 'https://shivaj.hr', 'oib' => '12345678903']) && (json_decode(file_get_contents($D . '/config.json'), true)['oib'] ?? '') === '12345678903'), 'v27: OIB s pogrešnom kontrolnom znamenkom se odbija, ispravan sprema');
 $bad = $req('POST', $set + ['site_url' => 'https://ne valja', 'oib' => '123']);
 $ok(str_contains($bad, 'nije ispravna') && (json_decode(file_get_contents($D . '/config.json'), true)['site_url'] ?? '') === 'https://shivaj.hr', 'v26: neispravna adresa se ne sprema');
 file_put_contents($D . '/config.json', $cfg0);
