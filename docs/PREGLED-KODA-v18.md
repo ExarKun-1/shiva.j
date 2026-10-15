@@ -422,3 +422,19 @@ Vlasnica 7/10 (prije 6), kupac 7/10.
 | Postavke odbacuju sve pri grešci | otvoreno |
 | Ispis broja datoteka u paketu | riješeno |
 
+## Treći krug probnog korisnika s PHP-om na v59 (15. 10. 2026.) → v60 (admin v28, api v28)
+
+Vlasnica 7/10, kupac 8/10.
+
+| Nalaz | Stanje u v60 |
+|---|---|
+| Lažni SUKOB nakon „Ukloni oznaku” s linka iz e-maila | riješeno (+ potvrda kvačicom, kupac, broj) |
+| Oznake umjesto naziva u porukama | riješeno |
+| Broj narudžbe uz plaćeno iz Rezervacija / linka | riješeno |
+| Brojač broji unikat bez fotografije | riješeno |
+| „Javili smo vlasnici” za odbijene nakon prve | riješeno: popis odbijenih u adminu, e-mail vlasnice kupcu |
+| „Vrati u prodaju” i „Ukloni oznaku” različit ishod | namjerno: trajno prodana vraćena u prodaju ostavlja SUKOB kao upozorenje (novac) |
+| Mjerenje „Plaćeno” pri uklanjanju | riješeno: objašnjeno |
+| „Storniraj sve s ove adrese” bez kupaca | riješeno |
+| Postavke odbacuju upisano pri grešci | riješeno |
+

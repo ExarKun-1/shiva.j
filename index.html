@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v59 (2026-10-15)
+     SHIVA.J WEBSHOP — v60 (2026-10-15)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v60 — uz api v28, admin v28 (treći krug probnog korisnika): brojač
+           „N unikata dostupno” ne broji unikat bez fotografije
      v59 — uz api v27, admin v27 (ponovljeni probni korisnik s PHP-om):
            unikat bez fotografije iza onih koje se mogu naručiti; košarica
            ne obećava rezervaciju bezuvjetno
@@ -1209,7 +1211,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v59</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v60</p>
 </footer>
 
 <!-- Košarica -->
@@ -1605,7 +1607,7 @@ function renderGrid(){
     grid.appendChild(card);
   });
   renderHero();
-  const avail = list.filter(p => !p.made && !isGone(p)).length, anyMade = list.some(p => p.made);
+  const avail = list.filter(p => !p.made && !isGone(p) && !noPhoto(p)).length, anyMade = list.some(p => p.made);
   document.getElementById("availCount").textContent = list.length && list.every(p => p.made)
     ? "izrada po narudžbi"
     : (avail === 0 ? "trenutno nema slobodnih unikata" : avail + " " + unikataText(avail)) + (anyMade ? " · klasične\u00a0po\u00a0narudžbi" : "");
