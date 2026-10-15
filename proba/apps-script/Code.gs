@@ -115,7 +115,7 @@ function sjParseOrder(env, b) {
   }
   if (!items.length) return { err: sjOut(400, { ok: false, error: 'Košarica je prazna.' }) };
   if (items.length > SJ.maxItems) return { err: sjOut(400, { ok: false, error: 'Najviše ' + SJ.maxItems + ' stavki u jednoj narudžbi.' }) };
-  if (uniqueIds.length > SJ.maxUnique) return { err: sjOut(400, { ok: false, error: 'U jednoj narudžbi mogu biti najviše dvije šarene torbe. Za više nam se javite e-mailom ili na Instagramu.' }) };
+  if (uniqueIds.length > SJ.maxUnique) return { err: sjOut(400, { ok: false, error: 'U jednoj narudžbi mogu biti najviše dvije unikatne torbe. Za više nam se javite e-mailom ili na Instagramu.' }) };
   var is = inp.shipping || {}, ship = null;
   SJ.shipping.forEach(function (o) { if (o.id === sjClean(is.id, 40)) ship = o; });
   if (!ship) return { err: sjOut(400, { ok: false, error: 'Odaberite način dostave.' }) };
@@ -156,7 +156,7 @@ function sjOrder(env, b) {
     P.uniqueIds.forEach(function (id) { var h = st.held[id]; if (st.sold[id] || (h && sjEmailKey(h.email) !== ek)) taken.push(id); });
     if (taken.length) return sjOut(409, { ok: false, taken: taken });
     for (var id in st.held) if (P.uniqueIds.indexOf(id) < 0 && sjEmailKey(st.held[id].email) === ek)
-      return sjOut(409, { ok: false, error: 'Već imate narudžbu sa šarenom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću; za više torbi odjednom javite nam se e-mailom ili na Instagramu.' });
+      return sjOut(409, { ok: false, error: 'Već imate narudžbu s unikatnom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću; za više torbi odjednom javite nam se e-mailom ili na Instagramu.' });
   }
   if (!env.rate('mailto_' + env.sha256(ek).slice(0, 20), SJ.mailsPerRecipient, 3600)) return sjOut(429, { ok: false, error: 'Na ovu adresu već smo poslali e-mail za potvrdu. Pogledajte i neželjenu poštu (spam) ili pokušajte ponovno za sat vremena.' });
   if (!env.rate('confirm', SJ.confirmMailsPerHour, 3600)) return sjOut(429, { ok: false, error: 'Previše narudžbi u kratkom vremenu. Pokušajte ponovno za sat vremena ili nam pišite e-mailom.' });
@@ -215,7 +215,7 @@ function sjConfirm(env, b) {
   if (taken.length) return sjOut(409, { ok: false, taken: taken });
   if (mine.length) return sjOut(409, { ok: false, error: 'Torba je već u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' });
   for (var id in st.held) if (sjEmailKey(st.held[id].email) === ek)
-    return sjOut(409, { ok: false, error: 'Već imate narudžbu sa šarenom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću.' });
+    return sjOut(409, { ok: false, error: 'Već imate narudžbu s unikatnom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću.' });
   /* granica: neplaćene narudžbe drže najviše pola stvarno slobodnih unikata; ostatak bez rezervacije (tko prvi uplati) */
   var free = sjFreeIds(prods, st), freeSet = {};
   free.forEach(function (f) { freeSet[f] = true; });

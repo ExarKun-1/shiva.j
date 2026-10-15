@@ -55,5 +55,6 @@
     "unique_per_order": 2,
     "unique_orders_per_hour": 100,
     "confirm_per_ip": 100
-  }
+  },
+  "show_ostalo": true
 }

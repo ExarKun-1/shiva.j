@@ -41,7 +41,8 @@
     "cat": "torbe",
     "hidden": false,
     "tagline": "Okrugla, mirna, s jednim zlatnim odsjajem.",
-    "story": "Krug složen od pet ploha: krem, kadulja-zelena, zlatna, bijela s utisnutim uzorkom i čokoladno smeđa."
+    "story": "Krug složen od pet ploha: krem, kadulja-zelena, zlatna, bijela s utisnutim uzorkom i čokoladno smeđa.",
+    "made_limit": 20
   },
   {
     "id": "vela",

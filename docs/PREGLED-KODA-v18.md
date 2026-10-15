@@ -452,3 +452,15 @@ Vlasnica 8/10, kupac 8/10.
 | Mješovita narudžba: tekst „nakon uplate” | čeka odluku vlasnika projekta |
 | Mjerenje broji plaćeno i za SUKOB | napomena, ostaje |
 
+## Peti krug probnog korisnika s PHP-om na v61 (15. 10. 2026.) → v62 (admin v30, api v30)
+
+Vlasnica 8/10, kupac 9/10.
+
+| Nalaz | Stanje u v62 |
+|---|---|
+| „Storniraj sve s ove adrese” — popis odrezan na 300 znakova | riješeno: 2000 |
+| Ploča za uplatu s ugrađenim IBAN-om kad api/status padne | riješeno: podaci iz odgovora potvrde; bez njih „poslali smo e-mailom” |
+| „Košarica je prazna.” dok se potvrđuje | riješeno: „Potvrđujemo narudžbu…”, najviše 4 s čekanja |
+| Poruke u Rezervacijama bez broja / e-maila | riješeno |
+| „Ukloni oznaku” ne spominje drugu plaćenu narudžbu | riješeno |
+
