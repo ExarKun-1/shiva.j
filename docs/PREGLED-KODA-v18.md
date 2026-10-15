@@ -482,3 +482,24 @@ Sigurnost 7/10 („spremno uvjetno”); dizajn: trgovina 8, admin 7, e-mail 7,5;
 | Izbornik se prelama sa „Stalna kolekcija” | riješeno: bez prijeloma, hamburger ispod 960 px |
 | IBAN bez escapea, `last.pay` prepisuje globalne podatke, `fopen` bez provjere, stari barkodovi u `data/tmp`, `odbijene.json` raste | riješeno |
 | Storno link bez potvrde na poslužitelju; ime i e-mail kupca vidljivi bez prijave | riješeno: `confirm=1`; podaci kupca samo prijavljenoj vlasnici |
+
+## Vijeće na v63 (15. 10. 2026.) → v64 (admin v32, api v32)
+
+Sigurnost 6/10 („spremno uvjetno”); dizajn: trgovina 7,5, admin 7,5, e-mail 7,5; kupac 7,5/10.
+
+| Nalaz | Stanje u v64 |
+|---|---|
+| Visoko: isti model ponovljen u jednoj narudžbi zaobilazi granicu mjesta (7/3) | riješeno: spajanje stavki pri prijemu, zbroj po modelu u `sj_place_order`; test |
+| Kritično (dizajn): obrazac se zaglavi nakon promjene dostave, bez poruke | riješeno: `setCustomValidity("")` u `applyShipping()`; e2e test |
+| Srednje: za kolekciju nema granice po vezi; narudžba ne pamti vezu | riješeno: `ip`/`ip_prev` uz narudžbu, `SJ_COLL_PER_IP` (3), zapis u Odbijene |
+| Nisko: stornirana narudžba nudi „Označi plaćenom” | riješeno: gumb skriven, radnja odbijena |
+| Nisko: narudžba bez potvrde (preopterećenje) blokira adresu | riješeno |
+| Nisko: api/status čita sve narudžbe pri svakom pozivu | riješeno: predmemorija `data/tmp/made-left.json` |
+| Nisko: stornirane narudžbe u arhivi bez roka čuvanja | za pravnika (ODLUKE v64) |
+| Kupac: „Provjerite e-mail adresu” kod otvorene narudžbe | riješeno: `code: open_order`, `field: email` |
+| Kupac/dizajn: „+” u košarici ne radi | riješeno: „1 kom · jedan komad ovog modela po narudžbi” |
+| Kupac: mješovita narudžba „vašu torbu” / „unikatnu torbu i ostalo” | riješeno: nazivi; rok slanja nakon izrade |
+| Kupac: što ako želja nije moguća; uplata za unikat bez rezervacije | riješeno (obećanja za pravnika) |
+| Dizajn: nepostojeći natpis linka, „Trenutno popunjeno” u e-mailu, „Materijal: na upit”, uvod bez potvrde, sitni rok na kartici, Narudžbe bez telefona i adrese | riješeno |
+| Kupac: ukupno čekanje u danima | ne izmišlja se: prikazuju se rok izrade i rok slanja iz Postavki |
+| Dizajn, sitnice (poravnanje cijena, „Spremi barkod”, fokus u adminu, Ostalo naslov) | kasnije |

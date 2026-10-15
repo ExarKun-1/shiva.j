@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v31');
+define('SJ_VERSION', 'admin v32');
 
 /* ---------- postavke ---------- */
 
@@ -233,7 +233,8 @@ function sj_made_left(array $p): int { return max(0, sj_made_limit($p) - sj_made
 function sj_made_open_order(string $email, array $collIds): string {
   $ek = sj_email_key($email);
   foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) {
-    if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || sj_email_key((string)($o['email'] ?? '')) !== $ek) continue;
+    /* v64: narudžba primljena bez potvrde (preopterećenje) ne blokira adresu — inače bi tuđa adresa mogla zatvoriti kupca */
+    if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || sj_email_key((string)($o['email'] ?? '')) !== $ek) continue;
     foreach ((array)($o['order']['items'] ?? []) as $it) if (in_array((string)($it['id'] ?? ''), $collIds, true)) return (string)($o['no'] ?? '');
   }
   return '';
