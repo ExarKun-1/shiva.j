@@ -438,3 +438,17 @@ Vlasnica 7/10, kupac 8/10.
 | „Storniraj sve s ove adrese” bez kupaca | riješeno |
 | Postavke odbacuju upisano pri grešci | riješeno |
 
+## Četvrti krug probnog korisnika s PHP-om na v60 (15. 10. 2026.) → v61 (admin v29, api v29)
+
+Vlasnica 8/10, kupac 8/10.
+
+| Nalaz | Stanje u v61 |
+|---|---|
+| Ploča za uplatu ponekad s ugrađenim e-mailom / IBAN-om | riješeno: čeka status |
+| Ponovljeni odbijeni link dodaje redak | riješeno |
+| Broj narudžbe u „Ukloni oznaku” (Rezervacije) i poruci „Označi plaćenom” | riješeno |
+| Upozorenje u Postavkama sa starom adresom | riješeno |
+| „Storniraj sve s ove adrese” bez e-mailova | riješeno |
+| Mješovita narudžba: tekst „nakon uplate” | čeka odluku vlasnika projekta |
+| Mjerenje broji plaćeno i za SUKOB | napomena, ostaje |
+

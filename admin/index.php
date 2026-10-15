@@ -242,11 +242,13 @@ function sj_handle_action(string $act, array &$c): string {
       if (!preg_match('/^[a-f0-9]{16}$/', $ip)) throw new RuntimeException('Neispravna adresa.');
       $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip) {
         $d = array_replace(sj_res_default(), $d);
-        $n = 0;
-        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip])) { unset($d['res'][$id]); $n++; sj_order_cancelled((string)($r['token'] ?? '')); } /* i zapisi s prošlotjednom oznakom iste adrese */
+        $n = []; /* v29: tko je storniran — da se vlasnica može javiti */
+        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip])) { unset($d['res'][$id]); $n[] = [(string)$id, (string)($r['email'] ?? ''), (string)($r['token'] ?? '')]; sj_order_cancelled((string)($r['token'] ?? '')); } /* i zapisi s prošlotjednom oznakom iste adrese */
         return $n;
       }, sj_res_default());
-      return 'Stornirano s iste adrese: ' . $n . ' rezervacija. Torbe su ponovno u prodaji.';
+      $who = [];
+      foreach ($n as [$id, $em, $tk]) { $on = $tk !== '' ? (string)(sj_order_find(['token' => $tk])['no'] ?? '') : ''; $who[] = sj_product_names([$id]) . ($on !== '' ? ' ' . $on : '') . ($em !== '' ? ' — ' . $em : ''); }
+      return 'Stornirano s iste adrese: ' . count($n) . ' rezervacija. Torbe su ponovno u prodaji.' . ($who ? ' Kupci ne dobivaju automatsku poruku; javite im se: ' . implode('; ', $who) . '.' : '');
     }
 
     case 'res_release':
@@ -282,7 +284,7 @@ function sj_handle_action(string $act, array &$c): string {
       if ($act === 'res_sold_manual') sj_products_update(function (array &$list) use ($id) {
         foreach ($list as $i => $p) if (($p['id'] ?? '') === $id) { $list[$i]['sold'] = true; break; } return true; });
       $nm = $id; foreach (sj_products() as $p) if (($p['id'] ?? '') === $id) $nm = (string)($p['name'] ?? $id);
-      return ['res_release' => "Rezervacija za „{$nm}” je stornirana; torba je ponovno u prodaji." . ($relEmail !== '' ? " Kupac ne dobiva automatsku poruku: javite mu se ({$relEmail})." : ''), 'res_sold' => "„{$nm}” je označena kao plaćena.",
+      return ['res_release' => "Rezervacija za „{$nm}” je stornirana; torba je ponovno u prodaji." . ($relEmail !== '' ? " Kupac ne dobiva automatsku poruku: javite mu se ({$relEmail})." : ''), 'res_sold' => "„{$nm}” je označena kao plaćena" . (($soldNo = (string)(sj_res_read()['sold'][$id]['no'] ?? '')) !== '' ? " (narudžba {$soldNo})" : '') . '.',
         'res_unsold' => "Oznaka plaćeno za „{$nm}” je uklonjena (i na narudžbi); torba je ponovno u prodaji.", 'res_sold_manual' => "„{$nm}” je označena kao prodana izvan stranice i više se ne nudi kupcima."][$act];
     }
 
@@ -562,7 +564,7 @@ function sj_view_reservations(array $c): string {
       /* v21: jednosmjerno — „Označi trajno prodanom”, zatim samo „Vrati u prodaju” uz potvrdu; „Ukloni oznaku” ne za trajno prodanu */
       $h .= '<td class="acts">' . ($perm
         ? '<span class="badge ink">Trajno prodana ✓</span><br>' . sj_btn('toggle', ['id' => $id, 'field' => 'sold', 'to' => '0'], 'Vrati u prodaju', $back, true, 'Vratiti „' . ($names[$id] ?? $id) . '” u prodaju?' . (($r['name'] ?? '') !== '' ? ' Plaćena je za kupca ' . $r['name'] . (($r['no'] ?? '') !== '' ? ' (' . $r['no'] . ')' : '') . '.' : '') . ' Torba će se ponovno nuditi kupcima.')
-        : sj_btn('toggle', ['id' => $id, 'field' => 'sold', 'to' => '1'], 'Označi trajno prodanom', $back) . sj_btn('res_unsold', ['id' => $id], 'Ukloni oznaku', $back, true, 'Ukloniti oznaku plaćeno za „' . ($names[$id] ?? $id) . '”' . (($r['name'] ?? '') !== '' ? ' (kupac: ' . $r['name'] . ')' : '') . '? Torba se vraća u prodaju. Ako je kupac platio, vratite mu novac.'))
+        : sj_btn('toggle', ['id' => $id, 'field' => 'sold', 'to' => '1'], 'Označi trajno prodanom', $back) . sj_btn('res_unsold', ['id' => $id], 'Ukloni oznaku', $back, true, 'Ukloniti oznaku plaćeno za „' . ($names[$id] ?? $id) . '”' . (($r['name'] ?? '') !== '' ? ' (kupac: ' . $r['name'] . (($r['no'] ?? '') !== '' ? ', ' . $r['no'] : '') . ')' : '') . '? Torba se vraća u prodaju. Ako je kupac platio, vratite mu novac.'))
         . '</td></tr>';
     }
     $h .= '</tbody></table></div>';
@@ -655,10 +657,12 @@ function sj_view_settings(array $c): string {
   $h .= '<h3>E-mail i stranica</h3><div class="grid2">';
   $h .= '<label>E-mail vlasnice (narudžbe stižu ovdje) * <input name="owner_email" required value="' . e($c['owner_email']) . '"></label>';
   $h .= '<label>Adresa pošiljatelja na domeni (npr. info@shivaj.hr) <input name="from_email" value="' . e($c['from_email']) . '"></label>';
-  $siteHost = strtolower(preg_replace('/^www\./', '', (string)parse_url(sj_site_url(), PHP_URL_HOST)));
-  $fromHost = strtolower((string)substr(strrchr((string)sj_mail_from(), '@') ?: '', 1));
+  /* v29: upozorenje prema prikazanim vrijednostima (i nakon greške, kad obrazac pokazuje upisano) */
+  $mailFrom = trim((string)($c['from_email'] ?? '')) !== '' ? (string)$c['from_email'] : (string)($c['owner_email'] ?? '');
+  $siteHost = strtolower(preg_replace('/^www\./', '', (string)parse_url(trim((string)($c['site_url'] ?? '')) !== '' ? (string)$c['site_url'] : sj_site_url(), PHP_URL_HOST)));
+  $fromHost = strtolower((string)substr(strrchr($mailFrom, '@') ?: '', 1));
   if ($fromHost === '' || ($siteHost !== '' && $fromHost !== $siteHost && !str_ends_with($fromHost, '.' . $siteHost)))
-    $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: e-mailovi odlaze s adrese ' . e(sj_mail_from()) . ', koja nije na domeni stranice (' . e($siteHost) . '). Potvrde kupcima s podacima za uplatu tada često završe u neželjenoj pošti. Upišite adresu na domeni (npr. info@' . e($siteHost) . ') i na hostingu uključite SPF i DKIM.</p>';
+    $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: e-mailovi odlaze s adrese ' . e($mailFrom) . ', koja nije na domeni stranice (' . e($siteHost) . '). Potvrde kupcima s podacima za uplatu tada često završe u neželjenoj pošti. Upišite adresu na domeni (npr. info@' . e($siteHost) . ') i na hostingu uključite SPF i DKIM.</p>';
   $h .= '<label>Adresa stranice (npr. https://shivaj.hr) <input name="site_url" value="' . e($c['site_url']) . '" placeholder="prazno = automatski"></label>';
   if (trim((string)$c['site_url']) === '')
     $h .= '<p class="muted" style="grid-column:1/-1;color:#9B2C1F">Pažnja: adresa stranice nije upisana. Dok je prazna, linkovi u e-mailovima (Plaćeno/Storniraj, Uvjeti kupnje, admin) šalju se samo ako se domena stranice slaže s adresom pošiljatelja. Upišite punu adresu, npr. https://shivaj.hr.</p>';

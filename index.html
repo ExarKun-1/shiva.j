@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v60 (2026-10-15)
+     SHIVA.J WEBSHOP — v61 (2026-10-15)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v61 — uz api v29, admin v29 (četvrti krug probnog korisnika): ploča za
+           uplatu nakon linka iz e-maila čeka podatke iz Postavki
      v60 — uz api v28, admin v28 (treći krug probnog korisnika): brojač
            „N unikata dostupno” ne broji unikat bez fotografije
      v59 — uz api v27, admin v27 (ponovljeni probni korisnik s PHP-om):
@@ -1211,7 +1213,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v60</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v61</p>
 </footer>
 
 <!-- Košarica -->
@@ -2348,7 +2350,7 @@ function confirmError(html){
   empty.hidden = false;
 }
 /* link iz e-maila: ?potvrda=<id>.<tajna> → poslužitelj potvrđuje narudžbu, a stranica pokazuje podatke za uplatu */
-async function confirmFromLink(){
+async function confirmFromLink(statusP){
   const m = /^([a-f0-9]{32})\.([a-f0-9]{32})$/.exec(new URLSearchParams(location.search).get("potvrda") || "");
   if(!m) return;
   history.replaceState(null, "", location.pathname + location.hash); /* link se ne ponavlja pri osvježavanju */
@@ -2356,6 +2358,8 @@ async function confirmFromLink(){
   try {
     const res = await fetch(apiUrl("confirm"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ id: m[1], t: m[2] }) });
     const { ok: resOk, data } = await apiRead(res);
+    /* v61: podaci za uplatu (e-mail vlasnice, IBAN, primatelj) iz Postavki stižu sa statusom — ploča tek nakon njega */
+    if(statusP) await statusP.catch(() => {});
     if(resOk && data.ok){ showOrderSuccess(data); refreshReservations(); return; }
     if(Array.isArray(data.taken)){ markTaken(data.taken); confirmError(`<b>Narudžba nije potvrđena.</b> Torbu je u međuvremenu naručio ili kupio drugi kupac${cart.length ? ", pa smo je uklonili iz košarice. Ostatak narudžbe možete poslati ponovno" : ""}. Pitanja: ${escHtml(OWNER_EMAIL)}.`); return; }
     confirmError(`<b>Narudžba nije potvrđena.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}`);
@@ -2678,8 +2682,7 @@ loadProducts().then(() => {
     const toShop = () => document.getElementById("torbe").scrollIntoView();
     toShop(); setTimeout(toShop, 120);
   }
-  refreshReservations(true);
-  confirmFromLink();
+  confirmFromLink(refreshReservations(true));
   showPendingAfterReload();
 });
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") refreshReservations(); });

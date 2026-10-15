@@ -191,6 +191,8 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     ok(ip2.status === 429 && /iste internetske veze/.test(ip2.data.error || '') && /narudžba odbijena \(ista veza\)/.test(mlIp) && /ip2@primjer\.hr/.test(mlIp), 'v27: odbijena narudžba s iste veze — razlog kupcu, poruka vlasnici');
     const odb = fs.existsSync(D + 'odbijene.json') ? read('odbijene.json') : [];
     ok(odb.some(x => x.email === 'ip2@primjer.hr') && /@/.test((ip2.data.error || '').replace(/^[^@]*$/, '')), 'v28: odbijena narudžba zapisana za admin, kupcu e-mail za javljanje');
+    await post('order', order('api-key-ip2-dddd', 'ip2@primjer.hr', [{ id: 'tara', qty: 1 }], 55));
+    ok(read('odbijene.json').filter(x => x.email === 'ip2@primjer.hr').length === 1, 'v29: ponovljeni pokušaj iste odbijene narudžbe ne dodaje novi redak');
     setLimits({ orders_per_ip: 20 }); clearRes(); clearLimits();
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
