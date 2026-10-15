@@ -34,7 +34,9 @@
     "price": 60,
     "dims": "{DIMENZIJE}",
     "material": "umjetna koža",
-    "imgs": [],
+    "imgs": [
+      "img/og.jpg"
+    ],
     "sold": false,
     "made": true,
     "lead": "5 radnih dana",
