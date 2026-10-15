@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v28)
+   SHIVA.J — javni API na hostingu   (api/index.php v29)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v29: ponovljeni klik na odbijeni link ne dodaje novi redak u „Odbijene” (isti e-mail i artikli unutar sata)
    v28: storno link „Ukloni oznaku” skida i plaćeno s narudžbe, uz potvrdu; odbijene narudžbe (ista veza) u
         data/odbijene.json (admin → Narudžbe); nazivi torbi u e-mailu vlasnici
    v27: neplaćene narudžbe s iste veze 2 → 6 (dijeljene mobilne/kućne mreže), odbijena potvrda javlja se vlasnici;
@@ -624,6 +625,8 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
     /* v27: kupac odbijen zbog granice po vezi — vlasnica dobiva kratku poruku (najviše jednom na sat) */
     /* v28: svaka odbijena narudžba zapisuje se (admin → Narudžbe → „Odbijene”), zadnjih 100 */
     if (!empty($done['notify'])) sj_with_lock(SJ_DATA . '/odbijene.json', function (array &$l) use ($cust, $items) {
+      $art = implode(', ', array_map(fn($it) => $it['name'], $items));
+      foreach ($l as $x) if (strcasecmp((string)($x['email'] ?? ''), (string)$cust['email']) === 0 && ($x['items'] ?? '') === $art && strtotime((string)($x['at'] ?? '')) > time() - 3600) return false;
       array_unshift($l, ['at' => sj_iso(time()), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'] ?? '', 'items' => implode(', ', array_map(fn($it) => $it['name'], $items)), 'why' => 'ista veza']);
       $l = array_slice($l, 0, 100); return true;
     }, []);
