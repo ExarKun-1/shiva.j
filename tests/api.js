@@ -218,6 +218,28 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     await new Promise(r => setTimeout(r, 1200));
     const k6 = await post('order', order('api-key-kol6-eeee', 'kol6@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
     ok(k5.data.ok && st2k.madeLeft.klasik === 0 && k6.data.ok, 'v62/v63: stornirana i nepotvrđena narudžba se ne broje; „Otvori nova mjesta” otvara nova mjesta');
+    // 15e) v64: ponovljena stavka, granica po vezi, kod greške, nepotvrđena ne blokira adresu
+    ok(k1b.data.code === 'open_order', 'v64: „Već imate narudžbu” nosi kod open_order (stranica ne pogađa po tekstu)');
+    setProd('klasik', { made_open_from: new Date(Date.now() + 1000).toISOString(), made_limit: 10 });
+    await new Promise(r => setTimeout(r, 1200));
+    const d1 = await post('order', order('api-key-dup1-eeee', 'dup1@primjer.hr', [{ id: 'klasik', qty: 1 }, { id: 'klasik', qty: 1 }, { id: 'klasik', qty: 1 }], 60));
+    const stD = await (await fetch(U + 'status')).json();
+    const oD = read('narudzbe.json').find(x => x.no === d1.data.orderNo);
+    ok(d1.data.ok && stD.madeLeft.klasik === 9 && oD && oD.order.items.length === 1 && oD.order.items[0].qty === 1 && typeof oD.ip === 'string' && oD.ip !== '', 'v64: isti model triput u jednoj narudžbi → jedna stavka, jedno mjesto; narudžba pamti vezu: ' + (stD.madeLeft && stD.madeLeft.klasik));
+    const d2 = await post('order', order('api-key-dup2-eeee', 'dup2@primjer.hr', [{ id: 'remen', qty: 2, note: 'crna' }, { id: 'remen', qty: 1 }], 45));
+    const oD2 = read('narudzbe.json').find(x => x.no === d2.data.orderNo);
+    ok(d2.data.ok && oD2 && oD2.order.items.length === 1 && oD2.order.items[0].qty === 3, 'v64: Ostalo dvaput u narudžbi → količine se zbrajaju u jednu stavku');
+    { const n = read('narudzbe.json'); n.unshift({ no: 'SJ-2026-9998', at: new Date().toISOString(), email: 'blok@primjer.hr', unconfirmed: true, order: { items: [{ id: 'klasik', qty: 1, made: true }] } }); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+    const bl = await post('order', order('api-key-blok-eeee', 'blok@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    ok(bl.data.ok, 'v64: narudžba bez potvrde (preopterećenje) s nečijom adresom ne blokira tu adresu');
+    const em = await post('order', order('api-key-email-eeee', 'nije-email', [{ id: 'klasik', qty: 1 }], 60));
+    ok(em.status === 400 && em.data.field === 'email', 'v64: neispravan e-mail — field: email');
+    setLimits({ coll_per_ip: 2 });
+    try { fs.unlinkSync(D + 'odbijene.json'); } catch (e) {}
+    const ip1 = await post('order', order('api-key-ipk1-eeee', 'ipk1@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const rej = read('odbijene.json');
+    ok(ip1.status === 429 && /Stalne kolekcije/.test(ip1.data.error || '') && rej.some(x => x.email === 'ipk1@primjer.hr') && /iz Stalne kolekcije/.test(fs.readFileSync(D + 'mail-log.txt', 'utf8')), 'v64: s iste veze najviše N neplaćenih narudžbi iz kolekcije → 429, zapis u Odbijene, e-mail vlasnici');
+    setLimits({ coll_per_ip: 50 }); clearLimits();
     ok(k2.data.payment && k2.data.payment.iban && typeof k2.data.ownerEmail === 'string', 'v62: odgovor narudžbe nosi podatke za uplatu iz Postavki');
     { const c0 = read('config.json'); c0.show_ostalo = false; fs.writeFileSync(D + 'config.json', JSON.stringify(c0, null, 2));
       const os = await post('order', order('api-key-ost1-eeee', 'ost@primjer.hr', [{ id: 'remen', qty: 1, note: 'crna' }], 15));

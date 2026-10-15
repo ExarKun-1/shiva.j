@@ -89,6 +89,8 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - **Stalna kolekcija**: modeli s vrstom „Stalna kolekcija” prikazuju se u istoimenoj rubrici. Jedno mjesto je jedna torba. U popisu Torbe piše npr. „mjesta 2/3”. Mjesto zauzima tek potvrđena narudžba; nepotvrđene i stornirane se ne broje. Kad je model popunjen, kupci vide „Popunjeno” i poziv da vam se jave na Instagramu ili e-mailom, a vi dobivate redak u e-mailu nove narudžbe.
 - Mjesta se ne oslobađaju sama: kad ste spremni za nove narudžbe, u popisu Torbe kliknite **„Otvori nova mjesta”** (brojanje kreće od tog trenutka; stare narudžbe ostaju).
 - Gumb **„Otvori nova mjesta”** pojavljuje se tek kad je model popunjen (v63).
-- **Storniraj narudžbu** (Narudžbe, v63): uz svaku neplaćenu narudžbu. Narudžba se označi storniranom, unikatna torba se oslobađa, a mjesto u Stalnoj kolekciji se vraća. Kupcu se javite sami (poruka vam kaže na koju adresu).
+- **Storniraj narudžbu** (Narudžbe, v63): uz svaku neplaćenu narudžbu. Narudžba se označi storniranom, unikatna torba se oslobađa, a mjesto u Stalnoj kolekciji se vraća. Kupcu se javite sami (poruka vam kaže na koju adresu). Stornirana narudžba više se ne može označiti plaćenom (v64); ako je kupac ipak uplatio, neka naruči ponovno ili mu vratite uplatu.
+- **Narudžbe** (v64): uz kupca stoje e-mail i telefon, uz dostavu adresa ili paketomat, a uz artikle napomena kupca i vrsta stavke (unikat / Stalna kolekcija / po narudžbi).
+- S iste internetske veze primaju se najviše 3 neplaćene narudžbe iz Stalne kolekcije; ostale idu u „Odbijene” i dobivate e-mail.
 - **Rubrika „Ostalo”** (remeni, torbice, platnene torbe) uključuje se u Postavkama: „Prikaži rubriku Ostalo”. Dok je isključena, artikli ostaju u adminu, ali se ne vide i ne mogu naručiti.
 
