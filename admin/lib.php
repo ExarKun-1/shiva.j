@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v27');
+define('SJ_VERSION', 'admin v28');
 
 /* ---------- postavke ---------- */
 
@@ -270,8 +270,22 @@ function sj_mark_paid(array &$d, string $id, bool $manual = false): bool {
   $tok = (string)($r['token'] ?? '');
   if ($tok !== '' && sj_order_paid_once(['token' => $tok])) sj_count('paid');
   unset($d['res'][$id]);
-  $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
+  /* v28: broj narudžbe uz zapis plaćeno (potvrde i tablica u adminu) */
+  $no = $tok !== '' ? (string)(sj_order_find(['token' => $tok])['no'] ?? '') : '';
+  $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'no' => $no, 'name' => $r['name'] ?? '', 'email' => $r['email'] ?? '', 'since' => $r['since'] ?? '', 'paidAt' => sj_iso(time())];
   return true;
+}
+
+/* v28: nazivi torbi za poruke („Luna”, „Tara”) umjesto oznaka */
+function sj_product_names(array $ids): string {
+  $n = []; foreach (sj_products() as $p) $n[(string)($p['id'] ?? '')] = (string)($p['name'] ?? '');
+  return implode(', ', array_map(fn($i) => '„' . (($n[(string)$i] ?? '') !== '' ? $n[(string)$i] : (string)$i) . '”', $ids));
+}
+
+/* v28: kad narudžbi s tim tokenom / brojem više nijedna torba nije plaćena, ni narudžba nije plaćena */
+function sj_order_unpaid_if_empty(array $sold, string $tok, string $no): void {
+  foreach ($sold as $x) if (($tok !== '' && ($x['token'] ?? '') === $tok) || ($no !== '' && ($x['no'] ?? '') === $no)) return;
+  if ($tok !== '' || $no !== '') sj_order_edit($no !== '' ? ['no' => $no] : ['token' => $tok], function (array &$o) { unset($o['paidAt']); });
 }
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.
