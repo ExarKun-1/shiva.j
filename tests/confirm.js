@@ -75,8 +75,8 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const pu = read('narudzbe-na-cekanju.json', []).filter(x => !x.no && x.ek === 'puno@primjer.hr');
     ok(pu.length === 3 && pu[0].key === 'potvrda-puno-0001' && !pu.some(x => x.key === 'stari-0'), 'po adresi najviše 3 nepotvrđene, najstarija ispada');
     // 7b) najviše 2 e-maila za potvrdu na sat na istu adresu
-    const r3x = await post('order', order('potvrda-puno-0002', 'puno@primjer.hr', [{ id: 'klasik', qty: 2 }], 120));
-    const r4x = await post('order', order('potvrda-puno-0003', 'puno@primjer.hr', [{ id: 'klasik', qty: 3 }], 180));
+    const r3x = await post('order', order('potvrda-puno-0002', 'puno@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const r4x = await post('order', order('potvrda-puno-0003', 'puno@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
     ok(r3x.status === 200 && r4x.status === 429 && /već smo poslali/.test(r4x.data.error || ''), 'treći e-mail za potvrdu na istu adresu u satu → 429');
     // 7c) 100 e-mailova za potvrdu u satu (s mnogo adresa): narudžba se i dalje prima, vlasnica je upozorena
     const nowS = Math.floor(Date.now() / 1000);

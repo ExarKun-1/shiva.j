@@ -177,9 +177,26 @@ $on = !empty(json_decode(file_get_contents($D . '/config.json'), true)['show_ost
 $req('POST', array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '12345678903']));
 $ok($on && empty(json_decode(file_get_contents($D . '/config.json'), true)['show_ostalo']) && str_contains($req('GET', ['s' => 'torbe']), 'Ostalo — skriveno na stranici'), 'v62: prekidač „Ostalo” se sprema; isključen — oznaka u popisu Torbe');
 $tv = $req('GET', ['s' => 'torbe']);
+$ok(preg_match('/mjesta \d+\/20/', $tv) === 1 && !str_contains($tv, 'Otvori nova mjesta') && str_contains($tv, '<td>Stalna kolekcija</td>'), 'v63: „mjesta X/20”, stupac „Stalna kolekcija”, „Otvori nova mjesta” tek kad je popunjeno');
+$pl = json_decode(file_get_contents($D . '/proizvodi.json'), true); foreach ($pl as &$x) if ($x['id'] === 'klasik') $x['made_limit'] = 0; unset($x); file_put_contents($D . '/proizvodi.json', json_encode($pl));
+$tv0 = $req('GET', ['s' => 'torbe']);
 $open = $req('POST', ['act' => 'made_open', 'id' => 'klasik', 'back' => '?s=torbe']);
 $pk = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if ($x['id'] === 'klasik') $pk = $x;
-$ok(preg_match('/narudžbe \d+\/20/', $tv) === 1 && str_contains($tv, 'Otvori nova mjesta') && str_contains($open, 'Otvorena su nova mjesta za „Klasik crna”') && !empty($pk['made_open_from']), 'v62: Stalna kolekcija — „narudžbe X/20”, „Otvori nova mjesta” postavlja početak brojanja');
+$ok(str_contains($tv0, 'Otvori nova mjesta') && str_contains($open, 'Otvorena su nova mjesta za „Klasik crna”') && !empty($pk['made_open_from']), 'v62: popunjen model — „Otvori nova mjesta” postavlja početak brojanja');
+$pl = json_decode(file_get_contents($D . '/proizvodi.json'), true); foreach ($pl as &$x) if ($x['id'] === 'klasik') $x['made_limit'] = 20; unset($x); file_put_contents($D . '/proizvodi.json', json_encode($pl));
+/* v63: Storniraj narudžbu — i narudžba samo iz Stalne kolekcije (bez rezervacije) */
+$nl = json_decode(file_get_contents($D . '/narudzbe.json'), true);
+array_unshift($nl, ['no' => 'SJ-2026-0601', 'at' => date('c'), 'name' => 'Kol K', 'email' => 'kol@p.hr', 'reservation' => null, 'items' => 'Klasik crna', 'order' => ['items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'made' => true, 'qty' => 1]], 'unheld' => []]]);
+file_put_contents($D . '/narudzbe.json', json_encode($nl));
+$nv = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
+$cx = $req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0601', 'back' => '?s=narudzbe']);
+$o601 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0601') $o601 = $x;
+$ok(preg_match('/SJ-2026-0601.*?Storniraj narudžbu/s', $nv) === 1 && !empty($o601['cancelledAt']) && str_contains($cx, 'oslobođeno je mjesto za „Klasik crna”') && str_contains($cx, 'javite mu se (kol@p.hr)'), 'v63: „Storniraj narudžbu” — i samo iz Stalne kolekcije; oslobađa mjesto, poruka „javite se kupcu”');
+/* v63: izbor „Vrsta” postavlja kategoriju i „po narudžbi” */
+preg_match('/name="csrf" value="([^"]+)"/', $curl(["http://127.0.0.1:$port/admin/?s=nova"]), $cv);
+$curl(['--data-urlencode', 'csrf=' . ($cv[1] ?? ''), '--data-urlencode', 'act=save_product', '--data-urlencode', 'name=Proba kolekcija', '--data-urlencode', 'price=50', '--data-urlencode', 'vrsta=kolekcija', '--data-urlencode', 'made_limit=', '--data-urlencode', 'back=?s=torbe', "http://127.0.0.1:$port/admin/"]);
+$pv = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if (($x['name'] ?? '') === 'Proba kolekcija') $pv = $x;
+$ok($pv && ($pv['cat'] ?? '') === 'torbe' && !empty($pv['made']) && (int)$pv['made_limit'] === 3, 'v63: „Vrsta: Stalna kolekcija” — kategorija torbe, po narudžbi; prazno „Najviše mjesta” = 3');
 $rr3 = $rd(); $many = [];
 for ($k = 0; $k < 9; $k++) { $rr3['res']['dug' . $k] = ['id' => 'dug' . $k, 'token' => 'tD' . $k, 'name' => 'Kupac ' . $k, 'email' => 'vrlo.dugacka.adresa.kupca.' . $k . '@primjer-dugacke-domene.hr', 'ip' => 'fedcba9876543210', 'since' => '2026-10-12T14:00:00Z', 'at' => '2026-10-12T14:00:00Z', 'until' => '2099-01-01T00:00:00Z', 'ordered' => true]; }
 file_put_contents($D . '/rezervacije.json', json_encode($rr3));

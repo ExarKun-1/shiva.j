@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v30');
+define('SJ_VERSION', 'admin v31');
 
 /* ---------- postavke ---------- */
 
@@ -204,25 +204,55 @@ function sj_orders_prepend(array $entry, int $keep = 300): void {
    Broje se zaprimljene narudžbe (i arhiva) od trenutka kad je vlasnica otvorila mjesta (made_open_from), bez storniranih.
    Mjesta se ne oslobađaju sama: vlasnica ih otvara u adminu („Otvori nova mjesta”). */
 function sj_is_collection(array $p): bool { return !empty($p['made']) && (($p['cat'] ?? 'torbe') === 'torbe'); }
-function sj_made_limit(array $p): int { return max(0, (int)($p['made_limit'] ?? 3)); }
-function sj_made_used(string $id, string $from = ''): int {
-  $t0 = $from !== '' ? (int)strtotime($from) : 0; $n = 0;
-  foreach (sj_order_files() as $f) foreach (sj_read_json($f, []) as $o) {
-    if (!empty($o['cancelledAt']) || (int)strtotime((string)($o['at'] ?? '')) < $t0) continue;
-    foreach ((array)($o['order']['items'] ?? []) as $it) if ((string)($it['id'] ?? '') === $id) $n += max(1, (int)($it['qty'] ?? 1));
+function sj_made_limit(array $p): int { $v = $p['made_limit'] ?? 3; return ($v === '' || $v === null) ? 3 : max(0, (int)$v); }
+/* v63: jedan prolaz kroz narudžbe za sve modele (prije: jedan prolaz po modelu pri svakom api/status).
+   Ne broje se stornirane ni narudžbe primljene bez potvrde e-mailom (preopterećenje). Arhive starije od
+   najstarijeg otvaranja mjesta se ne čitaju. Rezultat se pamti do kraja zahtjeva ($reset nakon upisa). */
+function sj_made_counts(bool $reset = false): array {
+  static $cache = null;
+  if ($reset) { $cache = null; return []; }
+  if ($cache !== null) return $cache;
+  $from = []; $minT = PHP_INT_MAX;
+  foreach (sj_products() as $p) if (!empty($p['id']) && sj_is_collection($p)) { $t = (int)strtotime((string)($p['made_open_from'] ?? '')) ?: 0; $from[(string)$p['id']] = $t; $minT = min($minT, $t); }
+  $cache = array_fill_keys(array_keys($from), 0);
+  if (!$from) return $cache;
+  $minYear = $minT > 0 ? (int)date('Y', $minT) : 0;
+  foreach (sj_order_files() as $f) {
+    if (preg_match('/narudzbe-arhiva-(\d{4})/', $f, $m) && (int)$m[1] < $minYear) continue;
+    foreach (sj_read_json($f, []) as $o) {
+      if (!empty($o['cancelledAt']) || !empty($o['unconfirmed'])) continue;
+      $at = (int)strtotime((string)($o['at'] ?? ''));
+      foreach ((array)($o['order']['items'] ?? []) as $it) { $id = (string)($it['id'] ?? ''); if (isset($from[$id]) && $at >= $from[$id]) $cache[$id] += max(1, (int)($it['qty'] ?? 1)); }
+    }
   }
-  return $n;
+  return $cache;
 }
-function sj_made_left(array $p): int { return max(0, sj_made_limit($p) - sj_made_used((string)($p['id'] ?? ''), (string)($p['made_open_from'] ?? ''))); }
+function sj_made_used(string $id, string $from = ''): int { return (int)(sj_made_counts()[$id] ?? 0); }
+function sj_made_left(array $p): int { return max(0, sj_made_limit($p) - sj_made_used((string)($p['id'] ?? ''))); }
+/* v63: ista e-mail adresa smije imati samo jednu neplaćenu (nestorniranu) narudžbu iz Stalne kolekcije */
+function sj_made_open_order(string $email, array $collIds): string {
+  $ek = sj_email_key($email);
+  foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) {
+    if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || sj_email_key((string)($o['email'] ?? '')) !== $ek) continue;
+    foreach ((array)($o['order']['items'] ?? []) as $it) if (in_array((string)($it['id'] ?? ''), $collIds, true)) return (string)($o['no'] ?? '');
+  }
+  return '';
+}
 
 /* v62: druga plaćena narudžba za istu torbu (SUKOB) — da je vlasnica nakon „Ukloni oznaku” ne proda trećem kupcu */
 function sj_other_paid(string $id, string $exceptNo): string {
   foreach (sj_order_files() as $f) foreach (sj_read_json($f, []) as $o) {
     if (empty($o['paidAt']) || ($o['no'] ?? '') === $exceptNo) continue;
     foreach ((array)($o['order']['items'] ?? []) as $it) if ((string)($it['id'] ?? '') === $id && empty($it['made']))
-      return ' PAŽNJA: za ' . sj_product_names([$id]) . ' plaćena je i narudžba ' . (string)($o['no'] ?? '') . ' (' . (string)($o['name'] ?? '') . ') — označite torbu plaćenom za nju, a ne prodajte je drugome.';
+      return ' PAŽNJA: za ' . sj_product_names([$id]) . ' plaćena je i narudžba ' . (string)($o['no'] ?? '') . ' (' . (string)($o['name'] ?? '') . ') — torbu joj dodijelite tako da u Narudžbama za ' . (string)($o['no'] ?? '') . ' kliknete „Ukloni oznaku”, zatim „Označi plaćenom”; ne prodajte je drugome.';
   }
   return '';
+}
+
+/* v63: „1 mjesto”, „3 mjesta”, „5 mjesta” (hrvatski brojevi; 11–14 kao 5) */
+function sj_count_words(int $n, string $one, string $few, string $many): string {
+  $m10 = $n % 10; $m100 = $n % 100;
+  return $n . ' ' . (($m10 === 1 && $m100 !== 11) ? $one : (($m10 >= 2 && $m10 <= 4 && ($m100 < 12 || $m100 > 14)) ? $few : $many));
 }
 
 function sj_order_files(): array {

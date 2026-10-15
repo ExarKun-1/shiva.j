@@ -48,7 +48,7 @@ Mapa `data/` mora biti zapisiva (na Croadriji jest). Provjera zaštite: `https:/
 
 **Nova torba**: Torbe → + Nova torba / artikl → naziv, cijena, kategorija, opis, dimenzije, materijal → dodati fotografije → Spremi. Odmah je na stranici.
 
-**Artikl po narudžbi** (remeni, torbice, platnene torbe): kategorija Ostalo + kvačica „Artikl po narudžbi“ + rok izrade. Kupac tada bira količinu i upisuje boju ili duljinu. Isto vrijedi za klasičnu torbu u jednoj boji (npr. crnu) koja se šije ponovno: ostavite je u kategoriji Torbe, uključite kvačicu „Artikl po narudžbi“ i upišite rok izrade; na stranici dobiva oznaku „Po narudžbi“ umjesto „Jedan primjerak“ i ne rezervira se.
+**Vrsta** (v63): u obrascu birate jednu od tri mogućnosti. **Unikat**: torba postoji samo jednom, prikazuje se u rubrici Torbe i rezervira se kad je netko naruči. **Stalna kolekcija**: model koji šijete ponovno, po narudžbi (npr. crna klasična torba). Upišite rok izrade i „Najviše mjesta” (prazno = 3; 0 = trenutno ne prima narudžbe). Kupac naručuje jedan komad po narudžbi i boju ili duljinu upisuje u napomenu. **Ostalo**: remeni, torbice, platnene torbe po narudžbi, s rokom izrade; vidljivo samo kad je rubrika Ostalo uključena u Postavkama.
 
 **Fotografije**: uspravne, omjer oko 4:5, mirna pozadina. Prva je naslovna; naslovnu se mijenja u „Uredi“. Prenose se s telefona ravno iz galerije, smanjuju se na 1400 px same.
 
@@ -85,8 +85,10 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 
 **Link na torbu za Instagram objavu**: svaka torba ima oznaku (ID) koja se u adminu vidi ispod naziva sivim slovima (npr. `luna`). Link `https://vaša-domena/?izvor=ig#torba-luna` otvara stranicu i odmah povećani prikaz te torbe; `?izvor=ig` kaže Mjerenju da je posjet s Instagrama. U Instagram profil (bio) stavite `https://vaša-domena/?izvor=ig`, a u pojedinu objavu ili priču link s `#torba-ID`.
 
-## Stalna kolekcija i rubrika „Ostalo” (v62)
-- **Stalna kolekcija**: torba označena „Artikl po narudžbi” u kategoriji Torbe prikazuje se u rubrici „Stalna kolekcija”. U obrascu je polje **„Najviše narudžbi”** (zadano 3). U popisu Torbe piše „narudžbe 2/3”; kad je popunjeno, kupci vide „Trenutno popunjeno”.
+## Stalna kolekcija i rubrika „Ostalo” (v62, v63)
+- **Stalna kolekcija**: modeli s vrstom „Stalna kolekcija” prikazuju se u istoimenoj rubrici. Jedno mjesto je jedna torba. U popisu Torbe piše npr. „mjesta 2/3”. Mjesto zauzima tek potvrđena narudžba; nepotvrđene i stornirane se ne broje. Kad je model popunjen, kupci vide „Popunjeno” i poziv da vam se jave na Instagramu ili e-mailom, a vi dobivate redak u e-mailu nove narudžbe.
 - Mjesta se ne oslobađaju sama: kad ste spremni za nove narudžbe, u popisu Torbe kliknite **„Otvori nova mjesta”** (brojanje kreće od tog trenutka; stare narudžbe ostaju).
+- Gumb **„Otvori nova mjesta”** pojavljuje se tek kad je model popunjen (v63).
+- **Storniraj narudžbu** (Narudžbe, v63): uz svaku neplaćenu narudžbu. Narudžba se označi storniranom, unikatna torba se oslobađa, a mjesto u Stalnoj kolekciji se vraća. Kupcu se javite sami (poruka vam kaže na koju adresu).
 - **Rubrika „Ostalo”** (remeni, torbice, platnene torbe) uključuje se u Postavkama: „Prikaži rubriku Ostalo”. Dok je isključena, artikli ostaju u adminu, ali se ne vide i ne mogu naručiti.
 

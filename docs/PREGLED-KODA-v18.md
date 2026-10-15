@@ -464,3 +464,21 @@ Vlasnica 8/10, kupac 9/10.
 | Poruke u Rezervacijama bez broja / e-maila | riješeno |
 | „Ukloni oznaku” ne spominje drugu plaćenu narudžbu | riješeno |
 
+## Vijeće i šesti krug probnog korisnika na v62 (15. 10. 2026.) → v63 (admin v31, api v31)
+
+Sigurnost 7/10 („spremno uvjetno”); dizajn: trgovina 8, admin 7, e-mail 7,5; kupac 7/10 („možda”); probni korisnik: vlasnica 8, kupac 9.
+
+| Nalaz | Stanje u v63 |
+|---|---|
+| Lažna narudžba može popuniti Stalnu kolekciju i ne može se stornirati | riješeno: „Storniraj narudžbu” u Narudžbama za svaku neplaćenu; model kolekcije 1 komad po narudžbi; jedna otvorena narudžba kolekcije po e-mailu; nepotvrđene i stornirane se ne broje |
+| Brojanje mjesta prolazi kroz sve narudžbe i arhive za svaki model | riješeno: `sj_made_counts()` jednim prolazom, s predmemorijom; stare arhive se preskaču |
+| Vlasnica ne zna kad se model popunio | riješeno: u e-mailu nove narudžbe „zauzeto n od m mjesta” / „je sada popunjen … Otvori nova mjesta” |
+| Admin: kategorija i kvačica „po narudžbi” zbunjuju | riješeno: jedan izbor „Vrsta” (Unikat / Stalna kolekcija / Ostalo); prazan limit = 3 |
+| Skriveno Ostalo dostupno preko `#torba-ID`, stare košarice i ponovne provjere | riješeno |
+| Kupac: koliko se čeka, šalje li se mješovita narudžba zajedno | riješeno: rokovi s nazivima modela; „šaljemo zajedno, u jednom paketu” |
+| Kupac: može li vratiti model iz kolekcije | **otvoreno**: čeka pravno istraživanje (Uvjeti t. 6) |
+| Kartica popunjenog modela bez puta dalje | riješeno: „Popunjeno”, poruka s Instagramom i e-mailom |
+| Model kolekcije bez fotografije | riješeno: ne naručuje se („Fotografija uskoro”) |
+| Izbornik se prelama sa „Stalna kolekcija” | riješeno: bez prijeloma, hamburger ispod 960 px |
+| IBAN bez escapea, `last.pay` prepisuje globalne podatke, `fopen` bez provjere, stari barkodovi u `data/tmp`, `odbijene.json` raste | riješeno |
+| Storno link bez potvrde na poslužitelju; ime i e-mail kupca vidljivi bez prijave | riješeno: `confirm=1`; podaci kupca samo prijavljenoj vlasnici |
