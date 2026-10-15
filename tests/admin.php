@@ -139,7 +139,8 @@ $ok($okI && $okM, 'v26: Narudžbe trajno označuju SUKOB samo kod narudžbe za k
 $rz = $req('GET', ['s' => 'rez']);
 $ok(str_contains($rz, 'SJ-2026-0503'), 'v27: Rezervacije pokazuju broj narudžbe');
 /* v27: „Ukloni oznaku” u Rezervacijama skida i oznaku plaćeno s narudžbe (nema lažnog SUKOB-a) */
-$req('POST', ['act' => 'res_unsold', 'id' => 'tara', 'back' => '?s=rez']);
+$un62 = $req('POST', ['act' => 'res_unsold', 'id' => 'tara', 'back' => '?s=rez']);
+$ok(str_contains($un62, '(narudžba SJ-2026-0501)') && str_contains($un62, 'javite mu se (m@p.hr)') && str_contains($un62, 'plaćena je i narudžba SJ-2026-0502 (Iva I)'), 'v62: „Ukloni oznaku” — broj narudžbe, e-mail kupca i druga plaćena narudžba za istu torbu');
 $nl = json_decode(file_get_contents($D . '/narudzbe.json'), true); $byNo = []; foreach ($nl as $o) $byNo[$o['no']] = $o;
 $ok(empty($byNo['SJ-2026-0501']['paidAt']) && !empty($byNo['SJ-2026-0502']['paidAt']), 'v27: „Ukloni oznaku” u Rezervacijama uklanja oznaku plaćeno i s narudžbe tog kupca');
 $rel = $req('POST', ['act' => 'res_release', 'id' => 'luna', 'back' => '?s=rez']);
@@ -170,6 +171,20 @@ $ob = $req('POST', $set + ['site_url' => 'https://shivaj.hr', 'oib' => '12345678
 $ok(str_contains($ob, 'value="3 radna dana"'), 'v28: pri grešci u Postavkama obrazac zadrži upisano');
 $ob2 = $req('POST', array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '12345678901', 'from_email' => 'info@drugi.hr']));
 $ok(str_contains($ob2, 'odlaze s adrese info@drugi.hr'), 'v29: upozorenje u Postavkama prati upisanu adresu pošiljatelja');
+/* v62: prekidač „Ostalo”, Stalna kolekcija (narudžbe X/limit, Otvori nova mjesta), dulja poruka */
+$req('POST', array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '12345678903', 'show_ostalo' => '1']));
+$on = !empty(json_decode(file_get_contents($D . '/config.json'), true)['show_ostalo']);
+$req('POST', array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '12345678903']));
+$ok($on && empty(json_decode(file_get_contents($D . '/config.json'), true)['show_ostalo']) && str_contains($req('GET', ['s' => 'torbe']), 'Ostalo — skriveno na stranici'), 'v62: prekidač „Ostalo” se sprema; isključen — oznaka u popisu Torbe');
+$tv = $req('GET', ['s' => 'torbe']);
+$open = $req('POST', ['act' => 'made_open', 'id' => 'klasik', 'back' => '?s=torbe']);
+$pk = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if ($x['id'] === 'klasik') $pk = $x;
+$ok(preg_match('/narudžbe \d+\/20/', $tv) === 1 && str_contains($tv, 'Otvori nova mjesta') && str_contains($open, 'Otvorena su nova mjesta za „Klasik crna”') && !empty($pk['made_open_from']), 'v62: Stalna kolekcija — „narudžbe X/20”, „Otvori nova mjesta” postavlja početak brojanja');
+$rr3 = $rd(); $many = [];
+for ($k = 0; $k < 9; $k++) { $rr3['res']['dug' . $k] = ['id' => 'dug' . $k, 'token' => 'tD' . $k, 'name' => 'Kupac ' . $k, 'email' => 'vrlo.dugacka.adresa.kupca.' . $k . '@primjer-dugacke-domene.hr', 'ip' => 'fedcba9876543210', 'since' => '2026-10-12T14:00:00Z', 'at' => '2026-10-12T14:00:00Z', 'until' => '2099-01-01T00:00:00Z', 'ordered' => true]; }
+file_put_contents($D . '/rezervacije.json', json_encode($rr3));
+$long = $req('POST', ['act' => 'res_release_ip', 'ip' => 'fedcba9876543210', 'back' => '?s=rez']);
+$ok(str_contains($long, 'vrlo.dugacka.adresa.kupca.8@primjer-dugacke-domene.hr'), 'v62: poruka „Storniraj sve s ove adrese” nije odrezana (svih 9 kupaca)');
 $ok(str_contains($ob, 'OIB nije ispravan') && ($req('POST', $set + ['site_url' => 'https://shivaj.hr', 'oib' => '12345678903']) && (json_decode(file_get_contents($D . '/config.json'), true)['oib'] ?? '') === '12345678903'), 'v27: OIB s pogrešnom kontrolnom znamenkom se odbija, ispravan sprema');
 $bad = $req('POST', $set + ['site_url' => 'https://ne valja', 'oib' => '123']);
 $ok(str_contains($bad, 'nije ispravna') && (json_decode(file_get_contents($D . '/config.json'), true)['site_url'] ?? '') === 'https://shivaj.hr', 'v26: neispravna adresa se ne sprema');

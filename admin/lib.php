@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v29');
+define('SJ_VERSION', 'admin v30');
 
 /* ---------- postavke ---------- */
 
@@ -29,6 +29,7 @@ function sj_defaults(): array {
     'ttl_hours'        => 24,                          // koliko sati traje rezervacija
     'confirm_customer' => true,                        // automatska potvrda kupcu
     'require_confirm'  => true,                        // narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila
+    'show_ostalo'      => false,                       // v62: rubrika „Ostalo” (artikli po narudžbi) na stranici; kod ostaje
     'confirm_minutes'  => 60,                          // koliko minuta vrijedi link za potvrdu
     'mail_mode'        => 'mail',                      // 'mail' = PHP mail(); 'log' = data/mail-log.txt (test)
     'allowed_origins'  => [],                          // dodatni dopušteni izvori za API (npr. testni)
@@ -199,6 +200,31 @@ function sj_orders_prepend(array $entry, int $keep = 300): void {
 }
 
 /* Datoteke s narudžbama, od najnovije: narudzbe.json pa godišnje arhive (novija godina prva) */
+/* v62: Stalna kolekcija — model po narudžbi (made, kategorija torbe) prima ograničen broj narudžbi.
+   Broje se zaprimljene narudžbe (i arhiva) od trenutka kad je vlasnica otvorila mjesta (made_open_from), bez storniranih.
+   Mjesta se ne oslobađaju sama: vlasnica ih otvara u adminu („Otvori nova mjesta”). */
+function sj_is_collection(array $p): bool { return !empty($p['made']) && (($p['cat'] ?? 'torbe') === 'torbe'); }
+function sj_made_limit(array $p): int { return max(0, (int)($p['made_limit'] ?? 3)); }
+function sj_made_used(string $id, string $from = ''): int {
+  $t0 = $from !== '' ? (int)strtotime($from) : 0; $n = 0;
+  foreach (sj_order_files() as $f) foreach (sj_read_json($f, []) as $o) {
+    if (!empty($o['cancelledAt']) || (int)strtotime((string)($o['at'] ?? '')) < $t0) continue;
+    foreach ((array)($o['order']['items'] ?? []) as $it) if ((string)($it['id'] ?? '') === $id) $n += max(1, (int)($it['qty'] ?? 1));
+  }
+  return $n;
+}
+function sj_made_left(array $p): int { return max(0, sj_made_limit($p) - sj_made_used((string)($p['id'] ?? ''), (string)($p['made_open_from'] ?? ''))); }
+
+/* v62: druga plaćena narudžba za istu torbu (SUKOB) — da je vlasnica nakon „Ukloni oznaku” ne proda trećem kupcu */
+function sj_other_paid(string $id, string $exceptNo): string {
+  foreach (sj_order_files() as $f) foreach (sj_read_json($f, []) as $o) {
+    if (empty($o['paidAt']) || ($o['no'] ?? '') === $exceptNo) continue;
+    foreach ((array)($o['order']['items'] ?? []) as $it) if ((string)($it['id'] ?? '') === $id && empty($it['made']))
+      return ' PAŽNJA: za ' . sj_product_names([$id]) . ' plaćena je i narudžba ' . (string)($o['no'] ?? '') . ' (' . (string)($o['name'] ?? '') . ') — označite torbu plaćenom za nju, a ne prodajte je drugome.';
+  }
+  return '';
+}
+
 function sj_order_files(): array {
   $arh = glob(SJ_DATA . '/narudzbe-arhiva-*.json') ?: [];
   rsort($arh);
