@@ -132,25 +132,15 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 
 | Što | Zadano | Zašto |
 |---|---|---|
-
 | Rezervacija unikata | 24 h | Kupac ima vremena uplatiti; s potvrdom uplate torba ostaje i nakon toga. |
-
 | Link za potvrdu | 60 min | Može se postaviti od 10 minuta do 24 sata. |
-
 | E-mailovi za potvrdu na istu adresu | 2 / sat | Stranica ne smije slati poštu na tuđe adrese. |
-
 | Stavki u narudžbi | 6 | Od toga najviše 2 unikata. |
-
 | Komada istog modela iz kolekcije | 1 | Za više komada kupac se javlja. |
-
 | Neplaćenih narudžbi po e-mailu | 1 + 1 | Jedna s unikatom i jedna iz kolekcije. |
-
 | Neplaćenih narudžbi s unikatom s iste veze | 6 | Kupci na istoj mobilnoj ili kućnoj mreži dijele vezu. |
-
 | Neplaćenih narudžbi iz kolekcije s iste veze | 3 | Lažne narudžbe ne smiju popuniti modele. |
-
 | Narudžbi na sat s iste veze | 10 | Zaštita od skripti. |
-
 | Narudžbi vidljivih u adminu | 300 | Starije su u arhivi; „Označi plaćenom” ih i dalje nalazi. |
 
 ## Što je još otvoreno
