@@ -525,3 +525,23 @@ Sigurnost 7/10 („spremno uvjetno”); dizajn: trgovina 8, admin 7,5, e-mail 7,
 | Kupac: povratak iz povećanog prikaza na vrh | riješeno |
 | Dizajn: vremenska zona | riješeno (Europe/Zagreb) |
 | Kupac: pravo na raskid uz želju | čeka pravno istraživanje |
+
+## Vijeće na v65 (19. 10. 2026.) → v66 (admin v34, api v34)
+
+Sigurnost 8/10 („spremno”); dizajn: trgovina 8,5, admin 8, e-mail 8; kupac 9/10.
+
+| Nalaz | Stanje u v66 |
+|---|---|
+| N65-1: nekoliko veza i adresa popuni kolekciju; mjesta ostaju | ograničenje dizajna; rok za neplaćene nije uveden (odluka vlasnika) |
+| N65-2: U+2028 i znakovi smjera u jednorednim poljima | riješeno: `sj_clean`; test |
+| N65-3: starije lažne narudžbe „guraju se” iz popisa | riješeno: neplaćene iz kolekcije uvijek vidljive; test |
+| N65-4: netočna poruka kod granice po modelu | riješeno: model i broj mjesta; test |
+| N65-5: tekst kupca u e-mailu trgovine | bez promjene (uz potvrdu e-mailom) |
+| Dizajn 1: Ostalo dobiva tekst za torbe | riješeno; e2e |
+| Dizajn 2–3: ponavljanje na ploči i u e-mailu | riješeno |
+| Dizajn 4: „unikat odmah” | riješeno: naziv torbe i dvije dostave |
+| Dizajn 5–9: napomena, želja, ograda rezervacije, torba bez imena, PAŽNJA | riješeno |
+| Dizajn 10–11: admin Torbe i Narudžbe | riješeno |
+| Dizajn 12: sitnice (veliko slovo, datum, crtica, hash) | riješeno |
+| Kupac 1: rezervacija obećana bezuvjetno | riješeno: uvjetno, prije uplate |
+| Kupac: proturječje Uvjeta t. 2 / t. 4 | za pravnika |

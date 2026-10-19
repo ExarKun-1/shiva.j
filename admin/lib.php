@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v33');
+define('SJ_VERSION', 'admin v34');
 
 /* ---------- postavke ---------- */
 
@@ -632,6 +632,10 @@ function e($s): string { return htmlspecialchars((string)($s ?? ''), ENT_QUOTES 
 function sj_clean(?string $v, int $max, bool $multiline = false): string {
   $v = trim((string)$v);
   if (!mb_check_encoding($v, 'UTF-8')) $v = mb_convert_encoding($v, 'UTF-8', 'UTF-8'); /* neispravni bajtovi → ne ruši unos */
+  /* v66: i Unicode prijelomi reda (U+0085, U+2028, U+2029) i znakovi za smjer teksta — inače bi jednoredno polje
+     u e-mailu vlasnici moglo podmetnuti „novi redak” ili okrenuti tekst */
+  $v = preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $v) ?? '';
+  $v = preg_replace('/[\x{0085}\x{2028}\x{2029}]/u', $multiline ? "\n" : ' ', $v) ?? '';
   $v = preg_replace($multiline ? '/[\x00-\x08\x0B\x0C\x0E-\x1F]/u' : '/[\x00-\x1F\x7F]/u', $multiline ? '' : ' ', $v);
   if ($v === null) $v = '';
   return mb_substr($v, 0, $max);

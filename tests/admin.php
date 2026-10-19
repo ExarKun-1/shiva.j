@@ -198,6 +198,11 @@ $o601b = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), tr
 $nv2 = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
 preg_match('/SJ-2026-0601.*?<\/tr>/s', $nv2, $row601);
 $ok(str_contains($px, 'je stornirana, pa se ne može označiti plaćenom') && empty($o601b['paidAt']) && isset($row601[0]) && !str_contains($row601[0], 'Označi plaćenom'), 'v64: stornirana narudžba — bez „Označi plaćenom”, a radnja se odbija');
+/* v66: starija neplaćena narudžba iz kolekcije (u arhivi) uvijek vidljiva; tel: poveznica; „Privremeno isključi” */
+file_put_contents($D . '/narudzbe-arhiva-' . date('Y') . '.json', json_encode([['no' => 'SJ-2026-0500', 'at' => date('c', time() - 86400 * 40), 'name' => 'Stara Kol', 'email' => 'stara@p.hr', 'phone' => '091 500 0500', 'reservation' => null, 'items' => 'Klasik crna', 'order' => ['items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'made' => true, 'qty' => 1, 'price' => 60]], 'unheld' => []]]]));
+$nv3 = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
+$tv3 = $req('GET', ['s' => 'torbe']);
+$ok(preg_match('/SJ-2026-0500<br><span class="badge ink">starija neplaćena \(kolekcija\)<\/span>/', $nv3) === 1 && str_contains($nv3, 'href="tel:0915000500"') && str_contains($tv3, 'Privremeno isključi') && !str_contains($tv3, '>Nedostupno<'), 'v66: starija neplaćena narudžba iz kolekcije vidljiva; tel: poveznica; „Privremeno isključi”');
 $ok(preg_match('/<tr class="is-cancelled"><td class="mono">SJ-2026-0601<br><span class="badge grey">stornirano<\/span>/', $nv2) === 1 && str_contains($req('GET', ['s' => 'torbe']), '<th>Vrsta</th>'), 'v65: stornirana narudžba označena i blijeda; Torbe — stupac „Vrsta”');
 /* v63: izbor „Vrsta” postavlja kategoriju i „po narudžbi” */
 preg_match('/name="csrf" value="([^"]+)"/', $curl(["http://127.0.0.1:$port/admin/?s=nova"]), $cv);

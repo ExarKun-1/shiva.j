@@ -525,13 +525,14 @@ function sj_view_products(): string {
     /* v22: isti nazivi kao u Rezervacijama, oba smjera uz potvrdu */
     $nmP = (string)($p['name'] ?? $id); $madeP = !empty($p['made']); $soldP = !empty($p['sold']);
     $h .= sj_btn('toggle', ['id' => $id, 'field' => 'sold', 'to' => $soldP ? '0' : '1'],
-      $soldP ? ($madeP ? 'Dostupno' : 'Vrati u prodaju') : ($madeP ? 'Nedostupno' : 'Označi trajno prodanom'), $back, true,
+      $soldP ? ($madeP ? 'Ponovno uključi' : 'Vrati u prodaju') : ($madeP ? 'Privremeno isključi' : 'Označi trajno prodanom') /* v66: radnja, ne stanje */, $back, true,
       $soldP ? ($madeP ? "„{$nmP}” ponovno dostupan za narudžbu?" : "Vratiti „{$nmP}” u prodaju? Torba će se ponovno nuditi kupcima." . (!empty($res['sold'][$id]['name']) ? ' Plaćena je za kupca ' . $res['sold'][$id]['name'] . ($res['sold'][$id]['no'] ?? '' ? ' (' . $res['sold'][$id]['no'] . ')' : '') . ' — ako mu vraćate novac, uklonite i oznaku u Narudžbama.' : ''))
              : ($madeP ? "Označiti „{$nmP}” kao trenutno nedostupan?" : "Označiti „{$nmP}” trajno prodanom? Više se neće nuditi kupcima."));
     if ($collP && $usedP >= sj_made_limit($p)) $h .= sj_btn('made_open', ['id' => $id], 'Otvori nova mjesta', $back, true, 'Otvoriti ' . sj_count_words(sj_made_limit($p), 'novo mjesto', 'nova mjesta', 'novih mjesta') . ' za „' . $nmP . '”? Dosadašnje narudžbe ostaju, brojanje kreće od sada.');
     $h .= sj_btn('toggle', ['id' => $id, 'field' => 'hidden', 'to' => !empty($p['hidden']) ? '0' : '1'], !empty($p['hidden']) ? 'Prikaži' : 'Sakrij', $back, true);
-    if ($i > 0) $h .= sj_btn('move', ['id' => $id, 'dir' => 'up'], '↑', $back, true);
-    if ($i < $n - 1) $h .= sj_btn('move', ['id' => $id, 'dir' => 'down'], '↓', $back, true);
+    /* v66: prazno mjesto umjesto izostavljene strelice — gumbi ne „skaču” od retka do retka */
+    $h .= $i > 0 ? sj_btn('move', ['id' => $id, 'dir' => 'up'], '↑', $back, true) : '<span class="arrow-gap" aria-hidden="true"></span>';
+    $h .= $i < $n - 1 ? sj_btn('move', ['id' => $id, 'dir' => 'down'], '↓', $back, true) : '<span class="arrow-gap" aria-hidden="true"></span>';
     $h .= str_replace('<button class="alt">', '<button class="alt danger">', sj_btn('delete_product', ['id' => $id], 'Obriši', $back, true, 'Obrisati „' . ($p['name'] ?? $id) . '“? Fotografije ostaju u mapi img.'));
     $h .= '</td></tr>';
   }
@@ -659,7 +660,18 @@ function sj_view_orders(): string {
   foreach ($rd['res'] as $r) if (!empty($r['token'])) $active[(string)$r['token']] = true;
   $pn = []; $pById = []; foreach (sj_products() as $p) { $pn[(string)($p['id'] ?? '')] = (string)($p['name'] ?? ''); $pById[(string)($p['id'] ?? '')] = $p; }
   $h = '<div class="tablewrap"><table class="cards t-nar"><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th><th>Uplata</th></tr></thead><tbody>';
-  foreach (array_slice($list, 0, 100) as $o) {
+  /* v66: uz zadnjih 100 uvijek i starije neplaćene narudžbe iz Stalne kolekcije (i iz arhive tekuće godine) —
+     inače bi ih mnogo novih narudžbi „sakrilo”, a mjesta bi ostala zauzeta */
+  $show = array_slice($list, 0, 100); $seenNo = []; foreach ($show as $o) $seenNo[(string)($o['no'] ?? '')] = true;
+  $collIds = []; foreach ($pById as $pid => $pp) if (sj_is_collection($pp)) $collIds[$pid] = true;
+  foreach ([array_slice($list, 100), sj_read_json(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', [])] as $more)
+    foreach ($more as $o) {
+      $nn = (string)($o['no'] ?? '');
+      if ($nn === '' || isset($seenNo[$nn]) || !empty($o['paidAt']) || !empty($o['cancelledAt'])) continue;
+      if (!array_filter((array)($o['order']['items'] ?? []), fn($it) => isset($collIds[(string)($it['id'] ?? '')]))) continue;
+      $o['_older'] = true; $show[] = $o; $seenNo[$nn] = true;
+    }
+  foreach ($show as $o) {
     $no = (string)($o['no'] ?? '');
     $tok = (string)($o['reservation']['token'] ?? '');
     /* aktivna rezervacija se označuje kod rezervacija (torba ode iz ponude); istekla ima gumb ovdje */
@@ -689,7 +701,7 @@ function sj_view_orders(): string {
     $canc = !empty($o['cancelledAt']);
     /* v65: aktivna rezervacija — do kada */
     if (empty($o['paidAt']) && !$canc && $tok !== '' && isset($active[$tok]) && !empty($o['reservation']['until'])) $paid = '<span class="muted">rezervirano do ' . e(sj_fmt_hr((string)$o['reservation']['until'])) . '</span><br>' . $paid;
-    $h .= '<tr' . ($canc ? ' class="is-cancelled"' : '') . '><td class="mono">' . e($no) . ($canc ? '<br><span class="badge grey">stornirano</span>' : '') . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span>' . (($o['phone'] ?? '') !== '' ? '<br><span class="muted">' . e((string)$o['phone']) . '</span>' : '') . '</td><td>' . ($kinds ? implode('<br>', $kinds) : '<pre>' . e($o['items'] ?? '') . '</pre>') . (($o['note'] ?? '') !== '' ? '<br><b>Napomena:</b> ' . e((string)$o['note']) : '') . '</td><td>' . e($o['shipping'] ?? '') . ($locker !== '' ? '<br><span class="muted">Paketomat: ' . e($locker) . '</span>' : ($addrO !== '' ? '<br><span class="muted">' . e($addrO) . '</span>' : '')) . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
+    $h .= '<tr' . ($canc ? ' class="is-cancelled"' : '') . '><td class="mono">' . e($no) . ($canc ? '<br><span class="badge grey">stornirano</span>' : '') . (!empty($o['_older']) ? '<br><span class="badge ink">starija neplaćena (kolekcija)</span>' : '') . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><a class="muted" href="mailto:' . e((string)($o['email'] ?? '')) . '">' . e($o['email'] ?? '') . '</a>' . (($o['phone'] ?? '') !== '' ? '<br><a class="muted" href="tel:' . e(preg_replace('/[^0-9+]/', '', (string)$o['phone'])) . '">' . e((string)$o['phone']) . '</a>' : '') . '</td><td>' . ($kinds ? implode('<br>', $kinds) : '<pre>' . e($o['items'] ?? '') . '</pre>') . (($o['note'] ?? '') !== '' ? '<br><b>Napomena:</b> ' . e((string)$o['note']) : '') . '</td><td>' . e($o['shipping'] ?? '') . ($locker !== '' ? '<br><span class="muted">Paketomat: ' . e($locker) . '</span>' : ($addrO !== '' ? '<br><span class="muted">' . e($addrO) . '</span>' : '')) . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
   $h .= '</tbody></table></div>';
   return $h . $rejHtml . '<p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Plaćeno” ovdje označuje cijelu narudžbu: torbe s rezervacijom postaju plaćene, a torbe bez rezervacije (ili s isteklom) pripadaju ovom kupcu ako je uplatio prvi; ako je torbu u međuvremenu držao ili kupio drugi kupac, admin to javi.</p>';
@@ -829,7 +841,10 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   td.acts{white-space:nowrap}td.acts form{margin-bottom:4px}td.acts button{padding:5px 9px;font-size:.72rem}tr.dim td{opacity:.55}
   /* v65 */
   .t-nar td.mono,.t-tor td.mono,.nw{white-space:nowrap}
-  .t-nar tr.is-cancelled td{opacity:.55}
+  .t-nar tr.is-cancelled td{color:#8a887f}.t-nar tr.is-cancelled .badge{color:#5C5A53;border-color:#5C5A53;border-style:solid}
+  .t-nar td:nth-child(2){white-space:nowrap}
+  button.alt.danger{margin-left:12px}.arrow-gap{display:inline-block;width:40px}
+  @media (min-width:701px){.t-tor td:nth-child(5){min-width:180px}}
   button.alt.danger{color:#9B2C1F;border-color:#9B2C1F}
   a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
   @media (min-width:701px){.t-tor td:nth-child(2){min-width:220px}}
