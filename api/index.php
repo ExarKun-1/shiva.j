@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v34)
+   SHIVA.J — javni API na hostingu   (api/index.php v35)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -16,6 +16,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v35: rok izrade za više artikala s nazivima (isti rok jednom); „javit ćemo vam se”
    v34: sj_clean uklanja Unicode prijelome reda i znakove smjera; granica po modelu ima vlastitu poruku (model, broj
         mjesta); otvorena narudžba nosi vrstu (kind); e-mail kupcu: izrada, rok i slanje u jednom odlomku, bez datuma
         rezervacije u uvodu, „izradu bez te želje”, „uplatite što prije”; e-mail vlasnici: PAŽNJA jednom, s nazivima
@@ -1023,10 +1024,11 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   if ($anyMade) {
     /* v66: izrada, rok i slanje u jednom odlomku (prije tri puta isto) */
     $madeIt = array_values(array_filter($items, fn($it) => !empty($it['made'])));
-    $ld = []; foreach ($madeIt as $it) if (!empty($it['lead'])) $ld[] = (count($madeIt) > 1 ? '„' . $it['name'] . '”: ' : '') . $it['lead'];
-    $ld = array_values(array_unique($ld));
+    /* v67: isti rok jednom; različiti s nazivima („A” 5 radnih dana, „B” 7 radnih dana) */
+    $ldU = array_values(array_unique(array_map(fn($it) => (string)$it['lead'], array_filter($madeIt, fn($it) => !empty($it['lead'])))));
+    $ld = count($ldU) > 1 ? [implode(', ', array_map(fn($it) => '„' . $it['name'] . '” ' . $it['lead'], array_filter($madeIt, fn($it) => !empty($it['lead']))))] : $ldU;
     $subj = $allColl && !$anyUnique ? (count($madeIt) > 1 ? 'vaše torbe' : 'vašu torbu') : sj_and_join(array_map(fn($it) => '„' . (string)$it['name'] . '”', $madeIt));
-    $sent = 'Čim uplata bude vidljiva, ' . ($allColl ? 'šijemo ' : 'izrađujemo ') . $subj . ($ld ? ' (rok izrade ' . implode('; ', $ld) . ' od primitka uplate)' : ' (rok izrade teče od primitka uplate)');
+    $sent = 'Čim uplata bude vidljiva, ' . ($allColl ? 'šijemo ' : 'izrađujemo ') . $subj . ($ld ? (count($ldU) > 1 ? ' (rok izrade od primitka uplate: ' . $ld[0] . ')' : ' (rok izrade ' . $ld[0] . ' od primitka uplate)') : ' (rok izrade teče od primitka uplate)');
     if ($anyUnique) $sent .= $pickup ? ', a kad je sve gotovo, cijelu narudžbu pripremamo za preuzimanje u radionici.'
       : ', zatim cijelu narudžbu — ' . sj_and_join(array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', $items)) . ' — šaljemo zajedno, u jednom paketu' . ($shipLead !== '' ? '; slanje je obično ' . $shipLead . ' nakon izrade.' : ', kad je sve gotovo.');
     else $sent .= $pickup ? ', a gotovu narudžbu pripremamo za preuzimanje u radionici.' : '; gotovu narudžbu pažljivo pakiramo i šaljemo' . ($shipLead !== '' ? ', obično ' . $shipLead . ' nakon izrade.' : '.');
@@ -1038,7 +1040,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $t[] = '';
     /* v65: želja kupca (boja, duljina) — potvrda i obećanje iz košarice */
     foreach ($madeIt as $it) if (trim((string)($it['note'] ?? '')) !== '')
-      $t[] = 'Vaša želja za „' . $it['name'] . '”: ' . trim((string)$it['note']) . '. Ako je ne možemo ispuniti, javimo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa.';
+      $t[] = 'Vaša želja za „' . $it['name'] . '”: ' . trim((string)$it['note']) . '. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa.';
   }
   $t[] = '';
   $what = (!$anyMade || $allColl) ? (count($items) > 1 ? 'Torbe' : 'Torbu') : (count($items) > 1 ? 'Artikle' : 'Artikl');

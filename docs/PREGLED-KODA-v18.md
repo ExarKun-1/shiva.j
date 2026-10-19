@@ -545,3 +545,21 @@ Sigurnost 8/10 („spremno”); dizajn: trgovina 8,5, admin 8, e-mail 8; kupac 9
 | Dizajn 12: sitnice (veliko slovo, datum, crtica, hash) | riješeno |
 | Kupac 1: rezervacija obećana bezuvjetno | riješeno: uvjetno, prije uplate |
 | Kupac: proturječje Uvjeta t. 2 / t. 4 | za pravnika |
+
+## Recenzija v66 (19. 10. 2026.) → v67 (admin v35, api v35)
+
+Sigurnost 8/10 („spremno”); dizajn: trgovina 8,5, admin 7,5, e-mail 8,5; kupac 9,5/10.
+
+| Nalaz | Stanje u v67 |
+|---|---|
+| Dizajn 1 (visoko): „Obriši” odrezan u Torbama (regresija v66) | riješeno: gumbi u dva retka; provjereno na 1024/1280/1440 |
+| N66-1: popis starijih bez granice, i narudžbe koje ne drže mjesto | riješeno: isti uvjet kao brojanje, najviše 300, zasebna tablica; test |
+| N66-2: mailto: s podmetnutim ?subject=/cc= | riješeno: poveznica samo za običnu adresu; test |
+| N66-3: neplaćena iz prošlogodišnje arhive drži mjesto, a ne vidi se | riješeno: sve arhive od zadnjeg otvaranja |
+| N66-4: \p{Cf}, C1, ime od nevidljivih znakova | riješeno; test |
+| N66-5: tel: spaja više brojeva | riješeno: poveznica samo za pravi broj |
+| Dizajn 2: korak 02 i otvorena narudžba obećavaju rezervaciju | riješeno (Uvjeti kod pravnika) |
+| Dizajn 3: „naručili po narudžbi”, rokovi za više artikala | riješeno; test |
+| Dizajn 4: povrat dvaput; mješovita narudžba dvosmislena | povrat jednom s nazivom; mješovita čeka odluku vlasnika |
+| Dizajn 5–9: starije narudžbe na dnu, „nedostupn”, glasna iznimka, storno sivo, sitnice | riješeno |
+| Kupac: odustajanje bez rezervacije | čeka odluku vlasnika |
