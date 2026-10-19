@@ -1,4 +1,4 @@
-_Shiva.J · upute za trgovinu · stranica v65_
+_Shiva.J · upute za trgovinu · stranica v66_
 
 # Kako idu narudžbe
 
@@ -26,7 +26,7 @@ _Torbe_
 
 ### Unikat
 
-Postoji samo jednom. Potvrdom narudžbe rezervira se za kupca (zadano 24 sata). U jednoj narudžbi najviše dva unikata.
+Postoji samo jednom. Potvrdom narudžbe rezervira se za kupca (zadano 24 sata), osim kad previše narudžbi već čeka uplatu; kupac to vidi odmah, prije uplate. U jednoj narudžbi najviše dva unikata.
 
 _Stalna kolekcija_
 
@@ -45,7 +45,7 @@ Unikat se rezervira, model zauzme mjesto. Sve se šalje zajedno, u jednom paketu
 ### 1. Košarica
 
 **Kupac vidi:**
-Unikat u košarici bez količine. Model iz kolekcije s natpisom „1 kom · najviše jedan po narudžbi” i poljem „Boja, duljina i želje (neobavezno)”. Ispod polja: „Uplatiti možete odmah. Ako vašu želju ne možemo ispuniti, javimo vam se prije izrade, a vi birate: torbu bez te želje ili povrat cijelog iznosa.”
+Unikat u košarici bez količine. Model iz kolekcije s natpisom „1 kom · najviše jedan po narudžbi” i poljem „Boja, duljina i želje (neobavezno)”. Ispod polja: „Ne morate čekati naš odgovor: uplatite odmah nakon narudžbe. Ako želju ne možemo ispuniti, javimo vam se prije izrade, a vi birate: izradu bez te želje ili povrat cijelog iznosa.”
 
 **Jasmina:**
 Ništa. Torba u nečijoj košarici nikoga ne blokira.
@@ -145,7 +145,7 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 
 ## Što je još otvoreno
 
-**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (torba bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate za unikat bez rezervacije) te rok čuvanja starih i storniranih narudžbi u arhivi.
+**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (izrada bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate za unikat bez rezervacije) te rok čuvanja starih i storniranih narudžbi u arhivi.
 
 ---
-_Shiva.J · dokument uz stranicu v65 (api v33, admin v33) · snimljeno 16. 10. 2026. na probnoj stranici_
+_Shiva.J · dokument uz stranicu v66 (api v34, admin v34) · snimljeno 16. 10. 2026. na probnoj stranici_

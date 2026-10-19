@@ -130,6 +130,9 @@ $zj = sj_read_json(SJ_DATA . '/zahtjevi.json', []);
 $visits = count(array_filter(array_keys($zj), fn($k) => str_starts_with($k, 'visit|')));
 $ok(isset($zj['sve|mailto-zrtva']) && count($zj) <= 5000 && $visits < 2100 && count(array_filter(array_keys($zj), fn($k) => str_starts_with($k, 't|'))) === 3000, 'pri 5000 ključeva: sve| ostaje, ispadaju brojači posjeta (' . count($zj) . ' ključeva, ' . $visits . ' visit)');
 
+/* v66: Unicode prijelomi reda i znakovi smjera ne ulaze u jednoredna polja (lažni redak u e-mailu vlasnici) */
+$ok(sj_clean("crna\u{2028}Poziv na broj: 99", 80) === 'crna Poziv na broj: 99' && sj_clean("a\u{202E}b\u{200F}c", 80) === 'abc' && sj_clean("x\u{2029}y", 80, true) === "x\ny", 'v66: sj_clean uklanja U+2028/U+2029 i znakove smjera');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

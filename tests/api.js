@@ -105,7 +105,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const c3r = await post('order', order('api-key-0018-rrrr', 'c3@primjer.hr', [{ id: 'vela' }], 70));
     ok(c3r.data.repeated && c3r.data.orderNo === c3.data.orderNo && c3r.data.reserved === false, 'ponovljeni ključ vraća istu narudžbu bez rezervacije');
     const mlc = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/Subject: PAŽNJA, mnogo rezervacija — Narudžba/.test(mlc) && /bez rezervacije \(dobiva je tko prvi uplati[^)]*\): Vela/.test(mlc) && /dobiva je tko prvi uplati/.test(mlc), 'vlasnica dobiva upozorenje, kupac objašnjenje „tko prvi uplati”');
+    ok(/Subject: PAŽNJA, mnogo rezervacija — Narudžba/.test(mlc) && /PAŽNJA: „Vela” je bez rezervacije — dobiva je tko prvi uplati \(kupcu smo to napisali/.test(mlc) && !/Kupcu smo to napisali\./.test(mlc) && /dobiva je tko prvi uplati/.test(mlc), 'vlasnica dobiva upozorenje, kupac objašnjenje „tko prvi uplati”');
     // 11) tuđa košarica (rezervacija bez narudžbe) ne blokira
     clearLimits(); clearRes();
     const cart = await post('reserve', { ids: ['nera'], name: 'Košarica', email: 'kosarica@primjer.hr' });
@@ -244,12 +244,13 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     { const pl = prods(); const k = pl.find(x => x.id === 'klasik'); pl.push(Object.assign({}, k, { id: 'klasik2', name: 'Klasik smeđa', made_limit: 3, made_open_from: new Date(Date.now() - 1000).toISOString() })); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(pl, null, 2)); }
     const w1 = await post('order', order('api-key-wish-eeee', 'wish@primjer.hr', [{ id: 'klasik2', qty: 1, note: 'smeđi remen' }], 60));
     const mlW = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(w1.data.ok && /Vaša želja za „Klasik smeđa”: smeđi remen\. Ako je ne možemo ispuniti, javimo vam se prije izrade — tada birate torbu bez te želje ili povrat cijelog iznosa\./.test(mlW) && /ŽELJA KUPCA — Klasik smeđa: smeđi remen/.test(mlW), 'v65: želja kupca — potvrda kupcu, istaknuto vlasnici');
+    ok(k1b.data.code === 'open_order' && k1b.data.kind === 'coll' && /Čim uplata bude vidljiva, šijemo vašu torbu \(rok izrade 5 radnih dana od primitka uplate\)/.test(mlW) && !/Torbu iz Stalne kolekcije šijemo za vas nakon uplate/.test(mlW), 'v66: otvorena narudžba nosi vrstu; e-mail kupcu — izrada, rok i slanje u jednom odlomku');
+    ok(w1.data.ok && /Vaša želja za „Klasik smeđa”: smeđi remen\. Ako je ne možemo ispuniti, javimo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa\./.test(mlW) && /ŽELJA KUPCA — Klasik smeđa: smeđi remen/.test(mlW), 'v65: želja kupca — potvrda kupcu, istaknuto vlasnici');
     setLimits({ coll_model_per_ip: 0 }); clearLimits();
     const m2 = await post('order', order('api-key-mod2-eeee', 'mod2@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
     const m3 = await post('order', order('api-key-mod3-eeee', 'mod3@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
     const stM = await (await fetch(U + 'status')).json();
-    ok(m2.data.ok && m3.status === 429 && /Stalne kolekcije/.test(m3.data.error || '') && stM.madeLeft.klasik2 === 1, 'v65: s iste veze najviše limit − 1 mjesta jednog modela (3 mjesta → 2 s iste veze), treće odbijeno: ' + m2.status + '/' + (stM.madeLeft && stM.madeLeft.klasik2));
+    ok(m2.data.ok && m3.status === 429 && /već je zauzeto više mjesta za „Klasik smeđa”/.test(m3.data.error || '') && /neplaćene narudžbe već drže 2 mjesta modela „Klasik smeđa”/.test(fs.readFileSync(D + 'mail-log.txt', 'utf8')) && stM.madeLeft.klasik2 === 1, 'v65: s iste veze najviše limit − 1 mjesta jednog modela (3 mjesta → 2 s iste veze), treće odbijeno: ' + m2.status + '/' + (stM.madeLeft && stM.madeLeft.klasik2));
     setLimits({ coll_model_per_ip: 50 }); clearLimits();
     { const n = read('narudzbe.json'); n.unshift({ no: 'SJ-2026-9997', at: new Date().toISOString(), email: 'plac@primjer.hr', unconfirmed: true, paidAt: new Date().toISOString(), order: { items: [{ id: 'klasik2', qty: 1, made: true }] } }); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
     const stN = await (await fetch(U + 'status')).json();
@@ -265,10 +266,10 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/Rezervacija vrijedi 24 sata/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x));
-      const uniq = custs.filter(x => !/Rok izrade/.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /Rok izrade/.test(x));
+      const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
         'v25: e-mail kupcu — potvrda na vrhu, poziv na broj „bez SJ-”, „kopirajte”');
-      ok(uniq.length > 0 && uniq.every(x => !/posebnim željama/.test(x) && /rezervirana za vas do \d/.test(x)), 'v25: narudžba samo s unikatima — rok u uvodu, bez rečenice o izradi po željama');
+      ok(uniq.length > 0 && uniq.every(x => !/posebnim željama/.test(x) && /je rezervirana za vas — postoji/.test(x) && /Rezervacija vrijedi [^\n]*, do \d/.test(x)), 'v25: narudžba samo s unikatima — rok u uvodu, bez rečenice o izradi po željama');
       ok(made.length > 0 && made.every(x => /raskinuti \(osim artikala izrađenih po vašim posebnim željama\) u roku 14 dana/.test(x) && !/ne vrijedi pravo na jednostrani raskid/.test(x)), 'v25: narudžba s artiklom po narudžbi — jedna iznimka, istim riječima kao Uvjeti'); }
     ok(/kliknite „Označi plaćenom” prije isteka rezervacije/.test(ml) && /Poziv na broj \(za usporedbu s izvodom banke\): \d{4}-\d{4}/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }

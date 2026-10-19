@@ -94,4 +94,4 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - S iste internetske veze primaju se najviše 3 neplaćene narudžbe iz Stalne kolekcije, a od jednog modela najviše jedno mjesto manje od ukupnog broja mjesta (npr. 2 od 3); ostale idu u „Odbijene” i dobivate e-mail (v65).
 - **Želja kupca** (boja, duljina) stoji u Narudžbama podebljano uz stavku i u e-mailu kao „ŽELJA KUPCA”. Ako je ne možete ispuniti, javite se kupcu prije šivanja: bira torbu bez te želje ili povrat cijelog iznosa (v65).
 - **Rubrika „Ostalo”** (remeni, torbice, platnene torbe) uključuje se u Postavkama: „Prikaži rubriku Ostalo”. Dok je isključena, artikli ostaju u adminu, ali se ne vide i ne mogu naručiti.
-
+- **v66:** gumb za privremeno isključenje modela zove se **„Privremeno isključi”** (natrag: „Ponovno uključi”). U Narudžbama se uz zadnjih 100 uvijek vide i **starije neplaćene narudžbe iz Stalne kolekcije** (oznaka „starija neplaćena (kolekcija)”), da ih možete stornirati. Telefon i e-mail kupca su poveznice.
