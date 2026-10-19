@@ -245,7 +245,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const w1 = await post('order', order('api-key-wish-eeee', 'wish@primjer.hr', [{ id: 'klasik2', qty: 1, note: 'smeđi remen' }], 60));
     const mlW = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(k1b.data.code === 'open_order' && k1b.data.kind === 'coll' && /Čim uplata bude vidljiva, šijemo vašu torbu \(rok izrade 5 radnih dana od primitka uplate\)/.test(mlW) && !/Torbu iz Stalne kolekcije šijemo za vas nakon uplate/.test(mlW), 'v66: otvorena narudžba nosi vrstu; e-mail kupcu — izrada, rok i slanje u jednom odlomku');
-    ok(w1.data.ok && /Vaša želja za „Klasik smeđa”: smeđi remen\. Ako je ne možemo ispuniti, javimo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa\./.test(mlW) && /ŽELJA KUPCA — Klasik smeđa: smeđi remen/.test(mlW), 'v65: želja kupca — potvrda kupcu, istaknuto vlasnici');
+    ok(w1.data.ok && /Vaša želja za „Klasik smeđa”: smeđi remen\. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa\./.test(mlW) && /ŽELJA KUPCA — Klasik smeđa: smeđi remen/.test(mlW), 'v65: želja kupca — potvrda kupcu, istaknuto vlasnici');
     setLimits({ coll_model_per_ip: 0 }); clearLimits();
     const m2 = await post('order', order('api-key-mod2-eeee', 'mod2@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
     const m3 = await post('order', order('api-key-mod3-eeee', 'mod3@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
@@ -255,6 +255,11 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     { const n = read('narudzbe.json'); n.unshift({ no: 'SJ-2026-9997', at: new Date().toISOString(), email: 'plac@primjer.hr', unconfirmed: true, paidAt: new Date().toISOString(), order: { items: [{ id: 'klasik2', qty: 1, made: true }] } }); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
     const stN = await (await fetch(U + 'status')).json();
     ok(stN.madeLeft.klasik2 === 0, 'v65: plaćena narudžba bez potvrde (preopterećenje) zauzima mjesto: ' + (stN.madeLeft && stN.madeLeft.klasik2));
+    // v67: rokovi za više artikala po narudžbi — s nazivima, isti rok jednom
+    setProd('remen', { lead: '7 radnih dana' }); clearLimits();
+    const two = await post('order', order('api-key-two-eeee', 'dva@primjer.hr', [{ id: 'klasik', qty: 1 }, { id: 'remen', qty: 1 }], 75));
+    const mlT = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /dva@primjer\.hr/.test(x.split('\n')[0]) && /potvrda narudžbe/.test(x)).pop() || '';
+    ok(two.data.ok && /izrađujemo „Klasik crna” i „Zamjenski remen” \(rok izrade od primitka uplate: „Klasik crna” 5 radnih dana, „Zamjenski remen” 7 radnih dana\)/.test(mlT), 'v67: e-mail — različiti rokovi s nazivima: ' + (mlT.match(/Čim uplata[^\n]*/) || [''])[0].slice(0, 200));
     ok(k2.data.payment && k2.data.payment.iban && typeof k2.data.ownerEmail === 'string', 'v62: odgovor narudžbe nosi podatke za uplatu iz Postavki');
     { const c0 = read('config.json'); c0.show_ostalo = false; fs.writeFileSync(D + 'config.json', JSON.stringify(c0, null, 2));
       const os = await post('order', order('api-key-ost1-eeee', 'ost@primjer.hr', [{ id: 'remen', qty: 1, note: 'crna' }], 15));

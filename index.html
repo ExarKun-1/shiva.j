@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v66 (2026-10-19)
+     SHIVA.J WEBSHOP — v67 (2026-10-19)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v67 — uz api v35, admin v35 (recenzija v66): „Kako naručiti” korak 02 s istom
+           iznimkom kao obrazac; obećanje rezervacije u dva dijela (iznimka sitnije)
+           i skriveno dok je gumb blokiran; rokovi izrade s nazivima u navodnicima
+           (isti rok jednom), bez „ono što ste naručili po narudžbi”; torba bez
+           rezervacije: povrat jednom, s nazivom torbe; „javit ćemo vam se”; oznaka
+           verzije više se ne vidi u podnožju (samo u komentaru)
      v66 — uz api v34, admin v34 (vijeće v65): Ostalo više ne dobiva tekst za
            torbe („izradu bez te želje”); napomena o želji samo jednom; opća
            napomena kratka, uputa ispod polja; obećanje rezervacije uvjetno (i na
@@ -868,7 +874,8 @@
     background:#fff;font-family:inherit;font-size:16px;color:var(--ink);
   }
   .order-form input:focus,.order-form textarea:focus{outline:2px solid var(--thread);outline-offset:-1px;border-color:var(--thread)}
-  .order-btn.is-blocked{opacity:.45;cursor:not-allowed}
+  .hold-exc{display:block;margin-top:4px;font-family:'Karla',sans-serif;font-size:.78rem;color:var(--ink-soft)}
+  .order-btn.is-blocked{opacity:.6;cursor:not-allowed}
   .order-btn{
     margin-top:6px;
     background:var(--thread);color:var(--paper);
@@ -1117,7 +1124,7 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torba je <span data-ttl-text>24 sata</span> rezervirana za vas i nitko je drugi ne može naručiti. Modele iz Stalne kolekcije ne treba rezervirati.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torbu rezerviramo za vas <span data-ttl-text>24 sata</span> i nitko je drugi ne može naručiti. Iznimno, ako u tom trenutku previše narudžbi čeka uplatu, to ćete vidjeti odmah, prije uplate. Modele iz Stalne kolekcije ne treba rezervirati.</p>
         <p class="ship-list" id="shipList" hidden></p>
       </div>
       <div class="step">
@@ -1269,7 +1276,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v66</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana<!-- v67 --></p>
 </footer>
 
 <!-- Košarica -->
@@ -2018,7 +2025,9 @@ function renderCart(){
   hold.hidden = !(RESERVATION_ENDPOINT && uniques.length);
   const q = n => `„${n}”`;
   /* v66: obećanje rezervacije uvjetno — kad mnogo narudžbi čeka uplatu, torba se ne rezervira (kupac to vidi prije uplate) */
-  if(!hold.hidden) hold.textContent = `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) : "Torbu " + q(uniques[0])} rezerviramo za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe, osim ako u tom trenutku previše narudžbi već čeka uplatu; to ćete vidjeti odmah, prije uplate.`;
+  /* v67: obećanje i iznimka odvojeno — iznimka sitnije, da ne nadglasa iznos i gumb */
+  if(!hold.hidden) hold.innerHTML = escHtml(`${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) : "Torbu " + q(uniques[0])} rezerviramo za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe.`)
+    + `<small class="hold-exc">Iznimka: ako u tom trenutku previše narudžbi već čeka uplatu, vidjet ćete to odmah, prije uplate.</small>`;
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
@@ -2042,7 +2051,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu">+</button></span>` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Ne morate čekati naš odgovor: uplatite odmah nakon narudžbe. Ako želju ne možemo ispuniti, javimo vam se prije izrade, a vi birate: izradu bez te želje ili povrat cijelog iznosa.</span>` : ""}` : ""}`;
+      ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Želju ne morate čekati da potvrdimo: uplatite odmah nakon narudžbe. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade, a vi birate: izradu bez te želje ili povrat cijelog iznosa.</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2096,12 +2105,15 @@ function renderShipLead(){
     else if(made.length){
       /* v65: ukupno čekanje prije narudžbe — samo iz upisanih rokova (lead, ship_lead) */
       const q = p => "„" + p.name + "”";
-      const leads = made.filter(p => filled(p.lead)).map(p => (made.length > 1 ? p.name + ": " : "") + filled(p.lead));
+      /* v67: isti rok jednom; različiti rokovi s nazivima u navodnicima („A” 5 radnih dana, „B” 7 radnih dana) */
+      const ld = [...new Set(made.filter(p => filled(p.lead)).map(p => filled(p.lead)))];
+      const leads = ld.length > 1 ? [made.filter(p => filled(p.lead)).map(p => q(p) + " " + filled(p.lead)).join(", ")] : ld;
+      const leadIn = ld.length > 1 ? "rok izrade od uplate: " + leads[0] : leads.length ? "izrada " + leads[0] + " od uplate" : "";
       const after = !pickup && SHIP_LEAD ? ", zatim slanje obično " + SHIP_LEAD : "";
       txt = uniq.length
         ? (pickup ? "Sve pripremamo zajedno, za preuzimanje kad je gotovo: " : "Sve šaljemo zajedno, u jednom paketu: ") + uniq.map(q).join(" i ") + " čeka da sašijemo " + made.map(q).join(" i ")
-          + (leads.length ? " (izrada " + leads.join("; ") + " od uplate)" : "") + (pickup ? "" : after) + ". Želite li " + (uniq.length > 1 ? "torbe " + uniq.map(q).join(" i ") + " prije, naručite ih" : "torbu " + q(uniq[0]) + " prije, naručite je") + " zasebno" + (pickup ? "." : " (tada plaćate dvije dostave).")
-        : leads.length ? "Izrada " + leads.join("; ") + " od uplate" + after + "." : after ? "Slanje obično " + SHIP_LEAD + " nakon izrade." : "";
+          + (leadIn ? " (" + leadIn + ")" : "") + (pickup ? "" : after) + ". Želite li " + (uniq.length > 1 ? "torbe " + uniq.map(q).join(" i ") + " prije, naručite ih" : "torbu " + q(uniq[0]) + " prije, naručite je") + " zasebno" + (pickup ? "." : " (tada plaćate dvije dostave).")
+        : leadIn ? leadIn.charAt(0).toUpperCase() + leadIn.slice(1) + (ld.length > 1 ? "." + (after ? " Zatim slanje obično " + SHIP_LEAD + "." : "") : after + ".") : after ? "Slanje obično " + SHIP_LEAD + " nakon izrade." : "";
     }
     else txt = SHIP_LEAD && !pickup ? "Slanje obično " + SHIP_LEAD + " nakon uplate." : "";
     el.hidden = !txt;
@@ -2349,7 +2361,7 @@ function showOrderError(html, info = false){
   orderError.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 const nextStepEl = document.querySelector(".next-step"), NEXT_STEP = nextStepEl ? nextStepEl.innerHTML : "";
-function unblockOrderBtn(){ const ob = document.getElementById("orderBtn"); ob.classList.remove("is-blocked"); ob.removeAttribute("aria-disabled"); }
+function unblockOrderBtn(){ const ob = document.getElementById("orderBtn"); const was = ob.classList.contains("is-blocked"); ob.classList.remove("is-blocked"); ob.removeAttribute("aria-disabled"); ob.removeAttribute("title"); if(was && typeof renderCart === "function") renderCart(); }
 function clearOrderError(){
   unblockOrderBtn();
   orderError.hidden = true; orderError.innerHTML = ""; orderError.classList.remove("order-info"); orderError.setAttribute("role", "alert");
@@ -2630,7 +2642,7 @@ function paymentPanel(last){
   const anyUnique = items.some(p => !p.made), anyMade = items.some(p => p.made);
   const leads = [...new Set(items.filter(p => p.made && filled(p.lead)).map(p => String(p.lead)))];
   /* v63: rok izrade uz naziv (mješovita narudžba: „Crna klasika: 10 radnih dana; Zamjenski remen: 5 radnih dana”) */
-  const leadsNamed = items.filter(p => p.made && filled(p.lead)).map(p => (leads.length > 1 || items.filter(x => x.made).length > 1 ? p.name + ": " : "") + String(p.lead));
+  const leadsNamed = leads.length > 1 ? [items.filter(p => p.made && filled(p.lead)).map(p => "„" + p.name + "” " + String(p.lead)).join(", ")] : leads; /* v67 */
   const allBags = items.every(p => (p.cat || "torbe") === "torbe");
   const pickup = !!(so && (so.id === "pickup" || (!so.locker && !(Number(so.price) > 0) && /preuzimanje/i.test(String(so.label || "")))));
   const untilIso = srv.until || null;
@@ -2650,15 +2662,14 @@ function paymentPanel(last){
   const allNamesQ = andJoin(items.map(qn));
   const madeSubject = madeIt.every(p => catOf(p) === "kolekcija")
     ? (madeIt.length === 1 ? (anyUnique ? "Torbu " + qn(madeIt[0]) : "Vašu torbu") : "Torbe " + andJoin(madeIt.map(qn))) + " šijemo"
-    : anyUnique ? andJoin(madeIt.map(qn)) + " izrađujemo" : "Ono što ste naručili po narudžbi izrađujemo";
+    : andJoin(madeIt.map(qn)) + " izrađujemo"; /* v67: nazivi, ne „ono što ste naručili po narudžbi” */
   /* v64: ukupno čekanje — uz rok izrade i rok slanja iz Postavki (ništa se ne izmišlja) */
   const shipAfter = SHIP_LEAD ? " (slanje obično " + escHtml(SHIP_LEAD) + " nakon izrade)" : "";
-  const refundU = " Ako netko uplati prije vas, odmah vam javljamo i vraćamo cijelu uplatu.";
   const thanks = anyUnique && untilIso && unheldN.length
-    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do <b>${fmtDateTime(untilIso)}</b>. Trenutno mnogo narudžbi čeka uplatu, pa ${unheldN.length > 1 ? "torbe " : "torbu "}${unheldN.join(" i ")} ne možemo rezervirati samo za vas: ${unheldN.length > 1 ? "ostaju" : "ostaje"} na prodaji i dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.${refundU}`
+    ? `${heldN.length > 1 ? "Torbe " : "Torba "}${heldN.join(" i ")} ${heldN.length > 1 ? "su rezervirane" : "je rezervirana"} za vas do <b>${fmtDateTime(untilIso)}</b>. Trenutno mnogo narudžbi čeka uplatu, pa ${unheldN.length > 1 ? "torbe " : "torbu "}${unheldN.join(" i ")} ne možemo rezervirati samo za vas: ${unheldN.length > 1 ? "ostaju" : "ostaje"} na prodaji i dobiva ${unheldN.length > 1 ? "ih" : "je"} tko prvi uplati.`
     : anyUnique && untilIso
     ? `${many ? "Torbe „" + uniqueNames.join("” i „") + "” su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."} Rezervacija vrijedi do <b>${fmtDateTime(untilIso)}</b>.`
-    : anyUnique && srv.unheld ? `Narudžba je zaprimljena. Trenutno mnogo narudžbi čeka uplatu, pa ${many ? "torbe „" + uniqueNames.join("” i „") + "”" : "torbu „" + uniqueNames[0] + "”"} ne možemo rezervirati samo za vas: ${many ? "ostaju" : "ostaje"} na prodaji i dobiva ${many ? "ih" : "je"} tko prvi uplati. Uplatite što prije i pošaljite nam potvrdu uplate.${refundU}`
+    : anyUnique && srv.unheld ? `Narudžba je zaprimljena. Trenutno mnogo narudžbi čeka uplatu, pa ${many ? "torbe „" + uniqueNames.join("” i „") + "”" : "torbu „" + uniqueNames[0] + "”"} ne možemo rezervirati samo za vas: ${many ? "ostaju" : "ostaje"} na prodaji i dobiva ${many ? "ih" : "je"} tko prvi uplati.`
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite što prije i pošaljete nam potvrdu uplate."
     : (() => { /* v66: rok i uplatu već kažu koraci ispod — ovdje samo mjesto u kolekciji */
         const kol = items.filter(p => p.made && catOf(p) === "kolekcija").map(p => "„" + escHtml(p.name) + "”");
@@ -2713,7 +2724,10 @@ function paymentPanel(last){
       <ol class="pay-steps" aria-label="Što slijedi">
         <li><b>${anyUnique && untilIso ? "Do isteka rezervacije" : "Sada"}</b>${!anyUnique
           ? /* v65: samo po narudžbi — snimka uplate nije potrebna */ "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + ". Čim uplata bude vidljiva, krećemo s izradom."
-          : "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + " i pošaljite nam potvrdu uplate (snimku zaslona) " + ((PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe") + (untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : "") + "." + (srv.unheld ? " Ako netko uplati prije vas, vraćamo vam cijelu uplatu." : "")}</li>
+          : "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + " i pošaljite nam potvrdu uplate (snimku zaslona) " + ((PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe") + (untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka rezervacije" : "") + "." + (srv.unheld ? (() => { /* v67: povrat s nazivom torbe, jednom (uvod ga više ne ponavlja) */
+            const un = unheldN.length ? unheldN : uniqueNames.map(n => "„" + n + "”");
+            return " Ako netko uplati " + (un.length > 1 ? "torbe " + andJoin(un) : "torbu " + un[0]) + " prije vas, odmah vam javljamo i vraćamo cijelu uplatu.";
+          })() : "")}</li>
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
@@ -2815,7 +2829,8 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
       else if (data.code === "open_order") {
         /* v64: kupac već ima neplaćenu narudžbu — nije greška u e-mail adresi */
         showOrderError(`<b>Prethodna narudžba${data.kind === "coll" ? " iz Stalne kolekcije" : data.kind === "unique" ? " s unikatnom torbom" : ""} čeka uplatu.</b> ${escHtml((data.error || "").replace(/^Prethodna narudžba[^;]*;\s*/, "").replace(/^./, c => c.toUpperCase()))}`, true); /* v65: pravilo, ne greška */
-        { const ob = document.getElementById("orderBtn"); ob.classList.add("is-blocked"); ob.setAttribute("aria-disabled", "true"); ob.dataset.blockedEmail = document.getElementById("fEmail").value.trim().toLowerCase(); }
+        { const ob = document.getElementById("orderBtn"); ob.classList.add("is-blocked"); ob.setAttribute("aria-disabled", "true"); ob.title = "Prethodna narudžba čeka uplatu";
+          document.getElementById("orderHold").hidden = true; document.getElementById("orderNoteHold").hidden = true; /* v67: obećanje rezervacije ne vrijedi dok je gumb blokiran */ ob.dataset.blockedEmail = document.getElementById("fEmail").value.trim().toLowerCase(); }
       }
       else if (data.field === "email") {
         /* v53: poslužitelj je odbio e-mail adresu — fokus na to polje, poruka kaže koje */
