@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v32');
+define('SJ_VERSION', 'admin v33');
 
 /* ---------- postavke ---------- */
 
@@ -220,7 +220,8 @@ function sj_made_counts(bool $reset = false): array {
   foreach (sj_order_files() as $f) {
     if (preg_match('/narudzbe-arhiva-(\d{4})/', $f, $m) && (int)$m[1] < $minYear) continue;
     foreach (sj_read_json($f, []) as $o) {
-      if (!empty($o['cancelledAt']) || !empty($o['unconfirmed'])) continue;
+      /* v65: narudžba bez potvrde (preopterećenje) ne broji se dok nije plaćena — plaćena zauzima mjesto kao svaka druga */
+      if (!empty($o['cancelledAt']) || (!empty($o['unconfirmed']) && empty($o['paidAt']))) continue;
       $at = (int)strtotime((string)($o['at'] ?? ''));
       foreach ((array)($o['order']['items'] ?? []) as $it) { $id = (string)($it['id'] ?? ''); if (isset($from[$id]) && $at >= $from[$id]) $cache[$id] += max(1, (int)($it['qty'] ?? 1)); }
     }

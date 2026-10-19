@@ -502,7 +502,7 @@ function sj_view_products(): string {
   $h = '<p class="muted">Ono što je ovdje spremljeno odmah je na stranici (datoteka torbe.json). Skrivene torbe ostaju ovdje, ali nisu na stranici.</p>';
   $h .= '<p><a class="btn" href="?s=nova">+ Nova torba / artikl</a></p>';
   if (!$list) return $h . '<p class="muted">Još nema torbi.</p>';
-  $h .= '<div class="tablewrap"><table class="cards t-tor"><thead><tr><th></th><th>Naziv</th><th>Kategorija</th><th>Cijena</th><th>Stanje</th><th></th></tr></thead><tbody>';
+  $h .= '<div class="tablewrap"><table class="cards t-tor"><thead><tr><th></th><th>Naziv</th><th>Vrsta</th><th>Cijena</th><th>Stanje</th><th></th></tr></thead><tbody>';
   $n = count($list);
   foreach ($list as $i => $p) {
     $id = (string)($p['id'] ?? '');
@@ -512,7 +512,7 @@ function sj_view_products(): string {
     $h .= '<tr' . (!empty($p['hidden']) ? ' class="dim"' : '') . '>';
     $h .= '<td class="thumb">' . $img . '</td>';
     $h .= '<td><b>' . e($p['name'] ?? '') . '</b><br><span class="muted">' . e($p['desc'] ?? '') . '</span><br><span class="muted mono">' . e($id) . '</span></td>';
-    $h .= '<td>' . e(($p['cat'] ?? 'torbe') === 'ostalo' ? 'Ostalo' : (sj_is_collection($p) ? 'Stalna kolekcija' : 'Torbe')) . '</td>';
+    $h .= '<td>' . e(($p['cat'] ?? 'torbe') === 'ostalo' ? 'Ostalo' : (sj_is_collection($p) ? 'Stalna kolekcija' : 'Unikat')) . '</td>'; /* v65: isti nazivi kao izbor „Vrsta” */
     $h .= '<td class="mono">' . e(sj_fmt_eur((float)($p['price'] ?? 0))) . '</td>';
     $noDims = empty($p['made']) && (($p['cat'] ?? 'torbe') === 'torbe') && !preg_match('/\S/', preg_replace('/^\{.*\}$/', '', trim((string)($p['dims'] ?? ''))));
     /* v62: Stalna kolekcija — iskorištena mjesta od zadnjeg otvaranja; Ostalo skriveno dok je prekidač isključen */
@@ -532,7 +532,7 @@ function sj_view_products(): string {
     $h .= sj_btn('toggle', ['id' => $id, 'field' => 'hidden', 'to' => !empty($p['hidden']) ? '0' : '1'], !empty($p['hidden']) ? 'Prikaži' : 'Sakrij', $back, true);
     if ($i > 0) $h .= sj_btn('move', ['id' => $id, 'dir' => 'up'], '↑', $back, true);
     if ($i < $n - 1) $h .= sj_btn('move', ['id' => $id, 'dir' => 'down'], '↓', $back, true);
-    $h .= sj_btn('delete_product', ['id' => $id], 'Obriši', $back, true, 'Obrisati „' . ($p['name'] ?? $id) . '“? Fotografije ostaju u mapi img.');
+    $h .= str_replace('<button class="alt">', '<button class="alt danger">', sj_btn('delete_product', ['id' => $id], 'Obriši', $back, true, 'Obrisati „' . ($p['name'] ?? $id) . '“? Fotografije ostaju u mapi img.'));
     $h .= '</td></tr>';
   }
   return $h . '</tbody></table></div>';
@@ -677,14 +677,19 @@ function sj_view_orders(): string {
     /* v63: neplaćenu, nestorniranu narudžbu vlasnica može stornirati (i onu samo iz Stalne kolekcije) */
     if (empty($o['paidAt']) && empty($o['cancelledAt'])) $paid .= sj_btn('order_cancel', ['no' => $no], 'Storniraj narudžbu', '?s=narudzbe', true, 'Stornirati narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ', ' . ($o['email'] ?? '') . ')? Torbe i mjesta u Stalnoj kolekciji se oslobađaju; kupcu se javite sami.');
     /* v64: telefon, adresa ili paketomat, napomena i vrsta stavke (unikat / Stalna kolekcija / po narudžbi) */
+    /* v65: jedna linija po stavki — naziv, cijena, vrsta i želja kupca (umjesto drugog popisa) */
     $kinds = [];
     foreach ((array)($o['order']['items'] ?? []) as $it) {
-      $pk = $pById[(string)($it['id'] ?? '')] ?? null;
-      $kinds[] = e((string)($it['name'] ?? '')) . ': ' . (empty($it['made']) ? 'unikat' : ($pk && sj_is_collection($pk) ? 'Stalna kolekcija' : 'po narudžbi'));
+      $pk = $pById[(string)($it['id'] ?? '')] ?? null; $q = max(1, (int)($it['qty'] ?? 1));
+      $kinds[] = e((string)($it['name'] ?? '')) . ($q > 1 ? ' × ' . $q : '') . ' — <span class="nw">' . e(sj_fmt_eur((float)($it['price'] ?? 0) * $q)) . '</span> <span class="muted">· ' . (empty($it['made']) ? 'unikat' : ($pk && sj_is_collection($pk) ? 'Stalna kolekcija' : 'po narudžbi')) . '</span>'
+        . (trim((string)($it['note'] ?? '')) !== '' ? ' · <b>želja: ' . e(trim((string)$it['note'])) . '</b>' : '');
     }
     $locker = (string)($o['order']['shipping']['locker'] ?? '');
     $addrO = trim((string)($o['address'] ?? ''));
-    $h .= '<tr><td class="mono">' . e($no) . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span>' . (($o['phone'] ?? '') !== '' ? '<br><span class="muted">' . e((string)$o['phone']) . '</span>' : '') . '</td><td><pre>' . e($o['items'] ?? '') . '</pre>' . ($kinds ? '<span class="muted">' . implode('<br>', $kinds) . '</span>' : '') . (($o['note'] ?? '') !== '' ? '<br><b>Napomena:</b> ' . e((string)$o['note']) : '') . '</td><td>' . e($o['shipping'] ?? '') . ($locker !== '' ? '<br><span class="muted">Paketomat: ' . e($locker) . '</span>' : ($addrO !== '' ? '<br><span class="muted">' . e($addrO) . '</span>' : '')) . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
+    $canc = !empty($o['cancelledAt']);
+    /* v65: aktivna rezervacija — do kada */
+    if (empty($o['paidAt']) && !$canc && $tok !== '' && isset($active[$tok]) && !empty($o['reservation']['until'])) $paid = '<span class="muted">rezervirano do ' . e(sj_fmt_hr((string)$o['reservation']['until'])) . '</span><br>' . $paid;
+    $h .= '<tr' . ($canc ? ' class="is-cancelled"' : '') . '><td class="mono">' . e($no) . ($canc ? '<br><span class="badge grey">stornirano</span>' : '') . '</td><td>' . e(sj_fmt_hr($o['at'] ?? '')) . '</td><td>' . e($o['name'] ?? '') . '<br><span class="muted">' . e($o['email'] ?? '') . '</span>' . (($o['phone'] ?? '') !== '' ? '<br><span class="muted">' . e((string)$o['phone']) . '</span>' : '') . '</td><td>' . ($kinds ? implode('<br>', $kinds) : '<pre>' . e($o['items'] ?? '') . '</pre>') . (($o['note'] ?? '') !== '' ? '<br><b>Napomena:</b> ' . e((string)$o['note']) : '') . '</td><td>' . e($o['shipping'] ?? '') . ($locker !== '' ? '<br><span class="muted">Paketomat: ' . e($locker) . '</span>' : ($addrO !== '' ? '<br><span class="muted">' . e($addrO) . '</span>' : '')) . '</td><td class="mono">' . e($o['total'] ?? '') . '</td><td>' . $paid . '</td></tr>';
   }
   $h .= '</tbody></table></div>';
   return $h . $rejHtml . '<p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Plaćeno” ovdje označuje cijelu narudžbu: torbe s rezervacijom postaju plaćene, a torbe bez rezervacije (ili s isteklom) pripadaju ovom kupcu ako je uplatio prvi; ako je torbu u međuvremenu držao ili kupio drugi kupac, admin to javi.</p>';
@@ -812,7 +817,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   /* v21: na mobitelu rezervacije i narudžbe kao kartice — gumbi su ispod imena, ne izvan zaslona */
   /* v22: na karticama natpis polja ispred vrijednosti (zaglavlje tablice je skriveno) */
   @media (max-width:700px){.cards td::before{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
-  .t-tor td:nth-child(3)::before{content:"Kategorija"}.t-tor td:nth-child(4)::before{content:"Cijena"}.t-tor td:nth-child(5)::before{content:"Stanje"}
+  .t-tor td:nth-child(3)::before{content:"Vrsta"}.t-tor td:nth-child(4)::before{content:"Cijena"}.t-tor td:nth-child(5)::before{content:"Stanje"}
   .t-rez td:nth-child(2)::before,.t-sold td:nth-child(2)::before,.t-nar td:nth-child(3)::before{content:"Kupac"}
   .t-rez td:nth-child(3)::before{content:"Rezervirano"}.t-rez td:nth-child(4)::before{content:"Vrijedi do"}.t-rez td:nth-child(5)::before{content:"Veza (oznaka)"}
   .t-sold td:nth-child(3)::before{content:"Označeno"}
@@ -822,6 +827,12 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   .tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.9rem;background:#fff}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
   td.thumb{width:64px}td.thumb img{width:56px;height:70px;object-fit:cover;border-radius:2px}.noimg{display:inline-flex;width:56px;height:70px;align-items:center;justify-content:center;background:#E4EAE5;color:var(--thread);border-radius:2px;font-size:1.3rem}
   td.acts{white-space:nowrap}td.acts form{margin-bottom:4px}td.acts button{padding:5px 9px;font-size:.72rem}tr.dim td{opacity:.55}
+  /* v65 */
+  .t-nar td.mono,.t-tor td.mono,.nw{white-space:nowrap}
+  .t-nar tr.is-cancelled td{opacity:.55}
+  button.alt.danger{color:#9B2C1F;border-color:#9B2C1F}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
+  @media (min-width:701px){.t-tor td:nth-child(2){min-width:220px}}
   .badge{display:inline-block;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1.5px dashed var(--thread);color:var(--thread);border-radius:2px;margin:0 3px 3px 0}.badge.ink{border-style:solid;background:var(--ink);color:var(--paper);border-color:var(--ink)}.badge.grey{border-color:#A8A69C;color:#7a786f}.badge.green{background:#E4EAE5}
   .muted{color:var(--soft);font-size:.85rem}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem}pre{margin:0;white-space:pre-wrap;font:inherit;font-size:.85rem}
   .photos{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 14px}.photo{width:120px}.photo img{width:120px;height:150px;object-fit:cover;border-radius:2px;display:block;margin-bottom:6px}

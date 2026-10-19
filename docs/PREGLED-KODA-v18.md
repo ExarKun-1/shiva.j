@@ -503,3 +503,25 @@ Sigurnost 6/10 („spremno uvjetno”); dizajn: trgovina 7,5, admin 7,5, e-mail 
 | Dizajn: nepostojeći natpis linka, „Trenutno popunjeno” u e-mailu, „Materijal: na upit”, uvod bez potvrde, sitni rok na kartici, Narudžbe bez telefona i adrese | riješeno |
 | Kupac: ukupno čekanje u danima | ne izmišlja se: prikazuju se rok izrade i rok slanja iz Postavki |
 | Dizajn, sitnice (poravnanje cijena, „Spremi barkod”, fokus u adminu, Ostalo naslov) | kasnije |
+
+## Vijeće na v64 (16. 10. 2026.) → v65 (admin v33, api v33)
+
+Sigurnost 7/10 („spremno uvjetno”); dizajn: trgovina 8, admin 7,5, e-mail 7,5; kupac 8,5/10.
+
+| Nalaz | Stanje u v65 |
+|---|---|
+| Srednje S1-b: granica po vezi broji narudžbe, a ne mjesta (tri e-maila s jedne veze popune sve modele) | riješeno: i po modelu, najviše `min(3, limit − 1)` s iste veze; test |
+| Srednje N-1: plaćena narudžba bez potvrde ne zauzima mjesto | riješeno: preskače se samo dok nije plaćena; test |
+| Nisko S1-c: granica po vezi istekne s tjednom tajnom | prihvaćeno ograničenje (ODLUKE v65) |
+| Nisko S1-d: Odbijene pamte vezu uređaja koji je potvrdio | riješeno: veza iz narudžbe |
+| Info I-1: predmemorija ne prati arhivu | riješeno |
+| Dizajn: košarica na računalu, cijene u tri stupca | riješeno: mreža u dva stupca; e2e mjeri desni rub |
+| Dizajn: uvod kolekcije predug; ekran potvrde „(naslov „… —”)”; otvorena narudžba kao greška | riješeno |
+| Dizajn/kupac: e-mail mješovite narudžbe (zarez, rok bez naziva, bez slanja nakon izrade); želja nije potvrđena | riješeno |
+| Dizajn: admin Narudžbe (stornirano, dvostruki popis, prijelom iznosa, rezervirano do); Torbe (Vrsta, Obriši, širine) | riješeno |
+| Kupac: mješovita košarica — tek nakon narudžbe sazna da unikat čeka | riješeno: redak prije narudžbe |
+| Kupac: platiti odmah ili čekati odgovor na želju; dva polja za napomenu | riješeno |
+| Kupac: „ne možemo rezervirati” zvuči kao da je torba uzeta | riješeno: „Trenutno mnogo narudžbi čeka uplatu…” |
+| Kupac: povratak iz povećanog prikaza na vrh | riješeno |
+| Dizajn: vremenska zona | riješeno (Europe/Zagreb) |
+| Kupac: pravo na raskid uz želju | čeka pravno istraživanje |
