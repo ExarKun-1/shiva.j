@@ -1,4 +1,4 @@
-_Shiva.J · upute za trgovinu · stranica v64_
+_Shiva.J · upute za trgovinu · stranica v65_
 
 # Kako idu narudžbe
 
@@ -45,7 +45,7 @@ Unikat se rezervira, model zauzme mjesto. Sve se šalje zajedno, u jednom paketu
 ### 1. Košarica
 
 **Kupac vidi:**
-Unikat u košarici bez količine. Model iz kolekcije s natpisom „1 kom · jedan komad ovog modela po narudžbi” i poljem „Boja, duljina i želje (neobavezno)”. Ispod polja: „Ako vašu želju ne možemo ispuniti, javimo vam se prije izrade — tada možete odustati i vraćamo cijeli iznos.”
+Unikat u košarici bez količine. Model iz kolekcije s natpisom „1 kom · najviše jedan po narudžbi” i poljem „Boja, duljina i želje (neobavezno)”. Ispod polja: „Uplatiti možete odmah. Ako vašu želju ne možemo ispuniti, javimo vam se prije izrade, a vi birate: torbu bez te želje ili povrat cijelog iznosa.”
 
 **Jasmina:**
 Ništa. Torba u nečijoj košarici nikoga ne blokira.
@@ -139,13 +139,13 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 | Komada istog modela iz kolekcije | 1 | Za više komada kupac se javlja. |
 | Neplaćenih narudžbi po e-mailu | 1 + 1 | Jedna s unikatom i jedna iz kolekcije. |
 | Neplaćenih narudžbi s unikatom s iste veze | 6 | Kupci na istoj mobilnoj ili kućnoj mreži dijele vezu. |
-| Neplaćenih narudžbi iz kolekcije s iste veze | 3 | Lažne narudžbe ne smiju popuniti modele. |
+| Neplaćenih narudžbi iz kolekcije s iste veze | 3 | Uz to: s jedne veze najviše jedno mjesto manje od broja mjesta modela (npr. 2 od 3), da jedna veza nikad sama ne popuni model. |
 | Narudžbi na sat s iste veze | 10 | Zaštita od skripti. |
 | Narudžbi vidljivih u adminu | 300 | Starije su u arhivi; „Označi plaćenom” ih i dalje nalazi. |
 
 ## Što je još otvoreno
 
-**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (povrat iznosa kad želju ne možemo ispuniti; povrat uplate za unikat bez rezervacije) te rok čuvanja starih i storniranih narudžbi u arhivi.
+**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (torba bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate za unikat bez rezervacije) te rok čuvanja starih i storniranih narudžbi u arhivi.
 
 ---
-_Shiva.J · dokument uz stranicu v64 (api v32, admin v32) · snimljeno 16. 10. 2026. na probnoj stranici_
+_Shiva.J · dokument uz stranicu v65 (api v33, admin v33) · snimljeno 16. 10. 2026. na probnoj stranici_

@@ -91,6 +91,7 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - Gumb **„Otvori nova mjesta”** pojavljuje se tek kad je model popunjen (v63).
 - **Storniraj narudžbu** (Narudžbe, v63): uz svaku neplaćenu narudžbu. Narudžba se označi storniranom, unikatna torba se oslobađa, a mjesto u Stalnoj kolekciji se vraća. Kupcu se javite sami (poruka vam kaže na koju adresu). Stornirana narudžba više se ne može označiti plaćenom (v64); ako je kupac ipak uplatio, neka naruči ponovno ili mu vratite uplatu.
 - **Narudžbe** (v64): uz kupca stoje e-mail i telefon, uz dostavu adresa ili paketomat, a uz artikle napomena kupca i vrsta stavke (unikat / Stalna kolekcija / po narudžbi).
-- S iste internetske veze primaju se najviše 3 neplaćene narudžbe iz Stalne kolekcije; ostale idu u „Odbijene” i dobivate e-mail.
+- S iste internetske veze primaju se najviše 3 neplaćene narudžbe iz Stalne kolekcije, a od jednog modela najviše jedno mjesto manje od ukupnog broja mjesta (npr. 2 od 3); ostale idu u „Odbijene” i dobivate e-mail (v65).
+- **Želja kupca** (boja, duljina) stoji u Narudžbama podebljano uz stavku i u e-mailu kao „ŽELJA KUPCA”. Ako je ne možete ispuniti, javite se kupcu prije šivanja: bira torbu bez te želje ili povrat cijelog iznosa (v65).
 - **Rubrika „Ostalo”** (remeni, torbice, platnene torbe) uključuje se u Postavkama: „Prikaži rubriku Ostalo”. Dok je isključena, artikli ostaju u adminu, ali se ne vide i ne mogu naručiti.
 

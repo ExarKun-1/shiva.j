@@ -53,6 +53,7 @@
     "holds_per_ip": 20,
     "orders_per_ip": 20,
     "coll_per_ip": 50,
+    "coll_model_per_ip": 50,
     "unique_per_order": 2,
     "unique_orders_per_hour": 100,
     "confirm_per_ip": 100
