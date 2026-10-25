@@ -236,12 +236,12 @@ file_put_contents($D . '/config.json', $cfg0);
 $isoAgo = fn(int $h) => gmdate('Y-m-d\TH:i:s\Z', time() - $h * 3600);
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
 file_put_contents($D . '/narudzbe.json', json_encode([
-  ['no' => 'SJ-2026-0901', 'at' => $isoAgo(30), 'name' => 'Rok R', 'email' => 'rok@p.hr', 'total' => '69,00 €', 'items' => 'Luna — 65,00 €', 'reservation' => ['token' => 'tR', 'until' => $isoAgo(6)], 'order' => ['items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 65]]]],
+  ['no' => 'SJ-2026-0901', 'at' => $isoAgo(30), 'name' => 'Rok R', 'email' => 'rok@p.hr', 'total' => '69,00 €', 'items' => "- Luna — 65,00 €\n- Remen — 15,00 €", 'reservation' => ['token' => 'tR', 'until' => $isoAgo(6)], 'order' => ['items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 65]]]],
   ['no' => 'SJ-2026-0902', 'at' => $isoAgo(2), 'name' => 'Svjez S', 'email' => 's@p.hr', 'total' => '59,00 €', 'reservation' => ['token' => 'tS', 'until' => gmdate('Y-m-d\TH:i:s\Z', time() + 22 * 3600)], 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
 ]));
 $v = $req('GET', ['s' => 'narudzbe']);
 $rokSeg = preg_match('#id="rok"(.*?)<div class="tablewrap">#s', $v, $mr) ? $mr[1] : '';
-$ok(str_contains($v, 'Rok istekao (1)') && preg_match('#SJ-2026-0901.*?komad slobodan.*?2026-0901#s', $rokSeg) === 1 && !str_contains($rokSeg, 'SJ-2026-0902') && str_contains($v, 'Narudžbe (1)'), 'v68: Rok istekao — samo narudžba kojoj je prošao rok, s pozivom na broj, „komad slobodan” i brojem uz Narudžbe');
+$ok(str_contains($v, 'Rok istekao (1)') && preg_match('#SJ-2026-0901.*?komad slobodan.*?2026-0901#s', $rokSeg) === 1 && !str_contains($rokSeg, 'SJ-2026-0902') && str_contains($v, 'Narudžbe (1)') && str_contains($rokSeg, '· Luna — 65,00 €, Remen — 15,00 €'), 'v68: Rok istekao — samo narudžba kojoj je prošao rok, s pozivom na broj, „komad slobodan”, artiklima bez crtica i brojem uz Narudžbe');
 $out = $req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0901', 'reason' => 'kupac odustao', 'reason_text' => '', 'back' => '?s=narudzbe']);
 $o9 = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
 $ok(($o9['cancelReason'] ?? '') === 'kupac odustao' && ($o9['cancelBy'] ?? '') === 'vlasnica' && str_contains($out, 'razlog: kupac odustao') && !str_contains($out, 'Rok istekao ('), 'v68: storno s razlogom — razlog i tko je stornirao zapisani i prikazani; narudžba više nije pod „Rok istekao”');
