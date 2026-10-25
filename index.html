@@ -113,7 +113,8 @@
            najviše 5 torbi i 10 artikala po narudžbi (poruka odmah kod dodavanja); besplatna
            dostava od 120 € (BOX NOW, iz Postavki) s „još X € do besplatne dostave”; točan rok
            za uplatu i savjet za instant uplatu na ploči; blok „Veličina i nošenje” (univerzalni
-           opis mjere i tekst za sve torbe); podrubrike u Ostalom.
+           opis mjere i tekst za sve torbe); podrubrike u Ostalom; redak povjerenja u košarici
+           „Prihvaćaju se Uvjeti kupnje” (rok za raskid je u Uvjetima, komentar vlasnika).
      v67 — uz api v35, admin v35 (recenzija v66): „Kako naručiti” korak 02 s istom
            iznimkom kao obrazac; obećanje rezervacije u dva dijela (iznimka sitnije)
            i skriveno dok je gumb blokiran; rokovi izrade s nazivima u navodnicima
@@ -907,6 +908,7 @@
   .order-error b{display:block;margin-bottom:2px}
   .order-note{font-size:.8rem;color:var(--ink-soft)}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
+  .trust-line a{border-bottom:1.5px dashed var(--thread)}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
   .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-6px}
@@ -1301,7 +1303,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <span>Ukupno</span><span id="totalAmount"></span>
     </div>
     <form class="order-form" id="orderForm" hidden>
-      <p class="trust-line">Bez registracije · Plaćanje uplatom · <span id="trustRaskid">14 dana za raskid ugovora</span></p>
+      <p class="trust-line">Bez registracije · Plaćanje uplatom · <span id="trustTerms">Prihvaćaju se <a href="#uvjeti" class="drawer-link">Uvjeti kupnje</a></span></p>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
       <div class="hp-field" aria-hidden="true">
@@ -2066,8 +2068,7 @@ function renderCart(){
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
-  /* v52: Uvjeti t. 6 — pravo na raskid ne vrijedi za izradu po posebnim željama */
-  document.getElementById("trustRaskid").textContent = anyMade ? "14 dana za raskid (osim izrade po vašim posebnim željama)" : "14 dana za raskid ugovora";
+  /* v68: rok za raskid (i iznimka za izradu po posebnim željama) stoji u Uvjetima t. 6 i uz kvačicu, ne u ovom retku */
   document.getElementById("orderNoteMade").hidden = !anyMade;
   /* v66: kratak natpis; uputa o želji ispod polja, samo kad je u košarici nešto po narudžbi */
   document.getElementById("fNoteLabel").textContent = anyMade ? "Napomena uz dostavu (neobavezno)" : "Napomena uz dostavu ili narudžbu (neobavezno)";

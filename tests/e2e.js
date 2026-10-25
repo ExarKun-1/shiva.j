@@ -442,7 +442,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p11.goto(URL + '#ostalo', { waitUntil: 'networkidle' }); await p11.waitForTimeout(500);
   ok((await p11.$$eval('.card.made:not(.sold) .lead', els => els.length)) === (await p11.$$eval('.card.made:not(.sold)', els => els.length)), 'v52: svaki artikl po narudžbi ima redak „Izrada”');
   await p11.click('.card.made:not(.sold) .add-btn'); await p11.click('#openCart'); await p11.waitForTimeout(300);
-  ok(/osim izrade po vašim posebnim željama/.test(await p11.textContent('.trust-line')), 'v52: traka u košarici s artiklom po narudžbi');
+  ok(/Prihvaćaju se Uvjeti kupnje/.test(await p11.textContent('.trust-line')) && !/14 dana/.test(await p11.textContent('.trust-line')) && await p11.$('.trust-line a[href="#uvjeti"]') && /14 dana/.test(await p11.textContent('label[for=fConsent]')), 'v68: traka u košarici „Prihvaćaju se Uvjeti kupnje” (rok za raskid u Uvjetima i uz kvačicu)');
   await m11.close();
   await m10.close().catch(() => {});
   // v53 E: torba iz košarice u međuvremenu otišla — poruka ostaje (ne nestaje za 2,5 s)
