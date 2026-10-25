@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v35');
+define('SJ_VERSION', 'admin v36');
 
 /* ---------- postavke ---------- */
 
@@ -26,7 +26,14 @@ function sj_defaults(): array {
     'from_email'       => '',                          // npr. info@shivaj.hr; prazno = owner_email
     'site_url'         => '',                          // npr. https://shivaj.hr; prazno = automatski
     'oib'              => '',                          // v25: OIB obrta za potpis u e-mailu kupcu; prazno = ne prikazuje se
-    'ttl_hours'        => 24,                          // koliko sati traje rezervacija
+    'ttl_hours'        => 24,                          // koliko sati traje rezervacija = rok za uplatu (v68)
+    'remind_hours'     => 12,                          // v68: podsjetnik kupcu (bez barkoda) nakon toliko sati, ako nije označeno plaćeno; 0 = bez
+    'auto_cancel_hours'=> 48,                          // v68: automatski storno toliko sati NAKON isteka roka, ako vlasnica ne klikne; 0 = nikad
+    'deadline_tick'    => true,                        // v68: podsjetnici, „rok istekao” i automatski storno (ispitni podaci: false)
+    'signature'        => 'Jasmina · Shiva.J',         // v68: potpis e-mailova kupcima
+    'free_ship'        => ['min' => 120, 'ids' => ['boxnow']], // v68: besplatna dostava kad roba ≥ min (0 = isključeno), samo za ove načine
+    'sizes'            => [['mjera' => '22 × 7 cm', 'opis' => ''], ['mjera' => '24 × 7 cm', 'opis' => ''], ['mjera' => '26 × 7 cm', 'opis' => '']], // v68: mjere s univerzalnim opisom
+    'size_all'         => '',                          // v68: tekst za sve torbe (npr. remen), u bloku „Veličina i nošenje”
     'confirm_customer' => true,                        // automatska potvrda kupcu
     'require_confirm'  => true,                        // narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila
     'show_ostalo'      => false,                       // v62: rubrika „Ostalo” (artikli po narudžbi) na stranici; kod ostaje
@@ -65,7 +72,8 @@ function sj_config(bool $reload = false): array {
     $saved = sj_read_json(SJ_DATA . '/config.json', []);
     $c = array_replace_recursive(sj_defaults(), $saved);
     /* popisi se ne spajaju po indeksu, nego zamjenjuju u cijelosti */
-    foreach (['shipping', 'allowed_origins'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $c[$k] = array_values($saved[$k]);
+    foreach (['shipping', 'allowed_origins', 'sizes'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $c[$k] = array_values($saved[$k]);
+    if (isset($saved['free_ship']['ids']) && is_array($saved['free_ship']['ids'])) $c['free_ship']['ids'] = array_values($saved['free_ship']['ids']);
   }
   return $c;
 }
@@ -99,6 +107,100 @@ function sj_shipping(): array {
               'address' => !empty($o['address']), 'locker' => !empty($o['locker']), 'note' => (string)($o['note'] ?? '')];
   }
   return $out;
+}
+
+/* v68: besplatna dostava — prag robe (EUR) i načini dostave na koje vrijedi (zadano samo BOX NOW) */
+function sj_free_ship(): array {
+  $f = (array)(sj_config()['free_ship'] ?? []);
+  return ['min' => max(0, round((float)($f['min'] ?? 0), 2)), 'ids' => array_values(array_map('strval', (array)($f['ids'] ?? [])))];
+}
+/* cijena dostave za narudžbu: 0 kad roba dosegne prag i način je na popisu besplatnih; jedini izračun za API i potvrdu */
+function sj_ship_price(array $ship, float $goods): float {
+  $f = sj_free_ship();
+  if ($f['min'] > 0 && $goods + 0.005 >= $f['min'] && in_array((string)($ship['id'] ?? ''), $f['ids'], true)) return 0.0;
+  return round((float)($ship['price'] ?? 0), 2);
+}
+/* v68: potpis e-mailova kupcima (Postavke) */
+function sj_signature(): string { $s = trim((string)(sj_config()['signature'] ?? '')); return $s !== '' ? $s : (string)sj_config()['shop']; }
+/* v68: rok za uplatu narudžbe = vrijeme narudžbe + rok rezervacije (sati); ISO ili '' */
+function sj_pay_until(array $o): string {
+  $at = (int)strtotime((string)($o['at'] ?? ''));
+  return $at > 0 ? sj_iso($at + max(1, (int)sj_config()['ttl_hours']) * 3600) : '';
+}
+/* v68: neplaćena (i nestornirana) narudžba kojoj je prošao rok za uplatu */
+function sj_order_expired(array $o, ?int $now = null): bool {
+  if (!empty($o['paidAt']) || !empty($o['cancelledAt'])) return false;
+  $u = (int)strtotime(sj_pay_until($o));
+  return $u > 0 && $u <= ($now ?? time());
+}
+
+/* v68: rokovi za uplatu (poluautomatski storno, odluka vlasnice 25. 10.). Poziva se pri api/status i otvaranju admina,
+   najviše jednom u 5 minuta (stranica nema „budilicu”; može i cron koji otvara api/status). Za neplaćene, nestornirane
+   i potvrđene narudžbe iz narudzbe.json:
+   - nakon remind_hours: podsjetnik kupcu BEZ barkoda i podataka za uplatu (da ne plati dvaput), samo prije isteka roka;
+   - nakon ttl_hours (rok za uplatu): komad je već vraćen u prodaju (rezervacija istječe sama, mjesto u kolekciji se
+     više ne broji); kupac dobiva umirujuću poruku, vlasnica kratku obavijest; narudžba je u adminu pod „Rok istekao”;
+   - auto_cancel_hours nakon isteka roka, ako vlasnica ne klikne Plaćeno ni Storniraj: automatski storno uz e-mail kupcu.
+   Oznake (remindedAt, expiredAt) se upisuju prije slanja, pa se nijedna poruka ne šalje dvaput. */
+function sj_deadline_tick(bool $force = false): array {
+  $c = sj_config();
+  if (empty($c['deadline_tick']) && !$force) return [];
+  $now = time();
+  $run = sj_with_lock(SJ_DATA . '/rokovi.json', function (array &$d) use ($now, $force) {
+    if (!$force && (int)($d['last'] ?? 0) > $now - 300) return false;
+    $d['last'] = $now; return true;
+  }, []);
+  if (!$run) return [];
+  $ttl = max(1, (int)$c['ttl_hours']); $rem = max(0, (int)($c['remind_hours'] ?? 0)); $auto = max(0, (int)($c['auto_cancel_hours'] ?? 0));
+  $todo = [];
+  sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($now, $ttl, $rem, $auto, &$todo) {
+    foreach ($list as &$o) {
+      if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || empty($o['email'])) continue;
+      $at = (int)strtotime((string)($o['at'] ?? '')); if ($at <= 0) continue;
+      $until = $at + $ttl * 3600;
+      if ($auto > 0 && $now >= $until + $auto * 3600) {
+        $o['cancelledAt'] = sj_iso($now); $o['cancelReason'] = 'nije uplaćeno u roku'; $o['cancelBy'] = 'automatski';
+        $todo[] = ['cancel', $o]; continue;
+      }
+      if ($now >= $until) { if (empty($o['expiredAt'])) { $o['expiredAt'] = sj_iso($now); $todo[] = ['expired', $o]; } continue; }
+      if ($rem > 0 && $rem < $ttl && $now >= $at + $rem * 3600 && empty($o['remindedAt'])) { $o['remindedAt'] = sj_iso($now); $todo[] = ['remind', $o]; }
+    }
+    return true;
+  }, []);
+  if (!$todo) return [];
+  /* automatski storno oslobađa rezervacije te narudžbe (unikati) */
+  $toks = []; foreach ($todo as [$k, $o]) if ($k === 'cancel' && !empty($o['reservation']['token'])) $toks[] = (string)$o['reservation']['token'];
+  if ($toks) sj_with_lock(sj_res_path(), function (array &$d) use ($toks) {
+    $d = array_replace(sj_res_default(), $d);
+    foreach ($d['res'] as $id => $r) if (in_array((string)($r['token'] ?? ''), $toks, true)) unset($d['res'][$id]);
+    return true;
+  }, sj_res_default());
+  foreach ($todo as [$k, $o]) sj_deadline_mail($k, $o, $c, $auto);
+  return array_map(fn($x) => [$x[0], (string)($x[1]['no'] ?? '')], $todo);
+}
+function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
+  $no = (string)($o['no'] ?? ''); $name = (string)($o['name'] ?? ''); $until = sj_fmt_hr(sj_pay_until($o));
+  $uq = []; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $uq[] = '„' . (string)($it['name'] ?? '') . '”';
+  $many = count($uq) > 1;
+  $hi = 'Dobar dan, ' . $name . ",\n\n"; $bye = "\n\nSrdačan pozdrav,\n" . sj_signature();
+  if ($kind === 'remind') {
+    sj_send_mail((string)$o['email'], $c['shop'] . " — podsjetnik za uplatu, narudžba $no",
+      $hi . "podsjetnik: vaša narudžba br. $no čeka uplatu do $until." . ($uq ? ' Do tada ' . ($many ? 'su torbe ' . implode(' i ', $uq) . ' rezervirane' : 'je torba ' . $uq[0] . ' rezervirana') . ' samo za vas.' : '')
+      . "\n\nAko ste već platili, zanemarite ovu poruku i nemojte plaćati ponovno. Podaci za uplatu su u prvom e-mailu s potvrdom narudžbe." . $bye, null, (string)$c['owner_email']);
+  } elseif ($kind === 'expired') {
+    sj_send_mail((string)$o['email'], $c['shop'] . " — rok za uplatu je prošao, narudžba $no",
+      $hi . "rok za uplatu narudžbe br. $no prošao je ($until), a uplatu još ne vidimo."
+      . "\n\nAko ste platili, a uplata još nije stigla, ne brinite: " . ($uq ? ($many ? 'torbe vam čuvamo dok su slobodne, a ako ih je' : 'torbu vam čuvamo dok je slobodna, a ako ju je') . ' u međuvremenu netko kupio, vraćamo vam cijeli iznos.' : 'narudžbu potvrđujemo čim uplata stigne.')
+      . ' Slobodno odgovorite na ovaj e-mail sa snimkom potvrde o uplati.' . $bye, null, (string)$c['owner_email']);
+    sj_send_mail((string)$c['owner_email'], $c['shop'] . " — rok za uplatu prošao: $no — $name",
+      "Rok za uplatu narudžbe $no ($name, " . (string)($o['total'] ?? '') . ", poziv na broj " . sj_payment_ref($no) . ") prošao je ($until)." . ($uq ? ' ' . ($many ? 'Torbe su vraćene' : 'Torba je vraćena') . ' u prodaju.' : '')
+      . "\n\nAko vidite uplatu, u adminu → Narudžbe → „Rok istekao” kliknite „Plaćeno”; ako ne, „Storniraj”." . ($auto > 0 ? " Ako ne kliknete ništa, narudžba se automatski stornira za " . sj_hours_text($auto) . ' i kupac dobiva e-mail.' : '')
+      . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
+  } else {
+    sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
+      $hi . "narudžba br. $no je stornirana jer uplata nije stigla ni nakon roka." . ($uq ? ' ' . ($many ? 'Torbe su ponovno' : 'Torba je ponovno') . ' u prodaji.' : '')
+      . "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo cijeli iznos.' : 'narudžbu obnavljamo ili vam vraćamo cijeli iznos.') . $bye, null, (string)$c['owner_email']);
+  }
 }
 
 /* Ograničenje broja zahtjeva po IP adresi (npr. 10 narudžbi na sat). true = smije. */
@@ -222,6 +324,8 @@ function sj_made_counts(bool $reset = false): array {
     foreach (sj_read_json($f, []) as $o) {
       /* v65: narudžba bez potvrde (preopterećenje) ne broji se dok nije plaćena — plaćena zauzima mjesto kao svaka druga */
       if (!empty($o['cancelledAt']) || (!empty($o['unconfirmed']) && empty($o['paidAt']))) continue;
+      /* v68: neplaćena narudžba nakon roka za uplatu više ne drži mjesto (vraća se u prodaju, kao i unikat) */
+      if (sj_order_expired($o)) continue;
       $at = (int)strtotime((string)($o['at'] ?? ''));
       foreach ((array)($o['order']['items'] ?? []) as $it) { $id = (string)($it['id'] ?? ''); if (isset($from[$id]) && $at >= $from[$id]) $cache[$id] += max(1, (int)($it['qty'] ?? 1)); }
     }
@@ -235,7 +339,7 @@ function sj_made_open_order(string $email, array $collIds): string {
   $ek = sj_email_key($email);
   foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) {
     /* v64: narudžba primljena bez potvrde (preopterećenje) ne blokira adresu — inače bi tuđa adresa mogla zatvoriti kupca */
-    if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || sj_email_key((string)($o['email'] ?? '')) !== $ek) continue;
+    if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || sj_order_expired($o) || sj_email_key((string)($o['email'] ?? '')) !== $ek) continue;
     foreach ((array)($o['order']['items'] ?? []) as $it) if (in_array((string)($it['id'] ?? ''), $collIds, true)) return (string)($o['no'] ?? '');
   }
   return '';
@@ -290,15 +394,19 @@ function sj_order_edit(array $by, callable $fn): bool {
 /* Narudžba se u brojač „plaćeno” upisuje najviše jednom: traži narudžbu po tokenu rezervacije ili broju
    (i u arhivi), upisuje paidAt (ako nema) i paidCounted; vraća true samo prvi put. */
 /* v26: storno rezervacije ostaje zapisan uz narudžbu (Narudžbe prikazuju „stornirano”, ne „rezervacija istekla”) */
-function sj_order_cancelled(string $token): void {
-  if ($token !== '') sj_order_edit(['token' => $token], function (array &$o) { if (empty($o['cancelledAt'])) $o['cancelledAt'] = sj_iso(time()); });
+function sj_order_cancelled(string $token, string $reason = '', string $by = 'vlasnica'): void {
+  if ($token !== '') sj_order_edit(['token' => $token], function (array &$o) use ($reason, $by) { if (empty($o['cancelledAt'])) { $o['cancelledAt'] = sj_iso(time()); $o['cancelReason'] = $reason; $o['cancelBy'] = $by; } });
 }
-/* v26: granica rezervacija iz neplaćenih narudžbi — pola slobodnih unikata, ali u maloj ponudi barem tri (inače
-   već drugi kupac ostaje bez rezervacije); zaštitu od jednog napadača i dalje čine granice po e-mailu i adresi */
-function sj_hold_cap(int $free): int {
-  $min = max(0, (int)(sj_config()['limits']['hold_min'] ?? 3)); /* 0 = staro pravilo (samo pola) */
-  return max(min($free, $min), $free >= 2 ? intdiv($free, 2) : 0);
+/* v68: podrubrike rubrike Ostalo (oznaka => naziv na stranici), redoslijed kao na stranici */
+function sj_subs(): array { return ['remeni' => 'Remeni', 'more' => 'Torbe za more', 'kozmeticke' => 'Kozmetičke torbice', 'novcanici' => 'Mini novčanici', 'platnene' => 'Platnene torbe']; }
+/* v68: mjere s univerzalnim opisom iz Postavki (samo ispunjene) */
+function sj_sizes(): array {
+  $out = [];
+  foreach ((array)(sj_config()['sizes'] ?? []) as $x) { $m = trim((string)($x['mjera'] ?? '')); if ($m !== '') $out[] = ['mjera' => $m, 'opis' => trim((string)($x['opis'] ?? ''))]; }
+  return $out;
 }
+/* v68: razlozi storna (admin bira pri „Storniraj”; ulaze u izvoz i analizu) */
+function sj_cancel_reasons(): array { return ['nije uplaćeno u roku', 'kupac odustao', 'lažna narudžba', 'torba oštećena ili nedostupna', 'drugo']; }
 /* v27: OIB — 11 znamenki i ispravna kontrolna znamenka (ISO 7064, MOD 11,10) */
 function sj_oib_ok(string $oib): bool {
   if (!preg_match('/^\d{11}$/', $oib)) return false;
@@ -353,7 +461,8 @@ function sj_config_update(callable $fn): array {
     $saved = $d;
     $d = array_replace_recursive(sj_defaults(), $d);
     /* popisi (dostava, izvori) se ne spajaju po indeksu sa zadanima, inače bi obrisana opcija „uskrsnula” */
-    foreach (['shipping', 'allowed_origins'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $d[$k] = array_values($saved[$k]);
+    foreach (['shipping', 'allowed_origins', 'sizes'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $d[$k] = array_values($saved[$k]);
+    if (isset($saved['free_ship']['ids']) && is_array($saved['free_ship']['ids'])) $d['free_ship']['ids'] = array_values($saved['free_ship']['ids']);
     $fn($d);
     return $d;
   }, []);

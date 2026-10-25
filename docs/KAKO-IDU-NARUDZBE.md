@@ -1,4 +1,4 @@
-_Shiva.J · upute za trgovinu · stranica v67_
+_Shiva.J · upute za trgovinu · stranica v68_
 
 # Kako idu narudžbe
 
@@ -26,7 +26,7 @@ _Torbe_
 
 ### Unikat
 
-Postoji samo jednom. Potvrdom narudžbe rezervira se za kupca (zadano 24 sata), osim kad previše narudžbi već čeka uplatu; kupac to vidi odmah, prije uplate. U jednoj narudžbi najviše dva unikata.
+Postoji samo jednom. Potvrdom narudžbe rezervira se za kupca (zadano 24 sata). Taj rok je ujedno rok za uplatu (v68): kupac ga vidi na ploči i u e-mailu („ROK ZA UPLATU: do …”). U jednoj narudžbi najviše dva unikata.
 
 _Stalna kolekcija_
 
@@ -98,13 +98,17 @@ Kad su sva mjesta zauzeta, kupci vide „Popunjeno” i poziv da se jave na Inst
 
 ## Posebni slučajevi
 
-**Rezervacija je istekla, a uplate nema**
+**Rok za uplatu (v68, odluka vlasnice 25. 10. 2026.)**
 
-Unikat se sam vraća u prodaju. Narudžba ostaje u Narudžbama s oznakom „rezervacija istekla”. Ako kupac ipak uplati, „Označi plaćenom” i dalje radi: torba je njegova ako je u međuvremenu nitko drugi nije platio.
+Isti tijek za unikat i za Stalnu kolekciju:
 
-**Unikat bez rezervacije**
+1. **Nakon 12 sati** bez oznake „Plaćeno” kupac dobiva podsjetnik e-mailom, bez barkoda i s rečenicom „ako ste već uplatili, nemojte plaćati ponovno” (da ne dođe do dvostruke uplate).
+2. **Nakon 24 sata** rok je istekao: unikat se vraća u prodaju, a mjesto u kolekciji se oslobađa. Kupac dobiva mirnu poruku (ako je uplatio, pošalje potvrdu), a Jasmina kratku obavijest. Narudžba stoji u adminu → Narudžbe → **Rok istekao**, s pozivom na broj i stanjem komada („komad slobodan” ili „prodano ili rezervirano drugome”), uz gumbe **Označi plaćenom** i **Storniraj**.
+3. **Još 48 sati kasnije**, ako Jasmina nije kliknula ništa, narudžba se automatski stornira (razlog „nije uplaćeno u roku”, „automatski”), a kupac dobiva e-mail.
 
-Kad je mnogo neplaćenih narudžbi, nove narudžbe drže najviše polovicu slobodnih unikata. Ostale se primaju bez rezervacije: torbu dobiva tko prvi uplati. Kupac to vidi na ploči i u e-mailu, uz obećanje: „Ako netko uplati prije vas, odmah vam javljamo i vraćamo cijelu uplatu.” Jasmina u e-mailu dobiva upozorenje.
+Rokovi se mijenjaju u Postavkama („Rok za uplatu = rezervacija”, „Podsjetnik nakon”, „Automatski storno nakon”). Ako kupac uplati nakon roka, „Označi plaćenom” i dalje radi: torba je njegova ako je u međuvremenu nitko drugi nije platio.
+
+Rokove pokreće posjet stranici ili adminu (provjera najviše jednom u 5 minuta). Na CroAdriji treba provjeriti može li se dodati i cron zadatak, da podsjetnik ne kasni kad nema posjeta.
 
 **SUKOB**
 
@@ -112,15 +116,11 @@ Ako su dva kupca platila istu torbu, u Narudžbama uz kasniju plaćenu narudžbu
 
 **Storno**
 
-Admin → Narudžbe → **Storniraj narudžbu** (svaka neplaćena): torba i mjesto u kolekciji se oslobađaju, a kupcu se Jasmina javlja sama. Stornirana narudžba više se ne može označiti plaćenom. U Rezervacijama: **Storniraj** za jednu torbu, **Storniraj sve s ove adrese** kad jedna veza drži više torbi.
-
-**Odbijene narudžbe**
-
-Kad s iste internetske veze već čeka uplatu previše narudžbi, nova se ne prima. Kupac dobiva poruku, a narudžba se upisuje u admin → Narudžbe → „Odbijene (ista veza)” i Jasmina dobiva e-mail (najviše jednom na sat). Ako je kupac pravi, javite mu se.
+Admin → Narudžbe → **Storniraj narudžbu** (svaka neplaćena), uz razlog s popisa (nije uplaćeno u roku, kupac odustao, lažna narudžba, torba oštećena ili nedostupna, drugo): torba i mjesto u kolekciji se oslobađaju, a kupcu se Jasmina javlja sama. Razlog se vidi u Narudžbama. Stornirana narudžba više se ne može označiti plaćenom. U Rezervacijama: **Storniraj** za jednu torbu, **Storniraj sve s ove adrese** kad jedna veza drži više torbi.
 
 **Preopterećenje**
 
-Ako u satu ode više od 200 e-mailova za potvrdu, narudžbe se primaju bez potvrde i bez rezervacije; u Narudžbama piše „bez potvrde e-mailom”, a Jasmina dobiva jedan sažetak na sat. Pravog kupca prepoznaje se po uplati.
+Ako u satu ode više od 200 e-mailova za potvrdu, nove narudžbe se privremeno ne primaju (v68): kupac vidi „Trenutno primamo previše narudžbi odjednom…” s adresom e-pošte, a Jasmina dobiva upozorenje najviše jednom na sat. Granice po internetskoj vezi i „Odbijene (ista veza)” ukinute su u v68; stare odbijene ostaju vidljive u adminu dok ne isteknu.
 
 **Kupac se predomisli**
 
@@ -135,17 +135,19 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 | Rezervacija unikata | 24 h | Kupac ima vremena uplatiti; s potvrdom uplate torba ostaje i nakon toga. |
 | Link za potvrdu | 60 min | Može se postaviti od 10 minuta do 24 sata. |
 | E-mailovi za potvrdu na istu adresu | 2 / sat | Stranica ne smije slati poštu na tuđe adrese. |
-| Stavki u narudžbi | 6 | Od toga najviše 2 unikata. |
+| Torbi u narudžbi | 5 | Unikati i Stalna kolekcija zajedno (v68). |
+| Artikala u narudžbi | 10 | Sve s količinama; od toga najviše 2 unikata (v68). Kupac poruku vidi odmah pri dodavanju u košaricu. |
+| Podsjetnik za uplatu | 12 h | Samo ako narudžba nije označena plaćenom; bez barkoda. |
+| Automatski storno | +48 h | Nakon isteka roka, ako Jasmina ne klikne „Plaćeno” ili „Storniraj”. |
+| Besplatna dostava | od 120 € | Samo BOX NOW; prag i načini u Postavkama (v68). |
 | Komada istog modela iz kolekcije | 1 | Za više komada kupac se javlja. |
 | Neplaćenih narudžbi po e-mailu | 1 + 1 | Jedna s unikatom i jedna iz kolekcije. |
-| Neplaćenih narudžbi s unikatom s iste veze | 6 | Kupci na istoj mobilnoj ili kućnoj mreži dijele vezu. |
-| Neplaćenih narudžbi iz kolekcije s iste veze | 3 | Uz to: s jedne veze najviše jedno mjesto manje od broja mjesta modela (npr. 2 od 3), da jedna veza nikad sama ne popuni model. |
 | Narudžbi na sat s iste veze | 10 | Zaštita od skripti. |
 | Narudžbi vidljivih u adminu | 300 | Starije su u arhivi; „Označi plaćenom” ih i dalje nalazi. |
 
 ## Što je još otvoreno
 
-**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (izrada bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate za unikat bez rezervacije) te rok čuvanja starih i storniranih narudžbi u arhivi.
+**Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (izrada bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate kad unikat nakon isteka roka uplati netko drugi) te rok čuvanja starih i storniranih narudžbi u arhivi.
 
 ---
-_Shiva.J · dokument uz stranicu v67 (api v35, admin v35) · snimljeno 16. 10. 2026. na probnoj stranici_
+_Shiva.J · dokument uz stranicu v68 (api v36, admin v36) · snimljeno 16. 10. 2026. na probnoj stranici_

@@ -563,3 +563,20 @@ Sigurnost 8/10 („spremno”); dizajn: trgovina 8,5, admin 7,5, e-mail 8,5; kup
 | Dizajn 4: povrat dvaput; mješovita narudžba dvosmislena | povrat jednom s nazivom; mješovita čeka odluku vlasnika |
 | Dizajn 5–9: starije narudžbe na dnu, „nedostupn”, glasna iznimka, storno sivo, sitnice | riješeno |
 | Kupac: odustajanje bez rezervacije | čeka odluku vlasnika |
+
+## v68 (admin v36, api v36): odluke vlasnice (25. 10. 2026.)
+
+Nije recenzija, nego provedba odluka iz „Odluke, 2. krug” i komentara vlasnice. Vijeće na v68 tek slijedi.
+
+| Odluka | Gdje u kodu |
+|---|---|
+| Rok za uplatu 24 h = rezervacija; podsjetnik 12 h bez barkoda; nakon roka komad u prodaju; automatski storno +48 h | `sj_deadline_tick` (brava `data/rokovi.json`, najviše jednom u 5 min, e-mailovi nakon brave), `sj_pay_until`, `sj_order_expired`; poziv iz `status` i admina |
+| Ukinuti „pola ponude”, „bez rezervacije”, granice po vezi i „Odbijene” | `api/index.php` (`sj_place_order*`), preopterećenje → 503 (`sj_order_overload`) |
+| 5 torbi, 10 artikala, 2 unikata po narudžbi | `SJ_MAX_BAGS`, `SJ_MAX_ARTICLES`, `SJ_MAX_UNIQUE_PER_ORDER`; trgovina `overLimit` |
+| Besplatna dostava od 120 €, samo BOX NOW | `sj_free_ship`, `sj_ship_price` (API i potvrda); trgovina `optPrice`/`shipPrice` |
+| Razlozi storna | `sj_cancel_reasons`, `sj_order_cancelled($token,$reason,$by)` |
+| Mjere kao kućice, univerzalni opis, „Veličina i nošenje” | `sizes`, `size_all` u konfiguraciji; obrazac torbe; `#lbSize` |
+| Podrubrike Ostalog, „Mini novčanici” | `sj_subs`; trgovina grupira Ostalo |
+| Potpis „Jasmina · Shiva.J” | `sj_signature` |
+
+Otvoreno za v69: zaliha „Komada”, izvoz CSV, analiza u Mjerenju, provjera barkoda, pregled kartice u adminu, cron na CroAdriji; Pravila privatnosti (analiza prodaje) idu pravniku.

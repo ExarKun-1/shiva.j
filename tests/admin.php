@@ -36,7 +36,7 @@ file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
 @unlink($D . '/brojac.json');
 
 $view = $req('GET', ['s' => 'narudzbe']);
-$ok(preg_match('#SJ-2026-0401.*?bez rezervacije: Nera.*?order_paid#s', $view) === 1 && preg_match('#SJ-2026-0403.*?order_paid#s', $view) === 1, 'Narudžbe: gumb „Plaćeno” i za narudžbu bez rezervacije i za aktivnu');
+$ok(preg_match('#SJ-2026-0401.*?order_paid#s', $view) === 1 && preg_match('#SJ-2026-0403.*?order_paid#s', $view) === 1 && !str_contains($view, 'bez rezervacije:'), 'Narudžbe: gumb „Plaćeno” i za staru narudžbu bez rezervacije i za aktivnu (v68: bez oznake „bez rezervacije”)');
 $out = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0401', 'back' => '?s=narudzbe']);
 $r = $rd();
 $ok(($r['sold']['nera']['email'] ?? '') === 'b@p.hr' && !isset($r['res']['nera']) && str_contains($out, 'Ana A'), 'B platio prvi: Nera prodana B-u, A-ova rezervacija uklonjena, vlasnica upozorena');
@@ -72,7 +72,7 @@ $ok(($rd()['sold']['vela']['email'] ?? '') === 'e@p.hr' && !empty($a['paidAt']) 
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
   'luna' => ['id' => 'luna', 'token' => 't1', 'name' => 'X', 'email' => 'x@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z'],
   'tara' => ['id' => 'tara', 'token' => 't2', 'name' => 'Y', 'email' => 'y@p.hr', 'ordered' => true, 'since' => '2026-10-11T00:00:00Z', 'until' => '2099-01-01T00:00:00Z']], 'sold' => ['vela' => ['id' => 'vela', 'paidAt' => '2026-10-11T00:00:00Z']]]));
-$ok(str_contains($req('GET', ['s' => 'rez']), 'Pažnja: neplaćene narudžbe drže'), 'Rezervacije: upozorenje kad neplaćene drže više od pola slobodnih');
+$ok(!str_contains($req('GET', ['s' => 'rez']), 'Pažnja: neplaćene narudžbe drže'), 'v68: Rezervacije bez upozorenja „više od pola” (granica je ukinuta)');
 
 /* v21: A — „Označi trajno prodanom” je jednosmjerno; dvostruki klik ne vraća torbu u prodaju */
 file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
@@ -231,6 +231,60 @@ $ok(str_contains($bad, 'nije ispravna') && (json_decode(file_get_contents($D . '
 file_put_contents($D . '/config.json', $cfg0);
 
 /* v20 (admin): promjena lozinke odjavljuje postojeće sesije */
+
+/* ---------- v68: Rok istekao, razlog storna, Postavke, mjere i podrubrika, rokovi za uplatu ---------- */
+$isoAgo = fn(int $h) => gmdate('Y-m-d\TH:i:s\Z', time() - $h * 3600);
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0901', 'at' => $isoAgo(30), 'name' => 'Rok R', 'email' => 'rok@p.hr', 'total' => '69,00 €', 'items' => 'Luna — 65,00 €', 'reservation' => ['token' => 'tR', 'until' => $isoAgo(6)], 'order' => ['items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 65]]]],
+  ['no' => 'SJ-2026-0902', 'at' => $isoAgo(2), 'name' => 'Svjez S', 'email' => 's@p.hr', 'total' => '59,00 €', 'reservation' => ['token' => 'tS', 'until' => gmdate('Y-m-d\TH:i:s\Z', time() + 22 * 3600)], 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
+]));
+$v = $req('GET', ['s' => 'narudzbe']);
+$rokSeg = preg_match('#id="rok"(.*?)<div class="tablewrap">#s', $v, $mr) ? $mr[1] : '';
+$ok(str_contains($v, 'Rok istekao (1)') && preg_match('#SJ-2026-0901.*?komad slobodan.*?2026-0901#s', $rokSeg) === 1 && !str_contains($rokSeg, 'SJ-2026-0902') && str_contains($v, 'Narudžbe (1)'), 'v68: Rok istekao — samo narudžba kojoj je prošao rok, s pozivom na broj, „komad slobodan” i brojem uz Narudžbe');
+$out = $req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0901', 'reason' => 'kupac odustao', 'reason_text' => '', 'back' => '?s=narudzbe']);
+$o9 = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
+$ok(($o9['cancelReason'] ?? '') === 'kupac odustao' && ($o9['cancelBy'] ?? '') === 'vlasnica' && str_contains($out, 'razlog: kupac odustao') && !str_contains($out, 'Rok istekao ('), 'v68: storno s razlogom — razlog i tko je stornirao zapisani i prikazani; narudžba više nije pod „Rok istekao”');
+$req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0902', 'reason' => 'drugo', 'reason_text' => 'dupla narudžba', 'back' => '?s=narudzbe']);
+$ok((json_decode(file_get_contents($D . '/narudzbe.json'), true)[1]['cancelReason'] ?? '') === 'drugo: dupla narudžba', 'v68: razlog „drugo” s upisanim tekstom');
+/* Postavke */
+$set68 = array_replace($set, ['mail_mode' => 'log', 'shipping' => "boxnow | BOX NOW | 4 | ne | da |\ngls | GLS | 6 | da | ne |\n", 'remind_hours' => '12', 'auto_cancel_hours' => '48', 'signature' => 'Jasmina · Shiva.J', 'require_confirm' => '1', 'free_min' => '120', 'free_ids[]' => 'boxnow',
+  'sizes' => "22 × 7 cm | Stane mobitel.\n26 × 7 cm | Stane mobitel, novčanik i ključevi.\n", 'size_all' => 'Remen je podesiv, do 120 cm.']);
+$req('POST', $set68);
+$c68 = json_decode(file_get_contents($D . '/config.json'), true);
+$ok(($c68['remind_hours'] ?? 0) === 12 && ($c68['auto_cancel_hours'] ?? 0) === 48 && ($c68['signature'] ?? '') === 'Jasmina · Shiva.J' && !empty($c68['require_confirm'])
+  && ($c68['free_ship'] ?? []) == ['min' => 120, 'ids' => ['boxnow']] && count($c68['sizes'] ?? []) === 2 && ($c68['sizes'][1]['opis'] ?? '') === 'Stane mobitel, novčanik i ključevi.' && ($c68['size_all'] ?? '') === 'Remen je podesiv, do 120 cm.', 'v68: Postavke spremaju rokove, potpis, potvrdu e-mailom, besplatnu dostavu, mjere i tekst za sve torbe');
+$bad = $req('POST', array_replace($set68, ['remind_hours' => '24']));
+$ok(str_contains($bad, 'Podsjetnik: 0 (bez podsjetnika) ili manje sati od roka') && (json_decode(file_get_contents($D . '/config.json'), true)['remind_hours'] ?? 0) === 12, 'v68: podsjetnik ne smije biti nakon roka za uplatu (ništa se ne sprema)');
+$c68['require_confirm'] = false; file_put_contents($D . '/config.json', json_encode($c68)); /* ostali testovi bez potvrde e-mailom */
+/* obrazac torbe: kućice s mjerama, podrubrika */
+$fv = $req('GET', ['s' => 'nova']);
+$ok(str_contains($fv, 'name="size" value="26 × 7 cm"') && str_contains($fv, 'value="druga"') && str_contains($fv, 'name="sub"') && str_contains($fv, 'Mini novčanici'), 'v68: obrazac torbe ima kućice s mjerama, „Druga mjera” i podrubriku');
+$req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Okrugla proba', 'price' => '90', 'vrsta' => 'unikat', 'size' => '26 × 7 cm', 'dims' => '', 'back' => '?s=torbe']);
+$req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Novcanic proba', 'price' => '18', 'vrsta' => 'ostalo', 'sub' => 'novcanici', 'size' => 'druga', 'dims' => '12 × 9 cm', 'back' => '?s=torbe']);
+$pp = []; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) $pp[$x['name']] = $x;
+$ok(($pp['Okrugla proba']['size'] ?? '') === '26 × 7 cm' && ($pp['Okrugla proba']['dims'] ?? '') === '26 × 7 cm' && ($pp['Novcanic proba']['sub'] ?? '') === 'novcanici' && ($pp['Novcanic proba']['dims'] ?? '') === '12 × 9 cm' && !isset($pp['Novcanic proba']['size']), 'v68: torba s kućicom mjere (dims = mjera) i artikl s podrubrikom i drugom mjerom');
+/* rokovi za uplatu pri otvaranju admina: podsjetnik, rok istekao, automatski storno */
+$c68['deadline_tick'] = true; file_put_contents($D . '/config.json', json_encode($c68)); @unlink($D . '/rokovi.json'); @unlink($D . '/mail-log.txt');
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => ['vela' => ['id' => 'vela', 'token' => 'tA80', 'name' => 'A', 'email' => 'a80@p.hr', 'ordered' => true, 'until' => '2099-01-01T00:00:00Z']], 'sold' => []]));
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0911', 'at' => $isoAgo(13), 'name' => 'Pod P', 'email' => 'p13@p.hr', 'total' => '59,00 €', 'reservation' => ['token' => 'tP'], 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
+  ['no' => 'SJ-2026-0912', 'at' => $isoAgo(30), 'name' => 'Ist I', 'email' => 'i30@p.hr', 'total' => '64,00 €', 'reservation' => null, 'order' => ['items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'qty' => 1, 'price' => 60, 'made' => true]]]],
+  ['no' => 'SJ-2026-0913', 'at' => $isoAgo(80), 'name' => 'Auto A', 'email' => 'a80@p.hr', 'total' => '74,00 €', 'reservation' => ['token' => 'tA80'], 'order' => ['items' => [['id' => 'vela', 'name' => 'Vela', 'qty' => 1, 'price' => 70]]]],
+  ['no' => 'SJ-2026-0914', 'at' => $isoAgo(13), 'name' => 'Placen P', 'email' => 'pl@p.hr', 'paidAt' => $isoAgo(12), 'total' => '59,00 €', 'order' => ['items' => [['id' => 'mira', 'name' => 'Mira', 'qty' => 1, 'price' => 48]]]],
+]));
+$req('GET', ['s' => 'narudzbe']);
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$log = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(!empty($nn['SJ-2026-0911']['remindedAt']) && empty($nn['SJ-2026-0911']['expiredAt']) && !empty($nn['SJ-2026-0912']['expiredAt']) && empty($nn['SJ-2026-0912']['cancelledAt'])
+  && ($nn['SJ-2026-0913']['cancelBy'] ?? '') === 'automatski' && ($nn['SJ-2026-0913']['cancelReason'] ?? '') === 'nije uplaćeno u roku' && empty($nn['SJ-2026-0914']['remindedAt'])
+  && !isset($rd()['res']['vela']), 'v68: rokovi — podsjetnik nakon 12 h, „rok istekao” nakon 24 h, automatski storno 48 h nakon roka (rezervacija oslobođena); plaćena narudžba ništa ne dobiva');
+$ok(substr_count($log, 'podsjetnik za uplatu') === 1 && str_contains($log, 'nemojte plaćati ponovno') && !preg_match('/podsjetnik za uplatu.*?IBAN/s', $log) && str_contains($log, 'rok za uplatu je prošao') && str_contains($log, 'rok za uplatu prošao: SJ-2026-0912') && str_contains($log, 'SJ-2026-0913 je stornirana') && str_contains($log, 'Jasmina · Shiva.J'), 'v68: e-mailovi rokova (podsjetnik bez podataka za uplatu, kupcu i vlasnici pri isteku, storno) s potpisom iz Postavki');
+@unlink($D . '/rokovi.json'); $before = strlen((string)@file_get_contents($D . '/mail-log.txt'));
+$req('GET', ['s' => 'narudzbe']);
+$ok(strlen((string)@file_get_contents($D . '/mail-log.txt')) === $before, 'v68: ponovno otvaranje ne šalje iste poruke dvaput');
+$c68['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($c68));
+
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));
 $ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'name="password"'), 'v20: nakon promjene lozinke stara sesija više ne vrijedi');
