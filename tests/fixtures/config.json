@@ -58,5 +58,12 @@
     "unique_orders_per_hour": 100,
     "confirm_per_ip": 100
   },
-  "show_ostalo": true
+  "show_ostalo": true,
+  "deadline_tick": false,
+  "free_ship": {
+    "min": 0,
+    "ids": [
+      "boxnow"
+    ]
+  }
 }

@@ -91,8 +91,21 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - Gumb **„Otvori nova mjesta”** pojavljuje se tek kad je model popunjen (v63).
 - **Storniraj narudžbu** (Narudžbe, v63): uz svaku neplaćenu narudžbu. Narudžba se označi storniranom, unikatna torba se oslobađa, a mjesto u Stalnoj kolekciji se vraća. Kupcu se javite sami (poruka vam kaže na koju adresu). Stornirana narudžba više se ne može označiti plaćenom (v64); ako je kupac ipak uplatio, neka naruči ponovno ili mu vratite uplatu.
 - **Narudžbe** (v64): uz kupca stoje e-mail i telefon, uz dostavu adresa ili paketomat, a uz artikle napomena kupca i vrsta stavke (unikat / Stalna kolekcija / po narudžbi).
-- S iste internetske veze primaju se najviše 3 neplaćene narudžbe iz Stalne kolekcije, a od jednog modela najviše jedno mjesto manje od ukupnog broja mjesta (npr. 2 od 3); ostale idu u „Odbijene” i dobivate e-mail (v65).
+- ~~Granica po internetskoj vezi (v65)~~ ukinuta je u v68: vrijede granice po narudžbi (5 torbi, 10 artikala, 2 unikata) i jedna neplaćena narudžba iz kolekcije po e-mailu.
 - **Želja kupca** (boja, duljina) stoji u Narudžbama podebljano uz stavku i u e-mailu kao „ŽELJA KUPCA”. Ako je ne možete ispuniti, javite se kupcu prije šivanja: bira torbu bez te želje ili povrat cijelog iznosa (v65).
 - **Rubrika „Ostalo”** (remeni, torbice, platnene torbe) uključuje se u Postavkama: „Prikaži rubriku Ostalo”. Dok je isključena, artikli ostaju u adminu, ali se ne vide i ne mogu naručiti.
 - **v66:** gumb za privremeno isključenje modela zove se **„Privremeno isključi”** (natrag: „Ponovno uključi”). U Narudžbama se uz zadnjih 100 uvijek vide i **starije neplaćene narudžbe iz Stalne kolekcije** (oznaka „starija neplaćena (kolekcija)”), da ih možete stornirati. Telefon i e-mail kupca su poveznice.
 - **v67:** starije neplaćene narudžbe iz Stalne kolekcije koje još drže mjesto stoje u zasebnoj tablici **iznad** popisa Narudžbi („Starije neplaćene (Stalna kolekcija) — drže mjesto”). Ako kupac ne uplati, stornirajte ih.
+
+## Rokovi za uplatu, storno i nove postavke (v68)
+- **Rok za uplatu = rezervacija** (Postavke, zadano 24 h). Kupac ga vidi na ploči i u e-mailu.
+- **Podsjetnik** (zadano nakon 12 h): ide samo ako narudžbu niste označili plaćenom; bez barkoda, s rečenicom „nemojte plaćati ponovno”.
+- **Rok istekao**: u Narudžbama, iznad popisa, kartice „Rok istekao (n)” s pozivom na broj i stanjem komada („komad slobodan” ili „prodano ili rezervirano drugome”). Ako je uplata stigla: **Označi plaćenom**. Ako nije: **Storniraj**. Ako ne kliknete ništa, narudžba se automatski stornira nakon još 48 h (Postavke: „Automatski storno nakon”; 0 = nikad) i kupac dobiva e-mail.
+- **Storno s razlogom**: uz Storniraj birate razlog (nije uplaćeno u roku, kupac odustao, lažna narudžba, torba oštećena ili nedostupna, drugo + kratki tekst). Razlog se vidi u Narudžbama; automatski storno ima oznaku „(automatski)”.
+- **Potpis u e-mailovima** (Postavke): zadano „Jasmina · Shiva.J”.
+- **Besplatna dostava** (Postavke): prag (zadano 120 €; 0 = isključeno) i načini na koje vrijedi (zadano samo BOX NOW). Stranica i e-mail računaju isto.
+- **Mjere i opisi** (Postavke): jedna mjera po retku, „mjera | opis”, npr. `26 × 7 cm | Stane mobitel, novčanik i ključevi.`. Ispod: tekst za sve torbe (npr. duljina remena). U obrascu torbe mjeru birate klikom na kućicu; „druga” otvara slobodan upis. Kupac u povećanom prikazu vidi blok „Veličina i nošenje”.
+- **Podrubrika za Ostalo** (obrazac artikla): remeni, more, kozmetičke torbice, mini novčanici, platnene torbe. Na stranici se Ostalo prikazuje po podrubrikama.
+- **Granice po narudžbi**: 5 torbi, 10 artikala, od toga 2 unikata. Kupac poruku vidi odmah u košarici.
+- Rokovi se provjeravaju kad netko otvori stranicu ili admin (najviše jednom u 5 minuta).
+

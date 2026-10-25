@@ -113,7 +113,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     for (let i = 0; i < 3; i++) c3.push((await post('order', order('potvrda-nova-' + i + '-xx', 'nova' + i + '@primjer.hr', [{ id: 'klasik', qty: 1 }], 60))).status);
     ok(c3.every(c => c === 200), 'odbijena narudžba ne troši granicu po adresi: ' + c3.join(','));
     write('config.json', Object.assign({}, cfg0, { require_confirm: true, confirm_minutes: 60 }));
-    // 7g) preopterećenje (200 e-mailova za potvrdu u satu): narudžba primljena bez e-maila i bez rezervacije; vlasnica dobiva jedan sažetak
+    // 7g) preopterećenje (200 e-mailova za potvrdu u satu): v68 — narudžba se odbija (iznimka „bez rezervacije” je ukinuta); vlasnica dobiva jedno upozorenje
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     write('zahtjevi.json', { 'sve|confirm': Array(200).fill(nowE) });
     const prodsO = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8'));
@@ -125,8 +125,9 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const newMails = mailLog().slice(mailBefore);
     const nOwner = (newMails.match(/narudžbe bez potvrde e-mailom/g) || []).length;
     const ent = read('narudzbe.json', []).find(x => x.no === o1.data.orderNo) || {};
-    ok(o1.status === 200 && /^SJ-/.test(o1.data.orderNo || '') && !o1.data.pending && o1.data.unheld === true && !((read('rezervacije.json', {}).res || {})[free1]) && ent.unconfirmed === true, 'preopterećenje: narudžba primljena odmah, bez rezervacije, označena „bez potvrde”');
-    ok(o2.status === 200 && !/preopt1@primjer\.hr/.test(newMails.replace(/Prva takva narudžba[^\n]*/g, '')) && nOwner === 1, 'preopterećenje: kupcima se ne šalje e-mail, vlasnica dobiva jedan sažetak (' + nOwner + ')');
+    const nOwner2 = (newMails.match(/PAŽNJA: previše narudžbi/g) || []).length;
+    ok(o1.status === 503 && /previše narudžbi odjednom/.test(o1.data.error || '') && !o1.data.orderNo && !((read('rezervacije.json', {}).res || {})[free1]) && !ent.no, 'v68: preopterećenje — narudžba se ne prima (503 s porukom), ništa se ne rezervira ni ne zapisuje');
+    ok(o2.status === 503 && !/To: preopt1@primjer\.hr/.test(newMails) && nOwner2 === 1, 'v68: preopterećenje — kupcima nema e-maila, vlasnica dobiva jedno upozorenje (' + nOwner2 + ')');
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

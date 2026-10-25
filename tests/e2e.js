@@ -41,7 +41,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Šarena se dogodi/.test(await pd.textContent('.about-quote')) && /Jasmina/.test(await pd.textContent('.about-quote small')) && !/po narudžbi: šarena se dogodi/.test(await pd.textContent('#radionica')), 'citat samo lijevo, s potpisom');
   ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /osim artikala izrađenih po vašoj želji/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, ograda u Ukratko');
   ok(/Ručno šivane torbe iz Zaboka/.test(await pd.title()) && /Ručno šivane torbe iz Zaboka/.test(await pd.textContent('footer')), 'slogan u naslovu i podnožju');
-  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, torbu rezerviramo za vas 24 sata i nitko je drugi ne može naručiti\. Iznimno, ako u tom trenutku previše narudžbi čeka uplatu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
+  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, torbu rezerviramo za vas 24 sata i nitko je drugi ne može naručiti\. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
   ok(!/šaren/i.test(await pd.evaluate(() => [...document.querySelectorAll('#kako, #torbe, #emptyCart, #orderForm, meta')].map(e => e.textContent + (e.getAttribute('content') || '')).join(' '))), 'v62: bez riječi „šarena” u tekstovima kupnje');
   ok((await pd.getAttribute('#radionica a[href^="mailto:"]', 'href')) === 'mailto:shivaj.handmade@gmail.com', 'e-mail kao mailto');
   ok(!/Svaka torba postoji/.test(await pd.getAttribute('meta[name="description"]', 'content')), 'opis za tražilice bez „svaka torba”');
@@ -188,7 +188,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/U košarici ✓ · otvori/.test(await lunaBtn.textContent()), 'v46: gumb „U košarici ✓ · otvori”');
   await lunaBtn.click(); await pm.waitForTimeout(300);
   ok(await pm.evaluate(() => document.body.classList.contains('cart-open')) && /Luna/.test(await pm.textContent('#cartItems')), 'v46: drugi dodir otvara košaricu, torba ostaje u njoj');
-  ok(/Torbu „Luna” rezerviramo za vas 24 sata od narudžbe\.Iznimka: ako u tom trenutku previše narudžbi već čeka uplatu, vidjet ćete to odmah, prije uplate\./.test(await pm.textContent('#orderHold')) && await pm.locator('#orderHold .hold-exc').count() === 1 && await pm.locator('#orderNoteHold').isHidden(), 'redak o rezervaciji bez slaganja roda; napomena ga ne ponavlja');
+  ok(/Torbu „Luna” rezerviramo za vas 24 sata od narudžbe; u tom roku uplatite\./.test(await pm.textContent('#orderHold')) && await pm.locator('#orderHold .hold-exc').count() === 0 && await pm.locator('#orderNoteHold').isHidden(), 'redak o rezervaciji bez slaganja roda; napomena ga ne ponavlja');
   await pm.check('#shipOptions input[value="pickup"]');
   await pm.fill('#fName', 'Test Kupac'); await pm.fill('#fEmail', 'kupac@primjer.hr'); await pm.fill('#fPhone', '091 234 5678');
   await pm.check('#fConsent');
@@ -196,8 +196,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pm.click('#orderBtn');
   await pm.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
   const steps = await pm.textContent('.pay-steps').catch(() => '');
-  ok(/1–2 radna dana/.test(steps) && /Do isteka rezervacije/.test(steps), 'vremenska crta s rokom slanja');
-  ok(/Do isteka rezervacije/.test(steps) && /pripremamo za preuzimanje u radionici/.test(steps) && /javit ćemo vam se kad bude spremna i dogovoriti termin/.test(steps), 'novi tekst koraka (preuzimanje)');
+  ok(/1–2 radna dana/.test(steps) && /Do \d/.test(steps), 'vremenska crta s rokom slanja (v68: „Do” + točan rok za uplatu)');
+  ok(/Do \d/.test(steps) && /pripremamo za preuzimanje u radionici/.test(steps) && /javit ćemo vam se kad bude spremna i dogovoriti termin/.test(steps), 'novi tekst koraka (preuzimanje)');
   ok(/Torba „Luna” je rezervirana za vas/.test(await pm.textContent('.pay-thanks')) && !/✂/.test(await pm.textContent('.pay-thanks')), 'zahvala „Torba „Luna” je rezervirana”, bez emojija');
   ok(await pm.evaluate(() => document.activeElement && document.activeElement.classList.contains('pay-thanks')), 'fokus na zahvali nakon narudžbe');
   ok((await pm.textContent('.pay-hello')).startsWith('Hvala vam!') && /Narudžba SJ-\d{4}-\d{4}/.test(await pm.textContent('.pay-hello')) && await pm.locator('.pay-thanks b').count() === 1, 'v42: „Hvala vam!” kao naslov, rok rezervacije istaknut');
@@ -209,7 +209,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
   const stepsU = await pm.textContent('.pay-steps');
-  ok(/Do isteka rezervacije/.test(stepsU) && !/Sada/.test(stepsU) && /ugovor možete raskinuti u roku 14 dana od preuzimanja; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /s potvrdom torbu čuvamo za vas i nakon isteka rezervacije/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, čuvanje nakon isteka, 14 dana bez ograde');
+  ok(/Do \d/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /ugovor možete raskinuti u roku 14 dana od preuzimanja; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /s potvrdom torbu čuvamo za vas i nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, čuvanje nakon isteka, 14 dana bez ograde');
     ok(!(await pm.locator('#toast.show').count()), 'nakon narudžbe nema obavijesti preko ploče');
   const prim = await pm.locator('.pay-data div:has(dt:text-is("Primatelj")) dd').innerHTML();
   ok(prim.indexOf('Matije Gupca') < prim.indexOf('copy-btn'), 'Kopiraj primatelja ispod adrese');
@@ -336,16 +336,13 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(!fb.hub3 && /barkod-uplata\.png$/.test(fb.src) && fb.vis, 'bez skripte ostaje opći barkod iz Postavki');
   ok(/Torba „Nera” je rezervirana/.test(await p4.textContent('.pay-thanks').catch(() => '')), 'rezervacija vrati 429, narudžba ipak prolazi');
   await m4.close();
-  // treća narudžba dok dvije neplaćene već drže pola ponude: prima se bez rezervacije, s jasnim tekstom
+  // v68: naručena torba je rezervirana za kupca — drugi je ne može dodati u košaricu (nema narudžbi „bez rezervacije”)
   const m6 = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const p6 = await m6.newPage(); watch(p6);
   await p6.goto(URL, { waitUntil: 'networkidle' }); await p6.waitForTimeout(300);
-  await p6.click('.card:has(h3:has(.card-name:text-is("Luna"))) .add-btn'); await p6.click('#openCart'); await p6.waitForTimeout(300);
-  await p6.check('#shipOptions input[value="pickup"]');
-  await p6.fill('#fName', 'Treća Narudžba'); await p6.fill('#fEmail', 'treca@primjer.hr'); await p6.fill('#fPhone', '091 777 3333'); await p6.check('#fConsent');
-  await p6.click('#orderBtn'); await p6.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
-  const th6 = await p6.textContent('.pay-thanks').catch(() => '');
-  ok(/ne možemo rezervirati/.test(th6) && /tko prvi uplati/.test(th6) && /Sada/.test(await p6.textContent('.pay-steps')), 'narudžba bez rezervacije: ploča kaže „dobiva je tko prvi uplati”');
+  const resName = await p6.evaluate(() => { const p = PRODUCTS.find(x => !x.made && x.srvReserved && !x.srvSold && !x.sold); return p ? p.name : ''; });
+  const resCard = '.card:has(h3:has(.card-name:text-is("' + resName + '")))';
+  ok(resName !== '' && await p6.locator(resCard + ' .add-btn').isDisabled() && /Rezervirano/.test(await p6.textContent(resCard)), 'v68: naručena torba („' + resName + '”) drugom kupcu stoji kao „Rezervirano” i ne može se dodati');
   await m6.close();
   // v40: potvrda e-mailom — ploča „potvrdite narudžbu”, link iz e-maila otvara podatke za uplatu i na drugom uređaju
   const cfgPath = SITE + 'data/config.json', cfg0 = fs.readFileSync(cfgPath, 'utf8');
@@ -540,6 +537,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   // v64: obrazac se ne zaglavi nakon promjene dostave; mješovita narudžba poimence; otvorena narudžba nije „greška e-maila”
   {
     { const zp = SITE + 'data/zahtjevi.json', zj = JSON.parse(fs.readFileSync(zp, 'utf8')); Object.keys(zj).forEach(k => { if (/^order\|/.test(k)) delete zj[k]; }); fs.writeFileSync(zp, JSON.stringify(zj)); } /* granica 10 narudžbi na sat s iste veze */
+    { const rp = SITE + 'data/rezervacije.json', rj = JSON.parse(fs.readFileSync(rp, 'utf8')); rj.res = {}; fs.writeFileSync(rp, JSON.stringify(rj)); } /* v68: svaka narudžba rezervira — oslobodi unikate za nastavak */
     const m19 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const p19 = await m19.newPage(); watch(p19);
     await p19.goto(URL + '#torbe', { waitUntil: 'networkidle' }); await p19.waitForTimeout(300);
     await p19.locator('#productGrid .card:not(.sold):not(.made) .add-btn:not([disabled])').first().click();
@@ -610,13 +608,52 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     } else ok(false, 'v66: nema artikla iz Ostalo s fotografijom u ispitnim podacima');
     await m23.close();
   }
+  // v68: besplatna dostava (prag iz Postavki, samo BOX NOW), granice narudžbe odmah kod dodavanja, „Veličina i nošenje”, podrubrike Ostalog
+  {
+    const cp = SITE + 'data/config.json', cj = JSON.parse(fs.readFileSync(cp, 'utf8'));
+    cj.free_ship = { min: 120, ids: ['boxnow'] }; cj.sizes = [{ mjera: '26 × 7 cm', opis: 'Stane mobitel, novčanik i ključevi.' }]; cj.size_all = 'Remen je podesiv, do 120 cm.';
+    fs.writeFileSync(cp, JSON.stringify(cj, null, 2));
+    { const rp = SITE + 'data/rezervacije.json', rj = JSON.parse(fs.readFileSync(rp, 'utf8')); rj.res = {}; rj.sold = {}; fs.writeFileSync(rp, JSON.stringify(rj)); }
+    for (const f of [SITE + 'torbe.json', SITE + 'data/proizvodi.json']) {
+      const pl = JSON.parse(fs.readFileSync(f, 'utf8'));
+      pl.forEach(x => { if (x.id === 'nera') { x.size = '26 × 7 cm'; x.dims = '26 × 7 cm'; x.reserved = false; x.sold = false; } if (x.id === 'remen') x.sub = 'remeni'; if (x.id === 'platnena') x.sub = 'platnene'; });
+      fs.writeFileSync(f, JSON.stringify(pl, null, 2));
+    }
+    const m68 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const p68 = await m68.newPage(); watch(p68);
+    await p68.goto(URL + '#torbe', { waitUntil: 'networkidle' }); await p68.waitForTimeout(400);
+    await p68.evaluate(() => { localStorage.clear(); }); await p68.reload({ waitUntil: 'networkidle' }); await p68.waitForTimeout(400);
+    await p68.click('.card:has(h3:has(.card-name:text-is("Nera"))) .photo');
+    await p68.waitForTimeout(300);
+    ok(await p68.isVisible('#lbSize') && /Veličina i nošenje/.test(await p68.textContent('#lbSize')) && /Stane mobitel, novčanik i ključevi\. Remen je podesiv, do 120 cm\./.test(await p68.textContent('#lbSizeText')), 'v68: povećani prikaz — „Veličina i nošenje” (opis mjere i tekst za sve torbe)');
+    await p68.click('#lbAdd'); await p68.waitForTimeout(300);
+    await p68.evaluate(() => { const lb = document.getElementById('lightbox'); if (lb && lb.classList.contains('open')) closeLightbox(); });
+    await p68.evaluate(() => { location.hash = '#ostalo'; }); await p68.waitForTimeout(400);
+    const subs = await p68.$$eval('#productGrid .grid-sub span', l => l.map(x => x.textContent));
+    ok(subs[0] === 'Remeni' && subs.includes('Platnene torbe') && subs.indexOf('Remeni') < subs.indexOf('Platnene torbe'), 'v68: Ostalo po podrubrikama redom (' + subs.join(', ') + ')');
+    await p68.click('.card:has(h3:has(.card-name:text-is("Platnena torba za plažu"))) .add-btn'); await p68.waitForTimeout(200);
+    await p68.click('#openCart'); await p68.waitForTimeout(300);
+    await p68.check('#shipOptions input[value="boxnow"]'); await p68.waitForTimeout(200);
+    const fs1 = await p68.textContent('#cartItems');
+    ok(/Još 10,00\s€ do besplatne dostave \(BOX NOW paketomat\)/.test(fs1) && /4,00\s€/.test(await p68.textContent('#shipOptions')), 'v68: košarica 110 € — „Još 10,00 € do besplatne dostave”, BOX NOW 4 €');
+    await p68.evaluate(() => toggleCartItem('kozmeticka')); await p68.waitForTimeout(300);
+    const fs2 = await p68.textContent('#cartItems'), tot2 = await p68.textContent('#totalAmount');
+    ok(/Dostava je besplatna \(BOX NOW paketomat\)/.test(fs2) && /130,00/.test(tot2) && /besplatno/.test(await p68.textContent('#shipOptions label:has(input[value="boxnow"])')) && /6,00\s€/.test(await p68.textContent('#shipOptions label:has(input[value="gls"])')), 'v68: 130 € — BOX NOW besplatno (ukupno 130 €), GLS i dalje 6 €');
+    await p68.check('#shipOptions input[value="gls"]'); await p68.waitForTimeout(200);
+    ok(/136,00/.test(await p68.textContent('#totalAmount')) && /Uz BOX NOW paketomat dostava je besplatna/.test(await p68.textContent('#cartItems')), 'v68: uz GLS dostava se plaća, a košarica kaže da je uz BOX NOW besplatna');
+    await p68.evaluate(() => { closeCart && closeCart(); toggleCartItem('luna'); });
+    await p68.waitForTimeout(200);
+    await p68.evaluate(() => toggleCartItem('tara')); await p68.waitForTimeout(200);
+    const toastLim = await p68.textContent('#toast');
+    ok(/najviše 5 torbi i 10 artikala ukupno, od toga 2 unikatne torbe/.test(toastLim) && !(await p68.evaluate(() => cart.some(c => c.id === 'tara'))), 'v68: treća unikatna torba — poruka o granicama odmah, torba nije dodana');
+    await m68.close();
+  }
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 29 && day.ig === 1 && day.orders === 11 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 17 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
+  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 17 && day.copy >= 1, 'brojač: ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
-  ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /Rezervacija vrijedi 24 sata/.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, 24 sata');
+  ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]*\(24 sata\)/.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, 24 sata');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');
   const zj = JSON.parse(fs.readFileSync(SITE + 'data/zahtjevi.json', 'utf8'));
   ok(Object.keys(zj).every(k => !/visit\|127\.|count\|127\./.test(k)), 'ograničenje zahtjeva brojača bez prave adrese: ' + Object.keys(zj).join(','));
