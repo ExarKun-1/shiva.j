@@ -2652,7 +2652,7 @@ function claimFromLink(){
     try {
       const res = await fetch(apiUrl("paidclaim"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ no, t }) });
       const { ok: resOk, data } = await apiRead(res);
-      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala, zabilježili smo." : "Hvala."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
+      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Zabilježeno." : data.state === "paid" ? "Uplata je već zabilježena." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
       claimPanel(`<b>Nije uspjelo.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")} Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati.`, false);
     } catch(err){
       btn.disabled = false;
