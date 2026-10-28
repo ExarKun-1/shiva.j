@@ -1,4 +1,4 @@
-_Shiva.J · upute za trgovinu · stranica v68_
+_Shiva.J · upute za trgovinu · stranica v69_
 
 # Kako idu narudžbe
 
@@ -98,15 +98,17 @@ Kad su sva mjesta zauzeta, kupci vide „Popunjeno” i poziv da se jave na Inst
 
 ## Posebni slučajevi
 
-**Rok za uplatu (v68, odluka vlasnice 25. 10. 2026.)**
+**Rok za uplatu (v68, odluka vlasnice 25. 10. 2026.; dopunjeno u v69)**
 
 Isti tijek za unikat i za Stalnu kolekciju:
 
-1. **Nakon 12 sati** bez oznake „Plaćeno” kupac dobiva podsjetnik e-mailom, bez barkoda i s rečenicom „ako ste već uplatili, nemojte plaćati ponovno” (da ne dođe do dvostruke uplate).
-2. **Nakon 24 sata** rok je istekao: unikat se vraća u prodaju, a mjesto u kolekciji se oslobađa. Kupac dobiva mirnu poruku (ako je uplatio, pošalje potvrdu), a Jasmina kratku obavijest. Narudžba stoji u adminu → Narudžbe → **Rok istekao**, s pozivom na broj i stanjem komada („komad slobodan” ili „prodano ili rezervirano drugome”), uz gumbe **Označi plaćenom** i **Storniraj**.
-3. **Još 48 sati kasnije**, ako Jasmina nije kliknula ništa, narudžba se automatski stornira (razlog „nije uplaćeno u roku”, „automatski”), a kupac dobiva e-mail.
+1. **Nakon 12 sati** bez oznake plaćeno kupac dobiva podsjetnik e-mailom: s iznosom, IBAN-om, modelom i pozivom na broj, ali bez barkoda, i s rečenicom „ako ste već uplatili, nemojte plaćati ponovno” (v69, odluka vlasnice).
+2. **Nakon 24 sata** rok je istekao: unikat se vraća u prodaju, a mjesto u kolekciji se oslobađa. Kupac dobiva e-mail s tekstom vlasnice: ako je platio i poslao potvrdu, neka zanemari poruku; ako je platio, a potvrdu nije poslao, neka klikne „Uplatio/la sam” ili odgovori sa snimkom; „ako ste još uvijek zainteresirani za narudžbu, molimo vas da izvršite uplatu i pošaljete potvrdu o plaćanju” (torba je njegova ako je u međuvremenu nitko drugi nije kupio), uz datum storna i podatke za uplatu. Jasmina dobiva kratku obavijest. Narudžba stoji u adminu → Narudžbe → **Rok istekao**, s pozivom na broj i stanjem komada („komad slobodan” ili „prodano ili rezervirano drugome”), uz gumbe **Označi plaćenom** i **Storniraj narudžbu…**.
+3. **48 sati nakon zapisanog isteka**, ako Jasmina nije kliknula ništa, narudžba se automatski stornira (razlog „nije uplaćeno u roku”, „automatski”); kupac dobiva e-mail, a Jasmina jedan sažetak automatskih storna.
 
-Rokovi se mijenjaju u Postavkama („Rok za uplatu = rezervacija”, „Podsjetnik nakon”, „Automatski storno nakon”). Ako kupac uplati nakon roka, „Označi plaćenom” i dalje radi: torba je njegova ako je u međuvremenu nitko drugi nije platio.
+**„Uplatio/la sam” (v69, odluka vlasnice).** U potvrdi narudžbe, podsjetniku i e-mailu „rok je prošao” kupac ima poveznicu „Uplatio/la sam”. Otvara stranicu s pitanjem; tek klik na gumb jednom produžuje rok za uplatu za 24 sata (i rezervaciju torbe, ako je još slobodna). Jasmina dobiva e-mail „kupac javlja uplatu” i u Narudžbama oznaku „kupac javio uplatu”; provjeri izvod i klikne „Označi plaćenom”. Ako je torbu u međuvremenu naručio drugi kupac, to piše i kupcu i Jasmini (javite se oko povrata). Drugi klik samo kaže „već ste nam javili”.
+
+Rokovi se mijenjaju u Postavkama („Rok za uplatu = rezervacija”, „Podsjetnik nakon”, „Automatski storno nakon”). Od v69 rok je zapisan uz svaku narudžbu: promjena u Postavkama vrijedi za nove narudžbe, a narudžbe primljene prije v69 rokovi ne diraju (vlasnica ih rješava sama). Ako kupac uplati nakon roka, „Označi plaćenom” i dalje radi: torba je njegova ako je u međuvremenu nitko drugi nije platio. „Označi plaćenom” poništava i automatski storno. Nakon „Ukloni oznaku” narudžba dobiva novi rok, ali se automatski ne stornira (ostaje pod „Rok istekao”).
 
 Rokove pokreće posjet stranici ili adminu (provjera najviše jednom u 5 minuta). Na CroAdriji treba provjeriti može li se dodati i cron zadatak, da podsjetnik ne kasni kad nema posjeta.
 
@@ -116,11 +118,15 @@ Ako su dva kupca platila istu torbu, u Narudžbama uz kasniju plaćenu narudžbu
 
 **Storno**
 
-Admin → Narudžbe → **Storniraj narudžbu** (svaka neplaćena), uz razlog s popisa (nije uplaćeno u roku, kupac odustao, lažna narudžba, torba oštećena ili nedostupna, drugo): torba i mjesto u kolekciji se oslobađaju, a kupcu se Jasmina javlja sama. Razlog se vidi u Narudžbama. Stornirana narudžba više se ne može označiti plaćenom. U Rezervacijama: **Storniraj** za jednu torbu, **Storniraj sve s ove adrese** kad jedna veza drži više torbi.
+Admin → Narudžbe → **Storniraj narudžbu** (svaka neplaćena), uz razlog s popisa (nije uplaćeno u roku, kupac odustao, lažna narudžba, torba oštećena ili nedostupna, drugo): torba i mjesto u kolekciji se oslobađaju. Kvačica „Pošalji kupcu e-mail o stornu” je zadano uključena (v69, odluka vlasnice); za „lažna narudžba” e-mail se nikad ne šalje. Razlog se vidi u Narudžbama. Stornirana narudžba više se ne može označiti plaćenom. U Rezervacijama: **Storniraj** za jednu torbu, **Storniraj sve s ove adrese** kad jedna veza drži više torbi (v69: i njezine narudžbe samo iz Stalne kolekcije; razlog „lažna narudžba”, bez e-mailova).
+
+**Ista internetska veza (v69, odluka vlasnice)**
+
+S iste internetske veze mogu čekati uplatu najviše 3 narudžbe. Četvrta se ne prima: kupac vidi poruku da uplati ranije ili se javi e-mailom, a Jasmina dobiva e-mail s imenom, adresom i artiklima kupca (najviše jednom na sat). Kupci na istoj mobilnoj ili kućnoj mreži dijele vezu, pa se pravom kupcu treba javiti.
 
 **Preopterećenje**
 
-Ako u satu ode više od 200 e-mailova za potvrdu, nove narudžbe se privremeno ne primaju (v68): kupac vidi „Trenutno primamo previše narudžbi odjednom…” s adresom e-pošte, a Jasmina dobiva upozorenje najviše jednom na sat. Granice po internetskoj vezi i „Odbijene (ista veza)” ukinute su u v68; stare odbijene ostaju vidljive u adminu dok ne isteknu.
+Ako u satu ode više od 200 e-mailova za potvrdu, nove narudžbe se privremeno ne primaju (v68): kupac vidi „Trenutno primamo previše narudžbi odjednom…” s adresom e-pošte, a Jasmina dobiva upozorenje najviše jednom na sat. Popis „Odbijene (ista veza)” ukinut je u v68; stare odbijene ostaju vidljive u adminu dok ne isteknu.
 
 **Kupac se predomisli**
 
@@ -137,8 +143,11 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 | E-mailovi za potvrdu na istu adresu | 2 / sat | Stranica ne smije slati poštu na tuđe adrese. |
 | Torbi u narudžbi | 5 | Unikati i Stalna kolekcija zajedno (v68). |
 | Artikala u narudžbi | 10 | Sve s količinama; od toga najviše 2 unikata (v68). Kupac poruku vidi odmah pri dodavanju u košaricu. |
-| Podsjetnik za uplatu | 12 h | Samo ako narudžba nije označena plaćenom; bez barkoda. |
-| Automatski storno | +48 h | Nakon isteka roka, ako Jasmina ne klikne „Plaćeno” ili „Storniraj”. |
+| Podsjetnik za uplatu | 12 h | Samo ako narudžba nije označena plaćenom; s podacima za uplatu, bez barkoda. |
+| Automatski storno | +48 h | Nakon zapisanog isteka roka, ako Jasmina ne klikne „Označi plaćenom” ili „Storniraj narudžbu”. |
+| „Uplatio/la sam” | +24 h, jednom | Kupac produžuje rok sam; Jasmina dobiva e-mail. |
+| Neplaćenih narudžbi s iste veze | 3 | Postavka `limits.orders_per_ip` u data/config.json. |
+| E-mailova kupcima po provjeri rokova | 20 | Ostatak u sljedećoj provjeri (5 minuta). |
 | Besplatna dostava | od 120 € | Samo BOX NOW; prag i načini u Postavkama (v68). |
 | Komada istog modela iz kolekcije | 1 | Za više komada kupac se javlja. |
 | Neplaćenih narudžbi po e-mailu | 1 + 1 | Jedna s unikatom i jedna iz kolekcije. |
@@ -150,4 +159,4 @@ Zadane vrijednosti iz koda. Rok rezervacije i rok potvrde mijenjaju se u Postavk
 **Za pravnika.** Pravo na raskid za modele iz Stalne kolekcije (boja i duljina iz ponude) istražuje se u posebnoj sesiji; do odluke vrijedi postojeća t. 6. Na pregledu su i dva obećanja kupcu (izrada bez želje ili povrat iznosa kad želju ne možemo ispuniti; povrat uplate kad unikat nakon isteka roka uplati netko drugi) te rok čuvanja starih i storniranih narudžbi u arhivi.
 
 ---
-_Shiva.J · dokument uz stranicu v68 (api v36, admin v36) · snimljeno 16. 10. 2026. na probnoj stranici_
+_Shiva.J · dokument uz stranicu v69 (api v37, admin v37) · snimljeno 16. 10. 2026. na probnoj stranici_

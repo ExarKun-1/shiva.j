@@ -580,3 +580,28 @@ Nije recenzija, nego provedba odluka iz „Odluke, 2. krug” i komentara vlasni
 | Potpis „Jasmina · Shiva.J” | `sj_signature` |
 
 Otvoreno za v69: zaliha „Komada”, izvoz CSV, analiza u Mjerenju, provjera barkoda, pregled kartice u adminu, cron na CroAdriji; Pravila privatnosti (analiza prodaje) idu pravniku.
+
+## Vijeće na v68 → v69 (admin v37, api v37), i vijeće na v69 prije spajanja
+
+v68: sigurnost 6,5/10 „spremno uvjetno”; dizajn: trgovina 8,5, admin 8, e-mail 8; kupac 9/10. v69 (prije spajanja): sigurnost 7/10 „spremno uvjetno”; dizajn 8,5 / 8,5 / 8,5; kupac 9,5/10. Izvještaji: scratchpad `council68/` i `council69/`.
+
+| Nalaz | Stanje u v69 |
+|---|---|
+| N68-1 prvi tick stornira staru arhivu | riješeno: `payUntil` uz narudžbu; bez njega rokovi je ne diraju; test |
+| N68-2 tri lažne narudžbe zatvaraju ponudu | ublaženo: najviše 3 s iste veze (odluka vlasnice); „Storniraj sve s ove adrese” i za kolekciju; točno 3 lažne i dalje mogu zatvoriti mali model (prihvaćeno) |
+| N68-3 storno pobjeđuje „Označi plaćenom” | riješeno: tick samo na GET, poništenje automatskog storna, provjera pod bravom (`sj_order_paid_once`) i vraćanje oznaka; testovi |
+| N68-4 503 pri 200 potvrda/h | prihvaćeni rizik; komentar ispravljen |
+| N68-5 rok iz trenutnog ttl | riješeno (`payUntil`) |
+| N68-6 granica e-mailova ticka, zastarjela kartica | riješeno (20 po prolazu, sažetak storna, `has_require_confirm`); e-mail vlasnici po narudžbi ostaje |
+| N69-1 `.htaccess`/`router.php` bez `paidclaim` | riješeno; router vraća 404 za nepoznato pod /api/; test usklađenosti u run.php |
+| N69-2 produženje bez provjere mjesta | riješeno: 409 „mjesto popunjeno” + e-mail vlasnici; upozorenje nakon poništenog automatskog storna |
+| N69-3 „Uplatio/la sam” bez dokaza | prihvaćeno (jednom po narudžbi; granica 3 po vezi) |
+| N69-4 utrka produženja i storna | riješeno: provjera pod bravom narudžbe, vraćanje rezervacija |
+| N69-5 produženje preuzima tuđu košaricu | prihvaćeno (košarica bez narudžbe ne drži torbu ni inače) |
+| N69-6 `::ffff:` adrese | riješeno; test |
+| N69-7 skupni storno i kupac koji je javio uplatu | riješeno; test |
+| D68-1…D68-15 | riješeno osim D68-10 (v70) i D68-13 (odluka vlasnika) |
+| D69-1…D69-14 | riješeno (D69-10 dio s podrubrikama od jednog artikla → v70) |
+| K69-1, K69-2 | pitanje za vlasnicu (vikend; dva obećanja) |
+| K69-4…K69-7 | riješeno (okrnjen link, ploča na vrhu košarice, red riječi, poruka o istoj vezi); privatnost → pravnik |
+

@@ -109,3 +109,12 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - **Granice po narudžbi**: 5 torbi, 10 artikala, od toga 2 unikata. Kupac poruku vidi odmah u košarici.
 - Rokovi se provjeravaju kad netko otvori stranicu ili admin (najviše jednom u 5 minuta).
 
+## v69: „Uplatio/la sam”, storno s e-mailom, ista veza
+- **„Kupac javio uplatu”**: kupac je u e-mailu kliknuo „Uplatio/la sam”. Rok mu je jednom produžen za 24 sata, a vi ste dobili e-mail. Provjerite izvod banke (poziv na broj) i kliknite **Označi plaćenom**.
+- **Storniraj narudžbu…**: otvara izbor razloga i kvačicu **„Pošalji kupcu e-mail o stornu”** (zadano uključena). Za razlog „lažna narudžba” e-mail se ne šalje.
+- **Automatski storno**: dobivate jedan sažetak e-mailom. Ako ipak vidite uplatu, **Označi plaćenom** poništava automatski storno (ako je torba još slobodna, ostaje kupcu).
+- **Ukloni oznaku** na plaćenoj narudžbi daje joj novi rok, ali je ne stornira automatski: nakon roka je pod „Rok istekao” i odlučujete sami.
+- Narudžbe primljene **prije v69** rokovi ne diraju (nema podsjetnika ni automatskog storna); riješite ih ručno.
+- **Ista internetska veza**: najviše 3 neplaćene narudžbe; četvrtu kupac ne može poslati, a vi dobivate e-mail s njegovim podacima. **Storniraj sve s ove adrese** (Rezervacije) stornira i narudžbe samo iz Stalne kolekcije s te veze.
+- Kvačica **„Narudžba vrijedi tek kad je kupac potvrdi…”** ostaje kakva jest i kad spremite Postavke iz stare, dugo otvorene kartice.
+

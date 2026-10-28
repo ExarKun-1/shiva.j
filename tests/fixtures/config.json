@@ -51,7 +51,7 @@
   "limits": {
     "hold_min": 0,
     "holds_per_ip": 20,
-    "orders_per_ip": 20,
+    "orders_per_ip": 500,
     "coll_per_ip": 50,
     "coll_model_per_ip": 50,
     "unique_per_order": 2,

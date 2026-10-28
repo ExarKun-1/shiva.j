@@ -2,7 +2,7 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteRule ^api/(status|reserve|order|confirm|storno)/?$ api/index.php?a=$1 [L,QSA]
+  RewriteRule ^api/(status|reserve|order|confirm|storno|paidclaim)/?$ api/index.php?a=$1 [L,QSA]
   RewriteRule ^admin/?$ admin/index.php [L,QSA]
 </IfModule>
 
