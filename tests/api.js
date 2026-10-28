@@ -115,7 +115,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const late = await post('order', order('api-key-0020-tttt', 'kosarica@primjer.hr', [{ id: 'nera' }], 85, cart.data.hold));
     ok(late.status === 409 && JSON.stringify(late.data.taken) === '["nera"]', 'tko je samo rezervirao, a nije naručio, dobiva 409 kad je drugi već naručio');
     // 12) e-mail s +oznakom se broji kao isti
-    setLimits({ orders_per_ip: 20 }); clearLimits(); clearRes();
+    setLimits({ orders_per_ip: 500 }); clearLimits(); clearRes();
     const p1 = await post('order', order('api-key-0021-uuuu', 'ana.kovac@gmail.com', [{ id: 'luna' }], 65));
     const p2 = await post('order', order('api-key-0022-vvvv', 'AnaKovac+2@gmail.com', [{ id: 'tara' }], 55));
     ok(p1.data.ok && p2.status === 409, 'ana.kovac@gmail i AnaKovac+2@gmail broje se kao isti e-mail: 409');
@@ -246,6 +246,40 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       c0.show_ostalo = true; fs.writeFileSync(D + 'config.json', JSON.stringify(c0, null, 2));
       ok(os.status === 409 && /nije u ponudi/.test(os.data.error || '') && st2.showOstalo === false, 'v62: rubrika Ostalo isključena — artikl se ne naručuje, status showOstalo'); }
     setProd('klasik', { made_open_from: new Date(Date.now() + 1000).toISOString(), made_limit: 99 }); clearRes(); clearLimits();
+    // 15f) v69: blaga granica po vezi (najviše 3 neplaćene narudžbe s iste veze) i „Uplatio/la sam”
+    { const n0 = fs.readFileSync(D + 'narudzbe.json', 'utf8');
+      fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); setLimits({ orders_per_ip: 3 });
+      const i1 = await post('order', order('api-key-ip1-hhhh', 'ip1@primjer.hr', [{ id: 'luna' }], 65));
+      const i2 = await post('order', order('api-key-ip2-hhhh', 'ip2@primjer.hr', [{ id: 'tara' }], 55));
+      const i3 = await post('order', order('api-key-ip3-hhhh', 'ip3@primjer.hr', [{ id: 'remen' }], 15));
+      const i4 = await post('order', order('api-key-ip4-hhhh', 'ip4@primjer.hr', [{ id: 'nera' }], 85));
+      const mlI = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      ok(i1.data.ok && i2.data.ok && i3.data.ok && i4.status === 429 && i4.data.code === 'ip_limit' && /već čeka uplatu nekoliko narudžbi/.test(i4.data.error || '') && /narudžba nije primljena \(ista veza\)/.test(mlI) && /ip4@primjer\.hr/.test(mlI),
+        'v69: s iste veze najviše 3 neplaćene narudžbe — 4. dobiva poruku, vlasnica e-mail s podacima kupca');
+      const nI = read('narudzbe.json'); const oI1 = nI.find(x => x.no === i1.data.orderNo);
+      ok(oI1 && oI1.payUntil === i1.data.payUntil && /^[a-f0-9]{32}$/.test(oI1.claim || ''), 'v69: rok za uplatu i tajna za „Uplatio/la sam” zapisani uz narudžbu');
+      setLimits({ orders_per_ip: 500 });
+      // „Uplatio/la sam”: kriva tajna, GET, produženje nakon isteka, drugi put „već ste javili”
+      const bad = await post('paidclaim', { no: i1.data.orderNo, t: 'f'.repeat(32) });
+      const getR = await fetch(U + 'paidclaim');
+      { const n = read('narudzbe.json'); const o = n.find(x => x.no === i1.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; o.expiredAt = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+      expire(['luna']);
+      const cl = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
+      const oC = read('narudzbe.json').find(x => x.no === i1.data.orderNo); const rl = read('rezervacije.json').res.luna;
+      const mlC = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      ok(bad.status === 403 && getR.status === 405 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && !oC.expiredAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
+        'v69: „Uplatio/la sam” — kriva tajna 403, GET 405; nakon isteka rok i rezervacija produženi za 24 h, vlasnica dobiva e-mail');
+      const cl2 = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
+      ok(cl2.data.ok && cl2.data.state === 'already' && /Već ste nam javili/.test(cl2.data.message || ''), 'v69: „Uplatio/la sam” vrijedi jednom');
+      // komad koji je u međuvremenu naručio drugi kupac
+      const oI2 = read('narudzbe.json').find(x => x.no === i2.data.orderNo);
+      { const n = read('narudzbe.json'); const o = n.find(x => x.no === i2.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+      expire(['tara']); clearLimits();
+      const tk = await post('order', order('api-key-ip5-hhhh', 'ip5@primjer.hr', [{ id: 'tara' }], 55));
+      const cl3 = await post('paidclaim', { no: i2.data.orderNo, t: oI2.claim });
+      ok(tk.data.ok && cl3.data.ok && JSON.stringify(cl3.data.lost) === '["Tara"]' && /otišla drugom kupcu/.test(cl3.data.message || '') && read('rezervacije.json').res.tara.email === 'ip5@primjer.hr',
+        'v69: „Uplatio/la sam” ne uzima komad koji je u međuvremenu naručio drugi kupac — kupac i vlasnica to saznaju');
+      fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(/ROK ZA UPLATU: do [^\n]*\(24 sata\)/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
