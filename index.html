@@ -753,6 +753,10 @@
   .free-ship{margin:4px 0 0;font-size:.85rem;color:var(--ink-soft)}.free-ship.ok{color:var(--thread)}
   .lb-size{margin:10px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:2px}.lb-size-h{margin:0 0 4px;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}.lb-size p:not(.lb-size-h){margin:0;font-size:.92rem}.lb-size .lb-size-all{color:var(--ink-soft);margin-top:6px}
   .grid-sub{scroll-margin-top:72px}
+  .claim-box{margin:0 0 20px}.claim-box .claim-btn{display:block;width:100%;margin:12px 0 6px}.claim-box .claim-close{display:block;margin-top:4px}
+  .pay-steps .pay-late{display:block;margin-top:6px;font-size:.88rem;color:var(--ink-soft)}
+  .cart-item .qty-max{grid-column:1/-1;margin-top:2px}
+  @media (max-width:560px){ #productGrid.ostalo .card-info{flex-direction:column;align-items:flex-start;gap:2px} #productGrid.ostalo .card .desc{font-size:.84rem} }
   .sub-links{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 18px;margin:-8px 0 -10px}
   .cart-item .qty button:disabled{opacity:.4;cursor:not-allowed}
   @media (max-width:560px){ #productGrid.ostalo{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 14px} #productGrid.ostalo .card h3{font-size:1rem} #productGrid.ostalo .add-btn{font-size:.74rem;letter-spacing:.06em} }
@@ -1660,7 +1664,7 @@ window.addEventListener("hashchange", () => {
 
 const grid = document.getElementById("productGrid");
 /* v69: veze na podrubrike Ostalog skrolaju bez promjene adrese (adresa ostaje #ostalo) */
-grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t) t.scrollIntoView({ behavior: "smooth" }); });
+grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t){ t.tabIndex = -1; t.scrollIntoView({ behavior: "smooth" }); t.focus({ preventScroll: true }); } });
 function renderGrid(){
   grid.innerHTML = "";
   /* slobodni unikati prvi, zatim artikli po narudžbi (u Torbama s podnaslovom), na kraju prodani i rezervirani
@@ -1782,7 +1786,7 @@ function limitWhy(p, add){
   const nBags = cart.filter(c => (c.cat || "torbe") === "torbe").reduce((n, c) => n + qtyOf(c), 0) + ((p.cat || "torbe") === "torbe" ? add : 0);
   const uq = cart.filter(c => !c.made);
   const nUq = uq.length + (!p.made && !cart.some(c => c.id === p.id) ? 1 : 0);
-  if(nUq > LIMITS.unique) return `U jednoj narudžbi ${LIMITS.unique === 1 ? "može biti najviše jedna unikatna torba" : "mogu biti najviše " + LIMITS.unique + " unikatne torbe"}; u košarici već ${uq.length === 1 ? "je" : "su"} ${uq.map(c => "„" + c.name + "”").join(" i ")}.` + LIMIT_MORE;
+  if(nUq > LIMITS.unique) return `U jednoj narudžbi ${LIMITS.unique === 1 ? "može biti najviše jedna unikatna torba" : "mogu biti najviše " + LIMITS.unique + " unikatne torbe"}; u košarici ${uq.length === 1 ? "je već" : "su već"} ${uq.map(c => "„" + c.name + "”").join(" i ")}.` + LIMIT_MORE;
   if(nBags > LIMITS.bags) return `U jednoj narudžbi može biti najviše ${LIMITS.bags} torbi.` + LIMIT_MORE;
   if(nArt > LIMITS.articles) return `U jednoj narudžbi može biti najviše ${LIMITS.articles} artikala.` + LIMIT_MORE;
   return "";
@@ -2121,7 +2125,7 @@ function renderCart(){
     const id = escHtml(p.id);
     row.innerHTML = `<span class="n">${escHtml(p.name)}</span>
       ${p.made && catOf(p) === "kolekcija" ? `<span class="qty qty-one">1 kom · najviše jedan po narudžbi</span>` /* v64: bez „+” koji ne radi */
-        : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled title="${escHtml(limitWhy(p, 1))}"` : ""}>+</button></span>` : ""}
+        : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
       ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Želju ne morate čekati da potvrdimo: uplatite odmah nakon narudžbe. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade, a vi birate: izradu bez te želje ili povrat cijelog iznosa.</span>` : ""}` : ""}`;
@@ -2632,28 +2636,37 @@ async function confirmFromLink(statusP){
 /* v69 (odluka vlasnice): „Uplatio/la sam” iz e-maila — ?uplata=<broj>&t=<tajna>. Stranica pita, a tek gumb šalje
    (skener e-pošte ne smije „kliknuti” umjesto kupca). Jednom po narudžbi rok za uplatu produži se za 24 sata. */
 function claimPanel(html, info){
-  if(cart.length){ showOrderError(html, info); return; }
-  const empty = document.getElementById("emptyCart");
-  empty.classList.add("pay-mode");
-  empty.innerHTML = `<div class="order-error${info ? " order-info" : ""}" role="${info ? "status" : "alert"}" id="claimBox">${html}</div>`;
-  empty.hidden = false;
+  /* v69 (vijeće, D69-2): zaseban blok na vrhu košarice — ne u obrascu nove narudžbe */
+  let box = document.getElementById("claimBox");
+  if(!box){ box = document.createElement("div"); box.id = "claimBox"; box.tabIndex = -1; document.querySelector(".drawer-body").prepend(box); }
+  box.className = "order-error claim-box" + (info ? " order-info" : "");
+  box.setAttribute("role", info ? "status" : "alert");
+  box.innerHTML = html + `<button type="button" class="edit-order claim-close">Zatvori</button>`;
+  box.querySelector(".claim-close").addEventListener("click", () => box.remove());
+  box.focus({ preventScroll: true });
 }
 function claimFromLink(){
   const q = new URLSearchParams(location.search);
+  if(!q.has("uplata")) return;
   const no = q.get("uplata") || "", t = q.get("t") || "";
-  if(!/^SJ-\d{4}-\d{4,6}$/.test(no) || !/^[a-f0-9]{32}$/.test(t)) return;
   history.replaceState(null, "", location.pathname + location.hash); /* link se ne ponavlja pri osvježavanju */
   openCart();
-  claimPanel(`<b>Narudžba ${escHtml(no)}: jeste li uplatili?</b>
-    <span class="pend-p">Uplata poslana navečer, vikendom ili iz druge banke može na naš račun stići tek sljedeći radni dan. Ako ste uplatili, kliknite ispod: rok za uplatu produžit ćemo jednom, za 24 sata, a mi ćemo provjeriti izvod.</span>
-    <div class="retry-row"><button type="button" class="copy-btn" id="claimBtn">Da, uplatio/la sam</button></div>`, true);
+  /* v69 (kupac K69-4): okrnjen link (npr. prelomljen u e-mailu) — kupac zna što učiniti */
+  if(!/^SJ-\d{4}-\d{4,6}$/.test(no) || !/^[a-f0-9]{32}$/.test(t)){
+    claimPanel(`<b>Link „Uplatio/la sam” nije potpun.</b> <span class="pend-p">Kopirajte cijeli link iz e-maila ili nam odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.</span>`, false); return;
+  }
+  /* v69 (vijeće, D69-1): produženje vrijedi jednom — kliknuti tek nakon uplate */
+  claimPanel(`<b>Narudžba ${escHtml(no)}: jeste li već uplatili?</b>
+    <span class="pend-p">Uplata poslana navečer, vikendom ili iz druge banke može stići tek sljedeći radni dan. Ako ste već platili, kliknite ispod: rok za uplatu produžit ćemo za 24 sata (samo jednom), a mi ćemo provjeriti izvod.</span>
+    <button type="button" class="order-btn claim-btn" id="claimBtn">Da, uplatio/la sam</button>
+    <span class="field-hint">Još niste platili? Ne klikajte. Podaci za uplatu su u e-mailu s potvrdom narudžbe.</span>`, true);
   document.getElementById("claimBtn").addEventListener("click", async e => {
     const btn = e.currentTarget; btn.disabled = true;
     try {
       const res = await fetch(apiUrl("paidclaim"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ no, t }) });
       const { ok: resOk, data } = await apiRead(res);
-      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Zabilježeno." : data.state === "paid" ? "Uplata je već zabilježena." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
-      claimPanel(`<b>Nije uspjelo.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")} Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati.`, false);
+      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala!" : data.state === "paid" ? "Uplata je već zabilježena." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
+      claimPanel(`<b>${data.state === "full" ? "Mjesto je u međuvremenu popunjeno." : "Nije uspjelo."}</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}${data.state === "full" ? "" : " Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati."}`, false);
     } catch(err){
       btn.disabled = false;
       claimPanel(`<b>Veza trenutno ne radi.</b> Otvorite link iz e-maila ponovno ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.`, false);
@@ -2862,7 +2875,7 @@ function paymentPanel(last){
         <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>${!anyUnique
           ? "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + ". Čim uplata bude vidljiva, krećemo s izradom. Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže."
           : "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + " i pošaljite nam potvrdu uplate (snimku zaslona) " + ((PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe") + (untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka roka" : "") + ". Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže."}
-          Uplata poslana navečer, vikendom ili iz druge banke može stići tek sljedeći radni dan; tada ${anyUnique ? "nam pošaljite potvrdu ili u" : "u"} <span class="nw">e-mailu</span> kliknite „Uplatio/la sam” i rok produžujemo za 24 sata.</li>
+          <span class="pay-late">Uplata navečer, vikendom ili iz druge banke može stići tek sljedeći radni dan. ${anyUnique ? "Bez potvrde možete u" : "Tada u"} <span class="nw">e-mailu</span> kliknuti „Uplatio/la sam”: rok tada produžujemo jednom, za 24 sata.</span></li>
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>

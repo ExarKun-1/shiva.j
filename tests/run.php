@@ -134,6 +134,17 @@ $ok(isset($zj['sve|mailto-zrtva']) && count($zj) <= 5000 && $visits < 2100 && co
 $ok(sj_clean("a\u{FEFF}b\u{00AD}c\u{0085}d\u{061C}e", 80) === 'abcde' && sj_clean("\u{2028}\u{2028}", 80) === '' && sj_clean("Ana Kovač", 80) === 'Ana Kovač', 'v67: sj_clean uklanja i \\p{Cf} i C1; ime od nevidljivih znakova ostaje prazno');
 $ok(sj_clean("crna\u{2028}Poziv na broj: 99", 80) === 'crna Poziv na broj: 99' && sj_clean("a\u{202E}b\u{200F}c", 80) === 'abc' && sj_clean("x\u{2029}y", 80, true) === "x\ny", 'v66: sj_clean uklanja U+2028/U+2029 i znakove smjera');
 
+/* v69 (vijeće na v68, N69-1): .htaccess i router.php propuštaju točno one radnje koje api/index.php prepoznaje */
+$root = dirname(__DIR__);
+$acts = fn(string $f, string $re) => preg_match($re, (string)file_get_contents($root . '/' . $f), $mm) ? explode('|', $mm[1]) : [];
+$aApi = $acts('api/index.php', '~#/\(([a-z|]+)\)/\?\$#~'); $aHt = $acts('.htaccess', '~\^api/\(([a-z|]+)\)~'); $aRt = $acts('router.php', '~\^/api/\(([a-z|]+)\)~');
+sort($aApi); sort($aHt); sort($aRt);
+$ok($aApi && $aApi === $aHt && $aApi === $aRt && in_array('paidclaim', $aApi, true), 'v69: .htaccess, router.php i api/index.php imaju iste radnje (' . implode(',', $aHt) . ')');
+
+/* v69 (vijeće, N69-6): IPv4 zapisan kao IPv6 broji se kao ista IPv4 adresa, a različite adrese ostaju različite */
+$ok(sj_short_ip('::ffff:93.184.216.34') === sj_short_ip('93.184.216.34') && sj_short_ip('::ffff:93.184.216.34') !== sj_short_ip('::ffff:10.1.2.3'), 'v69: ::ffff:a.b.c.d se broji kao IPv4 (ne kao jedna zajednička mreža)');
+$ok(sj_fmt_deadline('2026-10-29T07:16:00Z') === 'četvrtka, 29. 10. 2026. u 08:16' && sj_fmt_deadline('2026-10-30T07:16:00Z', 'acc') === 'petak, 30. 10. 2026. u 08:16', 'v69: rok u e-mailovima kao na stranici (dan u tjednu, „u”)');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

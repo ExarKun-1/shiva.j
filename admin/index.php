@@ -272,10 +272,13 @@ function sj_handle_action(string $act, array &$c): string {
       /* sve rezervacije s iste skraćene adrese odjednom (sumnja na lažne narudžbe) */
       $ip = sj_clean((string)($_POST['ip'] ?? ''), 32);
       if (!preg_match('/^[a-f0-9]{16}$/', $ip)) throw new RuntimeException('Neispravna adresa.');
-      $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip) {
+      /* v69 (vijeće, N69-7): kupci koji su javili uplatu („Uplatio/la sam”) se ne storniraju skupno */
+      $claimed = []; $claimedNo = [];
+      foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if (!empty($oc['claimedAt']) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) { $claimedNo[] = (string)($oc['no'] ?? ''); if (!empty($oc['reservation']['token'])) $claimed[] = (string)$oc['reservation']['token']; }
+      $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip, $claimed) {
         $d = array_replace(sj_res_default(), $d);
         $n = []; /* v29: tko je storniran — da se vlasnica može javiti */
-        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip])) { unset($d['res'][$id]); $n[] = [(string)$id, (string)($r['email'] ?? ''), (string)($r['token'] ?? '')]; sj_order_cancelled((string)($r['token'] ?? ''), 'lažna narudžba'); } /* i zapisi s prošlotjednom oznakom iste adrese */
+        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip]) && !in_array((string)($r['token'] ?? ''), $claimed, true)) { unset($d['res'][$id]); $n[] = [(string)$id, (string)($r['email'] ?? ''), (string)($r['token'] ?? '')]; sj_order_cancelled((string)($r['token'] ?? ''), 'lažna narudžba'); } /* i zapisi s prošlotjednom oznakom iste adrese */
         return $n;
       }, sj_res_default());
       $who = [];
@@ -284,7 +287,7 @@ function sj_handle_action(string $act, array &$c): string {
          drže mjesta; razlog „lažna narudžba”, kupci ne dobivaju e-mail */
       $collNo = [];
       sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($ip, &$collNo) {
-        foreach ($list as &$o) if (empty($o['paidAt']) && empty($o['cancelledAt']) && sj_same_ip($o, [$ip])) {
+        foreach ($list as &$o) if (empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['claimedAt']) && sj_same_ip($o, [$ip])) {
           $o['cancelledAt'] = sj_iso(time()); $o['cancelReason'] = 'lažna narudžba'; $o['cancelBy'] = 'vlasnica';
           $collNo[] = (string)($o['no'] ?? '') . (($o['email'] ?? '') !== '' ? ' — ' . $o['email'] : '');
         }
@@ -292,7 +295,7 @@ function sj_handle_action(string $act, array &$c): string {
       }, []);
       sj_made_counts(true);
       $who = array_merge($who, $collNo); /* narudžbe s rezervacijom su već stornirane gore, pa se ne ponavljaju */
-      return 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
+      return 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($claimedNo ? ' Nisu stornirane narudžbe za koje je kupac javio uplatu: ' . implode(', ', $claimedNo) . ' — provjerite izvod.' : '') . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
     }
 
     case 'res_release':
@@ -420,7 +423,17 @@ function sj_handle_action(string $act, array &$c): string {
           return ['taken' => $taken, 'other' => $other, 'offsale' => $offsale];
         }, sj_res_default());
         if (sj_order_paid_once(['no' => $no])) sj_count('paid');
+        /* v69 (vijeće, N68-3 C): narudžbu su rokovi mogli stornirati između čitanja i upisa — tada se oznake vraćaju */
+        $fresh = sj_order_find(['no' => $no]) ?? [];
+        if (!empty($fresh['cancelledAt']) && empty($fresh['paidAt'])) {
+          sj_with_lock(sj_res_path(), function (array &$d) use ($no) { $d = array_replace(sj_res_default(), $d); foreach ($d['sold'] as $id => $sd) if (($sd['no'] ?? '') === $no) unset($d['sold'][$id]); return true; }, sj_res_default());
+          throw new RuntimeException('Narudžba ' . $no . ' je upravo automatski stornirana. Kliknite „Označi plaćenom” još jednom: poništit ćete storno, a ako je torba još slobodna, ostaje kupcu.');
+        }
         $warn = [];
+        /* v69 (vijeće, N69-2): nakon poništenog automatskog storna model iz kolekcije može imati više narudžbi nego mjesta */
+        if (!empty($fresh['uncancelledAt'])) { sj_made_counts(true); $byIdW = []; foreach (sj_products() as $p) $byIdW[(string)($p['id'] ?? '')] = $p;
+          foreach ((array)($fresh['order']['items'] ?? []) as $it) { $pw = $byIdW[(string)($it['id'] ?? '')] ?? null;
+            if ($pw && sj_is_collection($pw) && sj_made_used((string)$pw['id']) > sj_made_limit($pw)) $warn[] = 'model „' . (string)$pw['name'] . '” sada ima više narudžbi (' . sj_made_used((string)$pw['id']) . ') nego mjesta (' . sj_made_limit($pw) . ') — dogovorite rok izrade s kupcem'; } }
         $nmOf = function (array $ids) { $n = []; foreach (sj_products() as $p) $n[(string)($p['id'] ?? '')] = (string)($p['name'] ?? ''); return implode(', ', array_map(fn($i) => '„' . (($n[$i] ?? '') !== '' ? $n[$i] : $i) . '”', $ids)); };
         if ($out['taken']) $warn[] = $nmOf($out['taken']) . ' je već plaćena za drugog kupca — javite se kupcu iz ove narudžbe';
         if ($out['offsale']) $warn[] = 'u katalogu nisu na prodaji (prodane, rezervirane, skrivene ili obrisane) pa nisu označene: ' . $nmOf($out['offsale']) . ' — provjerite i javite se kupcu';
@@ -552,7 +565,7 @@ function sj_cancel_form(string $no, string $back, string $confirm, string $label
   /* v69 (vijeće na v68, D68-9 i odluka vlasnice): razlog i kvačica za e-mail kupcu otvaraju se tek na „Storniraj…” */
   return '<details class="cancelbox"><summary>' . e($label) . '…</summary><form method="post" class="inline cancelf" data-confirm="' . e($confirm) . '"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="order_cancel"><input type="hidden" name="back" value="' . e($back) . '"><input type="hidden" name="no" value="' . e($no) . '">'
     . '<select name="reason" required aria-label="Razlog storna">' . $o . '</select><input name="reason_text" maxlength="120" placeholder="ako „drugo”: koji razlog" aria-label="Drugi razlog">'
-    . '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu e-mail o stornu <span class="muted">(ne šalje se za „lažna narudžba”)</span></label><button class="alt">' . e($label) . '</button></form></details>';
+    . '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu e-mail o stornu</label><button class="alt danger">Potvrdi storno</button></form></details>';
 }
 /* v68: neplaćene narudžbe kojima je prošao rok za uplatu (popis „Rok istekao”) */
 function sj_expired_orders(): array {
@@ -780,8 +793,7 @@ function sj_view_orders(): string {
     if (!empty($o['paidAt'])) $paid = '<b>plaćeno</b> ' . e(sj_fmt_hr($o['paidAt'])) . $clashHtml . '<br>' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true, 'Ukloniti oznaku plaćeno za narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ')? ' . ($clash ? 'Torbe zapisane kao plaćene za ovu narudžbu vraćaju se u prodaju; one prodane drugom kupcu ostaju njegove.' : 'Njezine torbe vraćaju se u prodaju.'));
     else $paid = (!empty($o['unconfirmed']) ? '<span class="muted">bez potvrde e-mailom</span><br>' : '') . (!empty($o['cancelledAt']) ? '<b>stornirano</b> ' . e(sj_fmt_hr($o['cancelledAt'])) . (($o['cancelBy'] ?? '') === 'automatski' ? ' <span class="muted">(automatski)</span>' : '') . (trim((string)($o['cancelReason'] ?? '')) !== '' ? '<br><span class="muted">razlog: ' . e((string)$o['cancelReason']) . '</span>' : '') . '<br>' : ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">' . (strtotime((string)($o['reservation']['until'] ?? '')) > time() ? 'rezervacija uklonjena (torba prodana ili oznaka uklonjena)' : 'rezervacija istekla') . '</span><br>' : '')) . (!empty($o['cancelledAt']) ? '' : '<b>nije plaćeno</b><br>' . sj_btn('order_paid', ['no' => $no], 'Označi plaćenom', '?s=narudzbe', false, 'Označiti narudžbu ' . $no . ' plaćenom?')); /* v64: stornirana se ne označuje plaćenom */
     /* v69 (D68-9): istekla narudžba ima gumbe samo na kartici „Rok istekao” (ne dvaput, pod dva naziva) */
-    if (sj_order_expired($o)) $paid = '<b>nije plaćeno</b> · <a href="#rok">rok za uplatu istekao — Označi plaćenom ili Storniraj gore</a>';
-    if (!empty($o['claimedAt']) && empty($o['paidAt'])) $paid = '<span class="badge ink">kupac javio uplatu</span> <span class="muted">' . e(sj_fmt_hr((string)$o['claimedAt'])) . '; rok produžen do ' . e(sj_fmt_hr(sj_pay_until($o))) . '</span><br>' . $paid;
+    if (sj_order_expired($o)) $paid = '<span class="badge ink">rok istekao</span> <b>nije plaćeno</b><br><a href="#rok">odluka na kartici „Rok istekao” gore ↑</a>';
     /* v63: neplaćenu, nestorniranu narudžbu vlasnica može stornirati (i onu samo iz Stalne kolekcije) */
     if (empty($o['paidAt']) && empty($o['cancelledAt']) && !sj_order_expired($o)) $paid .= sj_cancel_form($no, '?s=narudzbe', 'Stornirati narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ', ' . ($o['email'] ?? '') . ')? Torbe i mjesta u Stalnoj kolekciji se oslobađaju.');
     /* v64: telefon, adresa ili paketomat, napomena i vrsta stavke (unikat / Stalna kolekcija / po narudžbi) */
@@ -796,7 +808,13 @@ function sj_view_orders(): string {
     $addrO = trim((string)($o['address'] ?? ''));
     $canc = !empty($o['cancelledAt']);
     /* v65: aktivna rezervacija — do kada */
-    if (empty($o['paidAt']) && !$canc && $tok !== '' && isset($active[$tok]) && !empty($o['reservation']['until'])) $paid = '<span class="muted">rezervirano do ' . e(sj_fmt_hr((string)$o['reservation']['until'])) . '</span><br>' . $paid;
+    /* v69 (D69-9): otvorena narudžba — jedan redak s rokom za uplatu (svaka narudžba, i bez unikata), a „kupac javio
+       uplatu” prvi; starije narudžbe (bez zapisanog roka) kao prije: „rezervirano do” */
+    if (empty($o['paidAt']) && !$canc && !empty($o['payUntil']) && !sj_order_expired($o)) {
+      $lh = max(0, (int)ceil(((int)strtotime((string)$o['payUntil']) - time()) / 3600));
+      $paid = '<span class="muted">rok za uplatu do ' . e(sj_fmt_hr((string)$o['payUntil'])) . ' (još ' . ($lh < 1 ? 'manje od 1 h' : $lh . ' h') . ')' . (!empty($o['remindedAt']) ? ' · podsjetnik poslan' : '') . '</span><br>' . $paid;
+    } elseif (empty($o['paidAt']) && !$canc && $tok !== '' && isset($active[$tok]) && !empty($o['reservation']['until'])) $paid = '<span class="muted">rezervirano do ' . e(sj_fmt_hr((string)$o['reservation']['until'])) . '</span><br>' . $paid;
+    if (!empty($o['claimedAt']) && empty($o['paidAt']) && !$canc) $paid = '<span class="badge ink">kupac javio uplatu</span> <span class="muted">' . e(sj_fmt_hr((string)$o['claimedAt'])) . ' — provjerite izvod</span><br>' . $paid;
     /* v67: poveznice samo za običnu adresu i pravi broj (bez podmetnutih ?subject=/cc= ili spojenih brojeva) */
     $em = (string)($o['email'] ?? ''); $ph = (string)($o['phone'] ?? ''); $phD = preg_replace('/[^0-9+]/', '', $ph);
     $emH = preg_match('/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/', $em) ? '<a class="muted" href="mailto:' . e($em) . '">' . e($em) . '</a>' : '<span class="muted">' . e($em) . '</span>';
@@ -1005,7 +1023,10 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   .muted{color:var(--soft);font-size:.85rem}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem}pre{margin:0;white-space:pre-wrap;font:inherit;font-size:.85rem}
   /* v68: Rok istekao, storno s razlogom, kućice s mjerama */
   .rokl{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}.card.rok{margin:0;display:flex;flex-direction:column;gap:6px;border-left:3px solid #9B2C1F}
-  details.cancelbox{margin-top:6px}details.cancelbox>summary{cursor:pointer;display:inline-block;min-height:40px;line-height:40px;padding:0 12px;border:1px dashed var(--line);border-radius:2px;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+  details.cancelbox{margin-top:6px}details.cancelbox>summary{cursor:pointer;display:inline-block;list-style:none;min-height:40px;line-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:2px;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+  details.cancelbox>summary::-webkit-details-marker{display:none}details.cancelbox>summary::before{content:"▸ "}details.cancelbox[open]>summary::before{content:"▾ "}
+  form.cancelf button.danger{border:1px solid #9B2C1F;color:#9B2C1F;border-style:solid;margin-top:4px}
+  form.cancelf input[name=reason_text]{display:none}form.cancelf:has(option[value=drugo]:checked) input[name=reason_text]{display:inline-block}
   details.cancelbox[open]>summary{margin-bottom:6px}label.cmail{display:block;margin:2px 0 6px;font-size:.9rem}
   form.cancelf select,form.cancelf input{display:inline-block;width:auto;max-width:100%;margin:0 4px 4px 0;padding:6px 8px;border:1px solid var(--line);border-radius:2px;font:inherit;font-size:16px;background:#fff}
   label.chip{border:1px solid var(--line);border-radius:2px;padding:8px 12px;background:#fff;margin:0}label.chip:has(input:checked){border-color:var(--thread);background:#E4EAE5}
@@ -1026,6 +1047,8 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   echo $content . '</main><script nonce="' . $nonce . '">document.addEventListener("submit",function(e){var f=e.target,m=f.getAttribute("data-confirm");'
     . 'var ms=f.getAttribute("data-confirm-sel");if(ms){var sel=f.querySelector("select");if(!sel||!sel.value){e.preventDefault();return;}m=ms.replace("%s",sel.options[sel.selectedIndex].text);}'
     . 'if(m&&!window.confirm(m))e.preventDefault();},true);'
+    /* v69 (D69-7): za „lažna narudžba” e-mail kupcu se ne šalje — kvačica se isključi */
+    . 'document.querySelectorAll("form.cancelf select[name=reason]").forEach(function(s){s.addEventListener("change",function(){var m=s.form.querySelector("input[name=mail]");if(m){m.disabled=s.value==="lažna narudžba";if(m.disabled)m.checked=false;else m.checked=true;}});});'
     /* v63: polja koja vrijede samo za Stalnu kolekciju / Ostalo */
     . 'var dw=document.getElementById("dimsWrap");document.querySelectorAll("input[name=size]").forEach(function(r){r.addEventListener("change",function(){if(dw)dw.hidden=r.value!=="druga";});});'
     . 'var vs=document.getElementById("vrsta");function sv(){if(!vs)return;document.querySelectorAll("[data-vrsta]").forEach(function(el){el.hidden=el.getAttribute("data-vrsta").split(" ").indexOf(vs.value)<0;});}if(vs){vs.addEventListener("change",sv);sv();}'

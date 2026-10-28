@@ -280,7 +280,7 @@ $ok(!empty($nn['SJ-2026-0911']['remindedAt']) && empty($nn['SJ-2026-0911']['expi
   && ($nn['SJ-2026-0913']['cancelBy'] ?? '') === 'automatski' && ($nn['SJ-2026-0913']['cancelReason'] ?? '') === 'nije uplaćeno u roku' && empty($nn['SJ-2026-0914']['remindedAt'])
   && !isset($rd()['res']['vela']), 'v68: rokovi — podsjetnik nakon 12 h, „rok istekao” nakon 24 h, automatski storno 48 h nakon roka (rezervacija oslobođena); plaćena narudžba ništa ne dobiva');
 $remSeg = preg_match('/podsjetnik za uplatu, narudžba SJ-2026-0911(.*?)(?=\n=====|\z)/s', $log, $mm) ? $mm[1] : '';
-$ok(substr_count($log, 'podsjetnik za uplatu') === 1 && str_contains($log, 'nemojte plaćati ponovno') && str_contains($remSeg, 'IBAN') && str_contains($remSeg, 'Poziv na broj: 2026-0911') && !str_contains($remSeg, 'image/png') && str_contains($log, 'rok za uplatu je prošao') && str_contains($log, 'Ako ste još uvijek zainteresirani za narudžbu, molimo vas da izvršite uplatu i pošaljete potvrdu o plaćanju') && str_contains($log, 'rok za uplatu prošao: SJ-2026-0912') && str_contains($log, 'SJ-2026-0913 je stornirana') && str_contains($log, 'automatski stornirano: SJ-2026-0913') && str_contains($log, 'Jasmina · Shiva.J'), 'v69: e-mailovi rokova (podsjetnik s IBAN-om i pozivom na broj, bez barkoda; „rok je prošao” s tekstom vlasnice; storno kupcu i sažetak vlasnici) s potpisom iz Postavki');
+$ok(substr_count($log, 'podsjetnik za uplatu') === 1 && str_contains($remSeg, 'IBAN') && str_contains($remSeg, 'Poziv na broj: 2026-0911') && !str_contains($remSeg, 'image/png') && str_contains($log, 'rok za uplatu je prošao') && preg_match('/prošao je u (ponedjeljak|utorak|srijedu|četvrtak|petak|subotu|nedjelju), \d/u', $log) === 1 && str_contains($log, 'Već ste platili? Nemojte plaćati ponovno') && str_contains($log, 'Ako ste još uvijek zainteresirani za narudžbu, molimo vas da izvršite uplatu i pošaljete potvrdu o plaćanju') && str_contains($log, 'rok za uplatu prošao: SJ-2026-0912') && str_contains($log, 'SJ-2026-0913 je stornirana') && str_contains($log, 'automatski stornirano: SJ-2026-0913') && str_contains($log, 'Jasmina · Shiva.J'), 'v69: e-mailovi rokova (podsjetnik s IBAN-om i pozivom na broj, bez barkoda; „rok je prošao” s tekstom vlasnice; storno kupcu i sažetak vlasnici) s potpisom iz Postavki');
 @unlink($D . '/rokovi.json'); $before = strlen((string)@file_get_contents($D . '/mail-log.txt'));
 $req('GET', ['s' => 'narudzbe']);
 $ok(strlen((string)@file_get_contents($D . '/mail-log.txt')) === $before, 'v68: ponovno otvaranje ne šalje iste poruke dvaput');
@@ -313,7 +313,7 @@ $v69 = $req('GET', ['s' => 'narudzbe']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $ok(!empty($nn['SJ-2026-0921']['unpaidAt']) && empty($nn['SJ-2026-0921']['cancelledAt']) && str_contains($v69, 'bez automatskog storna (oznaka plaćeno je uklonjena)'),
   'v69 (N68-3): nakon „Ukloni oznaku” narudžba ostaje pod „Rok istekao” za ručnu odluku, bez automatskog storna');
-$ok(substr_count($v69, 'SJ-2026-0921') >= 2 && preg_match('#<table.*?SJ-2026-0921.*?rok za uplatu istekao — Označi plaćenom ili Storniraj gore#s', $v69) === 1 && str_contains($v69, '<details class="cancelbox"><summary>Storniraj narudžbu…</summary>'),
+$ok(substr_count($v69, 'SJ-2026-0921') >= 2 && preg_match('#<table.*?SJ-2026-0921.*?odluka na kartici „Rok istekao” gore#s', $v69) === 1 && str_contains($v69, '<details class="cancelbox"><summary>Storniraj narudžbu…</summary>'),
   'v69 (D68-9): istekla narudžba u tablici upućuje na karticu; storno se otvara tek na „Storniraj narudžbu…”');
 /* najviše 20 e-mailova po prolazu */
 $many = []; for ($k = 30; $k < 55; $k++) $many[] = $mk('SJ-2026-09' . $k, ['payUntil' => $isoAgo(2)]);
@@ -337,6 +337,12 @@ file_put_contents($D . '/narudzbe.json', json_encode([$mk('SJ-2026-0970', ['payU
 $relC = $req('POST', ['act' => 'res_release_ip', 'ip' => 'feedfacecafe0001', 'back' => '?s=rez']);
 $o70 = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
 $ok(!empty($o70['cancelledAt']) && ($o70['cancelReason'] ?? '') === 'lažna narudžba' && str_contains($relC, '1 narudžba'), 'v69 (N68-2): „Storniraj sve s ove adrese” stornira i narudžbu samo iz Stalne kolekcije (razlog „lažna narudžba”)');
+file_put_contents($D . '/narudzbe.json', json_encode([$mk('SJ-2026-0971', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0002', 'claimedAt' => $isoAgo(1)]), $mk('SJ-2026-0972', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0002'])]));
+$relD = $req('POST', ['act' => 'res_release_ip', 'ip' => 'feedfacecafe0002', 'back' => '?s=rez']);
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$ok(empty($nn['SJ-2026-0971']['cancelledAt']) && !empty($nn['SJ-2026-0972']['cancelledAt']) && str_contains($relD, 'Nisu stornirane narudžbe za koje je kupac javio uplatu: SJ-2026-0971'), 'v69 (N69-7): skupni storno ne dira narudžbu za koju je kupac javio uplatu');
+$vC = $req('GET', ['s' => 'narudzbe']);
+$ok(preg_match('#kupac javio uplatu</span> <span class="muted">[^<]*— provjerite izvod</span><br><span class="muted">rok za uplatu do [^<]*\(još \d+ h\)#u', $vC) === 1, 'v69 (D69-9): otvorena narudžba — „kupac javio uplatu” prvi, zatim rok za uplatu s preostalim satima');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */
 $c68['require_confirm'] = true; file_put_contents($D . '/config.json', json_encode($c68));
 $old = $set68; unset($old['has_require_confirm'], $old['require_confirm']);

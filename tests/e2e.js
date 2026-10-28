@@ -644,12 +644,12 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await p68.waitForTimeout(200);
     await p68.evaluate(() => toggleCartItem('tara')); await p68.waitForTimeout(200);
     const toastLim = await p68.textContent('#toast');
-    ok(/mogu biti najviše 2 unikatne torbe; u košarici već su „Nera” i „Luna”/.test(toastLim) && !(await p68.evaluate(() => cart.some(c => c.id === 'tara'))), 'v68/v69: treća unikatna torba — poruka odmah kaže koja je granica i koje unikate kupac već ima; torba nije dodana');
+    ok(/mogu biti najviše 2 unikatne torbe; u košarici su već „Nera” i „Luna”/.test(toastLim) && !(await p68.evaluate(() => cart.some(c => c.id === 'tara'))), 'v68/v69: treća unikatna torba — poruka odmah kaže koja je granica i koje unikate kupac već ima; torba nije dodana');
     /* v69: rok za uplatu iznad kvačice i kad u košarici nema unikata; „+” onemogućen na granici količine */
     await p68.evaluate(() => { cart = []; saveCart(); renderGrid(); renderCart(); toggleCartItem('remen'); });
     await p68.evaluate(() => { const r = cart.find(c => c.id === 'remen'); r.qty = 10; saveCart(); renderCart(); openCart(); }); await p68.waitForTimeout(300);
     ok(await p68.isVisible('#orderHold') && /Rok za uplatu je 24 sata od narudžbe; ono što šijemo po narudžbi izrađujemo nakon uplate\./.test(await p68.textContent('#orderHold')) && !(await p68.isVisible('#orderNoteMade'))
-      && await p68.isDisabled('.cart-item .q[data-d="1"]') && /najviše 10 artikala/.test(await p68.getAttribute('.cart-item .q[data-d="1"]', 'title') || ''), 'v69: bez unikata rok za uplatu iznad kvačice; „+” onemogućen na granici od 10 artikala');
+      && await p68.isDisabled('.cart-item .q[data-d="1"]') && /najviše 10 artikala — za više nam se javite/.test(await p68.textContent('.cart-item .qty-max')) && await p68.isVisible('.cart-item .qty-max'), 'v69: bez unikata rok za uplatu iznad kvačice; „+” onemogućen na granici od 10 artikala');
     /* v69: Ostalo — veze na podrubrike i dva stupca na mobitelu */
     await p68.evaluate(() => { closeCart(); location.hash = '#ostalo'; }); await p68.waitForTimeout(400);
     const cols = await p68.evaluate(() => getComputedStyle(document.getElementById('productGrid')).gridTemplateColumns.split(' ').length);
@@ -664,7 +664,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const ask = await pc.textContent('#claimBox').catch(() => '');
     const urlClean = !/uplata=/.test(pc.url());
     const before = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).find(o => o.no === oc.no);
-    ok(/jeste li uplatili/.test(ask) && urlClean && !before.claimedAt, 'v69: link „Uplatio/la sam” otvara pitanje u košarici; bez klika se ništa ne mijenja, adresa se čisti');
+    ok(/jeste li već uplatili/.test(ask) && /Ne klikajte/.test(ask) && urlClean && !before.claimedAt, 'v69: link „Uplatio/la sam” otvara pitanje u košarici; bez klika se ništa ne mijenja, adresa se čisti');
     await pc.click('#claimBtn'); await pc.waitForTimeout(600);
     const after = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).find(o => o.no === oc.no);
     ok(/Rok za uplatu produžen je do/.test(await pc.textContent('#claimBox')) && !!after.claimedAt, 'v69: klik „Da, uplatio/la sam” produžuje rok i zahvaljuje kupcu');
