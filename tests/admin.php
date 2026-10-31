@@ -410,7 +410,7 @@ $q1b = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0995', 'mail' => '1
 $q2 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0996', 'back' => '?s=narudzbe']);
 $logP = (string)@file_get_contents($D . '/mail-log.txt');
 $ok(substr_count($vM, 'Pošalji kupcu e-mail da je uplata stigla') >= 2 && str_contains($q1, 'Kupac je dobio e-mail da je uplata stigla') && substr_count($logP, 'uplata je stigla, narudžba SJ-2026-0995') === 1
-  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket šaljemo obično 1–2 radna dana nakon uplate') && !str_contains($q1b, 'dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
+  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket šaljemo obično 1–2 radna dana nakon uplate') && str_contains($q1b, 'već ranije dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
   'v71: „Označi plaćenom” s kvačicom šalje „uplata je stigla” jednom (rok slanja iz Postavki); bez kvačice ne šalje');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */
 $c68['require_confirm'] = true; file_put_contents($D . '/config.json', json_encode($c68));

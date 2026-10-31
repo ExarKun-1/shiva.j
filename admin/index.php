@@ -464,7 +464,6 @@ function sj_handle_action(string $act, array &$c): string {
           throw new RuntimeException('Narudžba ' . $no . ' je upravo automatski stornirana. Kliknite „Označi plaćenom” još jednom: poništit ćete storno, a ako je torba još slobodna, ostaje kupcu.');
         }
         /* v71 (odluka vlasnice, 6. krug): kupac dobiva e-mail „uplata je stigla” ako je kvačica uključena */
-        $paidMsg = !empty($_POST['mail']) ? (sj_paid_mail($fresh) ? ' Kupac je dobio e-mail da je uplata stigla.' : '') : ' Kupac nije dobio e-mail.';
         $warn = [];
         /* v69 (vijeće, N69-2): nakon poništenog automatskog storna model iz kolekcije može imati više narudžbi nego mjesta */
         if (!empty($fresh['uncancelledAt'])) { sj_made_counts(true); $byIdW = []; foreach (sj_products() as $p) $byIdW[(string)($p['id'] ?? '')] = $p;
@@ -474,6 +473,11 @@ function sj_handle_action(string $act, array &$c): string {
         if ($out['taken']) $warn[] = $nmOf($out['taken']) . ' je već plaćena za drugog kupca — javite se kupcu iz ove narudžbe';
         if ($out['offsale']) $warn[] = 'u katalogu nisu na prodaji (prodane, rezervirane, skrivene ili obrisane) pa nisu označene: ' . $nmOf($out['offsale']) . ' — provjerite i javite se kupcu';
         if ($out['other']) $warn[] = 'uklonjena je neplaćena rezervacija drugog kupca: ' . implode('; ', $out['other']) . ' — javite mu se da je torba prodana';
+        /* v71 (odluka vlasnice, 6. krug): „uplata je stigla” — vijeće N71-1: ne kad je torba plaćena za drugog kupca ili nije
+           na prodaji (tada se vlasnica javlja kupcu sama) */
+        if ($out['taken'] || $out['offsale']) $paidMsg = ' Kupac nije dobio e-mail „uplata je stigla” jer dio narudžbe nije njegov — javite mu se.';
+        elseif (empty($_POST['mail'])) $paidMsg = !empty($fresh['paidMailAt']) ? '' : ' Kupac nije dobio e-mail.';
+        else $paidMsg = ['sent' => ' Kupac je dobio e-mail da je uplata stigla.', 'already' => ' Kupac je već ranije dobio e-mail da je uplata stigla.', 'failed' => ' PAŽNJA: e-mail „uplata je stigla” nije poslan (provjerite postavke e-maila); kvačica je ponovno dostupna.', 'skip' => ''][sj_paid_mail($fresh)] ?? '';
         if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.' . $paidMsg;
         return 'Označeno kao plaćeno: ' . $no . '.' . $paidMsg;
       } else {

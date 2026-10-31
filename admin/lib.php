@@ -411,13 +411,15 @@ function sj_pay_lines(array $o, array $c): string {
 }
 /* v71 (odluka vlasnice, 6. krug): „uplata je stigla” — automatski uz „Označi plaćenom” (kvačica, zadano uključena),
    najviše jednom po narudžbi (paidMailAt). Rok slanja iz Postavki (ship_lead), rok izrade iz podatka artikla. */
-function sj_paid_mail(array $o): bool {
+function sj_paid_mail(array $o): string { /* 'sent' | 'already' | 'failed' | 'skip' */
   $c = sj_config();
-  if (empty($o['email']) || !empty($o['paidMailAt']) || empty($o['paidAt'])) return false;
+  if (!empty($o['paidMailAt'])) return 'already';
+  if (empty($o['email']) || empty($o['paidAt']) || !empty($o['cancelledAt'])) return 'skip';
   $no = (string)($o['no'] ?? '');
   $first = false;
-  sj_order_edit(['no' => $no], function (array &$x) use (&$first) { if (empty($x['paidMailAt'])) { $x['paidMailAt'] = sj_iso(time()); $first = true; } });
-  if (!$first) return false;
+  /* vijeće N71-3: pod bravom i stanje plaćeno / storno (drugi prozor admina) */
+  sj_order_edit(['no' => $no], function (array &$x) use (&$first) { if (empty($x['paidMailAt']) && !empty($x['paidAt']) && empty($x['cancelledAt'])) { $x['paidMailAt'] = sj_iso(time()); $first = true; } });
+  if (!$first) return 'already';
   $items = (array)($o['order']['items'] ?? []);
   $made = array_values(array_filter($items, fn($it) => !empty($it['made'])));
   $pickup = (($o['order']['shipping']['id'] ?? '') === 'pickup');
@@ -426,8 +428,11 @@ function sj_paid_mail(array $o): bool {
   $next = $made
     ? 'Sada ' . (count($made) > 1 ? 'izrađujemo artikle po narudžbi' : 'izrađujemo „' . (string)($made[0]['name'] ?? '') . '”') . (count($leads) === 1 ? ' (rok izrade ' . $leads[0] . ')' : '') . '; ' . ($pickup ? 'javit ćemo vam se kad narudžba bude spremna za preuzimanje.' : 'javit ćemo vam kad paket krene.')
     : ($pickup ? 'Javit ćemo vam se kad narudžba bude spremna za preuzimanje.' : 'Paket šaljemo' . ($lead !== '' ? ' obično ' . $lead . ' nakon uplate' : ' uskoro') . '; javit ćemo vam kad krene.');
-  return sj_send_mail((string)$o['email'], $c['shop'] . " — uplata je stigla, narudžba $no",
+  $ok = sj_send_mail((string)$o['email'], $c['shop'] . " — uplata je stigla, narudžba $no",
     'Dobar dan, ' . (string)($o['name'] ?? '') . ",\n\nuplata za narudžbu br. $no je stigla, hvala! " . $next . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
+  /* vijeće N71-2: neuspjelo slanje — oznaka se briše, kvačica se vraća i vlasnica dobiva upozorenje */
+  if (!$ok) { sj_order_edit(['no' => $no], function (array &$x) { unset($x['paidMailAt']); }); return 'failed'; }
+  return 'sent';
 }
 /* v69 (odluka vlasnice): kad vlasnica sama stornira narudžbu, kupac dobiva e-mail (kvačica, zadano uključena).
    Za „lažna narudžba” e-mail se nikad ne šalje (ne potvrđujemo adresu napadaču). */
