@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v40 (stranica v72; odluka vlasnice u 7. krugu): nakon „Uplatio/la sam” torba je rezervirana do automatskog storna
+        (sj_hold_res_until, najviše 7 dana od narudžbe); granica po vezi broji i takvu isteklu narudžbu
    v39 (stranica v71; odluke vlasnice u 6. krugu): potvrda kupcu bez riječi „klik” („a niste nam javili da ste
         platili”); narudžba bez unikata kaže kad se automatski stornira (auto_cancel_hours iz Postavki)
    v38 (stranica v70; odluke vlasnice u 5. krugu): „Uplatio/la sam” čuva do 23:59 sljedećeg radnog dana (subota,
@@ -805,7 +807,7 @@ function sj_ip_open_orders(array $mine): int {
   if (!$mine) return 0;
   $n = 0; $now = time();
   foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o)
-    if (empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['unconfirmed']) && !empty($o['payUntil']) && (int)strtotime((string)$o['payUntil']) > $now && sj_same_ip($o, $mine)) $n++;
+    if (empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['unconfirmed']) && !empty($o['payUntil']) && ((int)strtotime((string)$o['payUntil']) > $now || (((!empty($o['claimedAt']) && empty($o['claimLate'])) || !empty($o['proofAt'])) && (int)strtotime((string)($o['reservation']['until'] ?? '')) > $now)) && sj_same_ip($o, $mine)) $n++; /* v72: i istekla narudžba čija torba se još drži */
   return $n;
 }
 function sj_ip_limit_text(): string {

@@ -896,7 +896,7 @@ function sj_view_expired(array $rd): string {
   $ex = sj_expired_orders();
   if (!$ex) return '';
   $c = sj_config(); $auto = max(0, (int)($c['auto_cancel_hours'] ?? 0)); $now = time();
-  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. Komad je već vraćen u prodaju. Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
+  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. Komad je vraćen u prodaju, osim ako je kupac javio uplatu ili ste kliknuli „Potvrda primljena” (tada se čuva do automatskog storna). Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
   foreach ($ex as $o) {
     $no = (string)($o['no'] ?? ''); $tok = (string)($o['reservation']['token'] ?? '');
     $u = (int)strtotime(sj_pay_until($o)); $ago = max(0, intdiv($now - $u, 3600));
@@ -908,7 +908,8 @@ function sj_view_expired(array $rd): string {
     foreach ((array)($o['order']['items'] ?? []) as $it) { if (!empty($it['made']) || empty($it['id'])) continue; $id = (string)$it['id'];
       $r = $rd['res'][$id] ?? null; $sd = $rd['sold'][$id] ?? null;
       if (($r && !empty($r['ordered']) && ($r['token'] ?? '') !== $tok) || ($sd && ($sd['no'] ?? '') !== $no && ($tok === '' || ($sd['token'] ?? '') !== $tok))) $other[] = (string)($it['name'] ?? $id); }
-    $state = $other ? '<span class="badge ink">prodano ili rezervirano drugome: ' . e(implode(', ', $other)) . '</span>' : '<span class="badge green">komad slobodan</span>';
+    $hU = $other ? 0 : sj_held_until($o); /* v72: torba se drži do storna (kupac javio uplatu / potvrda primljena) */
+    $state = $other ? '<span class="badge ink">prodano ili rezervirano drugome: ' . e(implode(', ', $other)) . '</span>' : ($hU > $now ? '<span class="badge green">torba čuvana do ' . e(sj_fmt_hr(sj_iso($hU))) . '</span>' : '<span class="badge green">komad slobodan</span>');
     $h .= '<div class="card rok"><div class="row" style="justify-content:space-between;margin:0"><b class="mono">' . e($no) . '</b>' . $state . '</div>'
       . '<div>' . e((string)($o['name'] ?? '')) . ' · <b>' . e((string)($o['total'] ?? '')) . '</b> · ' . e(implode(', ', array_map(fn($l) => preg_replace('/^- /', '', trim($l)), array_filter(explode("\n", (string)($o['items'] ?? '')), 'strlen')))) . '</div>'
       . '<div class="muted">poziv na broj <b class="mono">' . e(sj_payment_ref($no)) . '</b> · rok istekao prije ' . $ago . ' h' . $leftTxt . (!empty($o['claimedAt']) ? ' · <b>kupac javio uplatu</b> ' . e(sj_fmt_hr((string)$o['claimedAt'])) : '') . '</div>'
