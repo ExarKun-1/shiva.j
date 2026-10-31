@@ -386,18 +386,24 @@ function sj_handle_action(string $act, array &$c): string {
         if ($why !== '') return ['err' => 'Potvrda za ' . $no . ' nije zabilježena: ' . $why . '.'];
         $now = time();
         $r = sj_hold_extend($no, sj_proof_until($ord, $now), ['proofAt' => sj_iso($now), 'claimLate' => null]);
+        if ($r['state'] === 'full') return ['err' => 'Potvrda za ' . $no . ' nije zabilježena: mjesto u Stalnoj kolekciji (' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$r['lost'])) . ') je u međuvremenu popunjeno, pa rok nije produžen. Ako je kupac platio, javite mu se (povrat ili „Otvori nova mjesta” pa „Označi plaćenom”).'];
         return $r['ok'] ? $r : ['err' => 'Potvrda za ' . $no . ' nije zabilježena: narudžba je u međuvremenu ' . ($r['state'] === 'paid' ? 'plaćena' : 'stornirana') . '.'];
       }, []);
       if (!empty($out['err'])) throw new RuntimeException((string)$out['err']);
       $ord = (array)$out['o']; $lost = (array)$out['lost']; $untilTxt = sj_fmt_deadline((string)$out['payUntil']);
       $mailed = false;
+      /* v70 (D70-8): ako su otišli svi artikli, ne „čuvamo”; ako dio, „ostatak narudžbe čuvamo” */
+      $lostQ = implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)); $lm = count($lost) > 1;
+      $allGone = $lost && count($lost) >= count((array)($ord['order']['items'] ?? []));
       if (!empty($_POST['mail']) && !empty($ord['email']))
         $mailed = sj_send_mail((string)$ord['email'], $c['shop'] . ' — primili smo potvrdu o uplati, narudžba ' . $no,
-          'Dobar dan, ' . (string)($ord['name'] ?? '') . ",\n\nprimili smo vašu potvrdu o uplati za narudžbu br. $no. " . sj_ucfirst(sj_hold_phrase($ord)) . ' do ' . $untilTxt . '; kad uplata stigne, pripremamo narudžbu.'
-          . ($lost ? ' Nažalost, ' . implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)) . (count($lost) > 1 ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; za ' . (count($lost) > 1 ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos.' : '')
+          'Dobar dan, ' . (string)($ord['name'] ?? '') . ",\n\nprimili smo vašu potvrdu o uplati za narudžbu br. $no. "
+          . ($allGone ? 'Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu. Kad uplata stigne, vraćamo vam cijeli iznos; javit ćemo vam se.'
+            : ($lost ? 'Ostatak narudžbe čuvamo za vas do ' . $untilTxt . '; kad uplata stigne, pripremamo ga. Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; za ' . ($lm ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos.'
+            : sj_ucfirst(sj_hold_phrase($ord)) . ' do ' . $untilTxt . '; kad uplata stigne, pripremamo narudžbu.'))
           . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
       return $no . ': potvrda zabilježena. ' . (sj_hold_phrase($ord) === 'rok za uplatu produžen je' ? 'Rok za uplatu produžen je' : 'Narudžba je rezervirana') . ' do ' . $untilTxt . '. Kad uplata stigne na izvod, kliknite „Označi plaćenom”.'
-        . ($lost ? ' PAŽNJA: ' . implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)) . ' je u međuvremenu prodana ili rezervirana drugom kupcu (ili je mjesto popunjeno); kupcu ćete vratiti iznos za nju.' : '')
+        . ($lost ? ' PAŽNJA: ' . $lostQ . ($lm ? ' su u međuvremenu prodane ili rezervirane drugom kupcu (ili je mjesto popunjeno); kupcu ćete vratiti iznos za njih.' : ' je u međuvremenu prodana ili rezervirana drugom kupcu (ili je mjesto popunjeno); kupcu ćete vratiti iznos za nju.') : '')
         . ($mailed ? ' Kupac je dobio kratku potvrdu e-mailom.' : ' Kupac nije dobio e-mail.');
     }
 
@@ -600,7 +606,7 @@ function sj_cancel_form(string $no, string $back, string $confirm, string $label
 function sj_proof_form(array $o): string {
   $no = (string)($o['no'] ?? '');
   $until = sj_fmt_deadline(sj_iso(sj_proof_until($o, time())));
-  $what = sj_hold_phrase($o) === 'rok za uplatu produžen je' ? 'Rok za uplatu produžujemo' : 'Narudžbu čuvamo';
+  $n = sj_unique_count($o); $what = $n === 0 ? 'Rok za uplatu produžujemo' : ($n > 1 ? 'Torbe čuvamo' : 'Torbu čuvamo');
   $confirm = 'Kupac je poslao snimku potvrde za ' . $no . ', a uplata još nije na izvodu? ' . $what . ' do ' . $until . '. Kad uplata stigne, kliknite „Označi plaćenom”.';
   return '<form method="post" class="inline prooff" data-confirm="' . e($confirm) . '"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="order_proof"><input type="hidden" name="back" value="?s=narudzbe"><input type="hidden" name="no" value="' . e($no) . '">'
     . '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu kratku potvrdu e-mailom</label><button class="alt">Potvrda primljena</button></form>';

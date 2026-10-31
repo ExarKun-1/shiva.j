@@ -169,6 +169,11 @@ $ok(sj_claim_until(['at' => gmdate('c', $T('2026-10-01 10:00')), 'payUntil' => g
   && sj_proof_until(['payUntil' => gmdate('c', $T('2026-10-31 18:00'))], $T('2026-10-31 19:00')) === $T('2026-11-02 23:59') && sj_proof_until(['payUntil' => gmdate('c', $T('2026-12-24 12:00'))], $T('2026-12-24 13:00')) === $T('2026-12-28 13:00'),
   'v70: rok se nikad ne skraćuje; „Potvrda primljena” od trenutka klika (najviše 96 h)');
 
+$ok(sj_claim_preview($oF) === 'do ponedjeljka, 2. 11. 2026. u 23:59' && str_starts_with(sj_claim_preview($oX), 'najmanje do nedjelje, 27. 12. 2026.')
+  && str_contains(sj_already_text(['claimLate' => true, 'payUntil' => '2000-01-01T00:00:00Z', 'order' => ['items' => [['id' => 'a', 'name' => 'A']]]]), 'torbu više ne možemo automatski čuvati')
+  && str_contains(sj_late_text(['order' => ['items' => [['id' => 'k', 'made' => true]]]], 'Rok je prošao'), 'ne možemo automatski produžiti'),
+  'v70 (vijeće): „najmanje do” kad granica od 96 h skraćuje datum; nakon isteka bez obećanja čuvanja; bez unikata bez „torbe”');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

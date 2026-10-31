@@ -362,7 +362,7 @@ file_put_contents($D . '/narudzbe.json', json_encode([
   $mk('SJ-2026-0983', ['payUntil' => $isoIn(5), 'paidAt' => $isoAgo(1)]),
 ]));
 $vP = $req('GET', ['s' => 'narudzbe']);
-$ok(preg_match('#data-confirm="Kupac je poslao snimku potvrde za SJ-2026-0980, a uplata još nije na izvodu\? Narudžbu čuvamo do [^"]+ u \d\d:\d\d\.[^"]*"#u', $vP) === 1 && str_contains($vP, 'Pošalji kupcu kratku potvrdu e-mailom') && substr_count($vP, '<input type="hidden" name="act" value="order_proof">') === 2,
+$ok(preg_match('#data-confirm="Kupac je poslao snimku potvrde za SJ-2026-0980, a uplata još nije na izvodu\? Torbu čuvamo do [^"]+ u \d\d:\d\d\.[^"]*"#u', $vP) === 1 && str_contains($vP, 'Pošalji kupcu kratku potvrdu e-mailom') && substr_count($vP, '<input type="hidden" name="act" value="order_proof">') === 2,
   'v70: „Potvrda primljena” na kartici „Rok istekao” s točnim datumom u potvrdi; nema je za staru (8 dana) ni za plaćenu');
 $p1 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0980', 'mail' => '1', 'back' => '?s=narudzbe']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
@@ -382,6 +382,17 @@ $rz = json_decode(file_get_contents($D . '/rezervacije.json'), true);
 $ok(str_contains($p2, 'Kupac nije dobio e-mail') && str_contains($p3, 'dvaput') && count($nn['SJ-2026-0980']['proofAt']) === 2 && str_contains($p4, 'više od 7 dana') && empty($nn['SJ-2026-0981']['proofAt']) && str_contains($p5, 'već plaćena'),
   'v70: „Potvrda primljena” najviše dvaput, ne nakon 7 dana od narudžbe ni za plaćenu');
 $ok(str_contains($p6, 'PAŽNJA: „Tara”') && ($rz['res']['tara']['token'] ?? '') === 'drugi', 'v70: „Potvrda primljena” ne uzima torbu rezerviranu za drugog kupca (upozorenje)');
+/* N70-1: popunjeno mjesto u Stalnoj kolekciji — „Potvrda primljena” ne produžuje istekle narudžbe */
+$pr = json_decode(file_get_contents($D . '/proizvodi.json'), true); $prOld = $pr;
+foreach ($pr as &$pp) if (($pp['id'] ?? '') === 'klasik') $pp['made_limit'] = 1; unset($pp);
+file_put_contents($D . '/proizvodi.json', json_encode($pr));
+$nAll = json_decode(file_get_contents($D . '/narudzbe.json'), true);
+$nAll[] = $mk('SJ-2026-0990', ['payUntil' => $isoIn(10)]); $nAll[] = $mk('SJ-2026-0991', ['payUntil' => $isoAgo(2)]);
+file_put_contents($D . '/narudzbe.json', json_encode($nAll)); @unlink($D . '/made-counts.json');
+$pF = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0991', 'back' => '?s=narudzbe']);
+$o91 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0991') $o91 = $x;
+file_put_contents($D . '/proizvodi.json', json_encode($prOld));
+$ok(str_contains($pF, 'je u međuvremenu popunjeno') && empty($o91['proofAt']) && (int)strtotime($o91['payUntil']) < time(), 'v70 (N70-1): „Potvrda primljena” ne produžuje narudžbu kad je mjesto u kolekciji popunjeno');
 $vP2 = $req('GET', ['s' => 'narudzbe']);
 $ok(str_contains($vP2, 'potvrda primljena</span>'), 'v70: u retku narudžbe oznaka „potvrda primljena” s rokom');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */

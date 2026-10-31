@@ -667,7 +667,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     ok(/jeste li već uplatili/.test(ask) && new RegExp('torb[ue] čuvamo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\\s\\d{1,2}\\.\\s\\d{1,2}\\.\\su\\s\\d{2}:\\d{2}').test(ask) && /Ne klikajte/.test(ask) && urlClean && !before.claimedAt, 'v69: link „Uplatio/la sam” otvara pitanje u košarici; bez klika se ništa ne mijenja, adresa se čisti');
     await pc.click('#claimBtn'); await pc.waitForTimeout(600);
     const after = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).find(o => o.no === oc.no);
-    ok(/Hvala! Torbu čuvamo za vas do/.test(await pc.textContent('#claimBox')) && !!after.claimedAt, 'v69/v70: klik „Da, uplatio/la sam” produžuje rok i zahvaljuje kupcu');
+    ok(/Torbu čuvamo za vas do/.test(await pc.textContent('#claimBox')) && !!after.claimedAt, 'v69/v70: klik „Da, uplatio/la sam” produžuje rok i zahvaljuje kupcu');
     await mc.close();
   }
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));

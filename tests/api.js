@@ -290,6 +290,8 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       ok(bad.status === 403 && getR.status === 400 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
         'v69: „Uplatio/la sam” — kriva tajna 403, GET bez linka 400; rok i rezervacija produženi, vlasnica dobiva e-mail');
       const cl2 = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
+      const pre2 = await (await fetch(U + 'paidclaim?no=' + i1.data.orderNo + '&t=' + oI1.claim)).json();
+      ok(pre2.ok && pre2.state === 'already' && /Već ste nam javili da ste uplatili; torbu čuvamo za vas do/.test(pre2.message || '') && !/Hvala! /.test(cl.data.message || ''), 'v70 (D70-4, D70-7): ponovno otvoren link — „već ste javili” bez gumba; poruka nakon klika bez dvostrukog „Hvala!”');
       ok(cl2.data.ok && cl2.data.state === 'already' && /Već ste nam javili/.test(cl2.data.message || ''), 'v69: „Uplatio/la sam” vrijedi jednom');
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
