@@ -175,8 +175,17 @@ function sj_late_text(array $o, string $lead): string {
     . '. Javili smo vlasnici: provjerit će uplatu i javiti vam se.' . ($n === 0 ? '' : ($n > 1 ? ' Ako je neka od torbi u međuvremenu otišla drugom kupcu, za nju vam vraćamo uplaćeni iznos.' : ' Ako je torba u međuvremenu otišla drugom kupcu, vraćamo vam cijeli iznos.'));
 }
 function sj_already_text(array $o): string {
+  /* v72 (vijeće, D72-1/2): istekao rok, a torba se i dalje drži do storna — isti tekst kao e-mail „uplatu još ne vidimo” */
+  if (empty($o['claimLate']) && (int)strtotime(sj_pay_until($o)) <= time() && ($hs = sj_held_sentence(sj_held_info($o))) !== '') {
+    if (!empty($o['proofAt'])) return 'Vašu potvrdu o uplati već smo primili. ' . $hs . ' Kad uplatu vidimo na računu, pripremamo vašu narudžbu.';
+    if (!empty($o['claimedAt'])) return 'Već ste nam javili da ste uplatili, ali uplatu još ne vidimo na računu. ' . $hs . ' Molimo vas, odgovorite na e-mail o narudžbi i pošaljite potvrdu o uplati (snimku ili potvrdu iz banke).';
+  }
   if (!empty($o['claimLate']) || (int)strtotime(sj_pay_until($o)) <= time()) return sj_late_text($o, 'Već ste nam javili da ste uplatili. Rok za uplatu je prošao');
   return 'Već ste nam javili da ste uplatili; ' . sj_hold_phrase($o) . ' do ' . sj_fmt_deadline(sj_pay_until($o)) . '. Ako uplata do tada ne bude vidljiva, javit ćemo vam se e-mailom.';
+}
+/* v72 (D72-2): „Potvrda primljena”, rok istekao, torba se drži — klik na stari link ne smije upisati claimLate */
+function sj_proof_held(array $o): bool {
+  return empty($o['claimedAt']) && !empty($o['proofAt']) && (int)strtotime(sj_pay_until($o)) <= time() && sj_held_until($o) > time();
 }
 function sj_hold_phrase(array $o): string {
   $n = sj_unique_count($o);
@@ -217,16 +226,29 @@ function sj_proof_block(array $o, ?int $now = null): string {
   if ($now > ((int)strtotime((string)($o['at'] ?? '')) + SJ_PROOF_MAX_DAYS * 86400)) return 'prošlo je više od ' . SJ_PROOF_MAX_DAYS . ' dana od narudžbe';
   return '';
 }
-/* v72: do kada je torba ove narudžbe stvarno rezervirana (najraniji kraj među njezinim unikatima; 0 = nije) */
-function sj_held_until(array $o): int {
-  $tok = (string)($o['reservation']['token'] ?? ''); if ($tok === '') return 0;
-  $d = array_replace(sj_res_default(), sj_read_json(sj_res_path(), [])); $min = 0; $all = true;
+/* v72: koje su torbe ove narudžbe još stvarno rezervirane za nju i do kada (najraniji kraj među njima).
+   Vijeće (N72-2): po torbi — ako je jedna otišla, druga je i dalje rezervirana. */
+function sj_held_info(array $o): array {
+  $out = ['until' => 0, 'held' => [], 'gone' => [], 'taken' => []];
+  $tok = (string)($o['reservation']['token'] ?? '');
+  $d = array_replace(sj_res_default(), sj_read_json(sj_res_path(), [])); $now = time();
   foreach ((array)($o['order']['items'] ?? []) as $it) { if (!empty($it['made'])) continue;
-    $r = $d['res'][(string)($it['id'] ?? '')] ?? null;
-    if (!$r || (string)($r['token'] ?? '') !== $tok) { $all = false; continue; }
-    $u = (int)strtotime((string)($r['until'] ?? '')); $min = $min ? min($min, $u) : $u; }
-  return $all ? $min : 0;
+    $id = (string)($it['id'] ?? ''); $nm = (string)($it['name'] ?? ''); $r = $d['res'][$id] ?? null;
+    $u = $r ? (int)strtotime((string)($r['until'] ?? '')) : 0;
+    if ($tok !== '' && $r && (string)($r['token'] ?? '') === $tok && $u > $now) { $out['held'][] = $nm; $out['until'] = $out['until'] ? min($out['until'], $u) : $u; continue; }
+    $out['gone'][] = $nm;
+    /* otišla drugom kupcu: prodana ili rezervirana narudžbom drugoga (inače je samo ponovno u ponudi) */
+    if (isset($d['sold'][$id]) || ($r && !empty($r['ordered']) && $u > $now && (string)($r['token'] ?? '') !== $tok)) $out['taken'][] = $nm; }
+  return $out;
 }
+/* v72 (vijeće, D72-1/2): „Torbu „X” i dalje čuvamo za vas do D.” ili '' ako se ništa ne drži */
+function sj_held_sentence(array $hi): string {
+  if (!$hi['held'] || $hi['until'] <= time()) return '';
+  $q = array_map(fn($n) => '„' . $n . '”', $hi['held']);
+  return (count($q) > 1 ? 'Torbe ' . implode(' i ', $q) : 'Torbu ' . $q[0]) . ' i dalje čuvamo za vas do ' . sj_fmt_deadline(sj_iso($hi['until'])) . '.';
+}
+/* do kada je barem jedna torba ove narudžbe još rezervirana za nju (0 = nijedna) */
+function sj_held_until(array $o): int { return sj_held_info($o)['until']; }
 const SJ_HOLD_MAX_FROM_ORDER = 168 * 3600; /* v72: torba se drži najviše 7 dana od narudžbe */
 /* v72: do kada je torba rezervirana nakon „Uplatio/la sam” / „Potvrda primljena”: do automatskog storna (rok za uplatu
    + auto_cancel_hours), ako su rokovi uključeni; nikad kraće od roka za uplatu */
@@ -299,6 +321,15 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
   sj_made_counts(true);
   return ['ok' => true, 'state' => 'extended', 'payUntil' => $new, 'lost' => array_values(array_unique($lost)), 'o' => $o];
 }
+/* Kada se neplaćena istekla narudžba automatski stornira: auto_cancel_hours nakon upisanog „rok istekao”.
+   v72 (vijeće, N72-1): ako je torba držana do storna, najkasnije kad ta rezervacija istječe (tick može kasniti,
+   granica od 7 dana, promjena postavki) — da torba ne bude u prodaji dok narudžba još stoji. */
+function sj_cancel_due(array $o, int $auto): int {
+  $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
+  $due = $exp + $auto * 3600;
+  $hu = (!empty($o['claimedAt']) || !empty($o['proofAt'])) ? (int)strtotime((string)($o['reservation']['until'] ?? '')) : 0;
+  return $hu > $exp ? min($due, $hu) : $due;
+}
 /* v69: najviše toliko e-mailova kupcima u jednom prolazu rokova (ostatak u sljedećem) */
 const SJ_TICK_MAX_MAILS = 20;
 /* v69: poveznica „Uplatio/la sam” za kupca (tajna je uz narudžbu); '' bez provjerene adrese stranice */
@@ -340,7 +371,7 @@ function sj_deadline_tick(bool $force = false): array {
         /* v69.1: kupac je nakon isteka javio uplatu — bez automatskog storna; vlasnica provjeri izvod i odluči */
         if (!empty($o['claimLate'])) continue;
         $exp = (int)strtotime((string)$o['expiredAt']);
-        if ($auto > 0 && $exp > 0 && $now >= $exp + $auto * 3600) {
+        if ($auto > 0 && $exp > 0 && $now >= sj_cancel_due($o, $auto)) {
           $o['cancelledAt'] = sj_iso($now); $o['cancelReason'] = 'nije uplaćeno u roku'; $o['cancelBy'] = 'automatski';
           $todo[] = ['cancel', $o];
         }
@@ -395,14 +426,21 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
     if (!empty($o['claimedAt']) || !empty($o['proofAt'])) {
       /* v72 (odluka vlasnice, 7. krug): kraći tekst; torba ostaje rezervirana do storna („ne stavljaj tu torbu
          ponovno u prodaju do isteka roka”) — datum iz stvarne rezervacije, ne obećanje */
-      $held = sj_held_until($o);
-      $heldTxt = $held > time() ? sj_fmt_deadline(sj_iso($held)) : '';
+      $hI = sj_held_info($o); $hs = sj_held_sentence($hI); $pf = !empty($o['proofAt']);
+      $taken = $hs !== '' ? $hI['taken'] : []; $free = $hs !== '' ? array_values(array_diff($hI['gone'], $taken)) : array_map(fn($x) => trim($x, '„”'), $uq);
+      $Q = fn(array $a) => implode(' i ', array_map(fn($n) => '„' . $n . '”', $a));
+      /* D72-3: potvrdu već imamo — ne tražiti je ponovno */
+      $cond = $pf ? 'ne vidimo uplatu i ne javite nam se' : 'ne dobijemo ni uplatu ni potvrdu';
+      $stornoP = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso($exp + $auto * 3600)) . ' ' . $cond . ', narudžbu storniramo.' : '';
       sj_send_mail((string)$o['email'], $c['shop'] . " — uplatu još ne vidimo, narudžba $no",
-        $hi . (!empty($o['proofAt']) && empty($o['claimedAt']) ? "primili smo vašu potvrdu o uplati za narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, provjerite sa svojom bankom je li uplata izvršena i odgovorite na ovaj e-mail."
+        /* D72-4: inačica „primili smo potvrdu” kad god je potvrda zabilježena */
+        $hi . ($pf ? "primili smo vašu potvrdu o uplati za narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, provjerite sa svojom bankom je li uplata izvršena i odgovorite na ovaj e-mail."
           : "javili ste nam da ste platili narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, odgovorite na ovaj e-mail i pošaljite potvrdu o uplati (snimku ili potvrdu iz banke).")
-        . ($uq && $heldTxt !== ''
-          ? "\n\n" . ($many ? 'Torbe ' . implode(' i ', $uq) . ' i dalje čuvamo' : 'Torbu ' . $uq[0] . ' i dalje čuvamo') . " za vas do $heldTxt. Ako do tada ne dobijemo ni uplatu ni potvrdu, narudžbu storniramo i " . ($many ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.'
-          : ($uq ? "\n\n" . ($many ? 'Torbe ' . implode(' i ', $uq) . ' su' : 'Torba ' . $uq[0] . ' je') . ' zasad ponovno u ponudi; ako ' . ($many ? 'ih' : 'je') . ' netko kupi prije nego što vaša uplata stigne, vraćamo vam cijeli iznos.' . $storno : $storno))
+        . ($hs !== '' ? "\n\n" . $hs : '')
+        /* D72-5: po torbi */
+        . ($taken ? ($hs !== '' ? ' ' : "\n\n") . 'Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos.' : '')
+        . ($free ? ($hs !== '' ? ' ' : "\n\n") . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi; ako ' . (count($free) > 1 ? 'neku od njih' : 'je') . ' netko kupi prije nego što vaša uplata stigne, za ' . (count($free) > 1 ? 'nju' : 'nju') . ' vam vraćamo uplaćeni iznos.' : '')
+        . ($hs !== '' ? ' Ako do tada ' . $cond . ', narudžbu storniramo i ' . (count($hI['held']) > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.' : $stornoP)
         . $bye, null, (string)$c['owner_email']);
     } else {
       /* v70: klik nakon isteka više ne čuva torbu (v69.1) — javlja vlasnici, koja provjeri izvod i javi se */
@@ -415,8 +453,12 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
         . "\n\n" . sj_pay_lines($o, $c) . $bye, null, (string)$c['owner_email']);
     }
     sj_send_mail((string)$c['owner_email'], $c['shop'] . " — rok za uplatu prošao: $no — $name",
-      "Rok za uplatu narudžbe $no ($name, " . (string)($o['total'] ?? '') . ", poziv na broj " . sj_payment_ref($no) . ") prošao je u $untilAcc." . ($uq ? (($hO = sj_held_until($o)) > time() ? ' Kupac je javio uplatu, pa ' . ($many ? 'su torbe i dalje rezervirane' : 'je torba i dalje rezervirana') . ' za njega do ' . sj_fmt_deadline(sj_iso($hO)) . ' (do automatskog storna).' : ' ' . ($many ? 'Torbe su vraćene' : 'Torba je vraćena') . ' u prodaju.') : '')
-      . "\n\nAko vidite uplatu, u adminu → Narudžbe → „Rok istekao” kliknite „Označi plaćenom”; ako ne, „Storniraj narudžbu…”." . ($auto > 0 ? " Ako ne kliknete ništa, narudžba se automatski stornira za " . sj_hours_text($auto) . ' i kupac dobiva e-mail.' : '')
+      "Rok za uplatu narudžbe $no ($name, " . (string)($o['total'] ?? '') . ", poziv na broj " . sj_payment_ref($no) . ") prošao je u $untilAcc." . ($uq ? (($hO = sj_held_info($o))['until'] > time()
+        ? ' ' . (!empty($o['claimedAt']) ? 'Kupac je javio uplatu („Uplatio/la sam”)' : 'Kliknuli ste „Potvrda primljena”') . ', pa ' . (count($hO['held']) > 1 ? 'su torbe „' . implode('” i „', $hO['held']) . '” i dalje rezervirane' : 'je torba „' . $hO['held'][0] . '” i dalje rezervirana') . ' za kupca do ' . sj_fmt_deadline(sj_iso($hO['until'])) . ' (do automatskog storna).'
+          . ($hO['taken'] ? ' ' . (count($hO['taken']) > 1 ? 'Torbe „' . implode('” i „', $hO['taken']) . '” otišle su' : 'Torba „' . $hO['taken'][0] . '” otišla je') . ' drugom kupcu: ako kupac plati, vratite mu iznos za ' . (count($hO['taken']) > 1 ? 'njih' : 'nju') . '.' : '')
+          . (($fO = array_diff($hO['gone'], $hO['taken'])) ? ' ' . (count($fO) > 1 ? 'Torbe „' . implode('” i „', $fO) . '” vraćene su' : 'Torba „' . implode('', $fO) . '” vraćena je') . ' u prodaju.' : '')
+        : ' ' . ($many ? 'Torbe su vraćene' : 'Torba je vraćena') . ' u prodaju.') : '')
+      . "\n\nAko vidite uplatu, u adminu → Narudžbe → „Rok istekao” kliknite „Označi plaćenom”; ako ne, „Storniraj narudžbu…”." . ($auto > 0 ? " Ako ne kliknete ništa, narudžba se automatski stornira u " . sj_fmt_deadline(sj_iso(sj_cancel_due($o + ['expiredAt' => sj_iso(time())], $auto)), 'acc') . ' i kupac dobiva e-mail.' : '')
       . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
   } else {
     sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",

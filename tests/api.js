@@ -293,6 +293,23 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const pre2 = await (await fetch(U + 'paidclaim?no=' + i1.data.orderNo + '&t=' + oI1.claim)).json();
       ok(pre2.ok && pre2.state === 'already' && /Već ste nam javili da ste uplatili; torbu čuvamo za vas do/.test(pre2.message || '') && !/Hvala! /.test(cl.data.message || ''), 'v70 (D70-4, D70-7): ponovno otvoren link — „već ste javili” bez gumba; poruka nakon klika bez dvostrukog „Hvala!”');
       ok(cl2.data.ok && cl2.data.state === 'already' && /Već ste nam javili/.test(cl2.data.message || ''), 'v69: „Uplatio/la sam” vrijedi jednom');
+      // v72 (vijeće, D72-1/2): rok istekao, torba se drži do storna — stranica kaže isto što i e-mail; klik nakon
+      // „Potvrda primljena” ne upisuje claimLate (ne gasi automatski storno)
+      { const fut = new Date(Date.now() + 40 * 3600e3).toISOString(), past = new Date(Date.now() - 3600e3).toISOString();
+        const n = read('narudzbe.json'); const a = n.find(x => x.no === i1.data.orderNo), b = n.find(x => x.no === i5.data.orderNo);
+        a.payUntil = past; a.expiredAt = past; b.payUntil = past; b.expiredAt = past; b.proofAt = [past];
+        fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n));
+        const r = read('rezervacije.json'); r.res.luna = Object.assign(r.res.luna || {}, { id: 'luna', token: a.reservation.token, until: fut, ordered: true });
+        r.res.vela = { id: 'vela', token: b.reservation.token, until: fut, ordered: true }; fs.writeFileSync(D + 'rezervacije.json', JSON.stringify(r));
+        clearLimits();
+        const gA = await (await fetch(U + 'paidclaim?no=' + a.no + '&t=' + a.claim)).json();
+        const gB = await (await fetch(U + 'paidclaim?no=' + b.no + '&t=' + b.claim)).json();
+        const pB = await post('paidclaim', { no: b.no, t: b.claim });
+        const oB = read('narudzbe.json').find(x => x.no === b.no);
+        ok(gA.state === 'already' && /ali uplatu još ne vidimo na računu\. Torbu „Luna” i dalje čuvamo za vas do /.test(gA.message || '') && !/više ne možemo automatski čuvati/.test(gA.message || ''),
+          'v72 (D72-1): ponovno otvoren link nakon roka, torba držana — „i dalje čuvamo do …”, kao u e-mailu');
+        ok(gB.state === 'already' && pB.data.state === 'already' && /Vašu potvrdu o uplati već smo primili\. Torbu „Vela” i dalje čuvamo/.test(pB.data.message || '') && !oB.claimLate && !oB.claimedAt,
+          'v72 (D72-2): nakon „Potvrda primljena” klik na stari link ne upisuje kasni klik (automatski storno ostaje)'); }
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');

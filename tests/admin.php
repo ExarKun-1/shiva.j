@@ -394,6 +394,21 @@ $rL = json_decode(file_get_contents($D . '/rezervacije.json'), true)['res']['lun
 $exp85 = min((int)strtotime($o85['payUntil']) + 48 * 3600, (int)strtotime($o85['at']) + 168 * 3600);
 $ok(str_contains($pH, 'potvrda zabilježena') && (int)strtotime($rL['until'] ?? '') === $exp85 && ($o85['reservation']['until'] ?? '') === ($rL['until'] ?? '-') && (int)strtotime($o85['payUntil']) < $exp85,
   'v72: „Potvrda primljena” — rok za uplatu do 23:59 radnog dana, torba rezervirana do automatskog storna (najviše 7 dana od narudžbe)');
+$ok(str_contains($pH, 'torba je rezervirana do') && str_contains($pH, '(do automatskog storna)'), 'v72 (D72-10): poruka vlasnici navodi i rok za uplatu i do kada je torba rezervirana');
+/* v72 (vijeće, N72-1): provjera rokova kasnila je (expiredAt kasnije od roka) — storno najkasnije kad istekne
+   rezervacija držane torbe, a ne tek expiredAt + 48 h (inače bi torba bila u prodaji dok narudžba još stoji) */
+$keepN = file_get_contents($D . '/narudzbe.json'); $keepR = file_get_contents($D . '/rezervacije.json');
+file_put_contents($D . '/narudzbe.json', json_encode([
+  $uq('SJ-2026-0986', ['payUntil' => $isoAgo(50), 'expiredAt' => $isoAgo(30), 'claimedAt' => $isoAgo(52), 'reservation' => ['token' => 'tSJ-2026-0986', 'until' => $isoAgo(1)]]),
+  $uq('SJ-2026-0987', ['payUntil' => $isoAgo(50), 'expiredAt' => $isoAgo(30), 'reservation' => ['token' => 'tSJ-2026-0987', 'until' => $isoAgo(50)], 'order' => ['total' => 55, 'items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]]),
+]));
+$cH['deadline_tick'] = true; file_put_contents($D . '/config.json', json_encode($cH)); @unlink($D . '/rokovi.json');
+$req('GET', ['s' => 'narudzbe']);
+$cH['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($cH));
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$ok(!empty($nn['SJ-2026-0986']['cancelledAt']) && empty($nn['SJ-2026-0987']['cancelledAt']),
+  'v72 (N72-1): držana narudžba stornira se kad istekne rezervacija torbe, i kad je provjera rokova kasnila; ostale tek 48 h nakon „rok istekao”');
+file_put_contents($D . '/narudzbe.json', $keepN); file_put_contents($D . '/rezervacije.json', $keepR);
 /* N70-1: popunjeno mjesto u Stalnoj kolekciji — „Potvrda primljena” ne produžuje istekle narudžbe */
 $pr = json_decode(file_get_contents($D . '/proizvodi.json'), true); $prOld = $pr;
 foreach ($pr as &$pp) if (($pp['id'] ?? '') === 'klasik') $pp['made_limit'] = 1; unset($pp);

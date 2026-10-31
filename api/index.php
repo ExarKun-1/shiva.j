@@ -485,7 +485,7 @@ if ($a === 'paidclaim') {
     $o = null; /* v70 (N70-2): isto traženje kao POST (samo narudzbe.json, ne arhiva) */
     foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $x) if (($x['no'] ?? '') === $no) { $o = $x; break; }
     if (!$o || empty($o['claim']) || !hash_equals((string)$o['claim'], $sec)) sj_json_out(['ok' => false, 'error' => 'Neispravan link.'], 403);
-    $st = !empty($o['paidAt']) ? 'paid' : (!empty($o['cancelledAt']) ? 'cancelled' : (!empty($o['claimedAt']) ? 'already' : ((int)strtotime(sj_pay_until($o)) <= time() ? 'late' : 'open')));
+    $st = !empty($o['paidAt']) ? 'paid' : (!empty($o['cancelledAt']) ? 'cancelled' : (!empty($o['claimedAt']) || sj_proof_held($o) ? 'already' : ((int)strtotime(sj_pay_until($o)) <= time() ? 'late' : 'open')));
     $n = 0; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $n++;
     sj_json_out(['ok' => true, 'state' => $st, 'unique' => $n, 'message' => $st === 'already' ? sj_already_text($o) : null, 'payUntil' => sj_pay_until($o), 'claimUntil' => $st === 'open' ? sj_iso(sj_claim_until($o, time())) : null]);
   }
@@ -502,6 +502,9 @@ if ($a === 'paidclaim') {
     if (!empty($o['paidAt'])) return ['state' => 'paid'];
     if (!empty($o['cancelledAt'])) return ['state' => 'cancelled'];
     if (!empty($o['claimedAt'])) return ['state' => 'already', 'payUntil' => sj_pay_until($o)];
+    /* v72 (vijeće, D72-2): vlasnica je zabilježila potvrdu i torba se drži do storna — klik nakon isteka ne smije
+       upisati claimLate (to bi ugasilo automatski storno obećan e-mailom); samo potvrda da je sve zabilježeno */
+    if (sj_proof_held($o)) return ['state' => 'already', 'payUntil' => sj_pay_until($o)];
     $now = time();
     /* v69.1 (vijeće, 5. krug): nakon isteka roka klik više NE oživljava narudžbu (ne rezervira torbu ni mjesto i ne
        produžuje rok) — inače bi jedna veza, uz granicu od 3 aktivne narudžbe, mogla oživljavati istekle i držati
