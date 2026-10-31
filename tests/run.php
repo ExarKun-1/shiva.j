@@ -145,6 +145,30 @@ $ok($aApi && $aApi === $aHt && $aApi === $aRt && in_array('paidclaim', $aApi, tr
 $ok(sj_short_ip('::ffff:93.184.216.34') === sj_short_ip('93.184.216.34') && sj_short_ip('::ffff:93.184.216.34') !== sj_short_ip('::ffff:10.1.2.3'), 'v69: ::ffff:a.b.c.d se broji kao IPv4 (ne kao jedna zajednička mreža)');
 $ok(sj_fmt_deadline('2026-10-29T07:16:00Z') === 'četvrtka, 29. 10. 2026. u 08:16' && sj_fmt_deadline('2026-10-30T07:16:00Z', 'acc') === 'petak, 30. 10. 2026. u 08:16', 'v69: rok u e-mailovima kao na stranici (dan u tjednu, „u”)');
 
+/* v70: blagdani RH (NN 110/19, čl. 1; NN 72/25 dodaje samo spomendan 9. 1.) i „Uplatio/la sam” do 23:59 radnog dana */
+$hol = fn(int $y) => array_keys(sj_hr_holidays($y)); $h26 = $hol(2026); sort($h26); $h27 = $hol(2027); sort($h27);
+$ok($h26 === ['01-01', '01-06', '04-05', '04-06', '05-01', '05-30', '06-04', '06-22', '08-05', '08-15', '11-01', '11-18', '12-25', '12-26']
+  && $h27 === ['01-01', '01-06', '03-28', '03-29', '05-01', '05-27', '05-30', '06-22', '08-05', '08-15', '11-01', '11-18', '12-25', '12-26']
+  && sj_easter(2025) === [4, 20] && sj_easter(2028) === [4, 16] && !isset(sj_hr_holidays(2026)['01-09']),
+  'v70: blagdani 2026. i 2027. (Uskrs, Uskrsni ponedjeljak, Tijelovo = Uskrs + 60; 9. 1. nije neradni dan)');
+$zg = new DateTimeZone('Europe/Zagreb');
+$T = fn(string $s) => (new DateTimeImmutable($s, $zg))->getTimestamp();
+$F = fn(int $t) => (new DateTimeImmutable('@' . $t))->setTimezone($zg)->format('D Y-m-d H:i');
+$ok($F(sj_next_workday_end($T('2026-10-30 21:00'))) === 'Mon 2026-11-02 23:59' && $F(sj_next_workday_end($T('2026-10-31 21:00'))) === 'Mon 2026-11-02 23:59'
+  && $F(sj_next_workday_end($T('2026-12-24 10:00'))) === 'Mon 2026-12-28 23:59' && $F(sj_next_workday_end($T('2026-10-27 09:00'))) === 'Wed 2026-10-28 23:59'
+  && $F(sj_next_workday_end($T('2026-04-03 12:00'))) === 'Tue 2026-04-07 23:59' && $F(sj_next_workday_end($T('2026-10-24 21:00'))) === 'Mon 2026-10-26 23:59',
+  'v70: sljedeći radni dan u 23:59 — petak/subota → ponedjeljak (1. 11.), Badnjak → 28. 12., Uskrs → utorak, prijelaz na zimsko vrijeme');
+/* narudžba pet 30. 10. 21:00, rok sub 21:00, klik sub navečer → pon 2. 11. 23:59; Badnjak: granica 96 h od klika; granica 120 h od narudžbe */
+$oF = ['at' => gmdate('c', $T('2026-10-30 21:00')), 'payUntil' => gmdate('c', $T('2026-10-31 21:00'))];
+$oX = ['at' => gmdate('c', $T('2026-12-23 12:00')), 'payUntil' => gmdate('c', $T('2026-12-24 12:00'))];
+$ok($F(sj_claim_until($oF, $T('2026-10-31 20:30'))) === 'Mon 2026-11-02 23:59' && $F(sj_claim_until($oF)) === 'Mon 2026-11-02 23:59'
+  && $F(sj_claim_until($oX, $T('2026-12-24 11:00'))) === 'Mon 2026-12-28 11:00' && $F(sj_claim_until($oX)) === 'Sun 2026-12-27 12:00'
+  && sj_claim_until($oX) <= sj_claim_until($oX, $T('2026-12-24 11:00')) && sj_claim_until(['at' => gmdate('c', $T('2026-10-30 21:00')), 'payUntil' => gmdate('c', $T('2026-11-04 20:00'))], $T('2026-11-04 19:00')) === $T('2026-11-04 21:00'),
+  'v70: „Uplatio/la sam” — pon 2. 11. u 23:59; granica 96 h od klika (Božić); granica 120 h od narudžbe; datum unaprijed nikad kasniji od pravog');
+$ok(sj_claim_until(['at' => gmdate('c', $T('2026-10-01 10:00')), 'payUntil' => gmdate('c', $T('2026-10-08 10:00'))], $T('2026-10-08 09:00')) === $T('2026-10-08 10:00')
+  && sj_proof_until(['payUntil' => gmdate('c', $T('2026-10-31 18:00'))], $T('2026-10-31 19:00')) === $T('2026-11-02 23:59') && sj_proof_until(['payUntil' => gmdate('c', $T('2026-12-24 12:00'))], $T('2026-12-24 13:00')) === $T('2026-12-28 13:00'),
+  'v70: rok se nikad ne skraćuje; „Potvrda primljena” od trenutka klika (najviše 96 h)');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

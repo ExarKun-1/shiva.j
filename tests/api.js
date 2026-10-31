@@ -275,24 +275,33 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       // „Uplatio/la sam” prije isteka: kriva tajna, GET, produženje, drugi put „već ste javili”
       const bad = await post('paidclaim', { no: i1.data.orderNo, t: 'f'.repeat(32) });
       const getR = await fetch(U + 'paidclaim');
+      // v70: GET s ispravnim linkom samo čita datum (ništa ne mijenja); kriva tajna 403
+      const pre = await (await fetch(U + 'paidclaim?no=' + i1.data.orderNo + '&t=' + oI1.claim)).json();
+      const preBad = await fetch(U + 'paidclaim?no=' + i1.data.orderNo + '&t=' + 'e'.repeat(32));
+      const oPre = read('narudzbe.json').find(x => x.no === i1.data.orderNo);
       const cl = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
       const oC = read('narudzbe.json').find(x => x.no === i1.data.orderNo); const rl = read('rezervacije.json').res.luna;
       const mlC = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-      ok(bad.status === 403 && getR.status === 405 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
-        'v69: „Uplatio/la sam” — kriva tajna 403, GET 405; rok i rezervacija produženi, vlasnica dobiva e-mail');
+      const zg = iso => new Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Zagreb', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+      const capT = Math.min(Date.now() + 96 * 3600e3, Date.parse(oC.at) + 120 * 3600e3);
+      ok(pre.ok && pre.state === 'open' && pre.unique === 1 && pre.claimUntil && preBad.status === 403 && !oPre.claimedAt && Math.abs(Date.parse(pre.claimUntil) - Date.parse(cl.data.payUntil)) < 120e3
+        && (zg(cl.data.payUntil) === '23:59' || Math.abs(Date.parse(cl.data.payUntil) - capT) < 120e3) && i1.data.claimUntil && Date.parse(i1.data.claimUntil) <= Date.parse(cl.data.payUntil) + 1000,
+        'v70: GET paidclaim čita datum (do 23:59 radnog dana ili granica 96 h / 120 h) i ništa ne mijenja; narudžba vraća claimUntil koji klik ispunjava');
+      ok(bad.status === 403 && getR.status === 400 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
+        'v69: „Uplatio/la sam” — kriva tajna 403, GET bez linka 400; rok i rezervacija produženi, vlasnica dobiva e-mail');
       const cl2 = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
       ok(cl2.data.ok && cl2.data.state === 'already' && /Već ste nam javili/.test(cl2.data.message || ''), 'v69: „Uplatio/la sam” vrijedi jednom');
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/ROK ZA UPLATU: do [^\n]*\(24 sata\)/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: sati, barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
+    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d\.\n/.test(ml) && /kliknite „Uplatio\/la sam”: torbu tada čuvamo do [^\n]* u \d\d:\d\d\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /na način iz t\. 6/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 6');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x));
       const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
         'v25: e-mail kupcu — potvrda na vrhu, poziv na broj „bez SJ-”, „kopirajte”');
       ok(uniq.length > 0 && uniq.every(x => !/posebnim željama/.test(x) && /(je rezervirana za vas — postoji|su rezervirane za vas — svaka postoji)/.test(x) && /ROK ZA UPLATU: do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(x)), 'v25: narudžba samo s unikatima — rok u uvodu, bez rečenice o izradi po željama');
       ok(made.length > 0 && made.every(x => /raskinuti \(osim artikala izrađenih po vašim posebnim željama\) u roku 14 dana/.test(x) && !/ne vrijedi pravo na jednostrani raskid/.test(x)), 'v25: narudžba s artiklom po narudžbi — jedna iznimka, istim riječima kao Uvjeti'); }
-    ok(/kliknite „Označi plaćenom” prije isteka rezervacije/.test(ml) && /Poziv na broj \(za usporedbu s izvodom banke\): \d{4}-\d{4}/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa prije isteka, cijena, storno link (lokalni host je provjeren)');
+    ok(/kliknite „Potvrda primljena”/.test(ml) && !/obećali da torbu tada čuvamo/.test(ml) && /Poziv na broj \(za usporedbu s izvodom banke\): \d{4}-\d{4}/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa „Potvrda primljena” (v70), cijena, storno link (lokalni host je provjeren)');
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }
   console.log(R.join('\n'));
   const fails = R.filter(l => l.startsWith('FAIL')).length;
