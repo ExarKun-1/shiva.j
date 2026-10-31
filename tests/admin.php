@@ -409,6 +409,17 @@ $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) a
 $ok(!empty($nn['SJ-2026-0986']['cancelledAt']) && empty($nn['SJ-2026-0987']['cancelledAt']),
   'v72 (N72-1): držana narudžba stornira se kad istekne rezervacija torbe, i kad je provjera rokova kasnila; ostale tek 48 h nakon „rok istekao”');
 file_put_contents($D . '/narudzbe.json', $keepN); file_put_contents($D . '/rezervacije.json', $keepR);
+/* v72.1 (odluka vlasnice, 8. krug): e-mail nakon „Potvrda primljena” — „Ako do tada uplata ne stigne, …” */
+$keepN = file_get_contents($D . '/narudzbe.json'); $keepR = file_get_contents($D . '/rezervacije.json'); @unlink($D . '/mail-log.txt');
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => ['luna' => ['id' => 'luna', 'token' => 'tPF', 'until' => $isoIn(30), 'ordered' => true]], 'sold' => []]));
+file_put_contents($D . '/narudzbe.json', json_encode([$uq('SJ-2026-0988', ['payUntil' => $isoAgo(1), 'proofAt' => [$isoAgo(20)], 'reservation' => ['token' => 'tPF', 'until' => $isoIn(30)]])]));
+$cH['deadline_tick'] = true; file_put_contents($D . '/config.json', json_encode($cH)); @unlink($D . '/rokovi.json');
+$req('GET', ['s' => 'narudzbe']);
+$cH['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($cH));
+file_put_contents($D . '/narudzbe.json', $keepN); file_put_contents($D . '/rezervacije.json', $keepR);
+$mPF = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(str_contains($mPF, 'primili smo vašu potvrdu o uplati za narudžbu br. SJ-2026-0988') && str_contains($mPF, 'Ako do tada uplata ne stigne, narudžbu storniramo i torba se vraća u prodaju.') && !str_contains($mPF, 'ne javite nam se') && !str_contains($mPF, 'ni uplatu ni potvrdu'),
+  'v72.1 (8. krug): nakon „Potvrda primljena” — „Ako do tada uplata ne stigne, narudžbu storniramo i torba se vraća u prodaju.”');
 /* N70-1: popunjeno mjesto u Stalnoj kolekciji — „Potvrda primljena” ne produžuje istekle narudžbe */
 $pr = json_decode(file_get_contents($D . '/proizvodi.json'), true); $prOld = $pr;
 foreach ($pr as &$pp) if (($pp['id'] ?? '') === 'klasik') $pp['made_limit'] = 1; unset($pp);
