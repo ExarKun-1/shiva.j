@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v40');
+define('SJ_VERSION', 'admin v41');
 
 /* ---------- postavke ---------- */
 
@@ -429,8 +429,8 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       $hI = sj_held_info($o); $hs = sj_held_sentence($hI); $pf = !empty($o['proofAt']);
       $taken = $hs !== '' ? $hI['taken'] : []; $free = $hs !== '' ? array_values(array_diff($hI['gone'], $taken)) : array_map(fn($x) => trim($x, '„”'), $uq);
       $Q = fn(array $a) => implode(' i ', array_map(fn($n) => '„' . $n . '”', $a));
-      /* D72-3: potvrdu već imamo — ne tražiti je ponovno */
-      $cond = $pf ? 'ne vidimo uplatu i ne javite nam se' : 'ne dobijemo ni uplatu ni potvrdu';
+      /* D72-3: potvrdu već imamo — ne tražiti je ponovno; v72.1 (odluka vlasnice, 8. krug): „Ako do tada uplata ne stigne” */
+      $cond = $pf ? 'uplata ne stigne' : 'ne dobijemo ni uplatu ni potvrdu';
       $stornoP = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso($exp + $auto * 3600)) . ' ' . $cond . ', narudžbu storniramo.' : '';
       sj_send_mail((string)$o['email'], $c['shop'] . " — uplatu još ne vidimo, narudžba $no",
         /* D72-4: inačica „primili smo potvrdu” kad god je potvrda zabilježena */
