@@ -382,6 +382,33 @@ $rz = json_decode(file_get_contents($D . '/rezervacije.json'), true);
 $ok(str_contains($p2, 'Kupac nije dobio e-mail') && str_contains($p3, 'dvaput') && count($nn['SJ-2026-0980']['proofAt']) === 2 && str_contains($p4, 'više od 7 dana') && empty($nn['SJ-2026-0981']['proofAt']) && str_contains($p5, 'već plaćena'),
   'v70: „Potvrda primljena” najviše dvaput, ne nakon 7 dana od narudžbe ni za plaćenu');
 $ok(str_contains($p6, 'PAŽNJA: „Tara”') && ($rz['res']['tara']['token'] ?? '') === 'drugi', 'v70: „Potvrda primljena” ne uzima torbu rezerviranu za drugog kupca (upozorenje)');
+/* v72: uz uključene rokove torba ostaje rezervirana do automatskog storna (rok + 48 h, najviše 7 dana od narudžbe) */
+$cH = json_decode(file_get_contents($D . '/config.json'), true); $cH['deadline_tick'] = true; $cH['auto_cancel_hours'] = 48; file_put_contents($D . '/config.json', json_encode($cH));
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
+$nAll = json_decode(file_get_contents($D . '/narudzbe.json'), true); $nAll[] = $uq('SJ-2026-0985', ['payUntil' => $isoAgo(1), 'expiredAt' => $isoAgo(1)]);
+file_put_contents($D . '/narudzbe.json', json_encode($nAll));
+$pH = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0985', 'back' => '?s=narudzbe']);
+$cH['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($cH));
+$o85 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0985') $o85 = $x;
+$rL = json_decode(file_get_contents($D . '/rezervacije.json'), true)['res']['luna'] ?? [];
+$exp85 = min((int)strtotime($o85['payUntil']) + 48 * 3600, (int)strtotime($o85['at']) + 168 * 3600);
+$ok(str_contains($pH, 'potvrda zabilježena') && (int)strtotime($rL['until'] ?? '') === $exp85 && ($o85['reservation']['until'] ?? '') === ($rL['until'] ?? '-') && (int)strtotime($o85['payUntil']) < $exp85,
+  'v72: „Potvrda primljena” — rok za uplatu do 23:59 radnog dana, torba rezervirana do automatskog storna (najviše 7 dana od narudžbe)');
+$ok(str_contains($pH, 'torba je rezervirana do') && str_contains($pH, '(do automatskog storna)'), 'v72 (D72-10): poruka vlasnici navodi i rok za uplatu i do kada je torba rezervirana');
+/* v72 (vijeće, N72-1): provjera rokova kasnila je (expiredAt kasnije od roka) — storno najkasnije kad istekne
+   rezervacija držane torbe, a ne tek expiredAt + 48 h (inače bi torba bila u prodaji dok narudžba još stoji) */
+$keepN = file_get_contents($D . '/narudzbe.json'); $keepR = file_get_contents($D . '/rezervacije.json');
+file_put_contents($D . '/narudzbe.json', json_encode([
+  $uq('SJ-2026-0986', ['payUntil' => $isoAgo(50), 'expiredAt' => $isoAgo(30), 'claimedAt' => $isoAgo(52), 'reservation' => ['token' => 'tSJ-2026-0986', 'until' => $isoAgo(1)]]),
+  $uq('SJ-2026-0987', ['payUntil' => $isoAgo(50), 'expiredAt' => $isoAgo(30), 'reservation' => ['token' => 'tSJ-2026-0987', 'until' => $isoAgo(50)], 'order' => ['total' => 55, 'items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]]),
+]));
+$cH['deadline_tick'] = true; file_put_contents($D . '/config.json', json_encode($cH)); @unlink($D . '/rokovi.json');
+$req('GET', ['s' => 'narudzbe']);
+$cH['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($cH));
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$ok(!empty($nn['SJ-2026-0986']['cancelledAt']) && empty($nn['SJ-2026-0987']['cancelledAt']),
+  'v72 (N72-1): držana narudžba stornira se kad istekne rezervacija torbe, i kad je provjera rokova kasnila; ostale tek 48 h nakon „rok istekao”');
+file_put_contents($D . '/narudzbe.json', $keepN); file_put_contents($D . '/rezervacije.json', $keepR);
 /* N70-1: popunjeno mjesto u Stalnoj kolekciji — „Potvrda primljena” ne produžuje istekle narudžbe */
 $pr = json_decode(file_get_contents($D . '/proizvodi.json'), true); $prOld = $pr;
 foreach ($pr as &$pp) if (($pp['id'] ?? '') === 'klasik') $pp['made_limit'] = 1; unset($pp);

@@ -174,6 +174,17 @@ $ok(sj_claim_preview($oF) === 'do ponedjeljka, 2. 11. 2026. u 23:59' && str_star
   && str_contains(sj_late_text(['order' => ['items' => [['id' => 'k', 'made' => true]]]], 'Rok je prošao'), 'ne možemo automatski produžiti'),
   'v70 (vijeće): „najmanje do” kad granica od 96 h skraćuje datum; nakon isteka bez obećanja čuvanja; bez unikata bez „torbe”');
 
+/* v72: torba do storna — granica 7 dana od narudžbe */
+$okH = (function () use ($T) {
+  $c = sj_config(); $c['deadline_tick'] = true; $c['auto_cancel_hours'] = 48; sj_save_config($c);
+  $a = sj_hold_res_until(['at' => gmdate('c', $T('2026-10-30 21:00'))], $T('2026-11-02 23:59')) === $T('2026-11-04 23:59');
+  $b = sj_hold_res_until(['at' => gmdate('c', $T('2026-10-30 21:00'))], $T('2026-11-04 21:00')) === $T('2026-11-06 21:00');
+  $c['deadline_tick'] = false; sj_save_config($c);
+  $d = sj_hold_res_until(['at' => gmdate('c', $T('2026-10-30 21:00'))], $T('2026-11-02 23:59')) === $T('2026-11-02 23:59');
+  return $a && $b && $d;
+})();
+$ok($okH, 'v72: rezervacija do storna (rok + 48 h), najviše 7 dana od narudžbe; bez rokova samo do roka za uplatu');
+
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

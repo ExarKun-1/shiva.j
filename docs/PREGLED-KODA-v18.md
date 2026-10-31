@@ -606,6 +606,14 @@ v68: sigurnost 6,5/10 „spremno uvjetno”; dizajn: trgovina 8,5, admin 8, e-ma
 | K69-4…K69-7 | riješeno (okrnjen link, ploča na vrhu košarice, red riječi, poruka o istoj vezi); privatnost → pravnik |
 
 
+## Vijeće na v72 (31. 10. 2026.)
+
+- **N72-1 / D72-6:** rezervacija je trajala do `payUntil + auto`, a storno je bio na `expiredAt + auto` (tick kasni) — `sj_cancel_due`: storno držane narudžbe najkasnije na `reservation.until`; isto u adminu („automatski storno za N h”) i e-mailu vlasnici (točan datum).
+- **N72-2 / D72-5:** `sj_held_info` po torbi (`held`, `gone`, `taken`); e-mail kupcu i vlasnici više ne kažu „obje u ponudi” kad je jedna držana.
+- **D72-1 / D72-2:** `sj_already_text` za držanu narudžbu nakon roka; `sj_proof_held` — klik nakon „Potvrda primljena” vraća `already` i ne upisuje `claimLate`.
+- **D72-3 / D72-4 / D72-7…10:** tekstovi (potvrdu ne tražiti ponovno; tko je kliknuo; „torbe čuvane”; uvod „Rok istekao”; oba datuma u poruci vlasnici).
+- Ostavljeno: N72-3 (lažne narudžbe s klikom drže do 7 dana; skupni storno ih preskače — svjesno), N72-4 (prestrogo brojanje po vezi), N72-5 (statistika).
+
 ## Vijeće na v70 (31. 10. 2026.)
 
 | Nalaz | Stanje |
