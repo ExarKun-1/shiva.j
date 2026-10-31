@@ -124,3 +124,7 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - Gumb radi najviše **dvaput** i najkasnije **7 dana** od narudžbe. Ako je torba u međuvremenu otišla drugom kupcu, admin to javi (kupcu vraćate iznos za nju).
 - Kad uplata stigne na izvod: **Označi plaćenom**, kao i prije.
 
+## v71: e-mail „uplata je stigla”
+- Uz **Označi plaćenom** stoji kvačica **„Pošalji kupcu e-mail da je uplata stigla”** (zadano uključena). Ništa ne pišete ručno: e-mail ide sam, u trenutku klika, i to najviše jednom po narudžbi.
+- U e-mailu piše kad paket kreće — rok slanja uzima se iz Postavki („Rok slanja”, npr. 1–2 radna dana); za preuzimanje u radionici „javit ćemo vam se kad bude spremno”; za artikle po narudžbi rok izrade.
+

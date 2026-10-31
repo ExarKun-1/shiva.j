@@ -395,6 +395,23 @@ file_put_contents($D . '/proizvodi.json', json_encode($prOld));
 $ok(str_contains($pF, 'je u međuvremenu popunjeno') && empty($o91['proofAt']) && (int)strtotime($o91['payUntil']) < time(), 'v70 (N70-1): „Potvrda primljena” ne produžuje narudžbu kad je mjesto u kolekciji popunjeno');
 $vP2 = $req('GET', ['s' => 'narudzbe']);
 $ok(str_contains($vP2, 'potvrda primljena</span>'), 'v70: u retku narudžbe oznaka „potvrda primljena” s rokom');
+/* v71: „Označi plaćenom” s kvačicom — kupac dobiva e-mail „uplata je stigla” (jednom), rok slanja iz Postavki */
+@unlink($D . '/mail-log.txt');
+$cP = json_decode(file_get_contents($D . '/config.json'), true); $cP['ship_lead'] = '1–2 radna dana'; file_put_contents($D . '/config.json', json_encode($cP));
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
+file_put_contents($D . '/narudzbe.json', json_encode([
+  $uq('SJ-2026-0995', ['payUntil' => $isoIn(10), 'order' => ['total' => 65, 'shipping' => ['id' => 'boxnow'], 'items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 65]]]]),
+  $mk('SJ-2026-0996', ['payUntil' => $isoIn(10)]),
+]));
+$vM = $req('GET', ['s' => 'narudzbe']);
+$q1 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0995', 'mail' => '1', 'back' => '?s=narudzbe']);
+$req('POST', ['act' => 'order_unpaid', 'no' => 'SJ-2026-0995', 'back' => '?s=narudzbe']);
+$q1b = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0995', 'mail' => '1', 'back' => '?s=narudzbe']);
+$q2 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0996', 'back' => '?s=narudzbe']);
+$logP = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(substr_count($vM, 'Pošalji kupcu e-mail da je uplata stigla') >= 2 && str_contains($q1, 'Kupac je dobio e-mail da je uplata stigla') && substr_count($logP, 'uplata je stigla, narudžba SJ-2026-0995') === 1
+  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket šaljemo obično 1–2 radna dana nakon uplate') && !str_contains($q1b, 'dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
+  'v71: „Označi plaćenom” s kvačicom šalje „uplata je stigla” jednom (rok slanja iz Postavki); bez kvačice ne šalje');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */
 $c68['require_confirm'] = true; file_put_contents($D . '/config.json', json_encode($c68));
 $old = $set68; unset($old['has_require_confirm'], $old['require_confirm']);

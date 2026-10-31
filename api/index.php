@@ -16,6 +16,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v39 (stranica v71; odluke vlasnice u 6. krugu): potvrda kupcu bez riječi „klik” („a niste nam javili da ste
+        platili”); narudžba bez unikata kaže kad se automatski stornira (auto_cancel_hours iz Postavki)
    v38 (stranica v70; odluke vlasnice u 5. krugu): „Uplatio/la sam” čuva do 23:59 sljedećeg radnog dana (subota,
         nedjelja i blagdani RH se preskaču; najviše 96 h od klika i 120 h od narudžbe — sj_claim_until); GET paidclaim
         vraća taj datum prije klika (ništa ne mijenja); odgovor narudžbe nosi claimUntil; potvrda kupcu: jedno
@@ -1088,8 +1090,12 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $hold = $anyUnique ? $torbu . ' tada čuvamo' : 'rok za uplatu tada produžujemo';
   $t[] = 'Ako vaša banka nudi instant uplatu, odaberite je. Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan.'
     . ($claimUrl !== '' ? ' Zato odmah nakon uplate kliknite „Uplatio/la sam”: ' . $hold . ' ' . sj_claim_preview($entry) . '.' : ' Ako ste već platili, odgovorite na ovaj e-mail sa snimkom potvrde o uplati.');
-  if ($claimUrl !== '') { $t[] = $claimUrl; $t[] = 'Link ne radi? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Snimku pregledavamo ručno, pa je klik brži.'; }
-  if ($anyUnique) $t[] = ($claimUrl !== '' ? 'Ako do roka ne vidimo ni uplatu ni vaš klik, ' : 'Ako do roka ne vidimo uplatu ni vašu potvrdu o uplati, ') . ($nUnique > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.';
+  if ($claimUrl !== '') { $t[] = $claimUrl; $t[] = 'Link ne radi? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Snimku pregledavamo ručno, pa je „Uplatio/la sam” brži put.'; }
+  /* v71 (odluka vlasnice, 6. krug): bez riječi „klik”; i za narudžbu bez unikata — što znači rok (automatski storno iz Postavki) */
+  $ifNo = $claimUrl !== '' ? 'Ako do roka ne vidimo uplatu, a niste nam javili da ste platili („Uplatio/la sam”), ' : 'Ako do roka ne vidimo uplatu ni vašu potvrdu o uplati, ';
+  $autoH = max(0, (int)($c['auto_cancel_hours'] ?? 0));
+  if ($anyUnique) $t[] = $ifNo . ($nUnique > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.';
+  elseif ($autoH > 0) $t[] = $ifNo . 'narudžbu ćemo nakon ' . ($autoH % 24 === 0 ? ($autoH / 24) . ($autoH === 24 ? ' dan' : ' dana') : sj_hours_text($autoH)) . ' stornirati.';
   $t[] = '';
   $pickup = (($o['shipping']['id'] ?? '') === 'pickup');
   $shipLead = trim((string)($c['ship_lead'] ?? ''));
