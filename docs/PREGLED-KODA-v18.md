@@ -605,3 +605,26 @@ v68: sigurnost 6,5/10 „spremno uvjetno”; dizajn: trgovina 8,5, admin 8, e-ma
 | K69-1, K69-2 | pitanje za vlasnicu (vikend; dva obećanja) |
 | K69-4…K69-7 | riješeno (okrnjen link, ploča na vrhu košarice, red riječi, poruka o istoj vezi); privatnost → pravnik |
 
+
+## Vijeće na v70 (31. 10. 2026.)
+
+| Nalaz | Stanje |
+|---|---|
+| N70-1 „Potvrda primljena” uz popunjeno mjesto u kolekciji | riješeno: ne produžuje, poruka vlasnici; test |
+| N70-2 GET paidclaim traži i u arhivi, POST ne | riješeno: isto traženje (samo narudzbe.json) |
+| Blagdani prema NN 110/19, čl. 1 (NN 72/25 samo spomendan 9. 1.) | provjereno, bez nalaza |
+| D70-1 „do ponedjeljak” (padež) | riješeno |
+| D70-2, K70-1 podsjetnik „Javili ste nam…” kupcu koji nije kliknuo | riješeno: tekst po `claimedAt` |
+| D70-3 „Uplatio/la sam” obećan bez linka (adresa stranice nije provjerena) | riješeno: `claimUntil` samo uz link; drugi tekst u potvrdi |
+| D70-4, K70-2 ploča prije klika za „već kliknuto” i „stornirano” | riješeno: bez gumba, poruka stanja |
+| D70-5, K70-2 „Već ste nam javili” s prošlim datumom / nakon kasnog klika | riješeno: bez obećanja čuvanja nakon isteka |
+| D70-6, K70-3 „rok je prošao” nakon „Potvrda primljena” | riješeno: treća inačica (potvrdu smo primili) |
+| D70-7 dvostruko „Hvala!” | riješeno |
+| D70-8, K70-4 e-mail „Potvrda primljena” kad je torba otišla | riješeno: „ostatak narudžbe” / povrat; množina vlasnici |
+| D70-9, K70-10 kasni klik bez unikata govori o „torbi” | riješeno (`sj_late_text`) |
+| D70-10, K70-12 ploča: „proslijedite potvrdu iz banke”, „najkasnije do roka”, zamjenski tekst | riješeno |
+| K70-6 granica 96 h daje raniji datum unaprijed (blagdani) | tekst: „najmanje do …”; sama granica je odluka vlasnice (01 A: „najviše 96 h od klika”) |
+| K70-7 podsjetnik nakon klika | riješeno: nakon „Uplatio/la sam” ili „Potvrda primljena” podsjetnik se ne šalje |
+| K70-8 kupac koji pošalje samo snimku | riješeno: „snimku pregledavamo ručno, pa je klik brži”; u „rok je prošao” „ako ste snimku već poslali, ne trebate ništa više” |
+| K70-9 „Ako uplate ne bude…” | riješeno: „Ako do … ne vidimo ni uplatu ni vašu potvrdu, narudžbu storniramo”; ponovno čuvanje nakon snimke → pitanje za vlasnicu |
+| K70-11 narudžba samo po narudžbi: što znači rok | pitanje za vlasnicu |

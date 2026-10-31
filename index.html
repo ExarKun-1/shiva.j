@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v69 (2026-10-28)
+     SHIVA.J WEBSHOP — v70 (2026-10-31)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v70 — uz api v38, admin v38 (odluke vlasnice u 5. krugu): jedno obećanje — „Uplatio/la sam”
+           čuva torbu do 23:59 sljedećeg radnog dana (točan datum na ploči za uplatu i na ploči
+           prije klika, GET api/paidclaim); snimka potvrde je drugi put; bez „s potvrdom čuvamo i
+           nakon isteka roka”
      v69 — uz api v37, admin v37 (vijeće na v68, odluke vlasnice u 4. krugu): „Uplatio/la sam”
            iz e-maila (?uplata=, gumb, api/paidclaim); rok za uplatu iznad kvačice i za narudžbe bez
            unikata; ploča za uplatu: rok jednom („do ponedjeljka, 26. 10. u 19:26”), uplata navečer
@@ -1302,7 +1306,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v69</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v70</p>
 </footer>
 
 <!-- Košarica -->
@@ -2634,7 +2638,8 @@ async function confirmFromLink(statusP){
 }
 
 /* v69 (odluka vlasnice): „Uplatio/la sam” iz e-maila — ?uplata=<broj>&t=<tajna>. Stranica pita, a tek gumb šalje
-   (skener e-pošte ne smije „kliknuti” umjesto kupca). Jednom po narudžbi rok za uplatu produži se za 24 sata. */
+   (skener e-pošte ne smije „kliknuti” umjesto kupca). Jednom po narudžbi rok za uplatu produži se (v70: do 23:59
+   sljedećeg radnog dana; prije klika GET paidclaim vraća točan datum). */
 function claimPanel(html, info){
   /* v69 (vijeće, D69-2): zaseban blok na vrhu košarice — ne u obrascu nove narudžbe */
   let box = document.getElementById("claimBox");
@@ -2653,14 +2658,19 @@ function claimFromLink(){
   openCart();
   /* v69 (kupac K69-4): okrnjen link (npr. prelomljen u e-mailu) — kupac zna što učiniti */
   if(!/^SJ-\d{4}-\d{4,6}$/.test(no) || !/^[a-f0-9]{32}$/.test(t)){
-    claimPanel(`<b>Link „Uplatio/la sam” nije potpun.</b> <span class="pend-p">Kopirajte cijeli link iz e-maila ili nam odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.</span>`, false); return;
+    claimPanel(`<b>Link „Uplatio/la sam” nije potpun.</b> <span class="pend-p">Kopirajte cijeli link iz e-maila ili nam odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijeđenom potvrdom iz banke.</span>`, false); return;
   }
-  /* v69 (vijeće, D69-1): produženje vrijedi jednom — kliknuti tek nakon uplate */
-  claimPanel(`<b>Narudžba ${escHtml(no)}: jeste li već uplatili?</b>
-    <span class="pend-p">Uplata poslana navečer, vikendom ili iz druge banke može stići tek sljedeći radni dan. Ako ste već platili, kliknite ispod: rok za uplatu produžit ćemo za 24 sata (samo jednom), a mi ćemo provjeriti izvod.</span>
+  /* v70 (odluka vlasnice, 5. krug): ploča prije klika navodi točan datum (GET paidclaim samo čita); bez veze zamjenski tekst */
+  const ask = pre => {
+    const d = pre && pre.claimUntil ? fmtDeadline(pre.claimUntil) : "";
+    const what = pre && pre.unique === 0 ? "rok za uplatu produžujemo" : (pre && pre.unique > 1 ? "torbe čuvamo" : "torbu čuvamo");
+    claimPanel(`<b>Narudžba ${escHtml(no)}: jeste li već uplatili?</b>
+    <span class="pend-p">${pre && pre.state === "late" ? "Rok za uplatu je već prošao. Ako ste platili, kliknite ispod: javit ćemo vlasnici, koja će provjeriti izvod i javiti vam se." : d ? `Ako ste platili, kliknite ispod: ${what} do ${d}, a mi u međuvremenu provjeravamo izvod. Ovo možete kliknuti samo jednom.` : `Ako ste platili, kliknite ispod: ${what} i nakon roka za uplatu, a točan datum i sat vidite odmah nakon klika. Ovo možete kliknuti samo jednom.`}</span>
     <button type="button" class="order-btn claim-btn" id="claimBtn">Da, uplatio/la sam</button>
     <span class="field-hint">Još niste platili? Ne klikajte. Podaci za uplatu su u e-mailu s potvrdom narudžbe.</span>`, true);
-  document.getElementById("claimBtn").addEventListener("click", async e => {
+    document.getElementById("claimBtn").addEventListener("click", send);
+  };
+  const send = async e => {
     const btn = e.currentTarget; btn.disabled = true;
     try {
       const res = await fetch(apiUrl("paidclaim"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ no, t }) });
@@ -2669,9 +2679,17 @@ function claimFromLink(){
       claimPanel(`<b>${data.state === "full" ? "Mjesto je u međuvremenu popunjeno." : "Nije uspjelo."}</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}${data.state === "full" ? "" : " Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati."}`, false);
     } catch(err){
       btn.disabled = false;
-      claimPanel(`<b>Veza trenutno ne radi.</b> Otvorite link iz e-maila ponovno ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.`, false);
+      claimPanel(`<b>Veza trenutno ne radi.</b> Otvorite link iz e-maila ponovno ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijeđenom potvrdom iz banke.`, false);
     }
-  });
+  };
+  fetch(apiUrl("paidclaim", "no=" + encodeURIComponent(no) + "&t=" + encodeURIComponent(t)))
+    .then(r => r.json()).then(pre => {
+      if(pre && pre.ok && pre.state === "paid") return claimPanel(`<b>Uplata je već zabilježena.</b> <span class="pend-p">Hvala!</span>`, true);
+      /* v70 (D70-4): već kliknuto ili stornirano — bez gumba i bez obećanja */
+      if(pre && pre.ok && pre.state === "already") return claimPanel(`<b>Već ste nam javili.</b> <span class="pend-p">${escHtml(pre.message || "")}</span>`, true);
+      if(pre && pre.ok && pre.state === "cancelled") return claimPanel(`<b>Ova narudžba je stornirana.</b> <span class="pend-p">Ako ste je platili, odgovorite na e-mail o narudžbi i riješit ćemo to (povrat ili ponovna narudžba).</span>`, false);
+      ask(pre && pre.ok ? pre : null);
+    }).catch(() => ask(null));
 }
 
 function showOrderSuccess(srv){
@@ -2699,7 +2717,7 @@ function showOrderSuccess(srv){
     items: items.map(p => ({ id: p.id, name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", note: String(p.note || "").slice(0, 120), cat: p.cat || "torbe" })),
     ship,
     pay: PAY_FROM_SERVER ? { payment: { ...PAYMENT }, ownerEmail: OWNER_EMAIL } : null,
-    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, mailCustomer: srv.mailCustomer } };
+    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, claimUntil: srv.claimUntil || null, claimAtLeast: !!srv.claimAtLeast, mailCustomer: srv.mailCustomer } };
   storeSet("last", last);
   renderGrid(); renderCart();
   renderPaymentPanel(last);
@@ -2807,6 +2825,13 @@ function paymentPanel(last){
   const uniqueNames = items.filter(p => !p.made).map(p => escHtml(p.name));
   const many = uniqueNames.length > 1;           /* jedna ili više šarenih torbi: torbu/torbe, spremna/spremne */
   const torbu = many ? "torbe" : "torbu", Torbu = many ? "Torbe" : "Torbu";
+  /* v70 (odluka vlasnice, 5. krug): jedno obećanje — „Uplatio/la sam” čuva do točnog datuma (claimUntil s poslužitelja);
+     snimka potvrde je drugi put. Bez „s potvrdom čuvamo i nakon isteka roka”. */
+  const claimIso = srv.claimUntil || null;
+  const mailTo = (PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe";
+  const claimLine = claimIso
+    ? `Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan. Zato odmah nakon uplate, a najkasnije do roka, u <span class="nw">e-mailu</span> s potvrdom narudžbe kliknite „Uplatio/la sam”: ${anyUnique ? torbu + " tada čuvamo" : "rok za uplatu tada produžujemo"} ${srv.claimAtLeast ? "najmanje " : ""}do ${fmtDeadline(claimIso)}. Link ne radi? Pošaljite nam snimku potvrde o uplati ili proslijedite potvrdu iz banke ${mailTo}.`
+    : `Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan. Ako ste već platili, pošaljite nam snimku potvrde o uplati ili proslijedite potvrdu iz banke ${mailTo}.`;
   /* ime torbe uvijek uz riječ „torba”, da rod glagola ne ovisi o imenu (Luna, Mozaik…) */
   /* v64: mješovita narudžba poimence (kupac s dvije torbe ne čita „vašu torbu” i „unikatnu torbu i ostalo”) */
   const madeIt = items.filter(p => p.made), qn = p => "„" + escHtml(p.name) + "”";
@@ -2872,10 +2897,8 @@ function paymentPanel(last){
     <div class="pay">
       <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p></div>
       <ol class="pay-steps" aria-label="Što slijedi">
-        <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>${!anyUnique
-          ? "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + ". Čim uplata bude vidljiva, krećemo s izradom. Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže."
-          : "Uplatite prema podacima " + (payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + " i pošaljite nam potvrdu uplate (snimku zaslona) " + ((PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe") + (untilIso ? "; s potvrdom " + torbu + " čuvamo za vas i nakon isteka roka" : "") + ". Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže."}
-          <span class="pay-late">Uplata navečer, vikendom ili iz druge banke može stići tek sljedeći radni dan. ${anyUnique ? "Bez potvrde možete u" : "Tada u"} <span class="nw">e-mailu</span> kliknuti „Uplatio/la sam”: rok tada produžujemo jednom, za 24 sata.</span></li>
+        <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
+          <span class="pay-late">${claimLine}</span></li>
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>

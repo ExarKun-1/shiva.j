@@ -110,11 +110,17 @@ U Postavkama kvačica „Testni način: e-mailove ne šalji, nego zapiši u data
 - Rokovi se provjeravaju kad netko otvori stranicu ili admin (najviše jednom u 5 minuta).
 
 ## v69: „Uplatio/la sam”, storno s e-mailom, ista veza
-- **„Kupac javio uplatu”**: kupac je u e-mailu kliknuo „Uplatio/la sam”. Rok mu je jednom produžen za 24 sata, a vi ste dobili e-mail. Provjerite izvod banke (poziv na broj) i kliknite **Označi plaćenom**.
+- **„Kupac javio uplatu”**: kupac je u e-mailu kliknuo „Uplatio/la sam”. Rok mu je jednom produžen (v70: do 23:59 sljedećeg radnog dana), a vi ste dobili e-mail. Provjerite izvod banke (poziv na broj) i kliknite **Označi plaćenom**.
 - **Storniraj narudžbu…**: otvara izbor razloga i kvačicu **„Pošalji kupcu e-mail o stornu”** (zadano uključena). Za razlog „lažna narudžba” e-mail se ne šalje.
 - **Automatski storno**: dobivate jedan sažetak e-mailom. Ako ipak vidite uplatu, **Označi plaćenom** poništava automatski storno (ako je torba još slobodna, ostaje kupcu).
 - **Ukloni oznaku** na plaćenoj narudžbi daje joj novi rok, ali je ne stornira automatski: nakon roka je pod „Rok istekao” i odlučujete sami.
 - Narudžbe primljene **prije v69** rokovi ne diraju (nema podsjetnika ni automatskog storna); riješite ih ručno.
 - **Ista internetska veza**: najviše 3 neplaćene narudžbe; četvrtu kupac ne može poslati, a vi dobivate e-mail s njegovim podacima. **Storniraj sve s ove adrese** (Rezervacije) stornira i narudžbe samo iz Stalne kolekcije s te veze.
 - Kvačica **„Narudžba vrijedi tek kad je kupac potvrdi…”** ostaje kakva jest i kad spremite Postavke iz stare, dugo otvorene kartice.
+
+## v70: „Potvrda primljena”
+- Kupac vam je poslao **snimku potvrde o uplati** (ili proslijedio potvrdu iz banke), a uplata još nije na izvodu? U Narudžbama, u retku narudžbe ili na kartici **Rok istekao**, kliknite **Potvrda primljena**. Prije klika piše točan datum do kojeg se torba čuva (23:59 sljedećeg radnog dana; vikend i blagdani se preskaču).
+- Kvačica **„Pošalji kupcu kratku potvrdu e-mailom”** je zadano uključena.
+- Gumb radi najviše **dvaput** i najkasnije **7 dana** od narudžbe. Ako je torba u međuvremenu otišla drugom kupcu, admin to javi (kupcu vraćate iznos za nju).
+- Kad uplata stigne na izvod: **Označi plaćenom**, kao i prije.
 
