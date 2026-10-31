@@ -258,38 +258,30 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         'v69: s iste veze najviše 3 neplaćene narudžbe — 4. dobiva poruku, vlasnica e-mail s podacima kupca');
       const nI = read('narudzbe.json'); const oI1 = nI.find(x => x.no === i1.data.orderNo);
       ok(oI1 && oI1.payUntil === i1.data.payUntil && /^[a-f0-9]{32}$/.test(oI1.claim || ''), 'v69: rok za uplatu i tajna za „Uplatio/la sam” zapisani uz narudžbu');
+      // v69.1: klik nakon isteka ne oživljava narudžbu — granica od 3 po vezi ostaje (i1, i2, i3 aktivne)
+      { const n = read('narudzbe.json'); const o = n.find(x => x.no === i2.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; o.expiredAt = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+      expire(['tara']); clearLimits();
+      const i5 = await post('order', order('api-key-ip5-hhhh', 'ip5@primjer.hr', [{ id: 'vela' }], 70)); /* i2 je istekla: mjesto za novu */
+      const oI2 = read('narudzbe.json').find(x => x.no === i2.data.orderNo);
+      const late = await post('paidclaim', { no: i2.data.orderNo, t: oI2.claim });
+      const oL = read('narudzbe.json').find(x => x.no === i2.data.orderNo);
+      clearLimits();
+      const i6 = await post('order', order('api-key-ip6-hhhh', 'ip6@primjer.hr', [{ id: 'nera' }], 85));
+      const mlL = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      ok(i5.data.ok && late.data.ok && late.data.state === 'late' && /javiti vam se/.test(late.data.message || '') && oL.claimedAt && oL.claimLate && oL.payUntil === '2000-01-01T00:00:00Z' && !read('rezervacije.json').res.tara
+        && i6.status === 429 && /kupac javlja uplatu nakon isteka roka: SJ-/.test(mlL),
+        'v69.1: „Uplatio/la sam” nakon isteka samo javlja vlasnici — rok se ne produžuje, torba se ne rezervira, granica od 3 po vezi ostaje');
       setLimits({ orders_per_ip: 500 });
-      // „Uplatio/la sam”: kriva tajna, GET, produženje nakon isteka, drugi put „već ste javili”
+      // „Uplatio/la sam” prije isteka: kriva tajna, GET, produženje, drugi put „već ste javili”
       const bad = await post('paidclaim', { no: i1.data.orderNo, t: 'f'.repeat(32) });
       const getR = await fetch(U + 'paidclaim');
-      { const n = read('narudzbe.json'); const o = n.find(x => x.no === i1.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; o.expiredAt = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
-      expire(['luna']);
       const cl = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
       const oC = read('narudzbe.json').find(x => x.no === i1.data.orderNo); const rl = read('rezervacije.json').res.luna;
       const mlC = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-      ok(bad.status === 403 && getR.status === 405 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && !oC.expiredAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
-        'v69: „Uplatio/la sam” — kriva tajna 403, GET 405; nakon isteka rok i rezervacija produženi za 24 h, vlasnica dobiva e-mail');
+      ok(bad.status === 403 && getR.status === 405 && cl.data.ok && cl.data.state === 'extended' && hrs(cl.data.payUntil) > 23.9 && oC.claimedAt && oC.payUntil === cl.data.payUntil && rl && rl.until === cl.data.payUntil && /kupac javlja uplatu: SJ-/.test(mlC),
+        'v69: „Uplatio/la sam” — kriva tajna 403, GET 405; rok i rezervacija produženi, vlasnica dobiva e-mail');
       const cl2 = await post('paidclaim', { no: i1.data.orderNo, t: oI1.claim });
       ok(cl2.data.ok && cl2.data.state === 'already' && /Već ste nam javili/.test(cl2.data.message || ''), 'v69: „Uplatio/la sam” vrijedi jednom');
-      // komad koji je u međuvremenu naručio drugi kupac
-      const oI2 = read('narudzbe.json').find(x => x.no === i2.data.orderNo);
-      { const n = read('narudzbe.json'); const o = n.find(x => x.no === i2.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
-      expire(['tara']); clearLimits();
-      const tk = await post('order', order('api-key-ip5-hhhh', 'ip5@primjer.hr', [{ id: 'tara' }], 55));
-      const cl3 = await post('paidclaim', { no: i2.data.orderNo, t: oI2.claim });
-      ok(tk.data.ok && cl3.data.ok && JSON.stringify(cl3.data.lost) === '["Tara"]' && /otišla drugom kupcu/.test(cl3.data.message || '') && read('rezervacije.json').res.tara.email === 'ip5@primjer.hr',
-        'v69: „Uplatio/la sam” ne uzima komad koji je u međuvremenu naručio drugi kupac — kupac i vlasnica to saznaju');
-      // isteklo mjesto u Stalnoj kolekciji, a model se u međuvremenu popunio: rok se ne produžuje (N69-2)
-      setProd('klasik', { made_open_from: new Date(Date.now() - 1000).toISOString(), made_limit: 1 }); clearLimits();
-      const kA = await post('order', order('api-key-ip6-hhhh', 'ip6@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
-      const oA = read('narudzbe.json').find(x => x.no === kA.data.orderNo);
-      { const n = read('narudzbe.json'); const o = n.find(x => x.no === kA.data.orderNo); o.payUntil = '2000-01-01T00:00:00Z'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
-      const kB = await post('order', order('api-key-ip7-hhhh', 'ip7@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
-      const clK = await post('paidclaim', { no: kA.data.orderNo, t: oA.claim });
-      const oA2 = read('narudzbe.json').find(x => x.no === kA.data.orderNo);
-      ok(kA.data.ok && kB.data.ok && clK.status === 409 && clK.data.state === 'full' && /popunjena/.test(clK.data.error || '') && !oA2.claimedAt && /mjesto je popunjeno/.test(fs.readFileSync(D + 'mail-log.txt', 'utf8')),
-        'v69 (N69-2): „Uplatio/la sam” nakon isteka ne uzima mjesto u kolekciji koje je u međuvremenu popunjeno — kupac i vlasnica to saznaju');
-      setProd('klasik', { made_open_from: new Date(Date.now() + 1000).toISOString(), made_limit: 99 });
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');

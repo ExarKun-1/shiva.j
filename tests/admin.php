@@ -305,6 +305,13 @@ $req('GET', ['s' => 'narudzbe']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $ok(empty($nn['SJ-2026-0920']['cancelledAt']) && empty($nn['SJ-2026-0920']['expiredAt']) && empty($nn['SJ-2026-0920']['remindedAt']) && !str_contains((string)@file_get_contents($D . '/mail-log.txt'), 'SJ-2026-0920'),
   'v69 (N68-1): stara narudžba bez zapisanog roka — rokovi je ne diraju i nitko ne dobiva e-mail');
+/* v69.1: kupac je nakon isteka javio uplatu (claimLate) — bez automatskog storna */
+$l = json_decode(file_get_contents($D . '/narudzbe.json'), true);
+$l[] = $mk('SJ-2026-0923', ['payUntil' => $isoAgo(60), 'expiredAt' => $isoAgo(50), 'claimedAt' => $isoAgo(49), 'claimLate' => true]);
+file_put_contents($D . '/narudzbe.json', json_encode($l)); @unlink($D . '/rokovi.json');
+$req('GET', ['s' => 'narudzbe']);
+$o923 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0923') $o923 = $x;
+$ok($o923 && empty($o923['cancelledAt']), 'v69.1: narudžba za koju je kupac nakon isteka javio uplatu ne stornira se automatski');
 /* „Ukloni oznaku”: novi rok, bez automatskog storna */
 $req('POST', ['act' => 'order_unpaid', 'no' => 'SJ-2026-0921', 'back' => '?s=narudzbe']);
 $l = json_decode(file_get_contents($D . '/narudzbe.json'), true); foreach ($l as &$x) if ($x['no'] === 'SJ-2026-0921') { $x['payUntil'] = $isoAgo(60); } unset($x);

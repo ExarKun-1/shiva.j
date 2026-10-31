@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v37');
+define('SJ_VERSION', 'admin v37.1');
 
 /* ---------- postavke ---------- */
 
@@ -174,6 +174,8 @@ function sj_deadline_tick(bool $force = false): array {
       if ($at <= 0 || $until <= 0) continue;
       if ($now >= $until) {
         if (empty($o['expiredAt'])) { $o['expiredAt'] = sj_iso($now); $todo[] = ['expired', $o]; continue; }
+        /* v69.1: kupac je nakon isteka javio uplatu — bez automatskog storna; vlasnica provjeri izvod i odluči */
+        if (!empty($o['claimLate'])) continue;
         $exp = (int)strtotime((string)$o['expiredAt']);
         if ($auto > 0 && $exp > 0 && $now >= $exp + $auto * 3600) {
           $o['cancelledAt'] = sj_iso($now); $o['cancelReason'] = 'nije uplaćeno u roku'; $o['cancelBy'] = 'automatski';

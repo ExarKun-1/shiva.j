@@ -2665,7 +2665,7 @@ function claimFromLink(){
     try {
       const res = await fetch(apiUrl("paidclaim"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ no, t }) });
       const { ok: resOk, data } = await apiRead(res);
-      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala!" : data.state === "paid" ? "Uplata je već zabilježena." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
+      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala!" : data.state === "paid" ? "Uplata je već zabilježena." : data.state === "late" ? "Javili smo vlasnici." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
       claimPanel(`<b>${data.state === "full" ? "Mjesto je u međuvremenu popunjeno." : "Nije uspjelo."}</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}${data.state === "full" ? "" : " Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati."}`, false);
     } catch(err){
       btn.disabled = false;
