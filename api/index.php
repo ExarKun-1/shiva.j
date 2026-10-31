@@ -1095,7 +1095,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $ifNo = $claimUrl !== '' ? 'Ako do roka ne vidimo uplatu, a niste nam javili da ste platili („Uplatio/la sam”), ' : 'Ako do roka ne vidimo uplatu ni vašu potvrdu o uplati, ';
   $autoH = !empty($c['deadline_tick']) ? max(0, (int)($c['auto_cancel_hours'] ?? 0)) : 0; /* vijeće N71-5: samo kad rokovi rade */
   if ($anyUnique) $t[] = $ifNo . ($nUnique > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.';
-  elseif ($autoH > 0) $t[] = $ifNo . 'narudžbu ćemo ' . ($autoH % 24 === 0 ? ($autoH / 24) . ($autoH === 24 ? ' dan' : ' dana') : sj_hours_text($autoH)) . ' nakon roka stornirati.';
+  elseif ($autoH > 0) $t[] = $ifNo . 'narudžbu storniramo ' . ($autoH % 24 === 0 ? ($autoH / 24) . ($autoH === 24 ? ' dan' : ' dana') : sj_hours_text($autoH)) . ' nakon isteka roka.';
   $t[] = '';
   $pickup = (($o['shipping']['id'] ?? '') === 'pickup');
   $shipLead = trim((string)($c['ship_lead'] ?? ''));

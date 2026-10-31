@@ -422,12 +422,22 @@ function sj_paid_mail(array $o): string { /* 'sent' | 'already' | 'failed' | 'sk
   if (!$first) return 'already';
   $items = (array)($o['order']['items'] ?? []);
   $made = array_values(array_filter($items, fn($it) => !empty($it['made'])));
+  $anyUnique = count($made) < count($items);
   $pickup = (($o['order']['shipping']['id'] ?? '') === 'pickup');
   $lead = trim((string)($c['ship_lead'] ?? ''));
-  $leads = array_values(array_unique(array_filter(array_map(fn($it) => (string)($it['lead'] ?? ''), $made))));
-  $next = $made
-    ? 'Sada ' . (count($made) > 1 ? 'izrađujemo artikle po narudžbi' : 'izrađujemo „' . (string)($made[0]['name'] ?? '') . '”') . (count($leads) === 1 ? ' (rok izrade ' . $leads[0] . ')' : '') . '; ' . ($pickup ? 'javit ćemo vam se kad narudžba bude spremna za preuzimanje.' : 'javit ćemo vam kad paket krene.')
-    : ($pickup ? 'Javit ćemo vam se kad narudžba bude spremna za preuzimanje.' : 'Paket šaljemo' . ($lead !== '' ? ' obično ' . $lead . ' nakon uplate' : ' uskoro') . '; javit ćemo vam kad krene.');
+  /* vijeće D71-4…6: isto obećanje kao potvrda narudžbe (sj_customer_mail), nazivi artikala, rok izrade po artiklu */
+  $q = function (array $its) { $n = array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', $its); return count($n) > 1 ? implode(', ', array_slice($n, 0, -1)) . ' i ' . end($n) : implode('', $n); };
+  if ($made) {
+    $withLead = array_values(array_filter($made, fn($it) => !empty($it['lead'])));
+    $ldU = array_values(array_unique(array_map(fn($it) => (string)$it['lead'], $withLead)));
+    $ld = count($ldU) > 1 ? ' (rok izrade od primitka uplate: ' . implode(', ', array_map(fn($it) => '„' . $it['name'] . '” ' . $it['lead'], $withLead)) . ')' : ($ldU ? ' (rok izrade ' . $ldU[0] . ' od primitka uplate)' : '');
+    $next = 'Sada izrađujemo ' . $q($made) . $ld
+      . ($pickup ? ($anyUnique ? ', a kad je sve gotovo, cijelu narudžbu pripremamo za preuzimanje u radionici.' : '.') . ' Javit ćemo vam se kad narudžba bude spremna za preuzimanje.'
+        : ($anyUnique ? ', a zatim cijelu narudžbu šaljemo zajedno, u jednom paketu' : '') . ($lead !== '' ? '; paket obično šaljemo ' . $lead . ' nakon izrade.' : '.') . ' Kad paket krene, poslat ćemo vam poruku s potvrdom slanja.');
+  } else {
+    $next = $pickup ? 'Javit ćemo vam se kad narudžba bude spremna za preuzimanje.'
+      : 'Paket ' . ($lead !== '' ? 'obično šaljemo za ' . $lead : 'šaljemo uskoro') . '; kad krene, poslat ćemo vam poruku s potvrdom slanja.';
+  }
   $ok = sj_send_mail((string)$o['email'], $c['shop'] . " — uplata je stigla, narudžba $no",
     'Dobar dan, ' . (string)($o['name'] ?? '') . ",\n\nuplata za narudžbu br. $no je stigla, hvala! " . $next . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
   /* vijeće N71-2: neuspjelo slanje — oznaka se briše, kvačica se vraća i vlasnica dobiva upozorenje */

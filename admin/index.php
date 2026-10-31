@@ -611,8 +611,10 @@ function sj_cancel_form(string $no, string $back, string $confirm, string $label
 /* v71 (odluka vlasnice, 6. krug): „Označi plaćenom” s kvačicom „Pošalji kupcu e-mail da je uplata stigla” (zadano uključena) */
 function sj_paid_form(array $o, string $confirm): string {
   $no = (string)($o['no'] ?? '');
+  $mail = !empty($o['email']) && empty($o['paidMailAt']);
+  if ($mail) $confirm .= ' Ako je kvačica uključena, kupac dobiva e-mail da je uplata stigla.'; /* vijeće D71-9 */
   return '<form method="post" class="inline paidf" data-confirm="' . e($confirm) . '"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="order_paid"><input type="hidden" name="back" value="?s=narudzbe"><input type="hidden" name="no" value="' . e($no) . '">'
-    . (!empty($o['email']) && empty($o['paidMailAt']) ? '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu e-mail da je uplata stigla</label>' : '') . '<button>Označi plaćenom</button></form>';
+    . ($mail ? '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu e-mail da je uplata stigla</label>' : '') . '<button>Označi plaćenom</button></form>';
 }
 /* v70 (odluka vlasnice, 5. krug): „Potvrda primljena” — kvačica za kratki e-mail kupcu (zadano uključena), potvrda
    prije klika navodi točan datum do kojeg se torba čuva (izračun u trenutku prikaza stranice) */
