@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v73 (2026-11-01)
+     SHIVA.J WEBSHOP — v74 (2026-11-01)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v74 — uz api v42 (odgovori vlasnice u 9. krugu): „Njega torbe” u prikazu torbe od umjetne
+           kože (tekst vlasnice) i u e-mailu s potvrdom; Uvjeti t. 8 upućuju na upute, t. 9
+           izvansudsko rješavanje sporova (prijedlog A)
      v73 — uz api v41, admin v42 (paket izmjena vlasnika projekta, 1. 11. 2026.): Uvjeti
            kupnje u 11 točaka (Pravilnik NN 105/2026, ZZP NN 19/22 i 59/26, ZOO),
            iznimka od raskida samo za izradu po osobnim specifikacijama izvan ponude
@@ -587,6 +590,13 @@
   .lb-info h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.5rem}
   .lb-info .price{font-size:1rem}
   .lb-info .desc{color:var(--ink-soft)}
+  .lb-care{border-top:1.5px dashed var(--thread);padding-top:10px}
+  .lb-care summary{list-style:none;justify-content:space-between;gap:12px}
+  .lb-care summary::-webkit-details-marker{display:none}
+  .lb-care summary::after{content:"+";font-size:1.1rem;flex:none}
+  .lb-care[open] summary::after{content:"−"}
+  .lb-care summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread)}
+  .lb-care-t{display:flex;flex-direction:column;gap:8px;font-size:.9rem;color:var(--ink);padding-bottom:4px}
   .lb-info .lb-handmade{font-size:.82rem;color:var(--ink-soft);border-left:2px solid var(--thread);padding-left:10px}
   .lb-specs{
     border-top:1.5px dashed var(--thread);
@@ -1227,7 +1237,7 @@
          v73: struktura iz paketa izmjena (1. 11. 2026.), popunjena stvarnim podacima; rečenice o raskidu iz
          Pravilnika NN 105/2026, Prilog I.; funkcija za raskid ZZP čl. 81.a (NN 59/26); nedostaci ZOO čl. 400.–410.a.
          Tekst između UVJETI-START i UVJETI-END e-mail s potvrdom narudžbe prepisuje doslovno (sj_terms_text) —
-         trajni medij, ZZP čl. 76. Otvoreno (9. krug): telefon (v1), izvansudsko rješavanje sporova (v2).
+         trajni medij, ZZP čl. 76. v74: t. 9 izvansudsko rješavanje sporova (odgovor vlasnice v2, prijedlog A), t. 8 upute za njegu (v6). Otvoreno: telefon (v1, obvezan po ZZP čl. 60. st. 1. t. 2.).
          shivaj.handmade@gmail.com je privremena adresa: kad stigne službena, zamijeniti posvuda (i admin → Postavke). ===== -->
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
@@ -1294,12 +1304,12 @@
 
       <details><summary><h3>8. Materijalni nedostaci</h3></summary>
       <p>Za materijalne nedostatke odgovaramo prema Zakonu o obveznim odnosima, najmanje dvije godine od preuzimanja torbe; to vrijedi i za artikle izrađene po narudžbi. To je vaše zakonsko pravo i ne možemo ga ograničiti. Zasebno (komercijalno) jamstvo ne dajemo.</p>
-      <p>Odgovaramo za nedostatke koje je torba imala kad ste je preuzeli (npr. greška u šavu, kopči ili materijalu). Ne odgovaramo za uobičajeno trošenje ni za oštećenja nastala nepravilnim rukovanjem. Mala odstupanja zbog ručne izrade opisana u točki 2. nisu nedostatak.</p>
+      <p>Odgovaramo za nedostatke koje je torba imala kad ste je preuzeli (npr. greška u šavu, kopči ili materijalu). Ne odgovaramo za uobičajeno trošenje ni za oštećenja nastala nepravilnim rukovanjem ili nepridržavanjem uputa za njegu (uz torbe od umjetne kože na stranici, pod „Njega torbe”, i u e-mailu s potvrdom narudžbe). Mala odstupanja zbog ručne izrade opisana u točki 2. nisu nedostatak.</p>
       <p>Nedostatak nam javite u roku od dva mjeseca od kad ste ga otkrili, e-mailom na shivaj.handmade@gmail.com ili poštom na adresu iz točke 1., uz opis i fotografiju nedostatka. Torbu preuzimamo i vraćamo na naš trošak, a nedostatak uklanjamo besplatno. Unikatnu torbu nije moguće zamijeniti istim komadom, pa nedostatak uklanjamo popravkom, ako je izvediv. Za modele iz Stalne kolekcije možete birati između popravka i novog komada; ako bi novi komad u odnosu na popravak bio nerazmjerno skup (npr. kod sitnog nedostatka koji se lako popravi), nedostatak uklanjamo popravkom, a ako popravak nije izvediv, šaljemo vam novi komad. Ako nedostatak uklonimo popravkom, rok naše odgovornosti produljuje se jednom za 12 mjeseci. Ako popravak ili zamjena nisu mogući ili ne uspiju, imate pravo na sniženje cijene ili raskid ugovora i povrat novca (kod neznatnog nedostatka samo na sniženje cijene).</p>
       </details>
 
       <details><summary><h3>9. Prigovori</h3></summary>
-      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na Matije Gupca 33, 49210 Zabok. Primitak prigovora potvrdit ćemo bez odgađanja, a na prigovor ćemo pisano odgovoriti u roku 15 dana od primitka. Ako spor ne riješimo dogovorom, možete se obratiti nadležnom sudu.</p>
+      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na Matije Gupca 33, 49210 Zabok. Primitak prigovora potvrdit ćemo bez odgađanja, a na prigovor ćemo pisano odgovoriti u roku 15 dana od primitka. Spor možete pokušati riješiti pred tijelom za alternativno rješavanje potrošačkih sporova (popis vodi Ministarstvo gospodarstva). Hoćemo li se upustiti u postupak, napisat ćemo u odgovoru na vaš prigovor. Možete se obratiti i nadležnom sudu.</p>
       </details>
 
       <details><summary><h3>10. Osobni podaci</h3></summary>
@@ -1431,7 +1441,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v73</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v74</p>
 </footer>
 
 <!-- Košarica -->
@@ -1535,6 +1545,9 @@
       </dl>
       <div class="lb-size" id="lbSize" hidden><p class="lb-size-h">Veličina i nošenje</p><p id="lbSizeText"></p><p class="lb-size-all" id="lbSizeAll"></p></div>
       <p class="lb-handmade">Ručni rad – moguća su mala odstupanja u šavu i nijansi u odnosu na fotografiju.</p>
+      <!-- v74: upute za njegu (tekst vlasnice, 9. krug, 1. 11. 2026.) za torbe od umjetne kože; e-mail s potvrdom
+           prepisuje tekst između NJEGA-START i NJEGA-END (sj_care_text) -->
+      <details class="lb-care" id="lbCare" hidden><summary>Njega torbe</summary><div class="lb-care-t"><!-- NJEGA-START --><p>Bok, ja sam tvoja nova torba.</p><p>Sašivena sam od umjetne kože i voljela bih s tobom potrajati. Zato te molim za nekoliko sitnica.</p><p>Nemoj me pretrpavati. Kad u mene naguraš previše stvari, najviše trpe šavovi i zatvarač. Ponesi ono što ti stvarno treba, a ostalo neka pričeka doma.</p><p>Kad me ne nosiš, spremi me na suho mjesto. Ne volim biti stisnuta među drugim stvarima, pa mi ostavi malo prostora da ne izgubim oblik.</p><p>Ako se zaprljam, obriši me nježno, mekom krpicom.</p><p>Čuvaj me od vode, od grubih površina koje me mogu ogrebati i od jakih sredstava za čišćenje. Kiša, beton i deterdžent nisu mi prijatelji.</p><p>Uz malo brige dugo ćemo ići zajedno.</p><!-- NJEGA-END --></div></details>
       <p class="lb-ship" id="lbShip" hidden></p>
       <p class="lb-gone" id="lbGone" hidden><span id="lbGoneText"></span> <button type="button" class="lb-more" id="lbMore">Pogledajte slobodne torbe</button></p>
       <p class="ask" id="lbAsk"><span id="lbAskLead">Pitanje prije narudžbe?</span> Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
@@ -2024,6 +2037,8 @@ function openLightbox(id){
   document.getElementById("lbMaterial").textContent = matShown;
   document.getElementById("lbMaterial").classList.remove("ask-dd");
   document.getElementById("lbMaterialRow").hidden = !matShown;
+  /* v74: upute za njegu uz torbe od umjetne kože */
+  const care = document.getElementById("lbCare"); care.hidden = !((lbCurrent.cat || "torbe") === "torbe" && /umjetn/i.test(matShown)); care.open = false; /* vijeće V74-1: isto pravilo kao e-mail (sj_care_applies) */
   const tl = document.getElementById("lbTagline"); tl.textContent = filled(lbCurrent.tagline); tl.hidden = !tl.textContent;
   const st = document.getElementById("lbStory"); st.textContent = filled(lbCurrent.story); st.hidden = !st.textContent;
   /* v52: artikl po narudžbi bez upisanog roka izrade — „rok na upit” */

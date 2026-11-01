@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v41)
+   SHIVA.J — javni API na hostingu   (api/index.php v42)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v42 (stranica v74; odgovori vlasnice u 9. krugu): potvrda narudžbe s torbom sadrži „NJEGA TORBE” (sj_care_text)
    v41 (stranica v73; paket izmjena 1. 11. 2026.): api/raskid; potvrda narudžbe sadrži cijele Uvjete kupnje i
         obrazac (sj_terms_text, trajni medij ZZP čl. 76.) i poveznicu „Raskid ugovora”; iznimka od raskida samo za
         izradu po osobnim specifikacijama izvan ponude; tekst o želji kupca prema novoj napomeni u košarici
@@ -1215,6 +1216,10 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $site = sj_site_url_trusted();
   $t[] = 'Ako se predomislite, ugovor možete jednostrano raskinuti u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga' . ($anyMade ? ' (osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili)' : '') . '. ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos, uključujući dostavu, vraćamo kako piše u točki 7. Uvjeta kupnje na kraju ovog e-maila.';
   if ($site !== '') $t[] = 'Raskid ugovora: ' . $site . '/#raskid?no=' . sj_payment_ref($no);
+  /* v74 (vijeće V74-1/4): upute za njegu prije potpisa, po istom pravilu kao prikaz torbe (sj_care_applies) */
+  $anyCare = false; foreach ($items as $itB) { $pB = $byIdC[(string)($itB['id'] ?? '')] ?? null; if ($pB && sj_care_applies($pB)) $anyCare = true; }
+  $care = $anyCare ? sj_care_text() : '';
+  if ($care !== '') { $t[] = 'NJEGA TORBE'; $t[] = $care; $t[] = ''; }
   $t[] = 'Za bilo kakva pitanja odgovorite na ovaj e-mail ili nam se javite porukom na Instagramu (@shiva.j_handmade).';
   $t[] = '';
   $t[] = 'Srdačan pozdrav,';
