@@ -1153,13 +1153,15 @@ function sj_terms_text(?array $c = null): string {
   $h = preg_replace('#<span data-ttl-text>.*?</span>#s', sj_hours_text(max(1, (int)$c['ttl_hours'])), $h) ?? '';
   /* v75: rok slanja iz Postavki; prazno = rečenica bez roka (kao stranica) */
   $sl = trim((string)($c['ship_lead'] ?? ''));
-  $h = preg_replace('#<span data-ship-lead-wrap>(.*?)<span data-ship-lead>.*?</span></span>#s', $sl !== '' ? '${1}' . str_replace(['\\', '$'], ['\\\\', '\\$'], $sl) : '', $h) ?? '';
+  /* vijeće V75-3: rok se umeće tek nakon strip_tags/dekodiranja (oznaka SJSHIPLEAD), pa e-mail = stranica */
+  $h = preg_replace('#<span data-terms-ship-wrap>(.*?)<span data-terms-ship-lead>.*?</span></span>#s', $sl !== '' ? '${1}SJSHIPLEAD' : '', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
   $h = preg_replace('#<li>#', '- ', $h) ?? '';
   $h = html_entity_decode(strip_tags($h), ENT_QUOTES | ENT_HTML5, 'UTF-8');
   $h = str_replace("\u{00A0}", ' ', $h);
+  $h = str_replace('SJSHIPLEAD', $sl, $h);
   $lines = array_map(fn($l) => trim(preg_replace('/[ \t]+/', ' ', $l) ?? ''), explode("\n", $h));
   $out = []; foreach ($lines as $l) { if ($l === '' && (!$out || end($out) === '')) continue; $out[] = $l; }
   while ($out && end($out) === '') array_pop($out);
