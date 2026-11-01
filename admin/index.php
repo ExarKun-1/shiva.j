@@ -1010,7 +1010,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>OIB obrta (u potpisu potvrde kupcu; prazno = ne prikazuje se) <input name="oib" inputmode="numeric" maxlength="11" value="' . e((string)($c['oib'] ?? '')) . '"></label>';
   $h .= '</div>';
   $h .= '<label>Osobno preuzimanje (tekst u potvrdi) <input name="pickup_info" value="' . e($c['pickup_info']) . '"></label>';
-  $h .= '<label>Rok slanja nakon uplate (prikazuje se kupcu nakon narudžbe; prazno = ne prikazuje se) <input name="ship_lead" maxlength="60" value="' . e((string)($c['ship_lead'] ?? '')) . '" placeholder="npr. 1–2 radna dana"></label>';
+  $h .= '<label>Rok slanja nakon uplate (prikazuje se kupcu prije i nakon narudžbe i u Uvjetima kupnje, t. 6; prazno = ne prikazuje se) <input name="ship_lead" maxlength="60" value="' . e((string)($c['ship_lead'] ?? '')) . '" placeholder="npr. 1–2 radna dana"></label>';
   $shipLines = '';
   if (isset($c['_ship_draft'])) $shipLines = $c['_ship_draft'];
   else foreach (sj_shipping() as $o) $shipLines .= $o['id'] . ' | ' . $o['label'] . ' | ' . number_format($o['price'], 2, ',', '') . ' | ' . ($o['address'] ? 'da' : 'ne') . ' | ' . ($o['locker'] ? 'da' : 'ne') . ' | ' . $o['note'] . "\n";

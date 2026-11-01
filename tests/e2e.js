@@ -677,6 +677,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const fl = p73.locator('footer a.foot-raskid');
     ok(await fl.count() === 1 && (await fl.textContent()).trim() === 'Raskid ugovora' && (await fl.getAttribute('href')) === '#raskid', 'v73: „Raskid ugovora” istaknuto u podnožju (čl. 81.a st. 2.)');
     ok(/Izjava o zaštiti osobnih podataka/.test(await p73.textContent('#privatnost h2')) && /Izjava o zaštiti osobnih podataka/.test(await p73.textContent('footer')), 'v73: Izjava o zaštiti osobnih podataka — naslov i podnožje');
+    { const u73 = await p73.textContent('#uvjeti');
+      ok(/nakon primitka uplate, obično u roku 1–2 radna dana\. Modele/.test(u73) && !/Slanje obično/.test(u73) && /najkasnije u roku 14 dana od primitka uplate/.test(u73), 'v75 (vijeće V75-1): Uvjeti t. 6 — rok slanja iz Postavki, bez rečenice iz košarice; Stalna kolekcija 14 dana'); }
     await p73.click('footer a.foot-raskid'); await p73.waitForTimeout(300);
     await p73.click('#raskidNext'); await p73.waitForTimeout(100);
     ok(/Molimo upišite: ime i prezime, broj narudžbe .*ispravan e-mail/.test(await p73.textContent('#raskidError')) && await p73.isVisible('#raskidStep1'), 'v73: raskid — prazna polja ostaju na prvom koraku s porukom');

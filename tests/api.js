@@ -327,7 +327,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const cfg = read('config.json'); const conf = !!cfg.require_confirm; const ttl = Number(cfg.ttl_hours || 24);
       const hrs = n => n === 1 ? '1 sat' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? n + ' sata' : n + ' sati';
       const norm = x => x.replace(/&nbsp;|\u00a0/g, ' ').replace(/&amp;/g, '&').replace(/<\/?(p|h3|h4|pre|li|ul|details|summary)\b[^>]*>/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-      const want = norm((m ? m[1] : '').replace(conf ? /<span data-if-noconfirm>[\s\S]*?<\/span>/g : /<span data-if-confirm>[\s\S]*?<\/span>/g, '').replace(/<span data-ttl-text>[\s\S]*?<\/span>/g, hrs(ttl)).replace(/<li>/g, '- '));
+      const want = norm((m ? m[1] : '').replace(conf ? /<span data-if-noconfirm>[\s\S]*?<\/span>/g : /<span data-if-confirm>[\s\S]*?<\/span>/g, '').replace(/<span data-ttl-text>[\s\S]*?<\/span>/g, hrs(ttl)).replace(/<span data-terms-ship-wrap>([\s\S]*?)<span data-terms-ship-lead>[\s\S]*?<\/span><\/span>/g, (m, a) => cfg.ship_lead ? a + cfg.ship_lead : '').replace(/<li>/g, '- '));
       const last = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x)).pop() || '';
       const got = norm((last.split('UVJETI KUPNJE (vrijede za ovu narudžbu, s obrascem za jednostrani raskid ugovora)')[1] || ''));
       ok(m && want.length > 3000 && got.startsWith(want) && /7\.3\. Kako raskinuti ugovor/.test(got) && /Ja ______________ ovim izjavljujem da jednostrano raskidam Ugovor o prodaji sljedeće robe/.test(got),
