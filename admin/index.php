@@ -813,7 +813,7 @@ function sj_view_orders(): string {
   }
   if (!$list) return '<p class="muted">Još nema narudžbi.</p>' . $rejHtml;
   $rd = sj_res_read();
-  $rokHtml = sj_view_expired($rd);
+  $rokHtml = sj_view_withdrawals() . sj_view_expired($rd); /* v73 (vijeće N73-4): izjave o raskidu vidljive i bez e-maila */
   $active = [];
   foreach ($rd['res'] as $r) if (!empty($r['token'])) $active[(string)$r['token']] = true;
   $pn = []; $pById = []; foreach (sj_products() as $p) { $pn[(string)($p['id'] ?? '')] = (string)($p['name'] ?? ''); $pById[(string)($p['id'] ?? '')] = $p; }
@@ -892,6 +892,18 @@ function sj_view_orders(): string {
   if ($hOld !== '') $h = '<h3 id="starije">Starije neplaćene (Stalna kolekcija) — drže mjesto</h3><p class="muted">Ove narudžbe nisu među zadnjih 100, a još drže mjesto u kolekciji. Ako kupac ne uplati, stornirajte ih.</p><div class="tablewrap"><table class="cards t-nar"><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th><th>Uplata</th></tr></thead><tbody>' . $hOld . '</tbody></table></div>'
     . ($olderMore ? '<p class="muted">… i još ' . $olderMore . '.</p>' : '') . '<h3>Narudžbe</h3>' . $h;
   return $rokHtml . $h . $rejHtml . '<p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Označi plaćenom” ovdje označuje cijelu narudžbu: rezervirane torbe postaju plaćene, a torba kojoj je rok istekao pripada ovom kupcu ako je u međuvremenu nitko drugi nije platio ili naručio; ako jest, admin to javi.</p>';
+}
+
+/* v73 (vijeće N73-4): izjave o raskidu iz funkcije „Raskid ugovora” (api/raskid) zadnjih 30 dana, na vrhu Narudžbi */
+function sj_view_withdrawals(): string {
+  $now = time();
+  $l = array_reverse(array_filter(sj_read_json(SJ_DATA . '/raskidi.json', []), fn($x) => (int)strtotime((string)($x['at'] ?? '')) > $now - 30 * 86400));
+  if (!$l) return '';
+  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave (smijete pričekati torbu ili dokaz o slanju), na račun s kojeg je uplaćeno.</p><div class="rokl">';
+  foreach (array_slice($l, 0, 50) as $x) {
+    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b><span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara') : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
+  }
+  return $h . '</div>';
 }
 
 /* v68: „Rok istekao” — kartice na vrhu Narudžbi: poziv na broj (usporedba s izvodom), je li komad još slobodan,

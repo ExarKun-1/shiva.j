@@ -239,7 +239,13 @@ file_put_contents($D . '/narudzbe.json', json_encode([
   ['no' => 'SJ-2026-0901', 'at' => $isoAgo(30), 'name' => 'Rok R', 'email' => 'rok@p.hr', 'total' => '69,00 €', 'items' => "- Luna — 65,00 €\n- Remen — 15,00 €", 'payUntil' => $isoAgo(6), 'reservation' => ['token' => 'tR', 'until' => $isoAgo(6)], 'order' => ['items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 65]]]],
   ['no' => 'SJ-2026-0902', 'at' => $isoAgo(2), 'name' => 'Svjez S', 'email' => 's@p.hr', 'total' => '59,00 €', 'payUntil' => gmdate('Y-m-d\TH:i:s\Z', time() + 22 * 3600), 'reservation' => ['token' => 'tS', 'until' => gmdate('Y-m-d\TH:i:s\Z', time() + 22 * 3600)], 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
 ]));
+file_put_contents($D . '/raskidi.json', json_encode([
+  ['name' => 'Stara <b>R</b>', 'no' => '2026-0001', 'email' => 'st@p.hr', 'iban' => '', 'note' => '', 'at' => $isoAgo(24 * 40), 'order' => null, 'emailMatch' => null],
+  ['name' => 'Rok <script>R</script>', 'no' => '2026-0901', 'email' => 'rok@p.hr', 'iban' => 'HR1210010051863000160', 'note' => 'boja', 'at' => $isoAgo(3), 'order' => 'SJ-2026-0901', 'emailMatch' => true],
+]));
 $v = $req('GET', ['s' => 'narudzbe']);
+$ok(str_contains($v, 'Izjave o raskidu, zadnjih 30 dana (1)') && str_contains($v, '→ SJ-2026-0901 (e-mail se podudara)') && str_contains($v, 'IBAN HR1210010051863000160') && str_contains($v, 'Rok &lt;script&gt;R&lt;/script&gt;') && !str_contains($v, 'Stara &lt;b&gt;'), 'v73 (vijeće N73-4): izjave o raskidu zadnjih 30 dana na vrhu Narudžbi, s narudžbom i IBAN-om, escapirano');
+@unlink($D . '/raskidi.json');
 $rokSeg = preg_match('#id="rok"(.*?)<div class="tablewrap">#s', $v, $mr) ? $mr[1] : '';
 $ok(str_contains($v, 'Rok istekao (1)') && preg_match('#SJ-2026-0901.*?komad slobodan.*?2026-0901#s', $rokSeg) === 1 && !str_contains($rokSeg, 'SJ-2026-0902') && str_contains($v, 'Narudžbe (1)') && str_contains($rokSeg, '· Luna — 65,00 €, Remen — 15,00 €'), 'v68: Rok istekao — samo narudžba kojoj je prošao rok, s pozivom na broj, „komad slobodan”, artiklima bez crtica i brojem uz Narudžbe');
 $out = $req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0901', 'reason' => 'kupac odustao', 'reason_text' => '', 'back' => '?s=narudzbe']);

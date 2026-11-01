@@ -944,8 +944,7 @@
   .order-terms{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .order-terms a{border-bottom:1.5px dashed var(--thread)}
   /* v73: funkcija za raskid (ZZP čl. 81.a) — istaknuta poveznica i obrazac */
-  .foot-raskid{font-weight:600;color:var(--thread)!important;border-bottom:1.5px dashed var(--thread);align-self:flex-start}
-  .foot-raskid-line{color:var(--thread);border-bottom:1.5px dashed var(--thread)}
+  .foot-raskid{font-weight:600;color:var(--thread)!important;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;align-self:flex-start}
   .raskid-fn{max-width:520px}
   .raskid-step{display:flex;flex-direction:column;gap:12px}
   .raskid-lead{margin:0}
@@ -1242,7 +1241,7 @@
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
       <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
       <p>Ručna izrada: mala odstupanja u šavu, nijansi tkanine i uzorku u odnosu na fotografiju svojstvo su ručne izrade i nisu nedostatak. Boje se na različitim zaslonima mogu prikazivati malo drukčije.</p>
-      <p>Posebne želje izvan ponude: u polje „Boja, duljina i želje” možete upisati i želju izvan ponude (npr. remen na mjeru koju sami zadate, natpis ili inicijale, drugu tkaninu ili izmijenjen kroj). Takvu želju ne izrađujemo odmah: prije izrade javit ćemo vam se e-mailom i reći može li se ostvariti te imate li za takvu torbu pravo na raskid ugovora (točka 7.2). Izradu po takvoj želji počinjemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.</p>
+      <p>Posebne želje izvan ponude: u polje „Boja, duljina i želje” možete upisati i želju izvan ponude (npr. remen na mjeru koju sami zadate, natpis ili inicijale, drugu tkaninu ili izmijenjen kroj). Takvu želju ne izrađujemo odmah: prije izrade javit ćemo vam se e-mailom i reći može li se ostvariti i je li riječ o izradi po vašim osobnim specifikacijama, za koju nemate pravo na raskid (točka 7.2). Izradu po takvoj želji počinjemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.</p>
       </details>
 
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -1251,7 +1250,7 @@
 
       <details><summary><h3>4. Narudžba i sklapanje ugovora</h3></summary>
       <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena</span>. Prije slanja u košarici možete provjeriti i ispraviti svaki podatak. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a e-mailom vam odmah nakon <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata), s ovim Uvjetima i obrascem za jednostrani raskid ugovora; ugovor je sklopljen kad primite tu potvrdu. Ugovor sklapamo na hrvatskom jeziku. Narudžbu i Uvjete koji su tada vrijedili čuvamo i na zahtjev vam ih šaljemo.</p>
-      <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> se unikatna torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
       </details>
 
       <details><summary><h3>5. Plaćanje</h3></summary>
@@ -1304,7 +1303,7 @@
       </details>
 
       <details><summary><h3>10. Osobni podaci</h3></summary>
-      <p>Osobne podatke iz narudžbe (ime, adresu, e-adresu, telefon) koristimo samo za izvršenje narudžbe, dostavu, povrat i ispunjenje zakonskih obveza. Više u Izjavi o zaštiti osobnih podataka (odjeljak ispod ovih Uvjeta).</p>
+      <p>Osobne podatke iz narudžbe (ime, adresu, e-adresu, telefon) koristimo samo za izvršenje narudžbe, dostavu, povrat i ispunjenje zakonskih obveza. Više u Izjavi o zaštiti osobnih podataka na našoj web stranici (odjeljak „Izjava o zaštiti osobnih podataka”).</p>
       </details>
 
       <details><summary><h3>11. Završne odredbe</h3></summary>
@@ -1383,7 +1382,7 @@
     <div class="legal-block" id="raskid">
       <h2>Raskid ugovora</h2>
       <hr class="seam">
-      <p>Ovdje možete jednostrano raskinuti ugovor u roku 14 dana od preuzimanja torbe, bez navođenja razloga i bez prijave (Uvjeti kupnje, točka 7.). Nakon potvrde odmah vam e-poštom šaljemo potvrdu primitka vaše izjave, s njezinim sadržajem te datumom i vremenom podnošenja.</p>
+      <p>Ovdje možete jednostrano raskinuti ugovor u roku 14 dana od preuzimanja torbe, bez navođenja razloga i bez registracije (Uvjeti kupnje, točka 7.). Nakon potvrde odmah vam e-poštom šaljemo potvrdu primitka vaše izjave, s njezinim sadržajem te datumom i vremenom podnošenja.</p>
       <form class="raskid-fn" id="raskidForm" novalidate>
         <div class="hp-field" aria-hidden="true">
           <label for="rWeb">Web stranica (ostavite prazno)</label>
@@ -1391,7 +1390,7 @@
         </div>
         <div class="raskid-step" id="raskidStep1">
           <div><label for="rName">Ime i prezime</label><input id="rName" required autocomplete="name" maxlength="80"></div>
-          <div><label for="rNo">Broj narudžbe</label><input id="rNo" required maxlength="20" placeholder="npr. 2026-0007" aria-describedby="rNoHint"><small class="field-hint" id="rNoHint">piše u potvrdi narudžbe; ako ga nemate, upišite datum narudžbe i naziv torbe</small></div>
+          <div><label for="rNo">Broj narudžbe</label><input id="rNo" required maxlength="40" placeholder="npr. 2026-0007" aria-describedby="rNoHint"><small class="field-hint" id="rNoHint">piše u potvrdi narudžbe; ako ga nemate, upišite datum narudžbe i naziv torbe</small></div>
           <div><label for="rEmail">E-mail za potvrdu raskida</label><input id="rEmail" type="email" required autocomplete="email" maxlength="120" inputmode="email"></div>
           <div><label for="rIban">IBAN za povrat novca (neobavezno)</label><input id="rIban" maxlength="34" autocomplete="off" placeholder="HR.." aria-describedby="rIbanHint"><small class="field-hint" id="rIbanHint">ako ga ne upišete, novac vraćamo na račun s kojeg ste platili ili vas pitamo</small></div>
           <div><label for="rNote">Napomena (neobavezno)</label><textarea id="rNote" rows="2" maxlength="500"></textarea></div>
@@ -1399,11 +1398,11 @@
           <button type="submit" class="order-btn raskid-btn" id="raskidNext">Dalje: provjera izjave</button>
         </div>
         <div class="raskid-step" id="raskidStep2" hidden>
-          <p class="raskid-lead">Vaša izjava o jednostranom raskidu ugovora:</p>
+          <p class="raskid-lead">Provjerite svoju izjavu — još nije poslana. Šaljete je gumbom ispod.</p>
           <pre class="raskid-form" id="raskidPreview"></pre>
           <div class="raskid-msg" id="raskidError2" role="alert" tabindex="-1" hidden></div>
           <button type="button" class="order-btn" id="raskidConfirm">Potvrditi raskid ugovora</button>
-          <button type="button" class="edit-order" id="raskidBack">Ispravi podatke</button>
+          <button type="button" class="edit-order" id="raskidBack">Ispravite podatke</button>
         </div>
         <div class="raskid-msg raskid-ok" id="raskidDone" role="status" tabindex="-1" hidden></div>
       </form>
@@ -1432,7 +1431,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v73 · <a href="#raskid" class="foot-raskid-line">Raskid ugovora</a></p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v73</p>
 </footer>
 
 <!-- Košarica -->
@@ -2831,7 +2830,7 @@ function claimFromLink(){
   const err = (el, msg) => { el.textContent = msg; el.hidden = !msg; if(msg) el.focus(); };
   /* iz e-maila s potvrdom: …#raskid?no=2026-0007 popuni broj narudžbe */
   const pre = /^#raskid\?(.*)$/.exec(location.hash);
-  if(pre){ const q = new URLSearchParams(pre[1]); if(q.get("no")) $("rNo").value = q.get("no").slice(0, 20); setTimeout(() => document.getElementById("raskid").scrollIntoView(), 0); }
+  if(pre){ const q = new URLSearchParams(pre[1]); if(q.get("no")) $("rNo").value = q.get("no").slice(0, 40); const go = () => document.getElementById("raskid").scrollIntoView(); setTimeout(go, 0); addEventListener("load", () => { go(); setTimeout(go, 600); }, { once: true }); }
   f.addEventListener("submit", e => {
     e.preventDefault();
     const v = val(), miss = [];
@@ -2843,7 +2842,7 @@ function claimFromLink(){
     err($("raskidError"), "");
     $("raskidPreview").textContent = "Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.\n"
       + "Ime i prezime: " + v.name + "\nBroj narudžbe: " + v.no + "\nE-mail: " + v.email
-      + (v.iban ? "\nIBAN za povrat novca: " + v.iban : "") + (v.note ? "\nNapomena: " + v.note : "");
+      + (v.iban ? "\nIBAN za povrat novca: " + v.iban.replace(/(.{4})(?=.)/g, "$1 ") : "") + (v.note ? "\nNapomena: " + v.note : "");
     s1.hidden = true; s2.hidden = false; $("raskidConfirm").focus();
   });
   $("raskidBack").addEventListener("click", () => { s2.hidden = true; s1.hidden = false; $("rName").focus(); });
@@ -2854,7 +2853,7 @@ function claimFromLink(){
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
         s2.hidden = true; done.hidden = false;
-        done.innerHTML = `<b>Vaša izjava o raskidu je zaprimljena ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Torbu nam vratite najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4).`;
+        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4).`;
         done.focus(); return;
       }
       btn.disabled = false;
@@ -3076,7 +3075,7 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim osobnim specifikacijama izvan ponude, koju ste pisano potvrdili)" : ""}, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
+        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili)" : ""}, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}

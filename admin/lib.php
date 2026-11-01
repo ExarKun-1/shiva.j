@@ -1119,7 +1119,6 @@ function sj_payment_ref(string $no): string {
 /* opis plaćanja za HUB-3 nalog: najviše 35 znakova, zato samo trgovina i broj narudžbe */
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
-/* „1 sat”, „24 sata”, „12 sati”, „48 sati” (kao hoursText na stranici) */
 /* v73: cijeli tekst Uvjeta kupnje za e-mail s potvrdom narudžbe (trajni medij, ZZP čl. 76. NN 19/22) — doslovno iz
    index.html, između oznaka UVJETI-START i UVJETI-END, pa e-mail i stranica ne mogu reći različito. Grane
    data-if-confirm / data-if-noconfirm biraju se po postavci, data-ttl-text dobiva broj sati iz Postavki. */
@@ -1145,6 +1144,7 @@ function sj_terms_text(?array $c = null): string {
   while ($out && end($out) === '') array_pop($out);
   return $cache[$key] = implode("\n", $out);
 }
+/* „1 sat”, „24 sata”, „12 sati”, „48 sati” (kao hoursText na stranici) */
 function sj_hours_text(int $n): string {
   $m10 = $n % 10; $m100 = $n % 100;
   $w = ($m10 === 1 && $m100 !== 11) ? 'sat' : (($m10 >= 2 && $m10 <= 4 && ($m100 < 12 || $m100 > 14)) ? 'sata' : 'sati');
