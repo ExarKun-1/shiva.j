@@ -602,7 +602,7 @@ if ($a === 'paidclaim') {
       if (!$okLate) { $x = sj_order_find(['no' => $no]) ?? []; return ['state' => !empty($x['paidAt']) ? 'paid' : (!empty($x['cancelledAt']) ? 'cancelled' : 'already'), 'payUntil' => sj_pay_until($x)]; }
       return ['state' => 'late', 'o' => $o];
     }
-    /* v70 (odluka vlasnice, 5. krug): do 23:59 sljedećeg radnog dana (najviše 96 h od klika i 120 h od narudžbe) */
+    /* v70 (odluka vlasnice, 5. krug): do 23:59 sljedećeg radnog dana (v76: bez granica od 96 h i 120 h; ranije: najviše 96 h od klika i 120 h od narudžbe) */
     $r = sj_hold_extend($no, sj_claim_until($o, $now), ['claimedAt' => sj_iso($now)]);
     return $r['ok'] ? $r : ['state' => $r['state'], 'payUntil' => $r['payUntil'] ?? sj_pay_until($o)];
   }, []);
@@ -1171,7 +1171,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   }
   /* v68: rok za uplatu za svaku narudžbu (i bez unikata), s točnim vremenom; savjet za instant uplatu i potvrdu uplate */
   $hrs = max(1, (int)($res['hours'] ?? $c['ttl_hours']));
-  $payUntil = !empty($entry['payUntil']) ? (string)$entry['payUntil'] : (($res && !empty($res['until'])) ? (string)$res['until'] : sj_iso(time() + $hrs * 3600));
+  $payUntil = !empty($entry['payUntil']) ? (string)$entry['payUntil'] : (($res && !empty($res['until'])) ? (string)$res['until'] : sj_iso(sj_pay_deadline(time(), $hrs))); /* vijeće V76-7 */
   $t[] = 'ROK ZA UPLATU: do ' . sj_fmt_deadline($payUntil) . '.';
   /* v70 (odluka vlasnice, 5. krug): jedno obećanje — „Uplatio/la sam” s točnim datumom; snimka je drugi put
      (bez „čuvamo i nakon isteka roka” i „čuvamo dok je slobodna”) */

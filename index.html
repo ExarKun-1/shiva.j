@@ -1197,7 +1197,7 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torbu rezerviramo za vas <span data-ttl-text>24 sata</span> (ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana) i nitko je drugi ne može naručiti. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu. I za modele iz Stalne kolekcije rok za uplatu je <span data-ttl-text>24 sata</span>; šijemo ih nakon uplate.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torbu rezerviramo za vas <span data-ttl-text>24 sata</span> (ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana) i nitko je drugi ne može naručiti. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu. I za modele iz Stalne kolekcije rok za uplatu je <span data-ttl-text>24 sata</span> (preko vikenda i blagdana do 23:59 prvoga sljedećeg radnog dana); šijemo ih nakon uplate.</p>
         <p class="ship-list" id="shipList" hidden></p>
       </div>
       <div class="step">
@@ -1513,10 +1513,10 @@
       <div>
         <label for="fNote" id="fNoteLabel">Napomena uz dostavu ili narudžbu (neobavezno)</label>
         <textarea id="fNote" rows="2" maxlength="500" aria-describedby="fNoteHint"></textarea>
-        <span class="field-hint" id="fNoteHint" hidden>Boju i duljinu upišite gore, uz model.</span>
+        <span class="field-hint" id="fNoteHint" hidden>Boju i duljinu remena odaberite ili upišite gore, uz model.</span>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note" id="orderNote"><span id="orderNoteHold">Torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> (preko vikenda i blagdana do kraja prvoga radnog dana). </span><span id="orderNoteMade">Ono što šijemo po narudžbi izrađujemo nakon uplate.</span></p>
+      <p class="order-note" id="orderNote"><span id="orderNoteHold">Torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> (preko vikenda i blagdana do 23:59 prvoga sljedećeg radnog dana). </span><span id="orderNoteMade">Ono što šijemo po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="consent">
         <input id="fConsent" type="checkbox" required>
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Izjavom o zaštiti osobnih podataka</a>.</label>
@@ -1759,6 +1759,8 @@ function restoreCart(){
       if(!p || isGone(p) || noPhoto(p) || cart.some(c => c.id === p.id)) return;
       cart.push({ ...p, qty: p.made && catOf(p) !== "kolekcija" ? Math.max(1, Math.min(10, Number(sv.qty) || 1)) : 1, note: p.made ? String(sv.note || "").slice(0, 120) : "",
         sc: STRAP_COLORS.includes(sv.sc) ? sv.sc : "", sl: STRAP_LENGTHS.includes(sv.sl) ? sv.sl : "", wish: String(sv.wish || "").slice(0, 80) });
+      /* vijeće V76-1: kolekcija — napomena uvijek iz izbornika i želje (stara ručna napomena iz v75 ne ide skrivena uz narudžbu) */
+      const last = cart[cart.length - 1]; if(last && last.id === p.id && p.made && catOf(p) === "kolekcija") last.note = strapNote(last);
     });
   }
   cartRestored = true;
@@ -2347,7 +2349,8 @@ document.getElementById("cartItems").addEventListener("click", e => {
 document.getElementById("cartItems").addEventListener("change", e => {
   const sel = e.target.closest(".strap-sel"); if(!sel) return;
   const it = cart.find(c => c.id === sel.dataset.id); if(!it) return;
-  it[sel.dataset.k] = STRAP_COLORS.concat(STRAP_LENGTHS).includes(sel.value) ? sel.value : ""; it.note = strapNote(it); saveCart();
+  const allowed = { sc: STRAP_COLORS, sl: STRAP_LENGTHS }[sel.dataset.k]; if(!allowed) return; /* vijeće V76-2 */
+  it[sel.dataset.k] = allowed.includes(sel.value) ? sel.value : ""; it.note = strapNote(it); saveCart();
   if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError();
 });
 document.getElementById("cartItems").addEventListener("input", e => {

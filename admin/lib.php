@@ -265,7 +265,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
   if (!empty($o['cancelledAt'])) return ['ok' => false, 'state' => 'cancelled'];
   $now = time(); $new = sj_iso($newTs);
   /* v72 (odluka vlasnice, 7. krug): torba ostaje rezervirana do automatskog storna (rok za uplatu + auto_cancel_hours),
-     najviše 7 dana od narudžbe; rok za uplatu (payUntil) ostaje $new */
+     (v76: bez granice od 7 dana); rok za uplatu (payUntil) ostaje $new */
   $resNew = sj_iso(sj_hold_res_until($o, $newTs));
   $tok = (string)($o['reservation']['token'] ?? '');
   $uIds = []; $names = [];
@@ -320,7 +320,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
 }
 /* Kada se neplaćena istekla narudžba automatski stornira: auto_cancel_hours nakon upisanog „rok istekao”.
    v72 (vijeće, N72-1): ako je torba držana do storna, najkasnije kad ta rezervacija istječe (tick može kasniti,
-   granica od 7 dana, promjena postavki) — da torba ne bude u prodaji dok narudžba još stoji. */
+   promjena postavki; v76: bez granice od 7 dana) — da torba ne bude u prodaji dok narudžba još stoji. */
 function sj_cancel_due(array $o, int $auto): int {
   $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
   $due = $exp + $auto * 3600;
