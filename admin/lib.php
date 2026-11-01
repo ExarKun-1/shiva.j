@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v41');
+define('SJ_VERSION', 'admin v42');
 
 /* ---------- postavke ---------- */
 
@@ -1120,6 +1120,31 @@ function sj_payment_ref(string $no): string {
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
 /* „1 sat”, „24 sata”, „12 sati”, „48 sati” (kao hoursText na stranici) */
+/* v73: cijeli tekst Uvjeta kupnje za e-mail s potvrdom narudžbe (trajni medij, ZZP čl. 76. NN 19/22) — doslovno iz
+   index.html, između oznaka UVJETI-START i UVJETI-END, pa e-mail i stranica ne mogu reći različito. Grane
+   data-if-confirm / data-if-noconfirm biraju se po postavci, data-ttl-text dobiva broj sati iz Postavki. */
+function sj_terms_text(?array $c = null): string {
+  static $cache = [];
+  $c = $c ?? sj_config();
+  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'];
+  if (isset($cache[$key])) return $cache[$key];
+  $html = @file_get_contents(dirname(__DIR__) . '/index.html');
+  if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) return $cache[$key] = '';
+  $h = $m[1];
+  $drop = !empty($c['require_confirm']) ? 'data-if-noconfirm' : 'data-if-confirm';
+  $h = preg_replace('#<span ' . $drop . '>.*?</span>#s', '', $h) ?? '';
+  $h = preg_replace('#<span data-ttl-text>.*?</span>#s', sj_hours_text(max(1, (int)$c['ttl_hours'])), $h) ?? '';
+  $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
+  $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
+  $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
+  $h = preg_replace('#<li>#', '- ', $h) ?? '';
+  $h = html_entity_decode(strip_tags($h), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  $h = str_replace("\u{00A0}", ' ', $h);
+  $lines = array_map(fn($l) => trim(preg_replace('/[ \t]+/', ' ', $l) ?? ''), explode("\n", $h));
+  $out = []; foreach ($lines as $l) { if ($l === '' && (!$out || end($out) === '')) continue; $out[] = $l; }
+  while ($out && end($out) === '') array_pop($out);
+  return $cache[$key] = implode("\n", $out);
+}
 function sj_hours_text(int $n): string {
   $m10 = $n % 10; $m100 = $n % 100;
   $w = ($m10 === 1 && $m100 !== 11) ? 'sat' : (($m10 >= 2 && $m10 <= 4 && ($m100 < 12 || $m100 > 14)) ? 'sata' : 'sati');

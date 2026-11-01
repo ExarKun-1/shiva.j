@@ -1,12 +1,14 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v37)
+   SHIVA.J — javni API na hostingu   (api/index.php v41)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
      POST api/order           zaprimanje narudžbe: cijene i iznos računa
                               servis iz vlastitog popisa, sprema, e-mail
                               vlasnici, automatska potvrda kupcu s barkodom
+     POST api/raskid          v41: funkcija za jednostrani raskid (ZZP čl. 81.a): izjava se sprema
+                              (data/raskidi.json), potvrda kupcu sa sadržajem, datumom i vremenom
      POST api/confirm         klik na link iz e-maila „Potvrdite narudžbu”
      GET/POST api/storno      link iz e-maila vlasnici: Plaćeno / Storniraj /
                               Ukloni oznaku — radnje samo uz prijavu u admin
@@ -16,6 +18,9 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v41 (stranica v73; paket izmjena 1. 11. 2026.): api/raskid; potvrda narudžbe sadrži cijele Uvjete kupnje i
+        obrazac (sj_terms_text, trajni medij ZZP čl. 76.) i poveznicu „Raskid ugovora”; iznimka od raskida samo za
+        izradu po osobnim specifikacijama izvan ponude; tekst o želji kupca prema novoj napomeni u košarici
    v40 (stranica v72; odluka vlasnice u 7. krugu): nakon „Uplatio/la sam” torba je rezervirana do automatskog storna
         (sj_hold_res_until, najviše 7 dana od narudžbe); granica po vezi broji i takvu isteklu narudžbu
    v39 (stranica v71; odluke vlasnice u 6. krugu): potvrda kupcu bez riječi „klik” („a niste nam javili da ste
@@ -141,7 +146,7 @@ $c = sj_config();
 $a = (string)($_GET['a'] ?? '');
 if ($a === '') {
   $path = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-  if (preg_match('#/(status|reserve|order|confirm|storno|paidclaim)/?$#', $path, $m)) $a = $m[1];
+  if (preg_match('#/(status|reserve|order|confirm|storno|paidclaim|raskid)/?$#', $path, $m)) $a = $m[1];
 }
 
 /* ---------- CORS: vlastita domena uvijek, dodatni izvori iz postavki ---------- */
@@ -468,6 +473,70 @@ if ($a === 'confirm') {
     sj_json_out(['ok' => false, 'error' => 'Narudžba je već potvrđena; podatke za uplatu poslali smo vam e-mailom.'], 409);
   }
   sj_finish_order($out['done'], $out['P'], true);
+}
+
+/* ---------- raskid: funkcija za jednostrani raskid (v73; ZZP čl. 81.a, NN 59/26) ----------
+   Obrazac bez prijave (#raskid): ime, broj narudžbe (ili opis), e-mail, neobavezno IBAN i napomena; tek gumb
+   „Potvrditi raskid ugovora” šalje POST. Izjava se sprema (data/raskidi.json) s vremenom podnošenja, kupcu odmah ide
+   potvrda primitka na trajnom mediju (e-mail) sa sadržajem, datumom i vremenom (st. 6.), vlasnici kopija. Izjava
+   vrijedi i kad broj narudžbe nije pronađen (st. 7.) — vlasnica to vidi u kopiji; kupcu odgovor ne otkriva postoji li
+   narudžba. Granice: 5 po adresi na sat, 3 potvrde istom primatelju na sat, 40 ukupno na sat — iznad toga kupac dobiva
+   uputu da izjavu pošalje e-mailom (rok je poštovan ako je pošalje prije isteka 14 dana). */
+function sj_terms_withdraw_lines(array $r): array {
+  $l = ['Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.', 'Ime i prezime: ' . $r['name'], 'Broj narudžbe: ' . $r['no'], 'E-mail: ' . $r['email']];
+  if ($r['iban'] !== '') $l[] = 'IBAN za povrat novca: ' . $r['iban'];
+  if ($r['note'] !== '') $l[] = 'Napomena: ' . $r['note'];
+  return $l;
+}
+if ($a === 'raskid') {
+  if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') sj_json_out(['ok' => false, 'error' => 'POST only'], 405);
+  if (!$originOk) sj_json_out(['ok' => false, 'error' => 'origin not allowed'], 403);
+  $b = sj_body_json() ?? [];
+  $byMail = 'Izjavu nam pošaljite e-mailom na ' . (string)$c['owner_email'] . '.';
+  if (trim((string)($b['website'] ?? '')) !== '') sj_json_out(['ok' => false, 'error' => 'Izjava nije poslana. ' . $byMail], 400);
+  $r = ['name' => sj_str($b['name'] ?? '', 80), 'no' => sj_str($b['no'] ?? '', 40), 'email' => sj_valid_email(sj_str($b['email'] ?? '', 120)) ?? '',
+        'iban' => strtoupper(preg_replace('/\s+/', '', sj_str($b['iban'] ?? '', 40)) ?? ''), 'note' => sj_str($b['note'] ?? '', 500, true)];
+  $miss = [];
+  if ($r['name'] === '') $miss[] = 'ime i prezime';
+  if ($r['no'] === '') $miss[] = 'broj narudžbe';
+  if ($r['email'] === '') $miss[] = 'ispravan e-mail';
+  if ($r['iban'] !== '' && !preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/', $r['iban'])) $miss[] = 'ispravan IBAN (ili ostavite prazno)';
+  if ($miss) sj_json_out(['ok' => false, 'error' => 'Molimo upišite: ' . implode(', ', $miss) . '.'], 400);
+  if (!sj_rate_limit('raskid', 5, 3600) || !sj_global_limit('raskid', 40, 3600) || !sj_global_limit('raskid_to|' . sj_email_key($r['email']), 3, 3600))
+    sj_json_out(['ok' => false, 'error' => 'Previše izjava u kratkom vremenu. ' . $byMail], 429);
+  $now = time(); $at = sj_iso($now);
+  /* broj narudžbe: „2026-0007”, „SJ-2026-0007” ili slobodan opis */
+  $match = null;
+  if (preg_match('/(\d{4})\s*-\s*(\d{4,6})/', $r['no'], $mm)) {
+    $o = sj_order_find(['no' => 'SJ-' . $mm[1] . '-' . $mm[2]]);
+    if ($o) $match = ['no' => (string)$o['no'], 'email' => strcasecmp((string)($o['order']['customer']['email'] ?? $o['email'] ?? ''), $r['email']) === 0];
+  }
+  $id = sj_token();
+  sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use ($r, $at, $id, $match) {
+    $list[] = $r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?')), 'order' => $match['no'] ?? null, 'emailMatch' => $match['email'] ?? null];
+  }, []);
+  if ($match && $match['email']) sj_order_edit(['no' => $match['no']], function (array &$o) use ($at, $id) { $o['withdrawals'] = array_merge((array)($o['withdrawals'] ?? []), [['at' => $at, 'id' => $id]]); });
+  $when = sj_fmt_hr($at);
+  $body = sj_terms_withdraw_lines($r);
+  $t = ['Dobar dan, ' . $r['name'] . ',', '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];
+  foreach ($body as $l) $t[] = $l;
+  $t[] = 'Datum i vrijeme podnošenja: ' . $when;
+  $t[] = '';
+  $t[] = 'Što slijedi: torbu nam vratite ili predajte (SHIVA. J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a najkasnije 14 dana od danas; izravne troškove povrata snosite vi. Novac koji ste nam platili, uključujući troškove isporuke (do iznosa najjeftinije standardne dostave koju nudimo), vraćamo najkasnije 14 dana od primitka ove izjave, i to nakon što nam torba bude vraćena ili nam dostavite dokaz da ste je poslali (Uvjeti kupnje, točka 7.).';
+  $t[] = '';
+  $t[] = 'Ako ovu izjavu niste poslali vi, odgovorite na ovaj e-mail.';
+  $t[] = '';
+  $t[] = 'Srdačan pozdrav,';
+  $t[] = sj_signature();
+  $mailed = sj_send_mail($r['email'], $c['shop'] . ' — potvrda primitka izjave o raskidu ugovora', implode("\n", $t), null, (string)$c['owner_email']);
+  $own = ['Kupac je putem stranice („Raskid ugovora”) poslao izjavu o jednostranom raskidu ugovora, ' . $when . '.', ''];
+  foreach ($body as $l) $own[] = $l;
+  $own[] = '';
+  $own[] = $match ? ('Narudžba ' . $match['no'] . ($match['email'] ? ' (e-mail se podudara).' : ' — PAŽNJA: e-mail se NE podudara s narudžbom; provjerite s kupcem.')) : 'Broj narudžbe nije pronađen u sustavu — izjava ipak vrijedi; pronađite narudžbu po imenu ili e-mailu.';
+  $own[] = $mailed ? 'Kupac je automatski dobio potvrdu primitka.' : 'PAŽNJA: potvrda kupcu NIJE poslana (provjerite postavke e-maila) — pošaljite mu je sami.';
+  $own[] = 'Novac (uključujući dostavu do najjeftinije standardne) vraćate najkasnije 14 dana od danas; smijete pričekati dok torba ne stigne ili kupac ne pošalje dokaz o slanju.';
+  sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — RASKID UGOVORA: ' . ($match['no'] ?? $r['no']) . ' — ' . $r['name'], implode("\n", $own), null, $r['email']);
+  sj_json_out(['ok' => true, 'at' => $when, 'mailed' => $mailed]);
 }
 
 /* ---------- paidclaim: kupac je kliknuo „Uplatio/la sam” (v69, odluka vlasnice u 4. krugu) ----------
@@ -1125,17 +1194,22 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $t[] = '';
     /* v65: želja kupca (boja, duljina) — potvrda i obećanje iz košarice */
     foreach ($madeIt as $it) if (trim((string)($it['note'] ?? '')) !== '')
-      $t[] = 'Vaša želja za „' . $it['name'] . '”: ' . trim((string)$it['note']) . '. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade — tada birate izradu bez te želje ili povrat cijelog iznosa.';
+      $t[] = 'Vaša želja za „' . $it['name'] . '”: ' . trim((string)$it['note']) . '. Ako je to boja ili duljina iz ponude, za torbu imate pravo na povrat u 14 dana. Ako je posebna želja izvan ponude, javit ćemo vam se prije izrade i reći može li se ostvariti te zadržavate li pravo na povrat; po osobnim specifikacijama izrađujemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.';
   }
   $t[] = '';
   $what = (!$anyMade || $allColl) ? (count($items) > 1 ? 'Torbe' : 'Torbu') : (count($items) > 1 ? 'Artikle' : 'Artikl');
-  $t[] = 'Ako se predomislite, ugovor možete jednostrano raskinuti' . ($anyMade ? ' (osim artikala izrađenih po vašim posebnim željama)' : '') . ' u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga: dovoljna je nedvosmislena izjava e-mailom (obrazac je u Uvjetima kupnje, t. 6). ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos vraćamo u roku i na način iz t. 6 Uvjeta kupnje.' . (sj_site_url_trusted() !== '' ? ' Uvjeti kupnje: ' . sj_site_url_trusted() . '/#uvjeti' : '');
+  /* v73: raskid kroz funkciju na stranici (ZZP čl. 81.a); cijeli Uvjeti i obrazac na kraju ovog e-maila (trajni medij, čl. 76.) */
+  $site = sj_site_url_trusted();
+  $t[] = 'Ako se predomislite, ugovor možete jednostrano raskinuti u roku 14 dana od dana kad ste ' . ($pickup ? 'preuzeli narudžbu' : 'primili pošiljku') . ', bez navođenja razloga' . ($anyMade ? ' (osim izrade po vašim osobnim specifikacijama izvan ponude, koju ste pisano potvrdili)' : '') . '. ' . $what . ' vraćate u roku 14 dana od izjave, o svom trošku; uplaćeni iznos, uključujući dostavu, vraćamo kako piše u točki 7. Uvjeta kupnje na kraju ovog e-maila.';
+  if ($site !== '') $t[] = 'Raskid ugovora: ' . $site . '/#raskid?no=' . sj_payment_ref($no);
   $t[] = 'Za bilo kakva pitanja odgovorite na ovaj e-mail ili nam se javite porukom na Instagramu (@shiva.j_handmade).';
   $t[] = '';
   $t[] = 'Srdačan pozdrav,';
   $t[] = sj_signature(); /* v68: potpis iz Postavki */
   $t[] = 'Ručno šivane torbe iz Zaboka';
   if (preg_match('/^\d{11}$/', (string)($c['oib'] ?? ''))) $t[] = 'OIB: ' . $c['oib'];
+  $terms = sj_terms_text($c);
+  if ($terms !== '') { $t[] = ''; $t[] = '————————————————————'; $t[] = 'UVJETI KUPNJE (vrijede za ovu narudžbu, s obrascem za jednostrani raskid ugovora)'; $t[] = ''; $t[] = $terms; }
   return implode("\n", $t);
 }
 
