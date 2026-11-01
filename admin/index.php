@@ -375,7 +375,7 @@ function sj_handle_action(string $act, array &$c): string {
 
     case 'order_proof': {
       /* v70 (odluka vlasnice, 5. krug): kupac je poslao snimku potvrde, a uplata još nije na izvodu — torba se čuva do
-         23:59 sljedećeg radnog dana (najviše 96 h), najviše dvaput i najkasnije 7 dana od narudžbe; komad koji je u
+         23:59 sljedećeg radnog dana (v76: bez granica od 96 h i 7 dana), najviše dvaput; komad koji je u
          međuvremenu otišao drugome ne uzima se (javlja se). Trag: proofAt[]. */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
       if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
@@ -877,7 +877,7 @@ function sj_view_orders(): string {
       $lh = max(0, (int)ceil(((int)strtotime((string)$o['payUntil']) - time()) / 3600));
       $paid = '<span class="muted">rok za uplatu do ' . e(sj_fmt_hr((string)$o['payUntil'])) . ' (još ' . ($lh < 1 ? 'manje od 1 h' : $lh . ' h') . ')' . (!empty($o['remindedAt']) ? ' · podsjetnik poslan' : '') . '</span><br>' . $paid;
     } elseif (empty($o['paidAt']) && !$canc && $tok !== '' && isset($active[$tok]) && !empty($o['reservation']['until'])) $paid = '<span class="muted">rezervirano do ' . e(sj_fmt_hr((string)$o['reservation']['until'])) . '</span><br>' . $paid;
-    /* v70: „Potvrda primljena” — oznaka i gumb (samo dok je dopušten: neplaćena, nestornirana, do 2 puta, 7 dana) */
+    /* v70: „Potvrda primljena” — oznaka i gumb (samo dok je dopušten: neplaćena, nestornirana, do 2 puta; v76: bez granice od 7 dana) */
     if (empty($o['paidAt']) && !$canc && ($pf = (array)($o['proofAt'] ?? []))) $paid = '<span class="badge green">potvrda primljena</span> <span class="muted">' . e(sj_fmt_hr((string)end($pf))) . ' · rok do ' . e(sj_fmt_hr(sj_pay_until($o))) . ' — provjerite izvod</span><br>' . $paid;
     if (empty($o['paidAt']) && !$canc && !sj_order_expired($o) && sj_proof_block($o) === '') $paid .= sj_proof_form($o);
     if (!empty($o['claimedAt']) && empty($o['paidAt']) && !$canc) $paid = '<span class="badge ink">kupac javio uplatu</span> <span class="muted">' . e(sj_fmt_hr((string)$o['claimedAt'])) . ' — provjerite izvod</span><br>' . $paid;

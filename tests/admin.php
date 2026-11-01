@@ -368,16 +368,16 @@ file_put_contents($D . '/narudzbe.json', json_encode([
   $mk('SJ-2026-0983', ['payUntil' => $isoIn(5), 'paidAt' => $isoAgo(1)]),
 ]));
 $vP = $req('GET', ['s' => 'narudzbe']);
-$ok(preg_match('#data-confirm="Kupac je poslao snimku potvrde za SJ-2026-0980, a uplata još nije na izvodu\? Torbu čuvamo do [^"]+ u \d\d:\d\d\.[^"]*"#u', $vP) === 1 && str_contains($vP, 'Pošalji kupcu kratku potvrdu e-mailom') && substr_count($vP, '<input type="hidden" name="act" value="order_proof">') === 2,
-  'v70: „Potvrda primljena” na kartici „Rok istekao” s točnim datumom u potvrdi; nema je za staru (8 dana) ni za plaćenu');
+$ok(preg_match('#data-confirm="Kupac je poslao snimku potvrde za SJ-2026-0980, a uplata još nije na izvodu\? Torbu čuvamo do [^"]+ u \d\d:\d\d\.[^"]*"#u', $vP) === 1 && str_contains($vP, 'Pošalji kupcu kratku potvrdu e-mailom') && substr_count($vP, '<input type="hidden" name="act" value="order_proof">') === 3,
+  'v70/v76: „Potvrda primljena” na kartici „Rok istekao” s točnim datumom u potvrdi (i za stariju od 7 dana); nema je za plaćenu');
 $p1 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0980', 'mail' => '1', 'back' => '?s=narudzbe']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $o80 = $nn['SJ-2026-0980']; $pu = (int)strtotime($o80['payUntil']); $rz = json_decode(file_get_contents($D . '/rezervacije.json'), true);
 $zg = (new DateTimeImmutable('@' . $pu))->setTimezone(new DateTimeZone('Europe/Zagreb'));
-$ok(str_contains($p1, 'SJ-2026-0980: potvrda zabilježena') && str_contains($p1, 'Kupac je dobio kratku potvrdu') && $pu > time() && ($zg->format('H:i') === '23:59' || abs($pu - (time() + 96 * 3600)) < 120) && $pu <= time() + 96 * 3600 + 5
+$ok(str_contains($p1, 'SJ-2026-0980: potvrda zabilježena') && str_contains($p1, 'Kupac je dobio kratku potvrdu') && $pu > time() && $zg->format('H:i') === '23:59'
   && count($o80['proofAt'] ?? []) === 1 && empty($o80['expiredAt']) && empty($o80['claimLate']) && ($rz['res']['luna']['until'] ?? '') === $o80['payUntil'] && ($rz['res']['luna']['token'] ?? '') === 'tSJ-2026-0980'
   && str_contains((string)@file_get_contents($D . '/mail-log.txt'), 'primili smo vašu potvrdu o uplati za narudžbu br. SJ-2026-0980. Torbu čuvamo za vas do'),
-  'v70: „Potvrda primljena” — rok do 23:59 radnog dana (najviše 96 h), torba ponovno rezervirana, trag proofAt, e-mail kupcu');
+  'v70/v76: „Potvrda primljena” — rok do 23:59 radnog dana, torba ponovno rezervirana, trag proofAt, e-mail kupcu');
 $p2 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0980', 'back' => '?s=narudzbe']);
 $p3 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0980', 'back' => '?s=narudzbe']);
 $p4 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0981', 'back' => '?s=narudzbe']);
@@ -385,8 +385,8 @@ $p5 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0983', 'back' => '?
 $p6 = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0982', 'back' => '?s=narudzbe']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $rz = json_decode(file_get_contents($D . '/rezervacije.json'), true);
-$ok(str_contains($p2, 'Kupac nije dobio e-mail') && str_contains($p3, 'dvaput') && count($nn['SJ-2026-0980']['proofAt']) === 2 && str_contains($p4, 'više od 7 dana') && empty($nn['SJ-2026-0981']['proofAt']) && str_contains($p5, 'već plaćena'),
-  'v70: „Potvrda primljena” najviše dvaput, ne nakon 7 dana od narudžbe ni za plaćenu');
+$ok(str_contains($p2, 'Kupac nije dobio e-mail') && str_contains($p3, 'dvaput') && count($nn['SJ-2026-0980']['proofAt']) === 2 && count($nn['SJ-2026-0981']['proofAt'] ?? []) === 1 && str_contains($p5, 'već plaćena'),
+  'v70/v76: „Potvrda primljena” najviše dvaput, i nakon 7 dana od narudžbe (granica uklonjena), ne za plaćenu');
 $ok(str_contains($p6, 'PAŽNJA: „Tara”') && ($rz['res']['tara']['token'] ?? '') === 'drugi', 'v70: „Potvrda primljena” ne uzima torbu rezerviranu za drugog kupca (upozorenje)');
 /* v72: uz uključene rokove torba ostaje rezervirana do automatskog storna (rok + 48 h, najviše 7 dana od narudžbe) */
 $cH = json_decode(file_get_contents($D . '/config.json'), true); $cH['deadline_tick'] = true; $cH['auto_cancel_hours'] = 48; file_put_contents($D . '/config.json', json_encode($cH));
