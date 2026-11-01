@@ -41,7 +41,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Šarena se dogodi/.test(await pd.textContent('.about-quote')) && /Jasmina/.test(await pd.textContent('.about-quote small')) && !/po narudžbi: šarena se dogodi/.test(await pd.textContent('#radionica')), 'citat samo lijevo, s potpisom');
   ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /iznimka je samo izrada po vašoj posebnoj želji izvan ponude/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, ograda u Ukratko');
   ok(/Ručno šivane torbe iz Zaboka/.test(await pd.title()) && /Ručno šivane torbe iz Zaboka/.test(await pd.textContent('footer')), 'slogan u naslovu i podnožju');
-  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, torbu rezerviramo za vas 24 sata i nitko je drugi ne može naručiti\. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
+  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, torbu rezerviramo za vas 24 sata \(ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana\) i nitko je drugi ne može naručiti\. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
   ok(!/šaren/i.test(await pd.evaluate(() => [...document.querySelectorAll('#kako, #torbe, #emptyCart, #orderForm, meta')].map(e => e.textContent + (e.getAttribute('content') || '')).join(' '))), 'v62: bez riječi „šarena” u tekstovima kupnje');
   ok((await pd.getAttribute('#radionica a[href^="mailto:"]', 'href')) === 'mailto:shivaj.handmade@gmail.com', 'e-mail kao mailto');
   ok(!/Svaka torba postoji/.test(await pd.getAttribute('meta[name="description"]', 'content')), 'opis za tražilice bez „svaka torba”');
@@ -670,6 +670,18 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     ok(/Torbu čuvamo za vas do/.test(await pc.textContent('#claimBox')) && !!after.claimedAt, 'v69/v70: klik „Da, uplatio/la sam” produžuje rok i zahvaljuje kupcu');
     await mc.close();
   }
+  { const m76 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const p76 = await m76.newPage(); watch(p76);
+    await p76.goto(URL + '#kolekcija', { waitUntil: 'networkidle' }); await p76.waitForTimeout(300);
+    await p76.click('.card:has(h3:has(.card-name:text-is("Klasik crna"))) .add-btn'); await p76.click('#openCart'); await p76.waitForTimeout(300);
+    const nC = await p76.locator('.strap-sel[data-k="sc"] option').count(), nL = await p76.locator('.strap-sel[data-k="sl"] option').count();
+    await p76.selectOption('.strap-sel[data-k="sc"]', 'tamno zelena'); await p76.selectOption('.strap-sel[data-k="sl"]', '100 cm'); await p76.fill('.strap-wish', 'inicijali J. Š.');
+    const note76 = await p76.evaluate(() => (cart.find(c => c.id === 'klasik') || {}).note);
+    await p76.reload({ waitUntil: 'networkidle' }); await p76.click('#openCart'); await p76.waitForTimeout(300);
+    const keep = await p76.evaluate(() => [document.querySelector('.strap-sel[data-k="sc"]').value, document.querySelector('.strap-sel[data-k="sl"]').value, document.querySelector('.strap-wish').value]);
+    const over76 = await p76.evaluate(() => document.querySelector('.drawer-body').scrollWidth - document.querySelector('.drawer-body').clientWidth);
+    ok(nC === 9 && nL === 3 && note76 === 'remen: tamno zelena, 100 cm; inicijali J. Š.' && keep.join('|') === 'tamno zelena|100 cm|inicijali J. Š.' && over76 <= 0 && /Odaberite boju i duljinu remena iz ponude/.test(await p76.textContent('#cartWish')),
+      'v76: Stalna kolekcija — izbornici boje (8) i duljine remena (140/100 cm), posebna želja zasebno; napomena „remen: …; …”, pamti se, bez klizanja (390 px)');
+    await m76.close(); }
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));
   // ---------- v73: funkcija za raskid (ZZP čl. 81.a), redak uz gumb, ručni rad u prikazu torbe ----------
   { const m73 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const p73 = await m73.newPage(); watch(p73);
@@ -707,7 +719,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 18 && day.copy >= 1, 'brojač (v73: +1 košarica u testu raskida): ' + JSON.stringify(cnt));
+  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 19 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena): ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

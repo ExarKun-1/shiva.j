@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v42)
+   SHIVA.J — javni API na hostingu   (api/index.php v43)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v43 (stranica v76; točka B, 11. krug): rok za uplatu i rezervacija preko vikenda/blagdana do 23:59 prvoga radnog dana (sj_pay_deadline)
    v42 (stranica v74; odgovori vlasnice u 9. krugu): potvrda narudžbe s torbom sadrži „NJEGA TORBE” (sj_care_text)
    v41 (stranica v73; paket izmjena 1. 11. 2026.): api/raskid; potvrda narudžbe sadrži cijele Uvjete kupnje i
         obrazac (sj_terms_text, trajni medij ZZP čl. 76.) i poveznicu „Raskid ugovora”; iznimka od raskida samo za
@@ -849,7 +850,7 @@ function sj_place_order_locked(array $P): array {
       $out = ['prev' => $prev];
       $now = time();
       $rec = ['token' => $tok !== '' ? $tok : sj_token(), 'ip' => $ip, 'ip_prev' => $ipPrev, 'name' => $cust['name'], 'email' => $cust['email'], 'since' => $since !== '' ? $since : sj_iso($now),
-              'at' => sj_iso($now), 'until' => sj_iso($now + $ttl * 3600), 'ordered' => true];
+              'at' => sj_iso($now), 'until' => sj_iso(sj_pay_deadline($now, (int)$ttl)), 'ordered' => true]; /* v76: vikend i blagdani */
       foreach ($holdIds as $id) $d['res'][$id] = $rec + ['id' => $id];
       return $out + ['token' => $rec['token'], 'until' => $rec['until'], 'hours' => $ttl];
     }, sj_res_default());
@@ -868,7 +869,7 @@ function sj_place_order_locked(array $P): array {
         'goods' => round($goods, 2), 'total' => $total, 'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'hours' => $res['hours']] : null];
   /* v69: rok za uplatu zapisan uz narudžbu (isti kao rezervacija; ne mijenja se kad vlasnica promijeni rok u Postavkama)
      i tajna za poveznicu „Uplatio/la sam” (samo u e-mailovima kupcu) */
-  $payUntil = $res ? (string)$res['until'] : sj_iso(time() + max(1, (int)$ttl) * 3600);
+  $payUntil = $res ? (string)$res['until'] : sj_iso(sj_pay_deadline(time(), (int)$ttl)); /* v76: vikend i blagdani */
   $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time()), 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
             'total' => sj_fmt_eur($total), 'items' => $itemsText, 'shipping' => $shipText, 'address' => trim($cust['street'] . ', ' . $cust['city'], ', '),
             'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o,
@@ -971,7 +972,7 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   if ($res) {
     $lines[] = 'Rezervacija vrijedi do: ' . sj_fmt_hr($res['until']);
     /* v70: jedno obećanje kupcu — „Uplatio/la sam” čuva do 23:59 sljedećeg radnog dana; snimka potvrde → admin „Potvrda primljena” */
-    $lines[] = 'Ako kupac pošalje snimku potvrde, a uplata još nije na izvodu, u adminu → Narudžbe kliknite „Potvrda primljena” (torba se čuva do 23:59 sljedećeg radnog dana, najviše 96 h; točan datum piše u adminu). Kad uplata stigne, kliknite „Označi plaćenom”.';
+    $lines[] = 'Ako kupac pošalje snimku potvrde, a uplata još nije na izvodu, u adminu → Narudžbe kliknite „Potvrda primljena” (rok se produljuje do 23:59 sljedećeg radnog dana, a torba se čuva do storna; točan datum piše u adminu). Kad uplata stigne, kliknite „Označi plaćenom”.';
 
     $lines[] = $stornoUrl !== '' ? 'Plaćeno / storno rezervacije (uz prijavu u admin): ' . $stornoUrl : 'Plaćeno / storno rezervacije: u adminu pod „Rezervacije” (upišite adresu stranice u Postavkama, pa će ovdje stajati izravan link).';
   }

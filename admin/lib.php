@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v44');
+define('SJ_VERSION', 'admin v45');
 
 /* ---------- postavke ---------- */
 
@@ -166,6 +166,13 @@ function sj_next_workday_end(int $ts): int {
   do { $d = $d->modify('+1 day'); } while (!sj_is_workday($d));
   return $d->setTime(23, 59)->getTimestamp();
 }
+/* v76 (odluka vlasnika projekta, 11. krug, točka B): rok za uplatu = trenutak + ttl sati; ako to pada u subotu, nedjelju
+   ili na blagdan RH, rok se pomiče na 23:59 prvoga sljedećeg radnog dana (i bez „Uplatio/la sam”) */
+function sj_pay_deadline(int $from, int $ttlHours): int {
+  $t = $from + max(1, $ttlHours) * 3600;
+  $d = (new DateTimeImmutable('@' . $t))->setTimezone(new DateTimeZone('Europe/Zagreb'));
+  return sj_is_workday($d) ? $t : max($t, sj_next_workday_end($t));
+}
 /* „torbu čuvamo” / „torbe čuvamo” / „rok za uplatu produžujemo” (narudžba bez unikata) — za tekstove kupcu */
 function sj_unique_count(array $o): int { $n = 0; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $n++; return $n; }
 /* v70 (D70-5, D70-9): rok je prošao — torbu više ne čuvamo automatski; vlasnica provjerava izvod (bez novog obećanja) */
@@ -192,29 +199,22 @@ function sj_hold_phrase(array $o): string {
   return $n > 1 ? 'torbe čuvamo za vas' : ($n === 1 ? 'torbu čuvamo za vas' : 'rok za uplatu produžen je');
 }
 function sj_ucfirst(string $s): string { return mb_strtoupper(mb_substr($s, 0, 1)) . mb_substr($s, 1); }
-const SJ_CLAIM_MAX_FROM_CLICK = 96 * 3600;  /* vijeće (sigurnost): najviše 96 h od klika */
-const SJ_CLAIM_MAX_FROM_ORDER = 120 * 3600; /* … i najviše 120 h od narudžbe */
-const SJ_PROOF_MAX_DAYS = 7;
-/* v70 (vijeće, K70-6): datum unaprijed za tekstove; „najmanje ” kad ga granica od 96 h skraćuje prije 23:59 radnog
-   dana (blagdani) — pravi datum nakon klika tada je kasniji, pa tekst ostaje točan */
-function sj_claim_preview(array $o): string {
-  $t = sj_claim_until($o); $pu = (int)strtotime(sj_pay_until($o));
-  return ($t < sj_next_workday_end($pu) ? 'najmanje ' : '') . 'do ' . sj_fmt_deadline(sj_iso($t));
-}                /* „Potvrda primljena”: najkasnije 7 dana od narudžbe, najviše dvaput */
+/* v76 (odluka vlasnika projekta, 11. krug): granice od 96 h od klika, 120 h od narudžbe i 7 dana (vijeće v70/v72)
+   nisu bile odluka vlasnice i uklonjene su. Zlouporabu ograničava to što „Uplatio/la sam” vrijedi jednom po narudžbi,
+   a „Potvrdu primljena” klikne samo vlasnica, najviše dvaput. */
+function sj_claim_preview(array $o): string { return 'do ' . sj_fmt_deadline(sj_iso(sj_claim_until($o))); }
 /* Do kada „Uplatio/la sam” čuva narudžbu: 23:59 radnog dana nakon kasnijeg od (rok, klik), uz granice; nikad kraće
    od postojećeg roka. Bez $now: datum za tekstove unaprijed (potvrda narudžbe, ploča, podsjetnik) — računa se kao da
    kupac klikne odmah po narudžbi, pa je pravi rok nakon klika prije isteka uvijek isti ili kasniji (obećanje vrijedi). */
 function sj_claim_until(array $o, ?int $now = null): int {
   $pu = (int)strtotime(sj_pay_until($o)); $at = (int)strtotime((string)($o['at'] ?? '')) ?: $pu;
   $click = $now ?? min($at, $pu);
-  $t = min(sj_next_workday_end(max($pu, $click)), $click + SJ_CLAIM_MAX_FROM_CLICK, $at + SJ_CLAIM_MAX_FROM_ORDER);
-  return max($t, $pu);
+  return max(sj_next_workday_end(max($pu, $click)), $pu);
 }
-/* „Potvrda primljena” (vlasnica je vidjela snimku): 23:59 radnog dana nakon kasnijeg od (rok, klik), najviše 96 h od
-   klika; bez granice od narudžbe (vrijedi granica od 7 dana za sam gumb, SJ_PROOF_MAX_DAYS) */
+/* „Potvrda primljena” (vlasnica je vidjela snimku): 23:59 radnog dana nakon kasnijeg od (rok, klik) */
 function sj_proof_until(array $o, int $now): int {
   $pu = (int)strtotime(sj_pay_until($o));
-  return max(min(sj_next_workday_end(max($pu, $now)), $now + SJ_CLAIM_MAX_FROM_CLICK), $pu);
+  return max(sj_next_workday_end(max($pu, $now)), $pu);
 }
 /* Smije li se još kliknuti „Potvrda primljena”: '' = da, inače razlog */
 function sj_proof_block(array $o, ?int $now = null): string {
@@ -223,7 +223,6 @@ function sj_proof_block(array $o, ?int $now = null): string {
   if (!empty($o['cancelledAt'])) return 'narudžba je stornirana';
   if (empty($o['payUntil'])) return 'narudžba nema rok za uplatu';
   if (count((array)($o['proofAt'] ?? [])) >= 2) return 'potvrda je već dvaput zabilježena';
-  if ($now > ((int)strtotime((string)($o['at'] ?? '')) + SJ_PROOF_MAX_DAYS * 86400)) return 'prošlo je više od ' . SJ_PROOF_MAX_DAYS . ' dana od narudžbe';
   return '';
 }
 /* v72: koje su torbe ove narudžbe još stvarno rezervirane za nju i do kada (najraniji kraj među njima).
@@ -249,14 +248,12 @@ function sj_held_sentence(array $hi): string {
 }
 /* do kada je barem jedna torba ove narudžbe još rezervirana za nju (0 = nijedna) */
 function sj_held_until(array $o): int { return sj_held_info($o)['until']; }
-const SJ_HOLD_MAX_FROM_ORDER = 168 * 3600; /* v72: torba se drži najviše 7 dana od narudžbe */
 /* v72: do kada je torba rezervirana nakon „Uplatio/la sam” / „Potvrda primljena”: do automatskog storna (rok za uplatu
    + auto_cancel_hours), ako su rokovi uključeni; nikad kraće od roka za uplatu */
 function sj_hold_res_until(array $o, int $payTs): int {
   $c = sj_config(); $auto = !empty($c['deadline_tick']) ? max(0, (int)($c['auto_cancel_hours'] ?? 0)) : 0;
   if ($auto <= 0) return $payTs;
-  $at = (int)strtotime((string)($o['at'] ?? '')) ?: $payTs;
-  return max($payTs, min($payTs + $auto * 3600, $at + SJ_HOLD_MAX_FROM_ORDER));
+  return $payTs + $auto * 3600; /* v76: bez granice od 7 dana */
 }
 /* Produži rok narudžbe do $newTs i rezervaciju njezinih unikata (samo komade koji su slobodni ili još njezini) —
    zajedničko za „Uplatio/la sam” (api) i „Potvrda primljena” (admin). Poziva se pod bravom narudzba-u-tijeku.json.

@@ -162,17 +162,17 @@ $ok($F(sj_next_workday_end($T('2026-10-30 21:00'))) === 'Mon 2026-11-02 23:59' &
 $oF = ['at' => gmdate('c', $T('2026-10-30 21:00')), 'payUntil' => gmdate('c', $T('2026-10-31 21:00'))];
 $oX = ['at' => gmdate('c', $T('2026-12-23 12:00')), 'payUntil' => gmdate('c', $T('2026-12-24 12:00'))];
 $ok($F(sj_claim_until($oF, $T('2026-10-31 20:30'))) === 'Mon 2026-11-02 23:59' && $F(sj_claim_until($oF)) === 'Mon 2026-11-02 23:59'
-  && $F(sj_claim_until($oX, $T('2026-12-24 11:00'))) === 'Mon 2026-12-28 11:00' && $F(sj_claim_until($oX)) === 'Sun 2026-12-27 12:00'
-  && sj_claim_until($oX) <= sj_claim_until($oX, $T('2026-12-24 11:00')) && sj_claim_until(['at' => gmdate('c', $T('2026-10-30 21:00')), 'payUntil' => gmdate('c', $T('2026-11-04 20:00'))], $T('2026-11-04 19:00')) === $T('2026-11-04 21:00'),
-  'v70: „Uplatio/la sam” — pon 2. 11. u 23:59; granica 96 h od klika (Božić); granica 120 h od narudžbe; datum unaprijed nikad kasniji od pravog');
-$ok(sj_claim_until(['at' => gmdate('c', $T('2026-10-01 10:00')), 'payUntil' => gmdate('c', $T('2026-10-08 10:00'))], $T('2026-10-08 09:00')) === $T('2026-10-08 10:00')
-  && sj_proof_until(['payUntil' => gmdate('c', $T('2026-10-31 18:00'))], $T('2026-10-31 19:00')) === $T('2026-11-02 23:59') && sj_proof_until(['payUntil' => gmdate('c', $T('2026-12-24 12:00'))], $T('2026-12-24 13:00')) === $T('2026-12-28 13:00'),
-  'v70: rok se nikad ne skraćuje; „Potvrda primljena” od trenutka klika (najviše 96 h)');
+  && $F(sj_claim_until($oX, $T('2026-12-24 11:00'))) === 'Mon 2026-12-28 23:59' && $F(sj_claim_until($oX)) === 'Mon 2026-12-28 23:59'
+  && sj_claim_until($oX) <= sj_claim_until($oX, $T('2026-12-24 11:00')) && sj_claim_until(['at' => gmdate('c', $T('2026-10-30 21:00')), 'payUntil' => gmdate('c', $T('2026-11-04 20:00'))], $T('2026-11-04 19:00')) === $T('2026-11-05 23:59'),
+  'v70/v76: „Uplatio/la sam” — 23:59 prvoga radnog dana nakon roka, bez granica od 96 h i 120 h (Božić → pon 28. 12.); datum unaprijed nikad kasniji od pravog');
+$ok(sj_claim_until(['at' => gmdate('c', $T('2026-10-01 10:00')), 'payUntil' => gmdate('c', $T('2026-10-08 10:00'))], $T('2026-10-08 09:00')) === $T('2026-10-09 23:59')
+  && sj_proof_until(['payUntil' => gmdate('c', $T('2026-10-31 18:00'))], $T('2026-10-31 19:00')) === $T('2026-11-02 23:59') && sj_proof_until(['payUntil' => gmdate('c', $T('2026-12-24 12:00'))], $T('2026-12-24 13:00')) === $T('2026-12-28 23:59'),
+  'v70/v76: rok se nikad ne skraćuje; „Potvrda primljena” do 23:59 prvoga radnog dana (bez granice od 96 h)');
 
-$ok(sj_claim_preview($oF) === 'do ponedjeljka, 2. 11. 2026. u 23:59' && str_starts_with(sj_claim_preview($oX), 'najmanje do nedjelje, 27. 12. 2026.')
+$ok(sj_claim_preview($oF) === 'do ponedjeljka, 2. 11. 2026. u 23:59' && sj_claim_preview($oX) === 'do ponedjeljka, 28. 12. 2026. u 23:59'
   && str_contains(sj_already_text(['claimLate' => true, 'payUntil' => '2000-01-01T00:00:00Z', 'order' => ['items' => [['id' => 'a', 'name' => 'A']]]]), 'torbu više ne možemo automatski čuvati')
   && str_contains(sj_late_text(['order' => ['items' => [['id' => 'k', 'made' => true]]]], 'Rok je prošao'), 'ne možemo automatski produžiti'),
-  'v70 (vijeće): „najmanje do” kad granica od 96 h skraćuje datum; nakon isteka bez obećanja čuvanja; bez unikata bez „torbe”');
+  'v70/v76: datum unaprijed bez „najmanje” (nema granice od 96 h); nakon isteka bez obećanja čuvanja; bez unikata bez „torbe”');
 
 /* v72: torba do storna — granica 7 dana od narudžbe */
 $okH = (function () use ($T) {
@@ -192,6 +192,10 @@ $ok(str_starts_with(sj_care_text(), 'Bok, ja sam tvoja nova torba.') && str_ends
 $c75 = sj_defaults(); $tA = sj_terms_text($c75); $c75['ship_lead'] = ''; $tB = sj_terms_text($c75); $c75['ship_lead'] = '3 $1 dana'; $tC = sj_terms_text($c75);
 $ok(str_contains($tA, 'nakon primitka uplate, obično u roku 1–2 radna dana. Modele') && str_contains($tB, 'nakon primitka uplate. Modele') && str_contains($tC, 'obično u roku 3 $1 dana.') && str_contains($tA, 'najkasnije u roku 14 dana od primitka uplate'),
   'v75: Uvjeti t. 6 — rok slanja iz Postavki (zadano 1–2 radna dana; prazno bez roka), Stalna kolekcija najkasnije 14 dana');
+$Z = fn(string $x) => (new DateTime($x, new DateTimeZone('Europe/Zagreb')))->getTimestamp();
+$ok(sj_pay_deadline($Z('2026-11-06 20:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-05 20:00'), 24) === $Z('2026-11-06 20:00')
+  && sj_pay_deadline($Z('2026-12-24 20:00'), 24) === $Z('2026-12-28 23:59') && sj_pay_deadline($Z('2026-11-07 10:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-08 23:30'), 1) === $Z('2026-11-09 00:30'),
+  'v76 (točka B): rok koji pada u subotu, nedjelju ili blagdan pomiče se na 23:59 prvoga radnog dana (pet 20:00 → pon 23:59; Badnjak → pon 28. 12.); radni dan bez promjene');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

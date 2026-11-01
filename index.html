@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v75 (2026-11-01)
+     SHIVA.J WEBSHOP — v76 (2026-11-01)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,10 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v76 — uz api v43, admin v45 (odluka vlasnika projekta, 11. krug, točka B): rok za uplatu koji
+           pada u subotu, nedjelju ili na blagdan pomiče se na 23:59 prvoga radnog dana; Uvjeti t. 5,
+           „Kako naručiti” i redak uz gumb; uklonjeno „najduže 7 dana” iz teksta kupcu; odgovori vlasnice u 11. krugu: izbornici
+           za boju i duljinu remena (Stalna kolekcija), t. 9 Sud časti HOK, Izjava t. 5 tri godine
      v75 — uz admin v44 (odgovori vlasnice u 10. krugu): Uvjeti t. 6 rok slanja unikata iz Postavki
            („obično u roku 1–2 radna dana”, zadano), Stalna kolekcija najkasnije 14 dana od uplate
            (t. 2 i t. 6); Izjava t. 5: računi i knjigovodstvene isprave 10 godina (OPZ čl. 66.)
@@ -914,6 +918,9 @@
   @media (max-width:420px){ .cart-item .qty-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} }
   .cart-note-l{flex:1 1 100%;margin-top:6px;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
   .cart-note:focus{outline:2px solid var(--thread);outline-offset:-1px}
+  .cart-item .strap-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .strap-l{display:flex;flex-direction:column;gap:4px;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+  .strap-sel{min-height:44px;padding:7px 9px;border:1px solid #8F8D84;border-radius:var(--radius);background:#fff;font-family:inherit;font-size:16px;color:var(--ink);text-transform:none;letter-spacing:0}
   .cart-item .remove{background:none;border:none;color:var(--ink-soft);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;min-height:44px;padding:0 4px;text-decoration:underline dashed var(--line);text-underline-offset:4px}
   .cart-item .remove:hover{color:var(--ink)}
   .cart-total{
@@ -1190,7 +1197,7 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torbu rezerviramo za vas <span data-ttl-text>24 sata</span> i nitko je drugi ne može naručiti. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu. I za modele iz Stalne kolekcije rok za uplatu je <span data-ttl-text>24 sata</span>; šijemo ih nakon uplate.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz e-maila</span>, torbu rezerviramo za vas <span data-ttl-text>24 sata</span> (ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana) i nitko je drugi ne može naručiti. To je ujedno rok za uplatu; ako uplata ne stigne, torba se vraća u ponudu. I za modele iz Stalne kolekcije rok za uplatu je <span data-ttl-text>24 sata</span>; šijemo ih nakon uplate.</p>
         <p class="ship-list" id="shipList" hidden></p>
       </div>
       <div class="step">
@@ -1240,7 +1247,7 @@
          v73: struktura iz paketa izmjena (1. 11. 2026.), popunjena stvarnim podacima; rečenice o raskidu iz
          Pravilnika NN 105/2026, Prilog I.; funkcija za raskid ZZP čl. 81.a (NN 59/26); nedostaci ZOO čl. 400.–410.a.
          Tekst između UVJETI-START i UVJETI-END e-mail s potvrdom narudžbe prepisuje doslovno (sj_terms_text) —
-         trajni medij, ZZP čl. 76. v74: t. 9 izvansudsko rješavanje sporova (odgovor vlasnice v2, prijedlog A), t. 8 upute za njegu (v6). Otvoreno: telefon (v1, obvezan po ZZP čl. 60. st. 1. t. 2.).
+         trajni medij, ZZP čl. 76. v74: t. 9 izvansudsko rješavanje sporova (odgovor vlasnice v2, prijedlog A), t. 8 upute za njegu (v6). v76: t. 9 Sud časti HOK (11. krug, s5; szp.hr: obrtnik mora sudjelovati, ARPS čl. 22.). Otvoreno: telefon (v1, obvezan po ZZP čl. 60. st. 1. t. 2.).
          shivaj.handmade@gmail.com je privremena adresa: kad stigne službena, zamijeniti posvuda (i admin → Postavke). ===== -->
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
@@ -1268,8 +1275,8 @@
 
       <details><summary><h3>5. Plaćanje</h3></summary>
       <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Plaćanje karticom trenutno nije moguće.</p>
-      <p>Rok za uplatu je <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde </span>narudžbe; točan datum i sat vidite odmah nakon narudžbe i u potvrdi narudžbe. Do tada je unikatna torba rezervirana samo za vas. Ako vaša banka nudi instant uplatu, odaberite je: obična uplata poslana navečer, vikendom ili uoči blagdana može stići tek sljedeći radni dan.</p>
-      <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili nam pošaljite snimku potvrde o uplati. Ako to učinite prije isteka roka, rok se produljuje, u pravilu do 23:59 sljedećeg radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas. Produljenja se ne zbrajaju unedogled: torbu čuvamo najduže 7 dana od narudžbe.</p>
+      <p>Rok za uplatu je <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde </span>narudžbe. Ako taj rok pada u subotu, nedjelju ili na blagdan, produljuje se do 23:59 prvoga sljedećeg radnog dana. Točan datum i sat vidite odmah nakon narudžbe i u potvrdi narudžbe. Do tada je unikatna torba rezervirana samo za vas. Ako vaša banka nudi instant uplatu, odaberite je: obična uplata poslana navečer, vikendom ili uoči blagdana može stići tek sljedeći radni dan.</p>
+      <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili nam pošaljite snimku potvrde o uplati. Ako to učinite prije isteka roka, rok se produljuje, u pravilu do 23:59 sljedećeg radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas.</p>
       <p>Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Ako nam niste javili da ste platili, torba se istekom roka vraća u prodaju. Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos.</p>
       </details>
 
@@ -1312,7 +1319,7 @@
       </details>
 
       <details><summary><h3>9. Prigovori</h3></summary>
-      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na Matije Gupca 33, 49210 Zabok. Primitak prigovora potvrdit ćemo bez odgađanja, a na prigovor ćemo pisano odgovoriti u roku 15 dana od primitka. Spor možete pokušati riješiti pred tijelom za alternativno rješavanje potrošačkih sporova (popis vodi Ministarstvo gospodarstva). Hoćemo li se upustiti u postupak, napisat ćemo u odgovoru na vaš prigovor. Možete se obratiti i nadležnom sudu.</p>
+      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na Matije Gupca 33, 49210 Zabok. Primitak prigovora potvrdit ćemo bez odgađanja, a na prigovor ćemo pisano odgovoriti u roku 15 dana od primitka. Spor možete pokušati riješiti pred tijelom za alternativno rješavanje potrošačkih sporova (popis vodi Ministarstvo gospodarstva). Hoćemo li se upustiti u postupak, napisat ćemo u odgovoru na vaš prigovor. Kao obrtnik, na zahtjev potrošača sudjelujemo u postupku pred Sudom časti Hrvatske obrtničke komore, Ilica 49/II, Zagreb, <a href="https://www.hok.hr/usluge-rjesavanja-sporova/sud-casti" target="_blank" rel="noopener">www.hok.hr</a>. Postupak je za potrošača besplatan. Možete se obratiti i nadležnom sudu.</p>
       </details>
 
       <details><summary><h3>10. Osobni podaci</h3></summary>
@@ -1356,7 +1363,7 @@
       </details>
 
       <details><summary><h3>5. Koliko dugo čuvamo podatke</h3></summary>
-      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) čuvamo dok traje naša odgovornost za nedostatke, najmanje dvije godine od preuzimanja torbe. Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Izjave o raskidu, reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
+      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon), poruke s kupcem i izjave o raskidu čuvamo tri godine od preuzimanja torbe. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Izjave o raskidu, reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
       </details>
 
       <details><summary><h3>6. Vaša prava</h3></summary>
@@ -1444,7 +1451,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v75</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v76</p>
 </footer>
 
 <!-- Košarica -->
@@ -1509,7 +1516,7 @@
         <span class="field-hint" id="fNoteHint" hidden>Boju i duljinu upišite gore, uz model.</span>
       </div>
       <p class="order-hold" id="orderHold" hidden></p>
-      <p class="order-note" id="orderNote"><span id="orderNoteHold">Torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span>. </span><span id="orderNoteMade">Ono što šijemo po narudžbi izrađujemo nakon uplate.</span></p>
+      <p class="order-note" id="orderNote"><span id="orderNoteHold">Torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> (preko vikenda i blagdana do kraja prvoga radnog dana). </span><span id="orderNoteMade">Ono što šijemo po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="consent">
         <input id="fConsent" type="checkbox" required>
         <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Izjavom o zaštiti osobnih podataka</a>.</label>
@@ -1742,7 +1749,7 @@ let cartRestored = false; /* dok se košarica ne vrati iz spremišta, prazna ko�
 function saveCart(){
   if(!cartRestored) return;
   /* ključ narudžbe se ovdje NE briše: mijenja se samo kad se promijeni sadržaj narudžbe (vidi orderKey) */
-  storeSet("cart", cart.length ? cart.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "" })) : null);
+  storeSet("cart", cart.length ? cart.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "", sc: c.sc || "", sl: c.sl || "", wish: c.wish || "" })) : null);
 }
 function restoreCart(){
   const saved = storeGet("cart");
@@ -1750,7 +1757,8 @@ function restoreCart(){
     saved.forEach(sv => {
       const p = PRODUCTS.find(x => x.id === String(sv && sv.id));
       if(!p || isGone(p) || noPhoto(p) || cart.some(c => c.id === p.id)) return;
-      cart.push({ ...p, qty: p.made && catOf(p) !== "kolekcija" ? Math.max(1, Math.min(10, Number(sv.qty) || 1)) : 1, note: p.made ? String(sv.note || "").slice(0, 120) : "" });
+      cart.push({ ...p, qty: p.made && catOf(p) !== "kolekcija" ? Math.max(1, Math.min(10, Number(sv.qty) || 1)) : 1, note: p.made ? String(sv.note || "").slice(0, 120) : "",
+        sc: STRAP_COLORS.includes(sv.sc) ? sv.sc : "", sl: STRAP_LENGTHS.includes(sv.sl) ? sv.sl : "", wish: String(sv.wish || "").slice(0, 80) });
     });
   }
   cartRestored = true;
@@ -2277,7 +2285,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana. Ako imate posebnu želju (npr. vlastitu mjeru, natpis, drugu tkaninu), javit ćemo vam se prije izrade i reći može li se ostvariti te zadržavate li pravo na povrat. Ako je riječ o izradi po vašim osobnim specifikacijama, za nju pravo na povrat nemate – izrađujemo je tek nakon što to pisano potvrdite.</span>` : ""}` : ""}`;
+      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">` : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana. Ako imate posebnu želju (npr. vlastitu mjeru, natpis, drugu tkaninu), javit ćemo vam se prije izrade i reći može li se ostvariti te zadržavate li pravo na povrat. Ako je riječ o izradi po vašim osobnim specifikacijama, za nju pravo na povrat nemate – izrađujemo je tek nakon što to pisano potvrdite.</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2304,6 +2312,22 @@ function renderCart(){
   /* v46: iznos uz gumb — na mobitelu je „Ukupno” daleko iznad */
   document.getElementById("orderSum").textContent = `Ukupno ${fmt(total)}` + (shipPrice() ? ` (${fmt(goods)} + dostava\u00a0${fmt(shipPrice()).replace(/ /g, "\u00a0")})` : "");
 }
+/* v76 (odluka vlasnice, 11. krug): boja i duljina remena za modele iz Stalne kolekcije biraju se iz ponude;
+   posebna želja ide u zasebno polje. Napomena koja ide uz narudžbu (note) slaže se iz sva tri. */
+const STRAP_COLORS = ["crna", "smeđa", "crvena", "bež", "plava", "tamno zelena", "bordo", "siva"];
+const STRAP_LENGTHS = ["140 cm", "100 cm"];
+function strapNote(p){
+  const parts = [];
+  if(p.sc || p.sl) parts.push("remen: " + [p.sc, p.sl].filter(Boolean).join(", "));
+  if(p.wish) parts.push(p.wish);
+  return parts.join("; ").slice(0, 120);
+}
+function strapHtml(p, id){
+  const opt = (list, v) => `<option value="">odaberite</option>` + list.map(x => `<option${x === v ? " selected" : ""}>${escHtml(x)}</option>`).join("");
+  return `<div class="strap-row"><label class="strap-l">Boja remena<select class="strap-sel" data-id="${id}" data-k="sc">${opt(STRAP_COLORS, p.sc || "")}</select></label>`
+    + `<label class="strap-l">Duljina remena<select class="strap-sel" data-id="${id}" data-k="sl">${opt(STRAP_LENGTHS, p.sl || "")}</select></label></div>`
+    + `<label class="cart-note-l" for="note-${id}">Posebna želja (neobavezno)</label><input class="cart-note strap-wish" id="note-${id}" data-id="${id}" value="${escHtml(p.wish || "")}" placeholder="npr. inicijali, druga mjera" maxlength="80" aria-describedby="cartWish">`;
+}
 function cartSig(){ return cart.map(p => p.id + "×" + qtyOf(p) + "|" + (p.note || "")).join(","); }
 var pendingSig = "";
 document.getElementById("cartItems").addEventListener("click", e => {
@@ -2320,9 +2344,15 @@ document.getElementById("cartItems").addEventListener("click", e => {
   cart = cart.filter(c => c.id !== b.dataset.id);
   renderGrid(); renderCart();
 });
+document.getElementById("cartItems").addEventListener("change", e => {
+  const sel = e.target.closest(".strap-sel"); if(!sel) return;
+  const it = cart.find(c => c.id === sel.dataset.id); if(!it) return;
+  it[sel.dataset.k] = STRAP_COLORS.concat(STRAP_LENGTHS).includes(sel.value) ? sel.value : ""; it.note = strapNote(it); saveCart();
+  if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError();
+});
 document.getElementById("cartItems").addEventListener("input", e => {
   const n = e.target.closest(".cart-note");
-  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ it.note = n.value.slice(0, 120); saveCart();
+  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ if(n.classList.contains("strap-wish")){ it.wish = n.value.slice(0, 80); it.note = strapNote(it); } else it.note = n.value.slice(0, 120); saveCart();
     /* v51: promijenjena napomena dok narudžba čeka potvrdu — link iz e-maila vrijedi za staru, pa se obrazac vraća */
     if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError(); } }
 });
