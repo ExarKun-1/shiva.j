@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v42');
+define('SJ_VERSION', 'admin v43');
 
 /* ---------- postavke ---------- */
 
@@ -1118,6 +1118,16 @@ function sj_payment_ref(string $no): string {
 
 /* opis plaćanja za HUB-3 nalog: najviše 35 znakova, zato samo trgovina i broj narudžbe */
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
+
+/* v74: upute za njegu torbe (tekst vlasnice) — doslovno iz index.html, između NJEGA-START i NJEGA-END */
+function sj_care_text(): string {
+  static $t = null; if ($t !== null) return $t;
+  $html = @file_get_contents(dirname(__DIR__) . '/index.html');
+  if ($html === false || !preg_match('/<!-- NJEGA-START -->(.*?)<!-- NJEGA-END -->/s', $html, $m)) return $t = '';
+  $p = preg_split('#</p>\s*#', $m[1]) ?: [];
+  $p = array_values(array_filter(array_map(fn($x) => trim(html_entity_decode(strip_tags($x), ENT_QUOTES | ENT_HTML5, 'UTF-8')), $p), fn($x) => $x !== ''));
+  return $t = implode("\n\n", $p);
+}
 
 /* v73: cijeli tekst Uvjeta kupnje za e-mail s potvrdom narudžbe (trajni medij, ZZP čl. 76. NN 19/22) — doslovno iz
    index.html, između oznaka UVJETI-START i UVJETI-END, pa e-mail i stranica ne mogu reći različito. Grane

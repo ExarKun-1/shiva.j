@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v41)
+   SHIVA.J — javni API na hostingu   (api/index.php v42)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v42 (stranica v74; odgovori vlasnice u 9. krugu): potvrda narudžbe s torbom sadrži „NJEGA TORBE” (sj_care_text)
    v41 (stranica v73; paket izmjena 1. 11. 2026.): api/raskid; potvrda narudžbe sadrži cijele Uvjete kupnje i
         obrazac (sj_terms_text, trajni medij ZZP čl. 76.) i poveznicu „Raskid ugovora”; iznimka od raskida samo za
         izradu po osobnim specifikacijama izvan ponude; tekst o želji kupca prema novoj napomeni u košarici
@@ -1221,6 +1222,10 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $t[] = sj_signature(); /* v68: potpis iz Postavki */
   $t[] = 'Ručno šivane torbe iz Zaboka';
   if (preg_match('/^\d{11}$/', (string)($c['oib'] ?? ''))) $t[] = 'OIB: ' . $c['oib'];
+  /* v74: upute za njegu uz torbe (tekst vlasnice; Uvjeti t. 8 na njih upućuju) */
+  $anyBag = false; foreach ($items as $itB) { $pB = $byIdC[(string)($itB['id'] ?? '')] ?? null; if (!$pB || (string)($pB['cat'] ?? 'torbe') === 'torbe') $anyBag = true; }
+  $care = $anyBag ? sj_care_text() : '';
+  if ($care !== '') { $t[] = ''; $t[] = 'NJEGA TORBE'; $t[] = $care; }
   $terms = sj_terms_text($c);
   if ($terms !== '') { $t[] = ''; $t[] = '————————————————————'; $t[] = 'UVJETI KUPNJE (vrijede za ovu narudžbu, s obrascem za jednostrani raskid ugovora)'; $t[] = ''; $t[] = $terms;
     if ($site !== '') { $t[] = ''; $t[] = 'Raskid ugovora: ' . $site . '/#raskid · Izjava o zaštiti osobnih podataka: ' . $site . '/#privatnost'; } } /* vijeće K73-2 */

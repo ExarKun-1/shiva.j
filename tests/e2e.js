@@ -694,6 +694,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     ok((await p73.inputValue('#rNo')) === '2026-0042', 'v73: poveznica iz e-maila popunjava broj narudžbe');
     await p73.click('.card .card-name >> nth=0'); await p73.waitForTimeout(300);
     ok(/Ručni rad – moguća su mala odstupanja u šavu i nijansi u odnosu na fotografiju\./.test(await p73.textContent('#lightbox .lb-handmade')), 'v73: prikaz torbe — napomena o ručnom radu');
+    await p73.click('#lbCare summary'); await p73.waitForTimeout(100);
+    ok(await p73.isVisible('#lbCare') && /Bok, ja sam tvoja nova torba\./.test(await p73.textContent('#lbCare')) && await p73.isVisible('#lbCare .lb-care-t'), 'v74: „Njega torbe” u prikazu torbe od umjetne kože, otvara se klikom');
     await p73.keyboard.press('Escape');
     await p73.click('.card .add-btn:not([disabled]) >> nth=0'); await p73.click('#openCart'); await p73.waitForTimeout(300);
     const terms = await p73.textContent('.order-terms').catch(() => '');
