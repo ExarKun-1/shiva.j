@@ -1119,6 +1119,14 @@ function sj_payment_ref(string $no): string {
 /* opis plaćanja za HUB-3 nalog: najviše 35 znakova, zato samo trgovina i broj narudžbe */
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
+/* v74 (vijeće V74-1): upute za njegu idu uz torbe (rubrika Torbe) od umjetne kože — prazan ili nepopunjen {…}
+   materijal kod torbe znači umjetna koža (kao prikaz torbe na stranici, filled() i matShown) */
+function sj_care_applies(array $p): bool {
+  if ((string)($p['cat'] ?? 'torbe') !== 'torbe') return false;
+  $m = trim((string)($p['material'] ?? ''));
+  if ($m === '' || str_contains($m, '{')) $m = 'umjetna koža';
+  return (bool)preg_match('/umjetn/iu', $m);
+}
 /* v74: upute za njegu torbe (tekst vlasnice) — doslovno iz index.html, između NJEGA-START i NJEGA-END */
 function sj_care_text(): string {
   static $t = null; if ($t !== null) return $t;

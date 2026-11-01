@@ -185,6 +185,10 @@ $okH = (function () use ($T) {
 })();
 $ok($okH, 'v72: rezervacija do storna (rok + 48 h), najviše 7 dana od narudžbe; bez rokova samo do roka za uplatu');
 
+$ok(sj_care_applies(['material' => 'Umjetna koža, podstava od lana']) && sj_care_applies(['material' => '']) && sj_care_applies(['material' => '{MATERIJAL}'])
+  && !sj_care_applies(['material' => 'Pamučna tkanina s ručnim printom']) && !sj_care_applies(['cat' => 'ostalo', 'material' => 'umjetna koža']) && !sj_care_applies(['cat' => 'ostalo']),
+  'v74 (vijeće V74-1/5): upute za njegu samo uz torbe od umjetne kože (prazan materijal torbe = umjetna koža), ne uz tkaninu ni Ostalo');
+$ok(str_starts_with(sj_care_text(), 'Bok, ja sam tvoja nova torba.') && str_ends_with(sj_care_text(), 'Uz malo brige dugo ćemo ići zajedno.'), 'v74: tekst uputa za njegu doslovno iz index.html');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";
