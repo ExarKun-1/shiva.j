@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v72 (2026-10-31)
+     SHIVA.J WEBSHOP — v73 (2026-11-01)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v73 — uz api v41, admin v42 (paket izmjena vlasnika projekta, 1. 11. 2026.): Uvjeti
+           kupnje u 11 točaka (Pravilnik NN 105/2026, ZZP NN 19/22 i 59/26, ZOO),
+           iznimka od raskida samo za izradu po osobnim specifikacijama izvan ponude
+           uz pisanu potvrdu; „Izjava o zaštiti osobnih podataka”; funkcija „Raskid
+           ugovora” (#raskid, ZZP čl. 81.a) u podnožju; redak o Uvjetima iznad gumba;
+           napomena uz „Boja, duljina i želje”; ručni rad u prikazu torbe
      v72 — uz api v40, admin v40 (odluka vlasnice u 7. krugu): stranica bez promjena; torba
            kupca koji je javio uplatu ostaje rezervirana do automatskog storna (api, admin)
      v71 — uz api v39, admin v39 (odluke vlasnice u 6. krugu): stranica bez promjena u
@@ -581,6 +587,7 @@
   .lb-info h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.5rem}
   .lb-info .price{font-size:1rem}
   .lb-info .desc{color:var(--ink-soft)}
+  .lb-info .lb-handmade{font-size:.82rem;color:var(--ink-soft);border-left:2px solid var(--thread);padding-left:10px}
   .lb-specs{
     border-top:1.5px dashed var(--thread);
     padding-top:14px;margin-top:4px;
@@ -643,8 +650,10 @@
     padding:16px 18px;margin:6px 0 16px;max-width:72ch;
     white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);
   }
+  .legal h4{font-family:'Space Mono',monospace;font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--thread);margin:18px 0 6px}
+  .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt{scroll-margin-top:72px}
+  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid{scroll-margin-top:72px}
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -899,14 +908,14 @@
     font-family:'Space Mono',monospace;
   }
   /* narudžba */
-  .order-form{display:flex;flex-direction:column;gap:12px;margin-top:8px}
-  .order-form label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
-  .order-form input,.order-form textarea{
+  .order-form,.raskid-fn{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+  .order-form label,.raskid-fn label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+  .order-form input,.order-form textarea,.raskid-fn input,.raskid-fn textarea{
     width:100%;padding:11px 12px;
     border:1px solid #8F8D84;border-radius:var(--radius);
     background:#fff;font-family:inherit;font-size:16px;color:var(--ink);
   }
-  .order-form input:focus,.order-form textarea:focus{outline:2px solid var(--thread);outline-offset:-1px;border-color:var(--thread)}
+  .order-form input:focus,.order-form textarea:focus,.raskid-fn input:focus,.raskid-fn textarea:focus{outline:2px solid var(--thread);outline-offset:-1px;border-color:var(--thread)}
   .hold-exc{display:block;margin-top:4px;font-family:'Karla',sans-serif;font-size:.78rem;color:var(--ink-soft)}
   .order-btn.is-blocked{opacity:.6;cursor:not-allowed}
   .order-btn{
@@ -919,17 +928,27 @@
   .order-btn:hover{opacity:.9}
   .order-btn:disabled{opacity:.6;cursor:wait}
   /* poruka greške ostaje vidljiva dok kupac ponovno ne pošalje */
-  .order-error{
+  .order-error,.raskid-msg{
     border:1.5px dashed #9B2C1F;border-radius:var(--radius);background:#FBF1EE;color:#7A2418;
     padding:12px 14px;font-size:.88rem;line-height:1.5;
   }
   .order-error:focus{outline:none}
   .order-error:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
   /* v40: „potvrdite narudžbu” nije greška */
-  .order-error.order-info{border-color:var(--thread);background:var(--paper);color:var(--ink)}
+  .order-error.order-info,.raskid-msg.raskid-ok{border-color:var(--thread);background:var(--paper);color:var(--ink)}
+  .raskid-msg:focus{outline:none}
+  .raskid-msg b{display:block;margin-bottom:2px}
   .order-error b.inline{display:inline;margin:0;overflow-wrap:anywhere}
   .order-error b{display:block;margin-bottom:2px}
   .order-note{font-size:.8rem;color:var(--ink-soft)}
+  .order-terms{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
+  .order-terms a{border-bottom:1.5px dashed var(--thread)}
+  /* v73: funkcija za raskid (ZZP čl. 81.a) — istaknuta poveznica i obrazac */
+  .foot-raskid{font-weight:600;color:var(--thread)!important;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;align-self:flex-start}
+  .raskid-fn{max-width:520px}
+  .raskid-step{display:flex;flex-direction:column;gap:12px}
+  .raskid-lead{margin:0}
+  .legal .raskid-fn .edit-order{align-self:flex-start;border-bottom:none}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
   .trust-line a{border-bottom:1.5px dashed var(--thread)}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
@@ -1204,78 +1223,147 @@
 <section class="legal">
   <div class="legal-inner">
 
-    <!-- ===== UVJETI KUPNJE — NACRT =====
-         Prije objave dati knjigovođi na provjeru (PDV, podaci obrta,
-         rok uplate) i po potrebi pravniku. Mjesta u {vitičastim
-         zagradama} popunjava vlasnica.
-         v49: t. 3 — obrt nije u sustavu PDV-a (podatak vlasnika projekta 13. 10. 2026.);
-         formulaciju napomene potvrđuje knjigovođa. ===== -->
+    <!-- ===== UVJETI KUPNJE =====
+         v73: struktura iz paketa izmjena (1. 11. 2026.), popunjena stvarnim podacima; rečenice o raskidu iz
+         Pravilnika NN 105/2026, Prilog I.; funkcija za raskid ZZP čl. 81.a (NN 59/26); nedostaci ZOO čl. 400.–410.a.
+         Tekst između UVJETI-START i UVJETI-END e-mail s potvrdom narudžbe prepisuje doslovno (sj_terms_text) —
+         trajni medij, ZZP čl. 76. Otvoreno (9. krug): telefon (v1), izvansudsko rješavanje sporova (v2).
+         shivaj.handmade@gmail.com je privremena adresa: kad stigne službena, zamijeniti posvuda (i admin → Postavke). ===== -->
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
       <hr class="seam">
-      <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku 14 dana (osim artikala izrađenih po vašoj želji). Detalji su u nastavku.</p>
-
+      <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku 14 dana; iznimka je samo izrada po vašoj posebnoj želji izvan ponude, i to samo ako ste to prije izrade pisano potvrdili. Detalji su u nastavku.</p>
+<!-- UVJETI-START -->
       <details><summary><h3>1. Prodavatelj</h3></summary>
-      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi uvjeti vrijede za sve narudžbe putem ove stranice; slanjem narudžbe prihvaćate ih.</p>
-
+      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
       </details>
+
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Torbe označene „Jedan primjerak” ručno su rađeni unikati i postoje u jednom primjerku. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se po narudžbi, u više primjeraka; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe; rok izrade naveden je uz svaki artikl i teče od primitka uplate. Sitne nepravilnosti dio su ručnog rada, a boje na fotografijama mogu neznatno odstupati ovisno o zaslonu. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
-
+      <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
+      <p>Ručna izrada: mala odstupanja u šavu, nijansi tkanine i uzorku u odnosu na fotografiju svojstvo su ručne izrade i nisu nedostatak. Boje se na različitim zaslonima mogu prikazivati malo drukčije.</p>
+      <p>Posebne želje izvan ponude: u polje „Boja, duljina i želje” možete upisati i želju izvan ponude (npr. remen na mjeru koju sami zadate, natpis ili inicijale, drugu tkaninu ili izmijenjen kroj). Takvu želju ne izrađujemo odmah: prije izrade javit ćemo vam se e-mailom i reći može li se ostvariti i je li riječ o izradi po vašim osobnim specifikacijama, za koju nemate pravo na raskid (točka 7.2). Izradu po takvoj želji počinjemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.</p>
       </details>
+
       <details><summary><h3>3. Cijene i dostava</h3></summary>
-      <p>Cijene su izražene u eurima. SHIVA.&nbsp;J nije u sustavu PDV-a (čl. 90. st. 1. Zakona o porezu na dodanu vrijednost), pa se PDV ne obračunava i cijene su konačne. Način dostave birate u košarici, a njezin trošak vidite prije slanja narudžbe: BOX NOW paketomat, GLS dostava na adresu ili osobno preuzimanje u radionici (Matije Gupca 33, Zabok, radnim danom od 8 do 15 sati, uz prethodni dogovor). Dostava izvan Hrvatske moguća je po dogovoru e-mailom. Rizik oštećenja ili gubitka torbe prelazi na vas u trenutku kad je preuzmete vi ili osoba koju ste za to ovlastili.</p>
-
+      <p>Cijene su izražene u eurima. SHIVA.&nbsp;J nije u sustavu PDV-a (čl. 90. st. 1. Zakona o porezu na dodanu vrijednost), pa se PDV ne obračunava i cijene su konačne. Vrijedi cijena istaknuta u trenutku narudžbe. Način dostave birate u košarici, a njezin trošak vidite prije slanja narudžbe: BOX NOW paketomat, GLS dostava na adresu ili osobno preuzimanje u radionici (Matije Gupca 33, Zabok, radnim danom od 8 do 15 sati, uz prethodni dogovor). Dostava izvan Hrvatske moguća je po dogovoru e-mailom.</p>
       </details>
-      <details><summary><h3>4. Narudžba i rezervacija</h3></summary>
-      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena</span>. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a e-mailom vam odmah nakon <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata); ugovor je sklopljen kad primite tu potvrdu. <span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> unikatna se torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
 
+      <details><summary><h3>4. Narudžba i sklapanje ugovora</h3></summary>
+      <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena</span>. Prije slanja u košarici možete provjeriti i ispraviti svaki podatak. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a e-mailom vam odmah nakon <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> šaljemo i potvrdu narudžbe (najkasnije u roku 24 sata), s ovim Uvjetima i obrascem za jednostrani raskid ugovora; ugovor je sklopljen kad primite tu potvrdu. Ugovor sklapamo na hrvatskom jeziku. Narudžbu i Uvjete koji su tada vrijedili čuvamo i na zahtjev vam ih šaljemo.</p>
+      <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> se unikatna torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
       </details>
+
       <details><summary><h3>5. Plaćanje</h3></summary>
-      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe koji vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe i u e-mailu s podacima za uplatu (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Molimo uplatu odmah po narudžbi i pošaljite nam potvrdu uplate e-mailom. Rezervacija unikatne torbe traje <span data-ttl-text>24 sata</span>; ako u tom roku ne primimo uplatu ni potvrdu uplate, rezervacija automatski istječe i torba se ponovno nudi. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Plaćanje karticom trenutno nije moguće.</p>
+      <p>Rok za uplatu je <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde </span>narudžbe; točan datum i sat vidite odmah nakon narudžbe i u potvrdi narudžbe. Do tada je unikatna torba rezervirana samo za vas. Ako vaša banka nudi instant uplatu, odaberite je: obična uplata poslana navečer, vikendom ili uoči blagdana može stići tek sljedeći radni dan.</p>
+      <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili nam pošaljite snimku potvrde o uplati. Ako to učinite prije isteka roka, rok se produljuje, u pravilu do 23:59 sljedećeg radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas. Produljenja se ne zbrajaju unedogled: torbu čuvamo najduže 7 dana od narudžbe.</p>
+      <p>Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Ako nam niste javili da ste platili, torba se istekom roka vraća u prodaju. Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos.</p>
+      </details>
 
+      <details><summary><h3>6. Izrada i dostava</h3></summary>
+      <p>Gotove unikate pakiramo i šaljemo nakon primitka uplate. Modele po narudžbi izrađujemo u roku navedenom uz artikl, a zatim ih šaljemo; ako ste u jednoj narudžbi naručili i unikat i model po narudžbi, šaljemo ih zajedno kad je sve gotovo. Kad paket pošaljemo, javit ćemo vam e-mailom. Za preuzimanje u radionici javit ćemo vam se da dogovorimo termin.</p>
+      <p>Rizik oštećenja ili gubitka torbe prelazi na vas kad je preuzmete vi ili osoba koju ste odredili, a koja nije prijevoznik. Ako je pošiljka pri preuzimanju vidljivo oštećena, molimo zabilježite to kod dostavljača i javite nam se.</p>
       </details>
-      <details><summary><h3>6. Pravo na jednostrani raskid ugovora</h3></summary>
-      <p>Kao potrošač možete jednostrano raskinuti ugovor u roku 14 dana od dana kad ste vi ili osoba koju ste ovlastili preuzeli torbu, bez navođenja razloga. Dovoljna je nedvosmislena izjava e-mailom na shivaj.handmade@gmail.com; možete upotrijebiti obrazac u nastavku. Torbu vraćate na našu adresu najkasnije 14 dana od dana kad ste nam poslali izjavu o raskidu; trošak povrata snosite sami. Uplaćeni iznos vraćamo na vaš račun u roku 14 dana od dana kad nam vratite torbu ili dostavite dokaz da ste je poslali. Torbu možete pregledati kao što biste je pregledali u trgovini; za umanjenje vrijednosti zbog rukovanja koje to nadilazi odgovara kupac. Pravo na raskid ne vrijedi za artikle izrađene po vašim posebnim željama, npr. remen u odabranoj boji i duljini ili torbu po mjeri.</p>
-      <p>Obrazac za jednostrani raskid ugovora (kopirajte u e-mail i popunite):</p>
-      <pre class="raskid-form">Za: SHIVA. J, obrt za dizajn, Matije Gupca 33, 49210 Zabok, shivaj.handmade@gmail.com
-Ovime izjavljujem da jednostrano raskidam ugovor o kupnji torbe: ______________
-Narudžba poslana dana: ______________   Torba primljena dana: ______________
-Ime i prezime: ______________
-Adresa: ______________
-IBAN za povrat novca: ______________
-Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre>
 
+      <details><summary><h3>7. Pravo na jednostrani raskid ugovora</h3></summary>
+      <h4>7.1. Pravo i rok</h4>
+      <p>Ugovor možete jednostrano raskinuti u roku od 14 dana bez navođenja razloga. Rok iznosi 14 dana od dana kada je vama ili trećoj osobi koju ste vi odredili, a koja nije prijevoznik, roba koja je predmet ugovora predana u posjed. Ako ste jednom narudžbom naručili više torbi koje stižu odvojeno, rok teče od dana kada vam je predana posljednja.</p>
+      <p>To pravo imate za unikate i za modele iz Stalne kolekcije, uključujući torbe za koje ste boju ili duljinu remena odabrali iz ponude.</p>
+      <h4>7.2. Kada pravo na raskid nemate</h4>
+      <p>Pravo na raskid nemate za torbu izrađenu prema vašim osobnim specifikacijama izvan ponude (npr. remen krojen na mjeru koju ste sami zadali, izvezeni natpis ili inicijali, tkanina koju ste donijeli ili koju nabavljamo posebno za vas, izmijenjen kroj). Za svaku takvu narudžbu prije izrade e-mailom vam izričito pišemo da za nju nemate pravo na raskid i izradu počinjemo tek kad to pisano potvrdite.</p>
+      <h4>7.3. Kako raskinuti ugovor</h4>
+      <p>Da biste mogli ostvariti pravo na jednostrani raskid ugovora, morate nas obavijestiti o svojoj odluci o jednostranom raskidu ugovora prije isteka roka i to nedvosmislenom izjavom poslanom poštom (Matije Gupca 33, 49210 Zabok) ili elektroničkom poštom (shivaj.handmade@gmail.com), u kojoj ćete navesti svoje ime i prezime, adresu, broj telefona ili adresu elektroničke pošte, a možete koristiti i priloženi primjer obrasca za jednostrani raskid ugovora. Obrazac nije obvezan.</p>
+      <p>Pravo na jednostrani raskid ugovora možete ostvariti i mrežnim putem, poveznicom „Raskid ugovora” na dnu naše web stranice (odjeljak „Raskid ugovora”, poveznica je i u e-mailu s potvrdom narudžbe). Ako upotrijebite opisanu mrežnu funkciju, poslat ćemo vam bez odgađanja potvrdu o zaprimanju vaše izjave o jednostranom raskidu ugovora na trajnom mediju (e-poštom), uključujući njezin sadržaj te datum i vrijeme podnošenja.</p>
+      <p>Rok je poštovan ako izjavu pošaljete prije isteka 14 dana.</p>
+      <h4>7.4. Povrat torbe</h4>
+      <p>Torbu vratite ili je predajte nama (SHIVA.&nbsp;J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a u svakom slučaju najkasnije u roku od 14 dana od dana kada ste nam uputili svoju odluku o jednostranom raskidu ugovora. Smatra se da ste svoju obvezu izvršili na vrijeme ako prije isteka tog roka torbu pošaljete ili predate nama. Izravne troškove povrata robe morate snositi sami. Molimo torbu dobro zapakirajte; preporučujemo slanje s praćenjem.</p>
+      <h4>7.5. Povrat novca</h4>
+      <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo).</p>
+      <p>Povrat novca bit će izvršen na isti način na koji ste izvršili uplatu, na račun (IBAN) koji nam navedete; za povrat ne snosite nikakve troškove. Povrat novca možemo izvršiti tek nakon što nam torba bude vraćena ili nakon što nam dostavite dokaz da ste nam je poslali natrag, ovisno o tome što je prije.</p>
+      <h4>7.6. Stanje vraćene torbe</h4>
+      <p>Odgovorni ste za svako umanjenje vrijednosti robe koje je rezultat rukovanja robom, osim onog koje je bilo potrebno za utvrđivanje prirode, obilježja i funkcionalnosti robe. Torbu smijete pregledati i isprobati kao što biste to mogli u trgovini. Iznos umanjenja određujemo prema stvarnoj šteti, na primjer prema trošku čišćenja ili popravka, i pisano vam ga obrazlažemo uz fotografije. Pravo na raskid time ne gubite.</p>
+      <h4>Obrazac za jednostrani raskid ugovora</h4>
+      <p>Ispunite i pošaljite ovaj obrazac samo ako želite raskinuti ugovor (možete ga kopirati u e-mail).</p>
+      <pre class="raskid-form">1. Ime, prezime i adresa potrošača: ______________
+2. Prima: SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, shivaj.handmade@gmail.com
+3. Ja ______________ ovim izjavljujem da jednostrano raskidam Ugovor o prodaji sljedeće robe: ______________, naručene/primljene dana ______________.
+   Broj narudžbe (ako ga znate): ______________   IBAN za povrat novca: ______________
+   – potpis potrošača (samo ako se ovaj obrazac ispunjava na papiru)
+   – datum</pre>
       </details>
-      <details><summary><h3>7. Prigovori i nedostaci</h3></summary>
-      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na gornju adresu; odgovorit ćemo u roku 15 dana od primitka. Za materijalne nedostatke torbe odgovaramo prema Zakonu o obveznim odnosima i Zakonu o zaštiti potrošača. Ako uočite nedostatak, javite nam se što prije, po mogućnosti s fotografijom, pa ćemo dogovoriti popravak, zamjenu ili povrat novca. Sporove nastojimo riješiti dogovorom.</p>
+
+      <details><summary><h3>8. Materijalni nedostaci</h3></summary>
+      <p>Za materijalne nedostatke odgovaramo prema Zakonu o obveznim odnosima, najmanje dvije godine od preuzimanja torbe; to vrijedi i za artikle izrađene po narudžbi. To je vaše zakonsko pravo i ne možemo ga ograničiti. Zasebno (komercijalno) jamstvo ne dajemo.</p>
+      <p>Odgovaramo za nedostatke koje je torba imala kad ste je preuzeli (npr. greška u šavu, kopči ili materijalu). Ne odgovaramo za uobičajeno trošenje ni za oštećenja nastala nepravilnim rukovanjem. Mala odstupanja zbog ručne izrade opisana u točki 2. nisu nedostatak.</p>
+      <p>Nedostatak nam javite u roku od dva mjeseca od kad ste ga otkrili, e-mailom na shivaj.handmade@gmail.com ili poštom na adresu iz točke 1., uz opis i fotografiju nedostatka. Torbu preuzimamo i vraćamo na naš trošak, a nedostatak uklanjamo besplatno. Unikatnu torbu nije moguće zamijeniti istim komadom, pa nedostatak uklanjamo popravkom, ako je izvediv. Za modele iz Stalne kolekcije možete birati između popravka i novog komada; ako bi novi komad u odnosu na popravak bio nerazmjerno skup (npr. kod sitnog nedostatka koji se lako popravi), nedostatak uklanjamo popravkom, a ako popravak nije izvediv, šaljemo vam novi komad. Ako nedostatak uklonimo popravkom, rok naše odgovornosti produljuje se jednom za 12 mjeseci. Ako popravak ili zamjena nisu mogući ili ne uspiju, imate pravo na sniženje cijene ili raskid ugovora i povrat novca (kod neznatnog nedostatka samo na sniženje cijene).</p>
       </details>
+
+      <details><summary><h3>9. Prigovori</h3></summary>
+      <p>Pisani prigovor možete poslati e-mailom na shivaj.handmade@gmail.com ili poštom na Matije Gupca 33, 49210 Zabok. Primitak prigovora potvrdit ćemo bez odgađanja, a na prigovor ćemo pisano odgovoriti u roku 15 dana od primitka. Ako spor ne riješimo dogovorom, možete se obratiti nadležnom sudu.</p>
+      </details>
+
+      <details><summary><h3>10. Osobni podaci</h3></summary>
+      <p>Osobne podatke iz narudžbe (ime, adresu, e-adresu, telefon) koristimo samo za izvršenje narudžbe, dostavu, povrat i ispunjenje zakonskih obveza. Više u Izjavi o zaštiti osobnih podataka na našoj web stranici (odjeljak „Izjava o zaštiti osobnih podataka”).</p>
+      </details>
+
+      <details><summary><h3>11. Završne odredbe</h3></summary>
+      <p>Na ove Uvjete i ugovore sklopljene na ovoj stranici primjenjuje se pravo Republike Hrvatske. Odredbe Zakona o zaštiti potrošača i drugih propisa koje vas štite kao potrošača uvijek imaju prednost pred ovim Uvjetima. Uvjete možemo mijenjati, ali na vašu narudžbu primjenjuju se Uvjeti koji su vrijedili u trenutku narudžbe.</p>
+      </details>
+<!-- UVJETI-END -->
     </div>
 
-    <!-- ===== POLITIKA PRIVATNOSTI ===== -->
+    <!-- ===== IZJAVA O ZAŠTITI OSOBNIH PODATAKA =====
+         v73: struktura iz paketa izmjena (Prilog 2), popunjena stvarnim stanjem stranice. Otvoreno za vlasnicu i
+         knjigovođu: rokovi čuvanja (brojevi iz paketa nisu upisani), prijenos izvan EGP-a za Gmail (Google). ===== -->
     <div class="legal-block" id="privatnost">
-      <h2>Politika privatnosti</h2>
+      <h2>Izjava o zaštiti osobnih podataka</h2>
       <hr class="seam">
-      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Ova stranica ne koristi kolačiće, vanjsku analitiku ni bilo kakve alate za praćenje; jedina iznimka je karta BOX NOW paketomata, koja se učitava samo na vaš klik (vidi dolje). Posjete i klikove brojimo samo kao dnevne zbrojeve, bez osobnih podataka; radi zaštite od zlouporabe adresa vašeg uređaja čuva se u skraćenom, neprepoznatljivom obliku najviše sat vremena.</p>
+      <p>Vaše podatke prikupljamo samo koliko je nužno da vam pošaljemo torbu — ništa više. Podatke obrađujemo u skladu s Općom uredbom o zaštiti podataka (Uredba (EU) 2016/679) i Zakonom o provedbi Opće uredbe o zaštiti podataka. Ova stranica ne koristi kolačiće, vanjsku analitiku ni bilo kakve alate za praćenje; jedina iznimka je karta BOX NOW paketomata, koja se učitava samo na vaš klik (vidi dolje).</p>
 
-      <details><summary><h3>Voditelj obrade</h3></summary>
-      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, OIB: 50934176320. Kontakt: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a>.</p>
-
+      <details><summary><h3>1. Tko je voditelj obrade</h3></summary>
+      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320. Za pitanja o osobnim podacima: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a>. Mali smo obrt i nismo dužni imenovati službenika za zaštitu podataka; za sva pitanja javite nam se izravno.</p>
       </details>
-      <details><summary><h3>Koje podatke prikupljamo i zašto</h3></summary>
-      <p>Kod narudžbe prikupljamo ime i prezime, e-mail adresu, broj telefona, adresu za dostavu i eventualnu napomenu — isključivo radi obrade i isporuke vaše narudžbe te komunikacije s vama o njoj. Pravna osnova je izvršenje ugovora (čl. 6. st. 1. t. (b) Opće uredbe o zaštiti podataka). Podatke ne koristimo za marketing i ne prosljeđujemo ih trećima, osim navedenim izvršiteljima obrade.</p>
 
+      <details><summary><h3>2. Koje podatke prikupljamo</h3></summary>
+      <ul class="legal-list">
+        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli i sadržaj polja „Boja, duljina i želje” te napomena. U to polje molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
+        <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, e-mail adresa, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
+        <li><b>Kontakt e-mailom ili na Instagramu:</b> podaci koje nam sami navedete.</li>
+        <li><b>Posjet stranici:</b> posjete i klikove brojimo samo kao dnevne zbrojeve, bez osobnih podataka; radi zaštite od zlouporabe adresa vašeg uređaja čuva se u skraćenom, neprepoznatljivom obliku najviše sat vremena. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja.</li>
+      </ul>
       </details>
-      <details><summary><h3>Tko još dolazi u dodir s podacima</h3></summary>
-      <p>Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju; <span data-if-confirm>vama se automatski šalje e-mail s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka.</span><span data-if-noconfirm>nama se automatski šalje narudžba, a vama potvrda narudžbe.</span> Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka.</p>
 
+      <details><summary><h3>3. Zašto koristimo podatke i na kojoj osnovi</h3></summary>
+      <p>Podatke iz narudžbe koristimo za zaprimanje i izvršenje narudžbe, izradu i dostavu torbe te komunikaciju o narudžbi; pravna osnova je izvršenje ugovora (čl. 6. st. 1. t. (b) Opće uredbe). Podatke o raskidu, povratu novca, reklamacijama i prigovorima obrađujemo radi izvršenja ugovora i zakonskih obveza (t. (b) i (c)), a podatke potrebne za račune i poslovne knjige radi zakonske obveze (t. (c)). Sigurnost i ispravan rad stranice temelje se na legitimnom interesu (t. (f)). Podatke nužne za narudžbu morate nam dati, jer bez njih ne možemo izvršiti ugovor. Podatke ne koristimo za marketing, ne donosimo odluke isključivo automatiziranom obradom i ne izrađujemo profile kupaca.</p>
       </details>
-      <details><summary><h3>Koliko dugo čuvamo podatke</h3></summary>
-      <p>Podatke o izvršenim narudžbama čuvamo koliko nalažu porezni i računovodstveni propisi. Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana.</p>
 
+      <details><summary><h3>4. Kome dajemo podatke</h3></summary>
+      <p>Vaše podatke ne prodajemo i ne dajemo drugima za njihov marketing. Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU); narudžba se sprema na tom poslužitelju; <span data-if-confirm>vama se automatski šalje e-mail s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka.</span><span data-if-noconfirm>nama se automatski šalje narudžba, a vama potvrda narudžbe.</span> E-mailove s narudžbama i izjavama o raskidu primamo u pretinac kod usluge Gmail (Google). Adresu za dostavu ili odabrani paketomat, ime, broj telefona i e-mail dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Kod povrata novca podatke o uplati obrađuje naša banka. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka. Podatke dajemo i nadležnim tijelima (npr. Poreznoj upravi, sudu, inspekciji) kada to zakon nalaže.</p>
       </details>
-      <details><summary><h3>Vaša prava</h3></summary>
-      <p>U svakom trenutku imate pravo zatražiti pristup svojim podacima, njihov ispravak ili brisanje, ograničenje obrade te podnijeti prigovor — dovoljan je e-mail na gornju adresu. Imate i pravo pritužbe Agenciji za zaštitu osobnih podataka (<a href="https://azop.hr" target="_blank" rel="noopener">azop.hr</a>).</p>
+
+      <details><summary><h3>5. Koliko dugo čuvamo podatke</h3></summary>
+      <p>Podatke o izvršenim narudžbama čuvamo koliko nalažu porezni i računovodstveni propisi. Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Izjave o raskidu, reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
+      </details>
+
+      <details><summary><h3>6. Vaša prava</h3></summary>
+      <p>Imate pravo na pristup svojim podacima i njihovu kopiju, na ispravak, na brisanje (osim podataka koje moramo čuvati po zakonu), na ograničenje obrade, na prenosivost podataka koje ste nam dali te pravo na prigovor obradi koja se temelji na legitimnom interesu. Zahtjev nam pošaljite e-mailom na gornju adresu; odgovorit ćemo bez odgađanja, a najkasnije u roku od mjesec dana. Ostvarivanje prava je besplatno. Da bismo bili sigurni da podatke dajemo pravoj osobi, možemo vas zamoliti da potvrdite svoj identitet.</p>
+      </details>
+
+      <details><summary><h3>7. Pritužba nadzornom tijelu</h3></summary>
+      <p>Ako smatrate da vaše podatke obrađujemo protivno propisima, možete podnijeti pritužbu Agenciji za zaštitu osobnih podataka (<a href="https://azop.hr" target="_blank" rel="noopener">azop.hr</a>). Molimo vas da nam se prije toga javite, kako bismo pokušali riješiti problem.</p>
+      </details>
+
+      <details><summary><h3>8. Kolačići i pohrana u pregledniku</h3></summary>
+      <p>Stranica ne postavlja kolačiće. Sadržaj košarice i podatke koje ste upisali u obrazac preglednik pamti samo na vašem uređaju (lokalna pohrana), da ih ne biste morali upisivati ponovno; to je nužno za rad košarice i ne šalje se nikome. Možete ih obrisati brisanjem podataka stranice u pregledniku. Kolačiće može koristiti samo karta BOX NOW, i to tek kad je otvorite.</p>
+      </details>
+
+      <details><summary><h3>9. Sigurnost</h3></summary>
+      <p>Podatke štitimo primjerenim tehničkim i organizacijskim mjerama: stranica koristi šifriranu vezu (HTTPS), pristup podacima imamo samo mi i pružatelji usluga iz točke 4., a korisnički računi zaštićeni su lozinkama.</p>
+      </details>
+
+      <details><summary><h3>10. Izmjene Izjave</h3></summary>
+      <p>Izjavu možemo mijenjati, primjerice kada uvedemo novu uslugu ili promijenimo pružatelja usluge. Važeća verzija uvijek je objavljena na ovoj stranici.</p>
       </details>
 
       <div class="impressum" id="impressum">
@@ -1284,8 +1372,40 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <p>Matije Gupca 33, 49210 Zabok, Hrvatska</p>
         <p>OIB: 50934176320 · IBAN: <span class="nowrap">HR98 2360 0001 1027 9044 2</span></p>
         <p>e-mail: shivaj.handmade@gmail.com · Instagram: @shiva.j_handmade</p>
-        <p style="margin-top:14px">Pravo na jednostrani raskid ugovora u roku 14 dana, prigovori i ostali uvjeti kupnje opisani su u odjeljku <a href="#uvjeti">Uvjeti kupnje</a>.</p>
+        <p style="margin-top:14px">Pravo na jednostrani raskid ugovora u roku 14 dana, prigovori i ostali uvjeti kupnje opisani su u odjeljku <a href="#uvjeti">Uvjeti kupnje</a>; ugovor možete raskinuti i <a href="#raskid">ovdje na stranici</a>.</p>
       </div>
+    </div>
+
+    <!-- ===== RASKID UGOVORA (ZZP čl. 81.a, NN 59/26) — v73 =====
+         Funkcija za jednostrani raskid: obrazac bez prijave, korak „Potvrditi raskid ugovora”, potvrda e-poštom
+         sa sadržajem, datumom i vremenom (st. 6.); api/raskid. ===== -->
+    <div class="legal-block" id="raskid">
+      <h2>Raskid ugovora</h2>
+      <hr class="seam">
+      <p>Ovdje možete jednostrano raskinuti ugovor u roku 14 dana od preuzimanja torbe, bez navođenja razloga i bez registracije (Uvjeti kupnje, točka 7.). Nakon potvrde odmah vam e-poštom šaljemo potvrdu primitka vaše izjave, s njezinim sadržajem te datumom i vremenom podnošenja.</p>
+      <form class="raskid-fn" id="raskidForm" novalidate>
+        <div class="hp-field" aria-hidden="true">
+          <label for="rWeb">Web stranica (ostavite prazno)</label>
+          <input id="rWeb" name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="raskid-step" id="raskidStep1">
+          <div><label for="rName">Ime i prezime</label><input id="rName" required autocomplete="name" maxlength="80"></div>
+          <div><label for="rNo">Broj narudžbe</label><input id="rNo" required maxlength="40" placeholder="npr. 2026-0007" aria-describedby="rNoHint"><small class="field-hint" id="rNoHint">piše u potvrdi narudžbe; ako ga nemate, upišite datum narudžbe i naziv torbe</small></div>
+          <div><label for="rEmail">E-mail za potvrdu raskida</label><input id="rEmail" type="email" required autocomplete="email" maxlength="120" inputmode="email"></div>
+          <div><label for="rIban">IBAN za povrat novca (neobavezno)</label><input id="rIban" maxlength="34" autocomplete="off" placeholder="HR.." aria-describedby="rIbanHint"><small class="field-hint" id="rIbanHint">ako ga ne upišete, novac vraćamo na račun s kojeg ste platili ili vas pitamo</small></div>
+          <div><label for="rNote">Napomena (neobavezno)</label><textarea id="rNote" rows="2" maxlength="500"></textarea></div>
+          <div class="raskid-msg" id="raskidError" role="alert" tabindex="-1" hidden></div>
+          <button type="submit" class="order-btn raskid-btn" id="raskidNext">Dalje: provjera izjave</button>
+        </div>
+        <div class="raskid-step" id="raskidStep2" hidden>
+          <p class="raskid-lead">Provjerite svoju izjavu — još nije poslana. Šaljete je gumbom ispod.</p>
+          <pre class="raskid-form" id="raskidPreview"></pre>
+          <div class="raskid-msg" id="raskidError2" role="alert" tabindex="-1" hidden></div>
+          <button type="button" class="order-btn" id="raskidConfirm">Potvrditi raskid ugovora</button>
+          <button type="button" class="edit-order" id="raskidBack">Ispravite podatke</button>
+        </div>
+        <div class="raskid-msg raskid-ok" id="raskidDone" role="status" tabindex="-1" hidden></div>
+      </form>
     </div>
   </div>
 </section>
@@ -1305,12 +1425,13 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <span class="mono" style="color:var(--thread)">Informacije</span>
       <span>Dostava: BOX NOW paketomat, GLS ili preuzimanje u radionici</span>
       <span>Plaćanje uplatom na račun — IBAN i barkod <span data-if-confirm>nakon potvrde narudžbe</span><span data-if-noconfirm>odmah nakon narudžbe</span></span>
+      <a href="#raskid" class="foot-raskid">Raskid ugovora</a>
       <a href="#uvjeti">Uvjeti kupnje i pravo na raskid</a>
-      <a href="#privatnost">Politika privatnosti</a>
+      <a href="#privatnost">Izjava o zaštiti osobnih podataka</a>
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v72</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v73</p>
 </footer>
 
 <!-- Košarica -->
@@ -1378,10 +1499,11 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
       <p class="order-note" id="orderNote"><span id="orderNoteHold">Torbu rezerviramo za vas <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span>. </span><span id="orderNoteMade">Ono što šijemo po narudžbi izrađujemo nakon uplate.</span></p>
       <div class="consent">
         <input id="fConsent" type="checkbox" required>
-        <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Politikom privatnosti</a>.</label>
+        <label for="fConsent">Prihvaćam <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a>, upoznat/a sam s pravom na jednostrani raskid u roku 14 dana i s <a href="#privatnost" class="drawer-link">Izjavom o zaštiti osobnih podataka</a>.</label>
       </div>
       <div class="order-error" id="orderError" role="alert" tabindex="-1" hidden></div>
       <p class="order-sum" id="orderSum"></p>
+      <p class="order-terms">Narudžbom prihvaćate <a href="#uvjeti" class="drawer-link">Uvjete kupnje</a> (pravo na raskid u 14 dana) i <a href="#privatnost" class="drawer-link">Izjavu o zaštiti osobnih podataka</a>.</p>
       <p class="order-lead" data-ship-lead hidden></p>
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: <span data-if-confirm><span class="nw">e-mail</span> s linkom za potvrdu, zatim </span>podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
@@ -1412,6 +1534,7 @@ Datum: ______________   Potpis (samo ako se šalje poštom): ______________</pre
         <div id="lbLeadRow" hidden><dt>Izrada</dt><dd id="lbLead"></dd></div>
       </dl>
       <div class="lb-size" id="lbSize" hidden><p class="lb-size-h">Veličina i nošenje</p><p id="lbSizeText"></p><p class="lb-size-all" id="lbSizeAll"></p></div>
+      <p class="lb-handmade">Ručni rad – moguća su mala odstupanja u šavu i nijansi u odnosu na fotografiju.</p>
       <p class="lb-ship" id="lbShip" hidden></p>
       <p class="lb-gone" id="lbGone" hidden><span id="lbGoneText"></span> <button type="button" class="lb-more" id="lbMore">Pogledajte slobodne torbe</button></p>
       <p class="ask" id="lbAsk"><span id="lbAskLead">Pitanje prije narudžbe?</span> Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
@@ -2117,7 +2240,7 @@ function renderCart(){
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
-  /* v68: rok za raskid (i iznimka za izradu po posebnim željama) stoji u Uvjetima t. 6 i uz kvačicu, ne u ovom retku */
+  /* v68: rok za raskid (i iznimka za izradu po posebnim željama) stoji u Uvjetima t. 7 i uz kvačicu, ne u ovom retku */
   document.getElementById("orderNoteMade").hidden = !anyMade || hold.dataset.made === "1";
   /* v66: kratak natpis; uputa o želji ispod polja, samo kad je u košarici nešto po narudžbi */
   document.getElementById("fNoteLabel").textContent = anyMade ? "Napomena uz dostavu (neobavezno)" : "Napomena uz dostavu ili narudžbu (neobavezno)";
@@ -2136,7 +2259,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Želju ne morate čekati da potvrdimo: uplatite odmah nakon narudžbe. Ako je ne možemo ispuniti, javit ćemo vam se prije izrade, a vi birate: izradu bez te želje ili povrat cijelog iznosa.</span>` : ""}` : ""}`;
+      ${p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana. Ako imate posebnu želju (npr. vlastitu mjeru, natpis, drugu tkaninu), javit ćemo vam se prije izrade i reći može li se ostvariti te zadržavate li pravo na povrat. Ako je riječ o izradi po vašim osobnim specifikacijama, za nju pravo na povrat nemate – izrađujemo je tek nakon što to pisano potvrdite.</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2696,6 +2819,52 @@ function claimFromLink(){
     }).catch(() => ask(null));
 }
 
+/* v73: funkcija za jednostrani raskid (ZZP čl. 81.a, NN 59/26): 1. podaci, 2. pregled izjave i „Potvrditi raskid
+   ugovora”; potvrdu sa sadržajem, datumom i vremenom šalje api/raskid e-poštom (st. 6.) */
+(function raskidInit(){
+  const f = document.getElementById("raskidForm"); if(!f) return;
+  const $ = id => document.getElementById(id);
+  const s1 = $("raskidStep1"), s2 = $("raskidStep2"), done = $("raskidDone");
+  const val = () => ({ name: $("rName").value.trim(), no: $("rNo").value.trim(), email: $("rEmail").value.trim(),
+    iban: $("rIban").value.replace(/\s+/g, "").toUpperCase(), note: $("rNote").value.trim(), website: $("rWeb").value });
+  const err = (el, msg) => { el.textContent = msg; el.hidden = !msg; if(msg) el.focus(); };
+  /* iz e-maila s potvrdom: …#raskid?no=2026-0007 popuni broj narudžbe */
+  const pre = /^#raskid\?(.*)$/.exec(location.hash);
+  if(pre){ const q = new URLSearchParams(pre[1]); if(q.get("no")) $("rNo").value = q.get("no").slice(0, 40); const go = () => document.getElementById("raskid").scrollIntoView(); setTimeout(go, 0); addEventListener("load", () => { go(); setTimeout(go, 600); }, { once: true }); }
+  f.addEventListener("submit", e => {
+    e.preventDefault();
+    const v = val(), miss = [];
+    if(!v.name) miss.push("ime i prezime");
+    if(!v.no) miss.push("broj narudžbe (ili datum narudžbe i naziv torbe)");
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v.email)) miss.push("ispravan e-mail za potvrdu");
+    if(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban)) miss.push("IBAN u obliku HR12 3456 … (ili ga ostavite prazno)");
+    if(miss.length) return err($("raskidError"), "Molimo upišite: " + miss.join(", ") + ".");
+    err($("raskidError"), "");
+    $("raskidPreview").textContent = "Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.\n"
+      + "Ime i prezime: " + v.name + "\nBroj narudžbe: " + v.no + "\nE-mail: " + v.email
+      + (v.iban ? "\nIBAN za povrat novca: " + v.iban.replace(/(.{4})(?=.)/g, "$1 ") : "") + (v.note ? "\nNapomena: " + v.note : "");
+    s1.hidden = true; s2.hidden = false; $("raskidConfirm").focus();
+  });
+  $("raskidBack").addEventListener("click", () => { s2.hidden = true; s1.hidden = false; $("rName").focus(); });
+  $("raskidConfirm").addEventListener("click", async e => {
+    const btn = e.currentTarget; btn.disabled = true; err($("raskidError2"), "");
+    try {
+      const res = await fetch(apiUrl("raskid"), { method: "POST", headers: POST_JSON, body: JSON.stringify(val()) });
+      const { ok: resOk, data } = await apiRead(res);
+      if(resOk && data.ok){
+        s2.hidden = true; done.hidden = false;
+        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4).`;
+        done.focus(); return;
+      }
+      btn.disabled = false;
+      err($("raskidError2"), (data && data.error ? data.error + " " : "Slanje nije uspjelo. ") + "Izjavu nam možete poslati i e-mailom na " + OWNER_EMAIL + " — rok je poštovan ako je pošaljete prije isteka 14 dana.");
+    } catch(x){
+      btn.disabled = false;
+      err($("raskidError2"), "Veza trenutno ne radi. Pokušajte ponovno ili izjavu pošaljite e-mailom na " + OWNER_EMAIL + " — rok je poštovan ako je pošaljete prije isteka 14 dana.");
+    }
+  });
+})();
+
 function showOrderSuccess(srv){
   /* v62: podaci za uplatu iz odgovora servisa (Postavke) imaju prednost pred ugrađenima */
   if(srv && (srv.payment || srv.ownerEmail)) applyServerSettings({ payment: srv.payment, ownerEmail: srv.ownerEmail });
@@ -2906,7 +3075,7 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim posebnim željama)" : ""}; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a06).</li>
+        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili)" : ""}, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
