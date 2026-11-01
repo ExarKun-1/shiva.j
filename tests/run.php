@@ -189,6 +189,9 @@ $ok(sj_care_applies(['material' => 'Umjetna koža, podstava od lana']) && sj_car
   && !sj_care_applies(['material' => 'Pamučna tkanina s ručnim printom']) && !sj_care_applies(['cat' => 'ostalo', 'material' => 'umjetna koža']) && !sj_care_applies(['cat' => 'ostalo']),
   'v74 (vijeće V74-1/5): upute za njegu samo uz torbe od umjetne kože (prazan materijal torbe = umjetna koža), ne uz tkaninu ni Ostalo');
 $ok(str_starts_with(sj_care_text(), 'Bok, ja sam tvoja nova torba.') && str_ends_with(sj_care_text(), 'Uz malo brige dugo ćemo ići zajedno.'), 'v74: tekst uputa za njegu doslovno iz index.html');
+$c75 = sj_defaults(); $tA = sj_terms_text($c75); $c75['ship_lead'] = ''; $tB = sj_terms_text($c75); $c75['ship_lead'] = '3 $1 dana'; $tC = sj_terms_text($c75);
+$ok(str_contains($tA, 'nakon primitka uplate, obično u roku 1–2 radna dana. Modele') && str_contains($tB, 'nakon primitka uplate. Modele') && str_contains($tC, 'obično u roku 3 $1 dana.') && str_contains($tA, 'najkasnije u roku 14 dana od primitka uplate'),
+  'v75: Uvjeti t. 6 — rok slanja iz Postavki (zadano 1–2 radna dana; prazno bez roka), Stalna kolekcija najkasnije 14 dana');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

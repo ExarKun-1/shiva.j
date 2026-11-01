@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v43');
+define('SJ_VERSION', 'admin v44');
 
 /* ---------- postavke ---------- */
 
@@ -58,7 +58,7 @@ function sj_defaults(): array {
       'model'     => 'HR00',
       'barcode'   => 'img/barkod-uplata.png',
     ],
-    'ship_lead'        => '',                          // rok slanja nakon uplate, npr. "1–2 radna dana" (prazno = ne prikazuje se)
+    'ship_lead'        => '1–2 radna dana',            // rok slanja nakon uplate (v75: odluka vlasnice, 10. krug); prazno = ne prikazuje se
     'pickup_info'      => 'Matije Gupca 33, Zabok — radnim danom od 8 do 15 sati; kad je narudžba spremna, javit ćemo vam se i dogovoriti termin.',
     'password_hash'    => '',
     'login_fails'      => [],
@@ -1143,7 +1143,7 @@ function sj_care_text(): string {
 function sj_terms_text(?array $c = null): string {
   static $cache = [];
   $c = $c ?? sj_config();
-  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'];
+  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '');
   if (isset($cache[$key])) return $cache[$key];
   $html = @file_get_contents(dirname(__DIR__) . '/index.html');
   if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) return $cache[$key] = '';
@@ -1151,6 +1151,9 @@ function sj_terms_text(?array $c = null): string {
   $drop = !empty($c['require_confirm']) ? 'data-if-noconfirm' : 'data-if-confirm';
   $h = preg_replace('#<span ' . $drop . '>.*?</span>#s', '', $h) ?? '';
   $h = preg_replace('#<span data-ttl-text>.*?</span>#s', sj_hours_text(max(1, (int)$c['ttl_hours'])), $h) ?? '';
+  /* v75: rok slanja iz Postavki; prazno = rečenica bez roka (kao stranica) */
+  $sl = trim((string)($c['ship_lead'] ?? ''));
+  $h = preg_replace('#<span data-ship-lead-wrap>(.*?)<span data-ship-lead>.*?</span></span>#s', $sl !== '' ? '${1}' . str_replace(['\\', '$'], ['\\\\', '\\$'], $sl) : '', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
