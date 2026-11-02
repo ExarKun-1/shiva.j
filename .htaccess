@@ -17,4 +17,9 @@ Options -Indexes
     Header set Cache-Control "no-cache, must-revalidate"
   </Files>
   Header set X-Content-Type-Options "nosniff"
+  # v77 (recenzija R76-S5): stranica se ne smije umetati u tuđe stranice (clickjacking); setifempty — admin i
+  # storno šalju vlastiti, stroži CSP i DENY iz PHP-a, koji se ne smije pregaziti
+  Header setifempty X-Frame-Options "SAMEORIGIN"
+  Header setifempty Content-Security-Policy "frame-ancestors 'self'"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>

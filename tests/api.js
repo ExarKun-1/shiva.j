@@ -357,9 +357,14 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const getR = await fetch(U + 'raskid');
       ok(miss.status === 400 && /ime i prezime, ispravan e-mail/.test(miss.data.error || '') && bIban.status === 400 && /IBAN/.test(bIban.data.error || '') && hp.status === 400 && getR.status === 405,
         'v73: api/raskid odbija prazna polja, krivi IBAN, mamac za botove i GET');
+      clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
       const lnk = await post('raskid', { name: 'Hitno platite', no: '2026-0001', email: 'b@primjer.hr', note: 'Uplatite na http://zlo.example' });
-      const lnk2 = await post('raskid', { name: 'http://zlo', no: '2026-0001', email: 'b@primjer.hr' });
-      ok(lnk.status === 400 && lnk2.status === 400 && /poveznice/.test(lnk.data.error || ''), 'v73 (vijeće N73-1): poveznice i e-adrese u izjavi odbijene — potvrda ne može nositi lažnu poruku');
+      const mlL = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m);
+      const cL = mlL.find(x => /potvrda primitka izjave o raskidu/.test(x)) || '', oL = mlL.find(x => /RASKID UGOVORA:/.test(x)) || '';
+      ok(lnk.status === 200 && lnk.data.ok && /Napomena: Uplatite na \[uklonjeno\]/.test(cL) && !/zlo\.example/.test(cL) && /http:\/\/zlo\.example/.test(oL),
+        'v77 (recenzija R76-P9, ZZP čl. 81.a st. 3.): izjava s poveznicom se prima; kupcu poveznica „[uklonjeno]”, vlasnici izvorni tekst');
+      const ordL = await post('order', { _order: { customer: { name: 'Dobili ste 500 EUR na www.prevara.example', email: 'z@primjer.hr', phone: '091 111 1111' }, items: [{ id: 'luna' }], shipping: { id: 'pickup' } } });
+      ok(ordL.status === 400 && /poveznice/.test(ordL.data.error || ''), 'v77 (recenzija R76-S3): narudžba s poveznicom u imenu odbijena (e-mail ne nosi lažnu poruku)');
       clearLimits(); const same = [];
       for (let i = 0; i < 4; i++) same.push((await post('raskid', { name: 'Isti', no: '2026-0001', email: 'isti@primjer.hr' })).status);
       ok(same.join() === '200,200,200,429', 'v73: najviše 3 potvrde istom primatelju na sat, zatim uputa za e-mail (429)');

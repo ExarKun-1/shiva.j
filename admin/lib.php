@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v45');
+define('SJ_VERSION', 'admin v46');
 
 /* ---------- postavke ---------- */
 
@@ -1116,6 +1116,15 @@ function sj_payment_ref(string $no): string {
 /* opis plaćanja za HUB-3 nalog: najviše 35 znakova, zato samo trgovina i broj narudžbe */
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
+/* v77 (recenzija R76-S3, R76-P9): poveznice i e-adrese u tekstu koji kupac upiše, a mi ga ponavljamo u e-mailu */
+const SJ_LINK_RE = '~(https?:|www\.|[a-z0-9-]+\.(hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b|@)~iu';
+function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s); }
+function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\.\S+|\S+@\S+|[a-z0-9-]+\.(hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b\S*)~iu', '[uklonjeno]', $s) ?? ''; }
+/* v77: napomena modela iz Stalne kolekcije iz košarice: „remen: boja, duljina; želja” → [remen, želja] */
+function sj_strap_split(string $note): array {
+  if (preg_match('/^remen: ([^;]+?)(?:; (.*))?$/su', trim($note), $m)) return [trim($m[1]), trim((string)($m[2] ?? ''))];
+  return ['', trim($note)];
+}
 /* v74 (vijeće V74-1): upute za njegu idu uz torbe (rubrika Torbe) od umjetne kože — prazan ili nepopunjen {…}
    materijal kod torbe znači umjetna koža (kao prikaz torbe na stranici, filled() i matShown) */
 function sj_care_applies(array $p): bool {

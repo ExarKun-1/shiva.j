@@ -352,7 +352,7 @@ function sj_handle_action(string $act, array &$c): string {
     case 'order_cancel': {
       /* v63: storno bilo koje neplaćene narudžbe (i one samo iz Stalne kolekcije, bez rezervacije) — oslobađa mjesta */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
-      if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
+      if (!preg_match('/^SJ-\d{4}-\d{4,6}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       $ord = sj_order_find(['no' => $no]);
       if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
       if (!empty($ord['paidAt'])) throw new RuntimeException('Narudžba je označena plaćenom: prvo uklonite oznaku (i vratite novac kupcu).');
@@ -378,7 +378,7 @@ function sj_handle_action(string $act, array &$c): string {
          23:59 sljedećeg radnog dana (v76: bez granica od 96 h i 7 dana), najviše dvaput; komad koji je u
          međuvremenu otišao drugome ne uzima se (javlja se). Trag: proofAt[]. */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
-      if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
+      if (!preg_match('/^SJ-\d{4}-\d{4,6}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       $out = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($no) {
         $ord = sj_order_find(['no' => $no]);
         if (!$ord) return ['err' => 'Narudžba nije nađena.'];
@@ -415,7 +415,7 @@ function sj_handle_action(string $act, array &$c): string {
     case 'order_unpaid': {
       /* „Plaćeno” / „Ukloni oznaku” za cijelu narudžbu (i staru, iz arhive) */
       $no = sj_clean((string)($_POST['no'] ?? ''), 20);
-      if (!preg_match('/^SJ-\d{4}-\d{4}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
+      if (!preg_match('/^SJ-\d{4}-\d{4,6}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       $ord = sj_order_find(['no' => $no]); /* i u arhivi (starije od zadnjih 300) */
       if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
       /* v69 (vijeće na v68, N68-3): automatski storno nije vlasničina odluka — „Označi plaćenom” ga poništava; komad koji
