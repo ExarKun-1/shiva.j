@@ -515,8 +515,9 @@ if ($a === 'raskid') {
   if ($miss) sj_json_out(['ok' => false, 'error' => 'Molimo upišite: ' . implode(', ', $miss) . '.'], 400);
   /* vijeće (N73-1): potvrda ide na upisanu adresu — bez poveznica i e-adresa u tekstu koji se ponavlja (zlouporaba
      za lažne poruke s adrese trgovine); ime samo slovima */
-  /* v77 (recenzija R76-P9, ZZP čl. 81.a st. 3.): izjava se uvijek prima; u potvrdi kupcu poveznice i e-adrese iz
-     ponovljenog teksta zamjenjuju se s „[uklonjeno]” (sj_unlink), vlasnica dobiva izvorni tekst */
+  /* v77 (recenzija R76-P9, ZZP čl. 81.a st. 3.): izjava se uvijek prima (i ime s brojkama ili poveznicom); u potvrdi kupcu
+     poveznice i e-adrese iz ponovljenog teksta zamjenjuju se s „[uklonjeno]” (sj_unlink), a pozdrav je bez imena ako ime
+     nije samo slovima (V77-3); vlasnica dobiva izvorni tekst */
   /* vijeće (N73-2): sve tri granice prvo samo provjeriti; upisuju se tek kad prođu sve (odbijeni ne troše ukupnu) */
   $toKey = 'raskid_to|' . sj_email_key($r['email']);
   if (!sj_rate_limit('raskid', 5, 3600, false, false) || !sj_global_limit($toKey, 3, 3600, false) || !sj_global_limit('raskid', 120, 3600, false))
@@ -540,7 +541,8 @@ if ($a === 'raskid') {
   /* vijeće (N73-1): kupcu IBAN skraćen (sadržaj izjave ostaje prepoznatljiv), vlasnici cijeli */
   $rC = ['name' => sj_unlink($r['name']), 'no' => sj_unlink($r['no']), 'note' => sj_unlink($r['note'])] + $r;
   $bodyC = sj_terms_withdraw_lines($r['iban'] !== '' ? ['iban' => substr($r['iban'], 0, 4) . ' … ' . substr($r['iban'], -4)] + $rC : $rC);
-  $t = ['Dobar dan, ' . $rC['name'] . ',', '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];
+  /* vijeće V77-3: ime koje nije samo slova ne ide u pozdrav (lažna poruka s adrese trgovine) */
+  $t = [(preg_match("/^\p{L}[\p{L} .'’\-]{0,79}$/u", $r['name']) ? 'Dobar dan, ' . $r['name'] . ',' : 'Dobar dan,'), '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];
   foreach ($bodyC as $l) $t[] = $l;
   $t[] = 'Datum i vrijeme podnošenja: ' . $when;
   $t[] = '';
@@ -969,7 +971,8 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
   $lines[] = $itemsText;
   /* v65: želja kupca istaknuta — da se ne previdi prije šivanja */
   /* v77 (recenzija R76-D4): odabir remena iz ponude zasebno; „ŽELJA KUPCA” samo za upisanu želju */
-  foreach ($items as $it) if (!empty($it['made']) && trim((string)($it['note'] ?? '')) !== '') { [$strap, $wish] = sj_strap_split((string)$it['note']);
+  $pById72 = sj_products_by_id();
+  foreach ($items as $it) if (!empty($it['made']) && trim((string)($it['note'] ?? '')) !== '') { [$strap, $wish] = sj_strap_split((string)$it['note'], $pById72[(string)($it['id'] ?? '')] ?? []);
     if ($strap !== '') $lines[] = 'REMEN — ' . $it['name'] . ': ' . $strap . ' (iz ponude)';
     if ($wish !== '') $lines[] = 'ŽELJA KUPCA — ' . $it['name'] . ': ' . $wish . ' — prije izrade javite se kupcu (posebna želja izvan ponude: pisana potvrda, t. 7.2 Uvjeta)'; }
   $lines[] = 'Dostava: ' . $shipText;
@@ -1141,7 +1144,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $names[] = $n . ($q > 1 ? " × $q" : '');
     /* v77 (recenzija R76-P6, ZZP čl. 76. st. 2. i čl. 60. st. 1. t. 1.): glavna obilježja — materijal i mjere uz stavku */
     $pI = $byIdC[(string)($it['id'] ?? '')] ?? []; $fl = fn($v) => (($v = trim((string)$v)) !== '' && !str_contains($v, '{')) ? $v : '';
-    $mat = $fl($pI['material'] ?? '') ?: ((string)($pI['cat'] ?? 'torbe') === 'torbe' ? 'umjetna koža' : ''); $dim = $fl($pI['dims'] ?? '');
+    $mat = $pI ? ($fl($pI['material'] ?? '') ?: ((string)($pI['cat'] ?? 'torbe') === 'torbe' ? 'umjetna koža' : '')) : ''; /* vijeće V77-4 */ $dim = $fl($pI['dims'] ?? '');
     $spec = implode(', ', array_filter([$mat, $dim]));
     $lines[] = '- ' . $n . ($q > 1 ? " × $q" : '') . (!empty($it['note']) ? ' (' . $it['note'] . ')' : '') . ' — ' . sj_fmt_eur((float)($it['price'] ?? 0) * $q) . ($spec !== '' ? "\n  " . $spec : '');
     if (!empty($it['made'])) { $anyMade = true; if (!empty($it['lead'])) $leads[] = (string)$it['lead']; } else { $anyUnique = true; $nUnique++; }
@@ -1228,7 +1231,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $t[] = '';
     /* v65: želja kupca (boja, duljina) — potvrda i obećanje iz košarice */
     foreach ($madeIt as $it) if (trim((string)($it['note'] ?? '')) !== '')
-      { [$strap, $wish] = sj_strap_split((string)$it['note']); /* v77 (recenzija R76-D4, K2): remen iz izbornika ≠ želja */
+      { [$strap, $wish] = sj_strap_split((string)$it['note'], $byIdC[(string)($it['id'] ?? '')] ?? []); /* v77 (recenzija R76-D4, K2): remen iz izbornika ≠ želja */
         if ($strap !== '') $t[] = 'Remen za „' . $it['name'] . '”: ' . $strap . ' (iz ponude) – za takvu torbu imate pravo na raskid u 14 dana.';
         if ($strap !== '' && $wish !== '') $t[] = 'Vaša posebna želja za „' . $it['name'] . '”: ' . $wish . '. Javit ćemo vam se prije izrade i reći može li se ostvariti i je li riječ o izradi po vašim osobnim specifikacijama, za koju nemate pravo na raskid; takvu izradu počinjemo tek nakon vaše pisane potvrde, pa rok izrade teče od te potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.';
         elseif ($strap === '') $t[] = 'Vaša želja za „' . $it['name'] . '”: ' . trim((string)$it['note']) . '. Ako je to boja ili duljina iz ponude, za torbu imate pravo na raskid u 14 dana. Ako je posebna želja izvan ponude, javit ćemo vam se prije izrade i reći može li se ostvariti i je li riječ o izradi po vašim osobnim specifikacijama, za koju nemate pravo na raskid; takvu izradu počinjemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.'; }

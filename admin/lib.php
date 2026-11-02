@@ -1117,12 +1117,20 @@ function sj_payment_ref(string $no): string {
 function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_payment_ref($no), 0, 35); }
 
 /* v77 (recenzija R76-S3, R76-P9): poveznice i e-adrese u tekstu koji kupac upiše, a mi ga ponavljamo u e-mailu */
-const SJ_LINK_RE = '~(https?:|www\.|[a-z0-9-]+\.(hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b|@)~iu';
+/* vijeće V77-2: nastavak domene samo malim slovima (ne „Ilica 1.Online”, „Pozdrav.Eu”), „@” samo u obliku e-adrese (ne „@ana”) */
+const SJ_LINK_RE = '~(https?:|www\.|[a-z0-9-]+\.(?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b|\S+@\S+\.\S+)~iu';
 function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s); }
-function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\.\S+|\S+@\S+|[a-z0-9-]+\.(hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b\S*)~iu', '[uklonjeno]', $s) ?? ''; }
-/* v77: napomena modela iz Stalne kolekcije iz košarice: „remen: boja, duljina; želja” → [remen, želja] */
-function sj_strap_split(string $note): array {
-  if (preg_match('/^remen: ([^;]+?)(?:; (.*))?$/su', trim($note), $m)) return [trim($m[1]), trim((string)($m[2] ?? ''))];
+function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\.\S+|\S+@\S+\.\S+|[a-z0-9-]+\.(?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b\S*)~iu', '[uklonjeno]', $s) ?? ''; }
+/* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
+const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];
+const SJ_STRAP_LENGTHS = ['140 cm', '100 cm'];
+/* napomena modela iz Stalne kolekcije iz košarice: „remen: boja, duljina; želja” → [remen, želja]. Vijeće V77-1: „iz ponude”
+   samo za Stalnu kolekciju i samo kad su boja i duljina s popisa; inače je cijeli tekst želja */
+function sj_strap_split(string $note, ?array $p = null): array {
+  if ($p !== null && !sj_is_collection($p)) return ['', trim($note)];
+  if (preg_match('/^remen: ([^,;]+), ([^;]+?)(?:; (.*))?$/su', trim($note), $m)
+      && in_array(trim($m[1]), SJ_STRAP_COLORS, true) && in_array(trim($m[2]), SJ_STRAP_LENGTHS, true))
+    return [trim($m[1]) . ', ' . trim($m[2]), trim((string)($m[3] ?? ''))];
   return ['', trim($note)];
 }
 /* v74 (vijeće V74-1): upute za njegu idu uz torbe (rubrika Torbe) od umjetne kože — prazan ili nepopunjen {…}
@@ -1149,7 +1157,7 @@ function sj_care_text(): string {
 function sj_terms_text(?array $c = null): string {
   static $cache = [];
   $c = $c ?? sj_config();
-  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '');
+  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '') . '|' . md5(json_encode($c['shipping'] ?? []));
   if (isset($cache[$key])) return $cache[$key];
   $html = @file_get_contents(dirname(__DIR__) . '/index.html');
   if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) return $cache[$key] = '';
@@ -1161,13 +1169,17 @@ function sj_terms_text(?array $c = null): string {
   $sl = trim((string)($c['ship_lead'] ?? ''));
   /* vijeće V75-3: rok se umeće tek nakon strip_tags/dekodiranja (oznaka SJSHIPLEAD), pa e-mail = stranica */
   $h = preg_replace('#<span data-terms-ship-wrap>(.*?)<span data-terms-ship-lead>.*?</span></span>#s', $sl !== '' ? '${1}SJSHIPLEAD' : '', $h) ?? '';
+  /* vijeće V77-7: najjeftinija dostava s cijenom iz Postavki (kao stranica) */
+  $paid = array_values(array_filter(sj_shipping(), fn($o) => (float)($o['price'] ?? 0) > 0)); usort($paid, fn($a, $b) => (float)$a['price'] <=> (float)$b['price']);
+  $cheap = $paid ? (string)$paid[0]['label'] : '';
+  $h = preg_replace('#<span data-terms-cheap-wrap>(.*?)<span data-terms-cheapest>.*?</span></span>#s', $cheap !== '' ? '${1}SJCHEAPEST' : '', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
   $h = preg_replace('#<li>#', '- ', $h) ?? '';
   $h = html_entity_decode(strip_tags($h), ENT_QUOTES | ENT_HTML5, 'UTF-8');
   $h = str_replace("\u{00A0}", ' ', $h);
-  $h = str_replace('SJSHIPLEAD', $sl, $h);
+  $h = str_replace(['SJSHIPLEAD', 'SJCHEAPEST'], [$sl, $cheap], $h);
   $lines = array_map(fn($l) => trim(preg_replace('/[ \t]+/', ' ', $l) ?? ''), explode("\n", $h));
   $out = []; foreach ($lines as $l) { if ($l === '' && (!$out || end($out) === '')) continue; $out[] = $l; }
   while ($out && end($out) === '') array_pop($out);

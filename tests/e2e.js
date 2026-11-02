@@ -681,6 +681,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     ok(/Za „Klasik crna” odaberite boju i duljinu remena\./.test(fix76) && foc76 === 'sc' && !(await p76.isVisible('.pay-steps')), 'v77 (recenzija R76-D1): bez boje i duljine remena narudžba iz Stalne kolekcije ne ide, fokus na izbornik');
     const nC = await p76.locator('.strap-sel[data-k="sc"] option').count(), nL = await p76.locator('.strap-sel[data-k="sl"] option').count();
     await p76.selectOption('.strap-sel[data-k="sc"]', 'tamno zelena'); await p76.selectOption('.strap-sel[data-k="sl"]', '100 cm'); await p76.fill('.strap-wish', 'inicijali J. Š.');
+    ok(await p76.locator('#orderFix').isHidden(), 'v77 (vijeće V77-5): poruka o remenu nestaje kad su boja i duljina odabrane');
     const note76 = await p76.evaluate(() => (cart.find(c => c.id === 'klasik') || {}).note);
     await p76.reload({ waitUntil: 'networkidle' }); await p76.click('#openCart'); await p76.waitForTimeout(300);
     const keep = await p76.evaluate(() => [document.querySelector('.strap-sel[data-k="sc"]').value, document.querySelector('.strap-sel[data-k="sl"]').value, document.querySelector('.strap-wish').value]);

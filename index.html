@@ -1303,7 +1303,7 @@
       <h4>7.4. Povrat torbe</h4>
       <p>Torbu vratite ili je predajte nama (SHIVA.&nbsp;J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a u svakom slučaju najkasnije u roku od 14 dana od dana kada ste nam uputili svoju odluku o jednostranom raskidu ugovora. Smatra se da ste svoju obvezu izvršili na vrijeme ako prije isteka tog roka torbu pošaljete ili predate nama. Izravne troškove povrata robe morate snositi sami. Molimo torbu dobro zapakirajte; preporučujemo slanje s praćenjem.</p>
       <h4>7.5. Povrat novca</h4>
-      <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo; od dostava koje nudimo najjeftinija je BOX NOW paketomat).</p>
+      <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo<span data-terms-cheap-wrap>; od dostava koje nudimo najjeftinija je <span data-terms-cheapest>BOX NOW paketomat</span></span>).</p>
       <p>Povrat novca bit će izvršen na isti način na koji ste izvršili uplatu, na račun s kojeg ste platili; na drugi račun samo na vaš izričit zahtjev (npr. IBAN upisan u izjavu o raskidu). Za povrat ne snosite nikakve troškove. Povrat novca možemo izvršiti tek nakon što nam torba bude vraćena ili nakon što nam dostavite dokaz da ste nam je poslali natrag, ovisno o tome što je prije.</p>
       <h4>7.6. Stanje vraćene torbe</h4>
       <p>Odgovorni ste za svako umanjenje vrijednosti robe koje je rezultat rukovanja robom, osim onog koje je bilo potrebno za utvrđivanje prirode, obilježja i funkcionalnosti robe. Torbu smijete pregledati i isprobati kao što biste to mogli u trgovini. Iznos umanjenja određujemo prema stvarnoj šteti, na primjer prema trošku čišćenja ili popravka, i pisano vam ga obrazlažemo uz fotografije. Pravo na raskid time ne gubite.</p>
@@ -1351,7 +1351,7 @@
 
       <details><summary><h3>2. Koje podatke prikupljamo</h3></summary>
       <ul class="legal-list">
-        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli i odabrana boja i duljina remena, sadržaj polja „Posebna želja” ili „Boja, duljina i želje” te napomena. U to polje molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli i odabrana boja i duljina remena, sadržaj polja „Posebna želja” ili „Boja, duljina i želje” te napomena. U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
         <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
         <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, e-mail adresa, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
         <li><b>Kontakt e-mailom ili na Instagramu:</b> podaci koje nam sami navedete.</li>
@@ -2357,6 +2357,9 @@ document.getElementById("cartItems").addEventListener("change", e => {
   const it = cart.find(c => c.id === sel.dataset.id); if(!it) return;
   const allowed = { sc: STRAP_COLORS, sl: STRAP_LENGTHS }[sel.dataset.k]; if(!allowed) return; /* vijeće V76-2 */
   it[sel.dataset.k] = allowed.includes(sel.value) ? sel.value : ""; it.note = strapNote(it); saveCart();
+  /* vijeće V77-5: poruka „odaberite boju i duljinu” nestaje kad su odabrane za sve modele */
+  const fx = document.getElementById("orderFix");
+  if(/remena\.$/.test(fx.textContent) && !cart.some(p => p.made && catOf(p) === "kolekcija" && (!p.sc || !p.sl))){ fx.hidden = true; fx.textContent = ""; }
   if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError();
 });
 document.getElementById("cartItems").addEventListener("input", e => {
@@ -2424,6 +2427,10 @@ function applyServerSettings(data){
   /* v75: rok slanja u Uvjetima t. 6 iz Postavki (kao e-mail, sj_terms_text) */
   document.querySelectorAll("[data-terms-ship-lead]").forEach(el => { el.textContent = SHIP_LEAD; }); /* vijeće V75-1: ne [data-ship-lead] (redak u košarici) */
   document.querySelectorAll("[data-terms-ship-wrap]").forEach(el => { el.hidden = !SHIP_LEAD; });
+  /* vijeće V77-7: najjeftinija dostava (s cijenom) iz Postavki, kao sj_terms_text u e-mailu */
+  { const paid = SHIPPING_OPTIONS.filter(o => Number(o.price) > 0).sort((a, b) => a.price - b.price)[0];
+    document.querySelectorAll("[data-terms-cheapest]").forEach(el => { el.textContent = paid ? paid.label : ""; });
+    document.querySelectorAll("[data-terms-cheap-wrap]").forEach(el => { el.hidden = !paid; }); }
   if(data.freeShip && typeof data.freeShip === "object") FREE_SHIP = { min: Number(data.freeShip.min) || 0, ids: Array.isArray(data.freeShip.ids) ? data.freeShip.ids.map(String) : [] };
   if(data.limits && typeof data.limits === "object") ["bags", "articles", "unique"].forEach(k => { if(Number(data.limits[k]) > 0) LIMITS[k] = Number(data.limits[k]); });
   if(Array.isArray(data.sizes)) SIZES = data.sizes.filter(x => x && x.mjera).map(x => ({ mjera: String(x.mjera), opis: String(x.opis || "") }));
