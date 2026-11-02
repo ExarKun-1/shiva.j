@@ -196,6 +196,16 @@ $Z = fn(string $x) => (new DateTime($x, new DateTimeZone('Europe/Zagreb')))->get
 $ok(sj_pay_deadline($Z('2026-11-06 20:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-05 20:00'), 24) === $Z('2026-11-06 20:00')
   && sj_pay_deadline($Z('2026-12-24 20:00'), 24) === $Z('2026-12-28 23:59') && sj_pay_deadline($Z('2026-11-07 10:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-08 23:30'), 1) === $Z('2026-11-09 00:30'),
   'v76 (točka B): rok koji pada u subotu, nedjelju ili blagdan pomiče se na 23:59 prvoga radnog dana (pet 20:00 → pon 23:59; Badnjak → pon 28. 12.); radni dan bez promjene');
+$okL = !sj_has_link('100 cm. Hvala') && !sj_has_link('Ilica 1.Online') && !sj_has_link('Pozdrav.Eu sam') && !sj_has_link('pratite me @ana') && !sj_has_link('Ana-Marija Šimić') && !sj_has_link('BOX NOW 1234, Ilica 1, 10000 Zagreb')
+  && sj_has_link('www.prevara.example') && sj_has_link('https://x.y') && sj_has_link('pisi na a@b.hr') && sj_has_link('posjeti prevara.hr') && sj_unlink('idi na http://zlo.example sad') === 'idi na [uklonjeno] sad';
+$ok($okL, 'v77 (vijeće V77-2): filtar poveznica — bez lažnih pogodaka (velika slova iza točke, @ime), poveznice i e-adrese i dalje odbijene');
+$kol = ['made' => true, 'cat' => 'torbe']; $ost = ['made' => true, 'cat' => 'ostalo'];
+$ok(sj_strap_split('remen: crna, 140 cm; inicijali', $kol) === ['crna, 140 cm', 'inicijali'] && sj_strap_split('remen: ljubičasta, 200 cm', $kol) === ['', 'remen: ljubičasta, 200 cm']
+  && sj_strap_split('remen: crna, 140 cm', $ost) === ['', 'remen: crna, 140 cm'] && sj_strap_split('smeđi remen', $kol) === ['', 'smeđi remen'],
+  'v77 (vijeće V77-1): „iz ponude” samo za Stalnu kolekciju i samo s popisa boja i duljina');
+$html = (string)file_get_contents(__DIR__ . '/../index.html');
+preg_match('/const STRAP_COLORS = (\[[^\]]*\]);/u', $html, $mC); preg_match('/const STRAP_LENGTHS = (\[[^\]]*\]);/u', $html, $mL);
+$ok(json_decode($mC[1] ?? 'null', true) === SJ_STRAP_COLORS && json_decode($mL[1] ?? 'null', true) === SJ_STRAP_LENGTHS, 'v77: popis boja i duljina remena isti na stranici i u PHP-u');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";
