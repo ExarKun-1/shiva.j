@@ -41,7 +41,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Tekstilno-tehnološkom/.test(rad) && /umjetne kože/.test(rad) && !/skaj/i.test(rad) && /Matije Gupca 33/.test(rad) && /s torbom u ruci/.test(rad), 'Radionica: umjetna koža, adresa, potvrđene rečenice');
   ok(/Šivalec\. Što radim, piše mi već u prezimenu/.test(rad) && /J od mene/.test(rad) && /rezom, a završava šavom/.test(rad) && /Ono što tako nastane/.test(rad) && /druge jednobojne/.test(rad) && /dana šivanja/.test(rad) && !/[{}]/.test(rad), 'Radionica v27: dorađene rečenice, bez {…}');
   ok(/Šarena se dogodi/.test(await pd.textContent('.about-quote')) && /Jasmina/.test(await pd.textContent('.about-quote small')) && !/po narudžbi: šarena se dogodi/.test(await pd.textContent('#radionica')), 'citat samo lijevo, s potpisom');
-  ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /iznimka je samo izrada po vašoj posebnoj želji izvan ponude/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, ograda u Ukratko');
+  ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /možete je vratiti u roku 14 dana\. Detalji/.test(await pd.textContent('#uvjeti')) && !/posebn\S* želj|Kada pravo na raskid nemate/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, Ukratko bez iznimke (v78: bez posebnih želja)');
   ok(/Ručno šivane torbe iz Zaboka/.test(await pd.title()) && /Ručno šivane torbe iz Zaboka/.test(await pd.textContent('footer')), 'slogan u naslovu i podnožju');
   ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, imate 24 sata za uplatu \(ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana\), i za unikate i za modele iz Stalne kolekcije\. Do tada je unikatna torba rezervirana za vas i nitko je drugi ne može naručiti; ako uplata ne stigne, vraća se u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
   ok(!/šaren/i.test(await pd.evaluate(() => [...document.querySelectorAll('#kako, #torbe, #emptyCart, #orderForm, meta')].map(e => e.textContent + (e.getAttribute('content') || '')).join(' '))), 'v62: bez riječi „šarena” u tekstovima kupnje');
@@ -72,7 +72,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pd.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
   const stepsM = await pd.textContent('.pay-steps').catch(() => '');
   ok(/Narudžba je zaprimljena — mjesto za „Klasik crna” je vaše\./.test(await pd.textContent('.pay-thanks').catch(() => '')), 'v66: ploča samo za kolekciju — „mjesto za „Klasik crna” je vaše”');
-  ok(!/rezervacij/i.test(stepsM) && /Ugovor možete raskinuti u roku 14 dana od preuzimanja \(osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili\), i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti kupnje, t\.\u00a07\)/.test(stepsM) && /Vašu torbu šijemo u roku izrade \(5 radnih dana\), zatim narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se/.test(stepsM) && /Čim uplata bude vidljiva, krećemo s izradom\./.test(stepsM) && !/snimku zaslona/.test(stepsM), 'narudžba bez unikata + preuzimanje: rok iz podatka, preuzimanje, 14 dana s ogradom; v65: bez traženja snimke uplate');
+  ok(!/rezervacij/i.test(stepsM) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti kupnje, t\.\u00a07\)/.test(stepsM) && /Vašu torbu šijemo u roku izrade \(5 radnih dana\), zatim narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se/.test(stepsM) && /Čim uplata bude vidljiva, krećemo s izradom\./.test(stepsM) && !/snimku zaslona/.test(stepsM), 'narudžba bez unikata + preuzimanje: rok iz podatka, preuzimanje, 14 dana s ogradom; v65: bez traženja snimke uplate');
   const noteM = await pd.textContent('.pay-note').catch(() => '');
   ok(!/pripremamo za preuzimanje/.test(noteM) && !/pošaljite nam potvrdu/.test(noteM), 'napomena ispod uplate samo o e-mailu');
   const shareTxt = await pd.getAttribute('.copy-btn[data-label="Podaci za uplatu"]', 'data-copy').catch(() => '');
@@ -211,7 +211,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
   const stepsU = await pm.textContent('.pay-steps');
-  ok(/Do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti u roku 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: torbu tada čuvamo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
+  ok(/Do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: torbu tada čuvamo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
     ok(!(await pm.locator('#toast.show').count()), 'nakon narudžbe nema obavijesti preko ploče');
   const prim = await pm.locator('.pay-data div:has(dt:text-is("Primatelj")) dd').innerHTML();
   ok(prim.indexOf('Matije Gupca') < prim.indexOf('copy-btn'), 'Kopiraj primatelja ispod adrese');
@@ -376,7 +376,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p7b.goto(URL, { waitUntil: 'networkidle' }); await p7b.waitForTimeout(400); await p7b.click('#openCart'); await p7b.waitForTimeout(300);
   ok(/Ovu narudžbu ste već poslali/.test(await p7b.textContent('#orderError').catch(() => '')) && /poništava prethodni link/.test(await p7b.textContent('#orderError').catch(() => '')), 'v53/v54 H: nakon ponovnog učitavanja — „Ovu narudžbu ste već poslali”, novi e-mail poništava link');
   await p7b.close();
-  await p7.fill('.cart-note', 'crna, kraći remen'); await p7.waitForTimeout(200);
+  await p7.selectOption('.strap-sel[data-k="sc"]', 'smeđa'); await p7.waitForTimeout(200); /* v78: kolekcija nema slobodnu napomenu — mijenja se boja remena */
   ok(await p7.isVisible('#orderBtn') && !(await p7.isVisible('#editOrder')), 'v51: promjena napomene dok narudžba čeka potvrdu vraća obrazac');
   const links = [...fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8').matchAll(/\?potvrda=([a-f0-9]{32}\.[a-f0-9]{32})/g)];
   const link = links.length ? links[links.length - 1][1] : '';
@@ -418,7 +418,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p10.evaluate(() => document.getElementById('lightbox').classList.contains('open')), 'v48: klik na ime torbe otvara prikaz');
   await p10.keyboard.press('Escape');
   await p10.click('#openCart'); await p10.waitForTimeout(300);
-  ok(/1 kom · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.cart-note-l') && /Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana\. Ako imate posebnu želju .*izrađujemo je tek nakon što to pisano potvrdite\./.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
+  ok(/1 kom · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.strap-sel') && (await p10.locator('.strap-wish, .cart-note').count()) === 0 && /Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana\./.test(await p10.textContent('#cartItems')) && !/želj/.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
   await p10.fill('#fEmail', 'ana.probic@primjer');
   await pickStrap(p10); await p10.click('#orderBtn'); await p10.waitForTimeout(300);
   const fix = await p10.textContent('#orderFix');
@@ -607,6 +607,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       await rem.first().click(); await p23.click('#openCart'); await p23.waitForTimeout(300);
       const c23 = await p23.textContent('.drawer-body');
       ok(!/Stalne kolekcije|torbu bez te želje/i.test(c23) && /pravo na povrat u 14 dana/.test(c23), 'v66/v73: Ostalo u košarici — bez teksta za torbe iz kolekcije, napomena o boji iz ponude i povratu');
+      ok(/Boja i duljina iz opisa artikla \(neobavezno\)/.test(c23) && !/želj/i.test(c23) && (await p23.getAttribute('.cart-note', 'placeholder')) === 'npr. crna, 100 cm', 'v78: Ostalo u košarici — polje „Boja i duljina iz opisa artikla”, bez riječi „želja”');
+      const ut = await p23.textContent('#uvjeti');
+      ok(await p23.locator('[data-terms-auto-wrap]').evaluate(el => el.hidden) && /Zasebnu isporuku prihvatljivu za okoliš ne nudimo\./.test(ut) && /ništa nam ne dugujete/.test(ut),
+        'v78: Uvjeti — bez rokova (ispitni podaci) sati automatskog storna skriveni; t. 6 pakiranje i isporuka za okoliš; t. 7.3 raskid prije uplate');
     } else ok(false, 'v66: nema artikla iz Ostalo s fotografijom u ispitnim podacima');
     await m23.close();
   }
@@ -680,14 +684,14 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const fix76 = await p76.textContent('#orderFix'), foc76 = await p76.evaluate(() => document.activeElement && document.activeElement.dataset.k);
     ok(/Za „Klasik crna” odaberite boju i duljinu remena\./.test(fix76) && foc76 === 'sc' && !(await p76.isVisible('.pay-steps')), 'v77 (recenzija R76-D1): bez boje i duljine remena narudžba iz Stalne kolekcije ne ide, fokus na izbornik');
     const nC = await p76.locator('.strap-sel[data-k="sc"] option').count(), nL = await p76.locator('.strap-sel[data-k="sl"] option').count();
-    await p76.selectOption('.strap-sel[data-k="sc"]', 'tamno zelena'); await p76.selectOption('.strap-sel[data-k="sl"]', '100 cm'); await p76.fill('.strap-wish', 'inicijali J. Š.');
+    await p76.selectOption('.strap-sel[data-k="sc"]', 'tamno zelena'); await p76.selectOption('.strap-sel[data-k="sl"]', '100 cm');
     ok(await p76.locator('#orderFix').isHidden(), 'v77 (vijeće V77-5): poruka o remenu nestaje kad su boja i duljina odabrane');
     const note76 = await p76.evaluate(() => (cart.find(c => c.id === 'klasik') || {}).note);
     await p76.reload({ waitUntil: 'networkidle' }); await p76.click('#openCart'); await p76.waitForTimeout(300);
-    const keep = await p76.evaluate(() => [document.querySelector('.strap-sel[data-k="sc"]').value, document.querySelector('.strap-sel[data-k="sl"]').value, document.querySelector('.strap-wish').value]);
+    const keep = await p76.evaluate(() => [document.querySelector('.strap-sel[data-k="sc"]').value, document.querySelector('.strap-sel[data-k="sl"]').value, document.querySelectorAll('.strap-wish').length]);
     const over76 = await p76.evaluate(() => document.querySelector('.drawer-body').scrollWidth - document.querySelector('.drawer-body').clientWidth);
-    ok(nC === 9 && nL === 3 && note76 === 'remen: tamno zelena, 100 cm; inicijali J. Š.' && keep.join('|') === 'tamno zelena|100 cm|inicijali J. Š.' && over76 <= 0 && /Odaberite boju i duljinu remena iz ponude/.test(await p76.textContent('#cartWish')),
-      'v76: Stalna kolekcija — izbornici boje (8) i duljine remena (140/100 cm), posebna želja zasebno; napomena „remen: …; …”, pamti se, bez klizanja (390 px)');
+    ok(nC === 9 && nL === 3 && note76 === 'remen: tamno zelena, 100 cm' && keep.join('|') === 'tamno zelena|100 cm|0' && over76 <= 0 && /Odaberite boju i duljinu remena iz ponude/.test(await p76.textContent('#cartWish')),
+      'v76: Stalna kolekcija — izbornici boje (8) i duljine remena (140/100 cm), v78: bez polja za posebnu želju; napomena „remen: …”, pamti se, bez klizanja (390 px)');
     await m76.close(); }
   ok(errors.length === 0, 'bez JS grešaka' + (errors.length ? ': ' + errors.join(' ; ') : ''));
   // ---------- v73: funkcija za raskid (ZZP čl. 81.a), redak uz gumb, ručni rad u prikazu torbe ----------

@@ -192,7 +192,7 @@ $nv = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
 $cx = $req('POST', ['act' => 'order_cancel', 'no' => 'SJ-2026-0601', 'back' => '?s=narudzbe']);
 $o601 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0601') $o601 = $x;
 $ok(preg_match('/SJ-2026-0601.*?Storniraj narudžbu/s', $nv) === 1 && !empty($o601['cancelledAt']) && str_contains($cx, 'oslobođeno je mjesto za „Klasik crna”') && str_contains($cx, 'javite mu se: kol@p.hr'), 'v63: „Storniraj narudžbu” — i samo iz Stalne kolekcije; oslobađa mjesto, poruka „javite se kupcu”');
-$ok(str_contains($nv, '091 601 0601') && str_contains($nv, 'Klasik crna — <span class="nw">60,00') && str_contains($nv, '· Stalna kolekcija') && str_contains($nv, '<b>želja: crna</b>') && str_contains($nv, 'remen kraći'), 'v64/v65: Narudžbe — telefon, napomena; stavka u jednoj liniji s vrstom i željom');
+$ok(str_contains($nv, '091 601 0601') && str_contains($nv, 'Klasik crna — <span class="nw">60,00') && str_contains($nv, '· Stalna kolekcija') && str_contains($nv, '<b>crna</b>') && !str_contains($nv, 'želja:') && str_contains($nv, 'remen kraći'), 'v64/v65: Narudžbe — telefon, napomena; stavka u jednoj liniji s vrstom i napomenom (v78: bez riječi „želja”)');
 $px = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0601', 'back' => '?s=narudzbe']);
 $o601b = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0601') $o601b = $x;
 $nv2 = $curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]);
@@ -356,6 +356,11 @@ $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) a
 $ok(empty($nn['SJ-2026-0971']['cancelledAt']) && !empty($nn['SJ-2026-0972']['cancelledAt']) && str_contains($relD, 'Nisu stornirane narudžbe za koje je kupac javio uplatu: SJ-2026-0971'), 'v69 (N69-7): skupni storno ne dira narudžbu za koju je kupac javio uplatu');
 $vC = $req('GET', ['s' => 'narudzbe']);
 $ok(preg_match('#kupac javio uplatu</span> <span class="muted">[^<]*— provjerite izvod</span><br><span class="muted">rok za uplatu do [^<]*\(još \d+ h\)#u', $vC) === 1, 'v69 (D69-9): otvorena narudžba — „kupac javio uplatu” prvi, zatim rok za uplatu s preostalim satima');
+/* v78 (odluka vlasnice, 12. krug, t4): kvačica „i one s javljenom uplatom” */
+file_put_contents($D . '/narudzbe.json', json_encode([$mk('SJ-2026-0973', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003', 'claimedAt' => $isoAgo(1)]), $mk('SJ-2026-0974', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003'])]));
+$relE = $req('POST', ['act' => 'res_release_ip', 'ip' => 'feedfacecafe0003', 'claimed' => '1', 'back' => '?s=rez']);
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$ok(!empty($nn['SJ-2026-0973']['cancelledAt']) && !empty($nn['SJ-2026-0974']['cancelledAt']) && !str_contains($relE, 'Nisu stornirane'), 'v78 (t4): s kvačicom „i one s javljenom uplatom” skupni storno obuhvaća i te narudžbe');
 /* v70: „Potvrda primljena” — rok do 23:59 sljedećeg radnog dana (najviše 96 h), najviše dvaput, 7 dana od narudžbe;
    komad koji je otišao drugome se ne uzima; trag proofAt[]; kratki e-mail kupcu (kvačica) */
 @unlink($D . '/mail-log.txt');
