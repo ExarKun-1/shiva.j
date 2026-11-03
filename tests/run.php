@@ -196,6 +196,18 @@ $Z = fn(string $x) => (new DateTime($x, new DateTimeZone('Europe/Zagreb')))->get
 $ok(sj_pay_deadline($Z('2026-11-06 20:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-05 20:00'), 24) === $Z('2026-11-06 20:00')
   && sj_pay_deadline($Z('2026-12-24 20:00'), 24) === $Z('2026-12-28 23:59') && sj_pay_deadline($Z('2026-11-07 10:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-08 23:30'), 1) === $Z('2026-11-09 00:30'),
   'v76 (točka B): rok koji pada u subotu, nedjelju ili blagdan pomiče se na 23:59 prvoga radnog dana (pet 20:00 → pon 23:59; Badnjak → pon 28. 12.); radni dan bez promjene');
+/* v78 (odluka vlasnice, 12. krug, t3): automatski storno 48 h nakon roka; subota, nedjelja, blagdan → 23:59 radnog dana */
+$ok(sj_auto_cancel_at($Z('2026-11-06 20:00'), 48) === $Z('2026-11-09 23:59') && sj_auto_cancel_at($Z('2026-11-03 20:00'), 48) === $Z('2026-11-05 20:00')
+  && sj_auto_cancel_at($Z('2026-12-23 12:00'), 48) === $Z('2026-12-28 23:59') && sj_auto_cancel_at($Z('2026-11-04 10:00'), 48) === $Z('2026-11-06 10:00')
+  && sj_cancel_due(['expiredAt' => sj_iso($Z('2026-11-06 20:00'))], 48) === $Z('2026-11-09 23:59'),
+  'v78 (t3): automatski storno koji pada u subotu, nedjelju ili blagdan pomiče se na 23:59 prvoga radnog dana (pet 20:00 + 48 h → pon 23:59; 23. 12. → pon 28. 12.); radni dan bez promjene');
+$c78 = sj_defaults(); $c78['deadline_tick'] = true; $c78['auto_cancel_hours'] = 48; $tOn = sj_terms_text($c78); $c78['deadline_tick'] = false; $tOff = sj_terms_text($c78);
+$ok(str_contains($tOn, 'Narudžbu bez uplate storniramo 48 sati nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana) i o tome vas obavještavamo e-mailom.')
+  && str_contains($tOff, 'Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom.'),
+  'v78 (t3): Uvjeti t. 5 u e-mailu — automatski storno iz Postavki (bez rokova rečenica bez sati)');
+$ok(str_contains($tOn, 'Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.')
+  && !preg_match('/posebn\w* želj|osobnim specifikacijama izvan ponude|Kada pravo na raskid nemate/u', $tOn) && str_contains($tOn, 'pravo na raskid imate i za artikle izrađene po narudžbi'),
+  'v78 (t6, bez želja): Uvjeti t. 6 pakiranje i isporuka za okoliš; bez posebnih želja i iznimke od raskida');
 $okL = !sj_has_link('100 cm. Hvala') && !sj_has_link('Ilica 1.Online') && !sj_has_link('Pozdrav.Eu sam') && !sj_has_link('pratite me @ana') && !sj_has_link('Ana-Marija Šimić') && !sj_has_link('BOX NOW 1234, Ilica 1, 10000 Zagreb')
   && sj_has_link('www.prevara.example') && sj_has_link('https://x.y') && sj_has_link('pisi na a@b.hr') && sj_has_link('posjeti prevara.hr') && sj_unlink('idi na http://zlo.example sad') === 'idi na [uklonjeno] sad';
 $ok($okL, 'v77 (vijeće V77-2): filtar poveznica — bez lažnih pogodaka (velika slova iza točke, @ime), poveznice i e-adrese i dalje odbijene');

@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v46');
+define('SJ_VERSION', 'admin v47');
 
 /* ---------- postavke ---------- */
 
@@ -169,10 +169,16 @@ function sj_next_workday_end(int $ts): int {
 /* v76 (odluka vlasnika projekta, 11. krug, točka B): rok za uplatu = trenutak + ttl sati; ako to pada u subotu, nedjelju
    ili na blagdan RH, rok se pomiče na 23:59 prvoga sljedećeg radnog dana (i bez „Uplatio/la sam”) */
 function sj_pay_deadline(int $from, int $ttlHours): int {
-  $t = $from + max(1, $ttlHours) * 3600;
+  return sj_workday_shift($from + max(1, $ttlHours) * 3600);
+}
+/* trenutak $t; ako pada u subotu, nedjelju ili na blagdan RH → 23:59 prvoga sljedećeg radnog dana */
+function sj_workday_shift(int $t): int {
   $d = (new DateTimeImmutable('@' . $t))->setTimezone(new DateTimeZone('Europe/Zagreb'));
   return sj_is_workday($d) ? $t : max($t, sj_next_workday_end($t));
 }
+/* v78 (odluka vlasnice, 12. krug, t3): automatski storno $auto sati nakon isteka roka; ako to pada u subotu, nedjelju
+   ili na blagdan, u 23:59 prvoga sljedećeg radnog dana (Uvjeti t. 5) */
+function sj_auto_cancel_at(int $exp, int $auto): int { return sj_workday_shift($exp + $auto * 3600); }
 /* „torbu čuvamo” / „torbe čuvamo” / „rok za uplatu produžujemo” (narudžba bez unikata) — za tekstove kupcu */
 function sj_unique_count(array $o): int { $n = 0; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $n++; return $n; }
 /* v70 (D70-5, D70-9): rok je prošao — torbu više ne čuvamo automatski; vlasnica provjerava izvod (bez novog obećanja) */
@@ -253,7 +259,7 @@ function sj_held_until(array $o): int { return sj_held_info($o)['until']; }
 function sj_hold_res_until(array $o, int $payTs): int {
   $c = sj_config(); $auto = !empty($c['deadline_tick']) ? max(0, (int)($c['auto_cancel_hours'] ?? 0)) : 0;
   if ($auto <= 0) return $payTs;
-  return $payTs + $auto * 3600; /* v76: bez granice od 7 dana */
+  return sj_auto_cancel_at($payTs, $auto); /* v76: bez granice od 7 dana; v78: preko vikenda do radnog dana */
 }
 /* Produži rok narudžbe do $newTs i rezervaciju njezinih unikata (samo komade koji su slobodni ili još njezini) —
    zajedničko za „Uplatio/la sam” (api) i „Potvrda primljena” (admin). Poziva se pod bravom narudzba-u-tijeku.json.
@@ -323,7 +329,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
    promjena postavki; v76: bez granice od 7 dana) — da torba ne bude u prodaji dok narudžba još stoji. */
 function sj_cancel_due(array $o, int $auto): int {
   $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
-  $due = $exp + $auto * 3600;
+  $due = sj_auto_cancel_at($exp, $auto); /* v78 (t3) */
   $hu = (!empty($o['claimedAt']) || !empty($o['proofAt'])) ? (int)strtotime((string)($o['reservation']['until'] ?? '')) : 0;
   return $hu > $exp ? min($due, $hu) : $due;
 }
@@ -419,7 +425,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
   } elseif ($kind === 'expired') {
     $back = $uq ? ($many ? 'su torbe ' . implode(' i ', $uq) : 'je torba ' . $uq[0]) . ' ponovno u ponudi' : ''; /* v69 (D69-3): red riječi */
     $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: time();
-    $storno = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso($exp + $auto * 3600)) . ' ne vidimo ni uplatu ni vašu potvrdu o uplati, narudžbu storniramo.' : '';
+    $storno = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso(sj_cancel_due($o + ['expiredAt' => sj_iso($exp)], $auto))) . ' ne vidimo ni uplatu ni vašu potvrdu o uplati, narudžbu storniramo.' : '';
     if (!empty($o['claimedAt']) || !empty($o['proofAt'])) {
       /* v72 (odluka vlasnice, 7. krug): kraći tekst; torba ostaje rezervirana do storna („ne stavljaj tu torbu
          ponovno u prodaju do isteka roka”) — datum iz stvarne rezervacije, ne obećanje */
@@ -428,7 +434,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       $Q = fn(array $a) => implode(' i ', array_map(fn($n) => '„' . $n . '”', $a));
       /* D72-3: potvrdu već imamo — ne tražiti je ponovno; v72.1 (odluka vlasnice, 8. krug): „Ako do tada uplata ne stigne” */
       $cond = $pf ? 'uplata ne stigne' : 'ne dobijemo ni uplatu ni potvrdu';
-      $stornoP = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso($exp + $auto * 3600)) . ' ' . $cond . ', narudžbu storniramo.' : '';
+      $stornoP = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso(sj_cancel_due($o + ['expiredAt' => sj_iso($exp)], $auto))) . ' ' . $cond . ', narudžbu storniramo.' : '';
       sj_send_mail((string)$o['email'], $c['shop'] . " — uplatu još ne vidimo, narudžba $no",
         /* D72-4: inačica „primili smo potvrdu” kad god je potvrda zabilježena */
         $hi . ($pf ? "primili smo vašu potvrdu o uplati za narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, provjerite sa svojom bankom je li uplata izvršena i odgovorite na ovaj e-mail."
@@ -1124,6 +1130,8 @@ function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
 const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];
 const SJ_STRAP_LENGTHS = ['140 cm', '100 cm'];
+/* v78 (12. krug, t1): toliko dana nakon storna isti e-mail ili veza ne naručuje istu torbu (api sj_recent_cancel_text) */
+const SJ_REORDER_BLOCK_DAYS = 7;
 /* napomena modela iz Stalne kolekcije iz košarice: „remen: boja, duljina; želja” → [remen, želja]. Vijeće V77-1: „iz ponude”
    samo za Stalnu kolekciju i samo kad su boja i duljina s popisa; inače je cijeli tekst želja */
 function sj_strap_split(string $note, ?array $p = null): array {
@@ -1157,7 +1165,8 @@ function sj_care_text(): string {
 function sj_terms_text(?array $c = null): string {
   static $cache = [];
   $c = $c ?? sj_config();
-  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '') . '|' . md5(json_encode($c['shipping'] ?? []));
+  $autoH = !empty($c['deadline_tick']) ? max(0, (int)($c['auto_cancel_hours'] ?? 0)) : 0; /* v78 (t3): kao stranica (api/status autoCancel) */
+  $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '') . '|' . md5(json_encode($c['shipping'] ?? [])) . '|' . $autoH;
   if (isset($cache[$key])) return $cache[$key];
   $html = @file_get_contents(dirname(__DIR__) . '/index.html');
   if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) return $cache[$key] = '';
@@ -1173,13 +1182,14 @@ function sj_terms_text(?array $c = null): string {
   $paid = array_values(array_filter(sj_shipping(), fn($o) => (float)($o['price'] ?? 0) > 0)); usort($paid, fn($a, $b) => (float)$a['price'] <=> (float)$b['price']);
   $cheap = $paid ? (string)$paid[0]['label'] : '';
   $h = preg_replace('#<span data-terms-cheap-wrap>(.*?)<span data-terms-cheapest>.*?</span></span>#s', $cheap !== '' ? '${1}SJCHEAPEST' : '', $h) ?? '';
+  $h = preg_replace('#<span data-terms-auto-wrap>(.*?)<span data-terms-auto>.*?</span>(.*?)</span>#s', $autoH > 0 ? '${1}SJAUTOH${2}' : '', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
   $h = preg_replace('#<li>#', '- ', $h) ?? '';
   $h = html_entity_decode(strip_tags($h), ENT_QUOTES | ENT_HTML5, 'UTF-8');
   $h = str_replace("\u{00A0}", ' ', $h);
-  $h = str_replace(['SJSHIPLEAD', 'SJCHEAPEST'], [$sl, $cheap], $h);
+  $h = str_replace(['SJSHIPLEAD', 'SJCHEAPEST', 'SJAUTOH'], [$sl, $cheap, sj_hours_text(max(1, $autoH))], $h);
   $lines = array_map(fn($l) => trim(preg_replace('/[ \t]+/', ' ', $l) ?? ''), explode("\n", $h));
   $out = []; foreach ($lines as $l) { if ($l === '' && (!$out || end($out) === '')) continue; $out[] = $l; }
   while ($out && end($out) === '') array_pop($out);

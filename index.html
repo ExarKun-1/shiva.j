@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v77 (2026-11-02)
+     SHIVA.J WEBSHOP — v78 (2026-11-03)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,11 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v78 — uz api v45, admin v47 (odgovori vlasnice, 12. krug; odluka vlasnika: „makni svugdje opciju
+           po želji”): bez posebnih želja (košarica, Uvjeti „Ukratko”, t. 2, t. 7.1 i 7.2, Izjava t. 2,
+           ekran nakon narudžbe), pravo na raskid za sve artikle; t. 5 automatski storno preko vikenda
+           do 23:59 radnog dana (rok iz Postavki); t. 6 pakiranje i „isporuku prihvatljivu za okoliš ne
+           nudimo” (ZZP čl. 60. st. 1. t. 8.); t. 7.3 raskid prije uplate stornira narudžbu
      v77 — uz api v44, admin v46 (recenzija v76: vijeće, pravna recenzija, probni kupci): boja i
            duljina remena obavezne; podaci za uplatu do roka; fokus u raskidu; Uvjeti t. 2 i 8
            (ručna izrada bez „nisu nedostatak”), t. 4, t. 7.5 (povrat na račun s kojeg ste platili),
@@ -1257,16 +1262,16 @@
     <div class="legal-block" id="uvjeti">
       <h2>Uvjeti kupnje</h2>
       <hr class="seam">
-      <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku 14 dana; iznimka je samo izrada po vašoj posebnoj želji izvan ponude, i to samo ako ste to prije izrade pisano potvrdili. Detalji su u nastavku.</p>
+      <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku 14 dana. Detalji su u nastavku.</p>
 <!-- UVJETI-START -->
       <details><summary><h3>1. Prodavatelj</h3></summary>
       <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
       </details>
 
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate; modele iz Stalne kolekcije sašijemo najkasnije u roku 14 dana od primitka uplate (kod posebne želje izvan ponude od vaše pisane potvrde). Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
+      <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate; modele iz Stalne kolekcije sašijemo najkasnije u roku 14 dana od primitka uplate. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
       <p>Ručna izrada: mala odstupanja u šavu, nijansi tkanine i uzorku u odnosu na fotografiju svojstvo su ručne izrade i na to vas posebno upozoravamo; vaša zakonska prava zbog nedostataka time se ne ograničavaju. Boje se na različitim zaslonima mogu prikazivati malo drukčije.</p>
-      <p>Posebne želje izvan ponude: u polje „Posebna želja” (kod modela iz Stalne kolekcije, uz izbor boje i duljine remena iz ponude) ili „Boja, duljina i želje” (ostali artikli) možete upisati i želju izvan ponude (npr. remen na mjeru koju sami zadate, natpis ili inicijale, drugu tkaninu ili izmijenjen kroj). Takvu želju ne izrađujemo odmah: prije izrade javit ćemo vam se e-mailom i reći može li se ostvariti i je li riječ o izradi po vašim osobnim specifikacijama, za koju nemate pravo na raskid (točka 7.2). Izradu po takvoj želji počinjemo tek nakon vaše pisane potvrde. Ako želju ne možemo ispuniti, birate izradu bez nje ili povrat cijelog iznosa.</p>
+      <p>Artikle izrađujemo samo iz ponude: kod modela iz Stalne kolekcije boju i duljinu remena birate u košarici između ponuđenih, a kod ostalih artikala po narudžbi upisujete boju i duljinu navedene u opisu artikla. Izradu izvan ponude (npr. po vlastitoj mjeri, s natpisom ili od druge tkanine) ne nudimo.</p>
       </details>
 
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -1282,24 +1287,25 @@
       <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Plaćanje karticom trenutno nije moguće.</p>
       <p>Rok za uplatu je <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde </span>narudžbe. Ako taj rok pada u subotu, nedjelju ili na blagdan, produljuje se do 23:59 prvoga sljedećeg radnog dana. Točan datum i sat vidite odmah nakon narudžbe i u potvrdi narudžbe. Do tada je unikatna torba rezervirana samo za vas. Ako vaša banka nudi instant uplatu, odaberite je: obična uplata poslana navečer, vikendom ili uoči blagdana može stići tek sljedeći radni dan.</p>
       <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili nam pošaljite snimku potvrde o uplati. Ako to učinite prije isteka roka, rok se produljuje, u pravilu do 23:59 sljedećeg radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas.</p>
-      <p>Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Ako nam niste javili da ste platili, torba se istekom roka vraća u prodaju. Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos.</p>
+      <p>Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Ako nam niste javili da ste platili, torba se istekom roka vraća u prodaju. Narudžbu bez uplate storniramo<span data-terms-auto-wrap> <span data-terms-auto>48 sati</span> nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana)</span> i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos.</p>
       </details>
 
       <details><summary><h3>6. Izrada i dostava</h3></summary>
       <p>Gotove unikate pakiramo i šaljemo (ili pripremamo za preuzimanje u radionici) nakon primitka uplate<span data-terms-ship-wrap>, obično u roku <span data-terms-ship-lead>1–2 radna dana</span></span>. Modele po narudžbi izrađujemo u roku navedenom uz artikl (modele iz Stalne kolekcije najkasnije u roku 14 dana od primitka uplate), a zatim ih šaljemo; ako ste u jednoj narudžbi naručili i unikat i model po narudžbi, šaljemo ih zajedno kad je sve gotovo. Kad paket pošaljemo, javit ćemo vam e-mailom. Za preuzimanje u radionici javit ćemo vam se da dogovorimo termin.</p>
+      <p>Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.</p>
       <p>Rizik oštećenja ili gubitka torbe prelazi na vas kad je preuzmete vi ili osoba koju ste odredili, a koja nije prijevoznik. Ako je pošiljka pri preuzimanju vidljivo oštećena, molimo zabilježite to kod dostavljača i javite nam se.</p>
       </details>
 
       <details><summary><h3>7. Pravo na jednostrani raskid ugovora</h3></summary>
       <h4>7.1. Pravo i rok</h4>
       <p>Ugovor možete jednostrano raskinuti u roku od 14 dana bez navođenja razloga. Rok iznosi 14 dana od dana kada je vama ili trećoj osobi koju ste vi odredili, a koja nije prijevoznik, roba koja je predmet ugovora predana u posjed. Ako ste jednom narudžbom naručili više torbi koje stižu odvojeno, rok teče od dana kada vam je predana posljednja.</p>
-      <p>To pravo imate za unikate i za modele iz Stalne kolekcije, uključujući torbe za koje ste boju ili duljinu remena odabrali iz ponude.</p>
-      <h4>7.2. Kada pravo na raskid nemate</h4>
-      <p>Pravo na raskid nemate za torbu izrađenu prema vašim osobnim specifikacijama izvan ponude (npr. remen krojen na mjeru koju ste sami zadali, izvezeni natpis ili inicijali, tkanina koju ste donijeli ili koju nabavljamo posebno za vas, izmijenjen kroj). Za svaku takvu narudžbu prije izrade e-mailom vam izričito pišemo da za nju nemate pravo na raskid i izradu počinjemo tek kad to pisano potvrdite.</p>
+      <p>To pravo imate za sve artikle: za unikate, za modele iz Stalne kolekcije i za druge artikle po narudžbi, uključujući one za koje ste boju i duljinu odabrali iz ponude.</p>
+      <h4>7.2. Artikli po narudžbi</h4>
+      <p>Artikle izrađujemo samo iz ponude (točka 2.), a ne po vašim osobnim specifikacijama, pa pravo na raskid imate i za artikle izrađene po narudžbi.</p>
       <h4>7.3. Kako raskinuti ugovor</h4>
       <p>Da biste mogli ostvariti pravo na jednostrani raskid ugovora, morate nas obavijestiti o svojoj odluci o jednostranom raskidu ugovora prije isteka roka i to nedvosmislenom izjavom poslanom poštom (Matije Gupca 33, 49210 Zabok) ili elektroničkom poštom (shivaj.handmade@gmail.com), u kojoj ćete navesti svoje ime i prezime, adresu, broj telefona ili adresu elektroničke pošte, a možete koristiti i priloženi primjer obrasca za jednostrani raskid ugovora. Obrazac nije obvezan.</p>
       <p>Pravo na jednostrani raskid ugovora možete ostvariti i mrežnim putem, poveznicom „Raskid ugovora” na dnu naše web stranice (odjeljak „Raskid ugovora”, poveznica je i u e-mailu s potvrdom narudžbe). Ako upotrijebite opisanu mrežnu funkciju, poslat ćemo vam bez odgađanja potvrdu o zaprimanju vaše izjave o jednostranom raskidu ugovora na trajnom mediju (e-poštom), uključujući njezin sadržaj te datum i vrijeme podnošenja.</p>
-      <p>Rok je poštovan ako izjavu pošaljete prije isteka 14 dana.</p>
+      <p>Rok je poštovan ako izjavu pošaljete prije isteka 14 dana. Ako ugovor raskinete prije nego što ste platili, narudžbu storniramo, a torba se vraća u prodaju; ništa nam ne dugujete.</p>
       <h4>7.4. Povrat torbe</h4>
       <p>Torbu vratite ili je predajte nama (SHIVA.&nbsp;J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a u svakom slučaju najkasnije u roku od 14 dana od dana kada ste nam uputili svoju odluku o jednostranom raskidu ugovora. Smatra se da ste svoju obvezu izvršili na vrijeme ako prije isteka tog roka torbu pošaljete ili predate nama. Izravne troškove povrata robe morate snositi sami. Molimo torbu dobro zapakirajte; preporučujemo slanje s praćenjem.</p>
       <h4>7.5. Povrat novca</h4>
@@ -1351,7 +1357,7 @@
 
       <details><summary><h3>2. Koje podatke prikupljamo</h3></summary>
       <ul class="legal-list">
-        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli i odabrana boja i duljina remena, sadržaj polja „Posebna želja” ili „Boja, duljina i želje” te napomena. U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena. U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
         <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
         <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, e-mail adresa, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
         <li><b>Kontakt e-mailom ili na Instagramu:</b> podaci koje nam sami navedete.</li>
@@ -1456,7 +1462,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v77</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v78</p>
 </footer>
 
 <!-- Košarica -->
@@ -1754,7 +1760,7 @@ let cartRestored = false; /* dok se košarica ne vrati iz spremišta, prazna ko�
 function saveCart(){
   if(!cartRestored) return;
   /* ključ narudžbe se ovdje NE briše: mijenja se samo kad se promijeni sadržaj narudžbe (vidi orderKey) */
-  storeSet("cart", cart.length ? cart.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "", sc: c.sc || "", sl: c.sl || "", wish: c.wish || "" })) : null);
+  storeSet("cart", cart.length ? cart.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "", sc: c.sc || "", sl: c.sl || "" })) : null);
 }
 function restoreCart(){
   const saved = storeGet("cart");
@@ -1763,8 +1769,8 @@ function restoreCart(){
       const p = PRODUCTS.find(x => x.id === String(sv && sv.id));
       if(!p || isGone(p) || noPhoto(p) || cart.some(c => c.id === p.id)) return;
       cart.push({ ...p, qty: p.made && catOf(p) !== "kolekcija" ? Math.max(1, Math.min(10, Number(sv.qty) || 1)) : 1, note: p.made ? String(sv.note || "").slice(0, 120) : "",
-        sc: STRAP_COLORS.includes(sv.sc) ? sv.sc : "", sl: STRAP_LENGTHS.includes(sv.sl) ? sv.sl : "", wish: String(sv.wish || "").slice(0, 80) });
-      /* vijeće V76-1: kolekcija — napomena uvijek iz izbornika i želje (stara ručna napomena iz v75 ne ide skrivena uz narudžbu) */
+        sc: STRAP_COLORS.includes(sv.sc) ? sv.sc : "", sl: STRAP_LENGTHS.includes(sv.sl) ? sv.sl : "" });
+      /* vijeće V76-1, v78: kolekcija — napomena uvijek samo iz izbornika (stara želja se ne prenosi; stara ručna napomena iz v75 ne ide skrivena uz narudžbu) */
       const last = cart[cart.length - 1]; if(last && last.id === p.id && p.made && catOf(p) === "kolekcija") last.note = strapNote(last);
     });
   }
@@ -2293,7 +2299,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">Boja, duljina i želje (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, kraći remen" maxlength="120" aria-describedby="cartWish">` : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana. Ako imate posebnu želju (npr. vlastitu mjeru, natpis, drugu tkaninu), javit ćemo vam se prije izrade i reći može li se ostvariti te zadržavate li pravo na povrat. Ako je riječ o izradi po vašim osobnim specifikacijama, za nju pravo na povrat nemate – izrađujemo je tek nakon što to pisano potvrdite.</span>` : ""}` : ""}`;
+      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">Boja i duljina iz opisa artikla (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, 100 cm" maxlength="120" aria-describedby="cartWish">` : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana.</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2321,20 +2327,18 @@ function renderCart(){
   document.getElementById("orderSum").textContent = `Ukupno ${fmt(total)}` + (shipPrice() ? ` (${fmt(goods)} + dostava\u00a0${fmt(shipPrice()).replace(/ /g, "\u00a0")})` : "");
 }
 /* v76 (odluka vlasnice, 11. krug): boja i duljina remena za modele iz Stalne kolekcije biraju se iz ponude;
-   posebna želja ide u zasebno polje. Napomena koja ide uz narudžbu (note) slaže se iz sva tri. */
+   v78 (odluka vlasnika, 12. krug): posebnih želja nema, pa se napomena uz narudžbu (note) slaže samo iz boje i duljine. */
 const STRAP_COLORS = ["crna", "smeđa", "crvena", "bež", "plava", "tamno zelena", "bordo", "siva"];
 const STRAP_LENGTHS = ["140 cm", "100 cm"];
 function strapNote(p){
   const parts = [];
   if(p.sc || p.sl) parts.push("remen: " + [p.sc, p.sl].filter(Boolean).join(", "));
-  if(p.wish) parts.push(p.wish);
   return parts.join("; ").slice(0, 120);
 }
 function strapHtml(p, id){
   const opt = (list, v) => `<option value="">odaberite</option>` + list.map(x => `<option${x === v ? " selected" : ""}>${escHtml(x)}</option>`).join("");
-  return `<div class="strap-row"><label class="strap-l">Boja remena<select class="strap-sel" data-id="${id}" data-k="sc">${opt(STRAP_COLORS, p.sc || "")}</select></label>`
-    + `<label class="strap-l">Duljina remena<select class="strap-sel" data-id="${id}" data-k="sl">${opt(STRAP_LENGTHS, p.sl || "")}</select></label></div>`
-    + `<label class="cart-note-l" for="note-${id}">Posebna želja (neobavezno)</label><input class="cart-note strap-wish" id="note-${id}" data-id="${id}" value="${escHtml(p.wish || "")}" placeholder="npr. inicijali, druga mjera" maxlength="80" aria-describedby="cartWish">`;
+  return `<div class="strap-row"><label class="strap-l">Boja remena<select class="strap-sel" data-id="${id}" data-k="sc" aria-describedby="cartWish">${opt(STRAP_COLORS, p.sc || "")}</select></label>`
+    + `<label class="strap-l">Duljina remena<select class="strap-sel" data-id="${id}" data-k="sl" aria-describedby="cartWish">${opt(STRAP_LENGTHS, p.sl || "")}</select></label></div>`;
 }
 function cartSig(){ return cart.map(p => p.id + "×" + qtyOf(p) + "|" + (p.note || "")).join(","); }
 var pendingSig = "";
@@ -2364,7 +2368,7 @@ document.getElementById("cartItems").addEventListener("change", e => {
 });
 document.getElementById("cartItems").addEventListener("input", e => {
   const n = e.target.closest(".cart-note");
-  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ if(n.classList.contains("strap-wish")){ it.wish = n.value.slice(0, 80); it.note = strapNote(it); } else it.note = n.value.slice(0, 120); saveCart();
+  if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ it.note = n.value.slice(0, 120); saveCart();
     /* v51: promijenjena napomena dok narudžba čeka potvrdu — link iz e-maila vrijedi za staru, pa se obrazac vraća */
     if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) clearOrderError(); } }
 });
@@ -2424,6 +2428,10 @@ function applyServerSettings(data){
     document.querySelectorAll('a[href^="mailto:"]').forEach(a => { if(a.getAttribute("href").slice(7).split("?")[0] !== oldE) return; a.setAttribute("href", "mailto:" + OWNER_EMAIL + (a.getAttribute("href").includes("?") ? "?" + a.getAttribute("href").split("?")[1] : "")); if(a.textContent.trim() === oldE && !a.closest(".legal-block")) a.textContent = OWNER_EMAIL; });
   }
   if(typeof data.shipLead === "string") SHIP_LEAD = data.shipLead.trim();
+  /* v78 (12. krug, t3): automatski storno u Uvjetima t. 5 iz Postavki (kao e-mail, sj_terms_text); 0 = rečenica bez roka */
+  if(typeof data.autoCancel === "number"){ const ac = Math.max(0, Math.floor(data.autoCancel));
+    document.querySelectorAll("[data-terms-auto]").forEach(el => { el.textContent = hoursText(ac); });
+    document.querySelectorAll("[data-terms-auto-wrap]").forEach(el => { el.hidden = !ac; }); }
   /* v75: rok slanja u Uvjetima t. 6 iz Postavki (kao e-mail, sj_terms_text) */
   document.querySelectorAll("[data-terms-ship-lead]").forEach(el => { el.textContent = SHIP_LEAD; }); /* vijeće V75-1: ne [data-ship-lead] (redak u košarici) */
   document.querySelectorAll("[data-terms-ship-wrap]").forEach(el => { el.hidden = !SHIP_LEAD; });
@@ -2924,7 +2932,7 @@ function claimFromLink(){
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
         s2.hidden = true; done.hidden = false;
-        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4).`;
+        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."}${data.cancelled ? " Narudžba još nije plaćena, pa smo je stornirali; ništa nam ne dugujete." : " Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4)."}`; /* v78 (t2) */
         done.focus(); return;
       }
       btn.disabled = false;
@@ -3146,7 +3154,7 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja${anyMade ? " (osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili)" : ""}, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
+        <li><b>Ako se predomislite</b>Ugovor možete raskinuti u roku 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}

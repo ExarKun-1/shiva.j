@@ -5,7 +5,9 @@ const SITE = (process.env.SHIVAJ_SITE || '/tmp/shivaj-test') + '/';
 const D = SITE + 'data/';
 const U = (process.env.SHIVAJ_URL || 'http://127.0.0.1:8090/') + 'api/';
 const R = []; const ok = (c, m) => R.push((c ? 'PASS ' : 'FAIL ') + m);
-const post = async (a, body, type) => { const r = await fetch(U + a, { method: 'POST', headers: { 'Content-Type': type || 'application/json' }, body: JSON.stringify(body) }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
+/* v78: Stalna kolekcija traži boju i duljinu remena iz ponude (i na poslužitelju) — narudžbe bez napomene ih dobivaju */
+const strapFill = body => { const it = body && body._order && body._order.items; if (Array.isArray(it)) it.forEach(x => { if (x && /^(klasik|kol)\d*$/.test(x.id) && x.note === undefined) x.note = 'remen: crna, 140 cm'; }); return body; };
+const post = async (a, body, type) => { const r = await fetch(U + a, { method: 'POST', headers: { 'Content-Type': type || 'application/json' }, body: JSON.stringify(strapFill(body)) }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
 const cust = email => ({ name: 'Potvrda Test', email, phone: '', street: '', city: '' });
 const pickup = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' };
 const order = (key, email, items, total) => ({ _gotcha: '', Napomena: '', _order: { key, customer: cust(email), items, shipping: pickup, goods: total, total } });
@@ -136,7 +138,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     ok(codes.slice(0, 3).every(c => c === 200) && codes[3] === 429, 'najviše 3 e-maila za potvrdu na sat s iste adrese: ' + codes.join(','));
     // 8b) bez provjerene adrese stranice: 503 (potvrda ne otpada tiho)
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
-    const body = JSON.stringify(order('potvrda-host-0001', 'host@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
+    const body = JSON.stringify(strapFill(order('potvrda-host-0001', 'host@primjer.hr', [{ id: 'klasik', qty: 1 }], 60)));
     const out503 = require('child_process').execFileSync('curl', ['-s', '-w', '\n%{http_code}', '-H', 'Host: zli.primjer.hr', '-X', 'POST', '--data-binary', body, U + 'order']).toString();
     ok(/\n503$/.test(out503) && /trenutno nedostupne/.test(out503) && /narudžbe ne rade/.test(mailLog()), 'nepoznat Host bez upisane adrese stranice → 503 i upozorenje vlasnici');
     // 9) prekidač: require_confirm=false vraća staro ponašanje
