@@ -225,7 +225,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const w1 = await post('order', order('api-key-wish-eeee', 'wish@primjer.hr', [{ id: 'klasik2', qty: 1, note: 'remen: smeđa, 100 cm; inicijali AB' }], 60));
     const mlW = fs.readFileSync(D + 'mail-log.txt', 'utf8');
     ok(k1b.data.code === 'open_order' && k1b.data.kind === 'coll' && /Čim uplata bude vidljiva, šijemo vašu torbu \(rok izrade 5 radnih dana od primitka uplate\)/.test(mlW) && !/Torbu iz Stalne kolekcije šijemo za vas nakon uplate/.test(mlW), 'v66: otvorena narudžba nosi vrstu; e-mail kupcu — izrada, rok i slanje u jednom odlomku');
-    ok(w1.data.ok && /Remen za „Klasik smeđa”: smeđa, 100 cm \(iz ponude\) – za takvu torbu imate pravo na raskid u 14 dana\./.test(mlW) && /REMEN — Klasik smeđa: smeđa, 100 cm \(iz ponude\)/.test(mlW) && !/inicijali AB/.test(mlW) && !/ŽELJA KUPCA|posebna želja|Vaša želja/i.test(mlW), 'v65/v78: remen iz ponude u potvrdi kupcu i vlasnici; posebna želja se ne prima ni ne ponavlja');
+    ok(w1.data.ok && /Remen za „Klasik smeđa”: smeđa, 100 cm \(iz ponude\)\./.test(mlW) && /REMEN — Klasik smeđa: smeđa, 100 cm \(iz ponude\)/.test(mlW) && !/inicijali AB/.test(mlW) && !/ŽELJA KUPCA|posebna želja|Vaša želja/i.test(mlW), 'v65/v78: remen iz ponude u potvrdi kupcu i vlasnici; posebna želja se ne prima ni ne ponavlja');
     clearLimits();
     const m2 = await post('order', order('api-key-mod2-eeee', 'mod2@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
     const m3 = await post('order', order('api-key-mod3-eeee', 'mod3@primjer.hr', [{ id: 'klasik2', qty: 1 }], 60));
@@ -323,7 +323,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
         'v25: e-mail kupcu — potvrda na vrhu, poziv na broj „bez SJ-”, „kopirajte”');
       ok(uniq.length > 0 && uniq.every(x => !/osobnim specifikacijama/.test(x) && /(je rezervirana za vas — postoji|su rezervirane za vas — svaka postoji)/.test(x) && /ROK ZA UPLATU: do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(x)), 'v25: narudžba samo s unikatima — rok u uvodu, bez rečenice o izradi po željama');
-      ok(made.length > 0 && made.every(x => /bez navođenja razloga \(osim izrade po vašim osobnim specifikacijama izvan ponude, koju biste nam prije izrade pisano potvrdili\)\./.test(x) && !/ne vrijedi pravo na jednostrani raskid/.test(x)), 'v25: narudžba s artiklom po narudžbi — jedna iznimka, istim riječima kao Uvjeti'); }
+      ok(made.length > 0 && made.every(x => /bez navođenja razloga\. /.test(x) && !/osobnim specifikacijama|ne vrijedi pravo na jednostrani raskid/.test(x)), 'v25/v78 (vijeće V78-P1): narudžba s artiklom po narudžbi — raskid u 14 dana bez iznimke, kao Uvjeti'); }
     ok(/kliknite „Potvrda primljena”/.test(ml) && !/obećali da torbu tada čuvamo/.test(ml) && /Poziv na broj \(za usporedbu s izvodom banke\): \d{4}-\d{4}/.test(ml) && /- Luna — 65,00 €/.test(ml) && /api\/storno\?token=/.test(ml), 'e-mail vlasnici: uputa „Potvrda primljena” (v70), cijena, storno link (lokalni host je provjeren)');
     // 17) v73: Uvjeti u e-mailu s potvrdom (trajni medij) — doslovno kao stranica; funkcija za raskid (ZZP čl. 81.a)
     { const html = fs.readFileSync(SITE + 'index.html', 'utf8');
@@ -388,13 +388,13 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const cR = mlR.split(/^=== /m).find(x => /potvrda primitka izjave o raskidu/.test(x)) || '';
       const oR = mlR.split(/^=== /m).find(x => /RASKID UGOVORA: SJ-/.test(x)) || '';
       const stR = await (await fetch(U + 'status')).json();
-      ok(a1.data.ok && rk.data.ok && rk.data.cancelled === true && oA.cancelledAt && oA.cancelBy === 'kupac (raskid)' && oA.cancelReason === 'kupac odustao' && !read('rezervacije.json').res.t78a && !(stR.ids || []).includes('t78a')
-        && /Narudžba još nije plaćena, pa smo je stornirali; ništa nam ne dugujete\./.test(cR) && !/Što slijedi/.test(cR) && /automatski stornirana/.test(oR),
-        'v78 (t2): raskid neplaćene narudžbe — storno, torba se vraća u prodaju, potvrda „ništa nam ne dugujete”, vlasnica obaviještena');
+      ok(a1.data.ok && rk.data.ok && rk.data.cancelled === undefined && oA.cancelledAt && oA.cancelBy === 'kupac (raskid)' && oA.cancelReason === 'kupac odustao' && !read('rezervacije.json').res.t78a && !(stR.ids || []).includes('t78a')
+        && /Narudžba još nije plaćena, pa smo je stornirali; ništa nam ne dugujete\.\nAko ste u međuvremenu ipak uplatili, cijeli iznos vraćamo najkasnije 14 dana od danas/.test(cR) && !/Što slijedi/.test(cR) && /automatski stornirana/.test(oR) && /vratite je najkasnije 14 dana/.test(oR),
+        'v78 (t2, vijeće V78-S1/S4): raskid neplaćene narudžbe — storno, torba u prodaju, potvrda „ništa nam ne dugujete” uz povrat ako je ipak uplaćeno; odgovor ne otkriva stanje');
       clearLimits();
       const r1 = await post('order', order('api-key-v78r-aaaa', 'v78a@primjer.hr', [{ id: 't78a' }], 65));
       const r2 = await post('order', order('api-key-v78s-aaaa', 'drugi78@primjer.hr', [{ id: 't78a' }], 65));
-      ok(r1.status === 409 && r1.data.code === 'recent_cancel' && /nedavno je stornirana/.test(r1.data.error || '') && r2.status === 409 && r2.data.code === 'recent_cancel',
+      ok(r1.status === 409 && r1.data.code === 'recent_cancel' && /trenutno ne možemo primiti/.test(r1.data.error || '') && !/stornirana/.test(r1.data.error || '') && r2.status === 409 && r2.data.code === 'recent_cancel',
         'v78 (t1): nakon storna isti e-mail i ista veza 7 dana ne mogu ponovno naručiti istu torbu');
       { const n = read('narudzbe.json'); const o = n.find(x => x.no === a1.data.orderNo); o.cancelledAt = new Date(Date.now() - 8 * 86400000).toISOString(); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
       clearLimits();
@@ -404,14 +404,14 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       { const n = read('narudzbe.json'); const o = n.find(x => x.no === r3.data.orderNo); o.paidAt = new Date().toISOString(); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
       clearLimits();
       const rkP = await post('raskid', { name: 'Ana Proba', no: (r3.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr' });
-      ok(rkP.data.ok && rkP.data.cancelled === false && !read('narudzbe.json').find(x => x.no === r3.data.orderNo).cancelledAt, 'v78 (t2): raskid plaćene narudžbe ne stornira (povrat novca po t. 7.5)');
+      ok(rkP.data.ok && !read('narudzbe.json').find(x => x.no === r3.data.orderNo).cancelledAt, 'v78 (t2): raskid plaćene narudžbe ne stornira (povrat novca po t. 7.5)');
       // t5
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
       const b1 = await post('order', order('api-key-v78b-aaaa', 'v78b@primjer.hr', [{ id: 't78b' }], 65));
       const oB = read('narudzbe.json').find(x => x.no === b1.data.orderNo) || {};
       const cl1 = await post('paidclaim', { no: b1.data.orderNo, t: oB.claim });
       const cl2 = await post('paidclaim', { no: b1.data.orderNo, t: oB.claim });
-      const mlC = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /zabilježili smo vašu uplatu, narudžba/.test(x));
+      const mlC = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /zabilježili smo vašu obavijest o uplati, narudžba/.test(x));
       ok(cl1.data.ok && cl1.data.state === 'extended' && cl2.data.state === 'already' && mlC.length === 1 && mlC[0].includes('v78b@primjer.hr') && /Torbu čuvamo za vas do /.test(mlC[0]),
         'v78 (t5): nakon „Uplatio/la sam” kupac dobiva kratki e-mail s datumom do kojeg čuvamo torbu (samo jednom)');
       clearLimits(); }

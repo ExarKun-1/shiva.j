@@ -396,13 +396,15 @@ function sj_deadline_tick(bool $force = false): array {
   /* v69: vlasnica dobiva jedan sažetak automatskih storna (prije o njima nije saznala ništa) */
   $canc = array_values(array_filter($todo, fn($x) => $x[0] === 'cancel'));
   if ($canc) sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — automatski stornirano: ' . implode(', ', array_map(fn($x) => (string)($x[1]['no'] ?? ''), $canc)),
-    "Ove narudžbe automatski su stornirane jer uplata nije označena ni " . sj_hours_text($auto) . " nakon isteka roka:\n\n"
+    "Ove narudžbe automatski su stornirane jer uplata nije označena ni " . sj_hours_text($auto) . " nakon isteka roka (subota, nedjelja i blagdan pomiču storno na 23:59 radnog dana):\n\n"
     . implode("\n", array_map(fn($x) => '- ' . (string)($x[1]['no'] ?? '') . ' — ' . (string)($x[1]['name'] ?? '') . ', ' . (string)($x[1]['total'] ?? '') . ', poziv na broj ' . sj_payment_ref((string)($x[1]['no'] ?? '')), $canc))
     . "\n\nKupci su dobili e-mail o stornu. Ako ipak vidite uplatu, u adminu → Narudžbe kliknite „Označi plaćenom”: ako je komad još slobodan, ostaje kupcu."
     . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
   return array_map(fn($x) => [$x[0], (string)($x[1]['no'] ?? '')], $todo);
 }
 function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
+  /* vijeće V78-S9: narudžba je možda u međuvremenu stornirana (raskid) ili plaćena — tada bez e-maila o roku */
+  if ($kind !== 'cancel') { $fresh = sj_order_find(['no' => (string)($o['no'] ?? '')]); if ($fresh && (!empty($fresh['cancelledAt']) || !empty($fresh['paidAt']))) return; }
   $no = (string)($o['no'] ?? ''); $name = (string)($o['name'] ?? ''); $until = sj_fmt_deadline(sj_pay_until($o)); $untilAcc = sj_fmt_deadline(sj_pay_until($o), 'acc');
   $uq = []; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $uq[] = '„' . (string)($it['name'] ?? '') . '”';
   $many = count($uq) > 1;

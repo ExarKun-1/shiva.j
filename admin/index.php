@@ -276,7 +276,7 @@ function sj_handle_action(string $act, array &$c): string {
          v78 (odluka vlasnice, 12. krug, t4): osim ako je kvačica „i one s javljenom uplatom” uključena */
       $withClaimed = ($_POST['claimed'] ?? '') === '1';
       $claimed = []; $claimedNo = [];
-      if (!$withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if (!empty($oc['claimedAt']) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) { $claimedNo[] = (string)($oc['no'] ?? ''); if (!empty($oc['reservation']['token'])) $claimed[] = (string)$oc['reservation']['token']; }
+      if (!$withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if ((!empty($oc['claimedAt']) || !empty($oc['proofAt'])) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) { $claimedNo[] = (string)($oc['no'] ?? ''); if (!empty($oc['reservation']['token'])) $claimed[] = (string)$oc['reservation']['token']; }
       $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip, $claimed) {
         $d = array_replace(sj_res_default(), $d);
         $n = []; /* v29: tko je storniran — da se vlasnica može javiti */
@@ -289,7 +289,7 @@ function sj_handle_action(string $act, array &$c): string {
          drže mjesta; razlog „lažna narudžba”, kupci ne dobivaju e-mail */
       $collNo = [];
       sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($ip, &$collNo, $withClaimed) {
-        foreach ($list as &$o) if (empty($o['paidAt']) && empty($o['cancelledAt']) && ($withClaimed || empty($o['claimedAt'])) && sj_same_ip($o, [$ip])) {
+        foreach ($list as &$o) if (empty($o['paidAt']) && empty($o['cancelledAt']) && ($withClaimed || (empty($o['claimedAt']) && empty($o['proofAt']))) && sj_same_ip($o, [$ip])) {
           $o['cancelledAt'] = sj_iso(time()); $o['cancelReason'] = 'lažna narudžba'; $o['cancelBy'] = 'vlasnica';
           $collNo[] = (string)($o['no'] ?? '') . (($o['email'] ?? '') !== '' ? ' — ' . $o['email'] : '');
         }
@@ -772,7 +772,7 @@ function sj_view_reservations(array $c): string {
       $h .= '<td class="acts">' . (empty($r['ordered'])
         ? '<span class="muted">košarica, nije narudžba</span><br>' . sj_btn('res_release', ['id' => $id], 'Ukloni', $back, true)
         : sj_btn('res_sold', ['id' => $id], 'Označi plaćenom', $back, false, 'Označiti „' . ($names[$id] ?? $id) . '” plaćenom (' . (string)($r['name'] ?? '') . ')?') . sj_btn('res_release', ['id' => $id], 'Storniraj', $back, true, 'Stornirati rezervaciju za „' . ($names[$id] ?? $id) . '”? Torba se vraća u prodaju.'))
-        . ($ipc !== '' && $perIp[$ipc] > 1 ? sj_btn('res_release_ip', ['ip' => $ipc], 'Storniraj sve s ove adrese', $back, true, 'Stornirati sve rezervacije s ove adrese (' . $perIp[$ipc] . ': ' . implode('; ', array_map(fn($x) => ($names[$x[0]] ?? $x[0]) . ' — ' . $x[1], $ipList[$ipc] ?? [])) . ')? Torbe se odmah vraćaju u prodaju. Na istoj mreži mogu biti i pravi kupci.', '<label class="chk-claimed"><input type="checkbox" name="claimed" value="1"> i one s javljenom uplatom</label> ') : '') . '</td></tr>'; /* v78 (12. krug, t4) */
+        . ($ipc !== '' && $perIp[$ipc] > 1 ? sj_btn('res_release_ip', ['ip' => $ipc], 'Storniraj sve s ove adrese', $back, true, 'Stornirati sve rezervacije s ove adrese (' . $perIp[$ipc] . ': ' . implode('; ', array_map(fn($x) => ($names[$x[0]] ?? $x[0]) . ' — ' . $x[1], $ipList[$ipc] ?? [])) . ')? Torbe se odmah vraćaju u prodaju. Na istoj mreži mogu biti i pravi kupci.', '<label class="chk-claimed" title="Uz kvačicu stornira i narudžbe za koje je kupac javio uplatu ili ste kliknuli „Potvrda primljena”. Prvo provjerite izvod banke; kupci ne dobivaju e-mail."><input type="checkbox" name="claimed" value="1"> i one s javljenom uplatom (prvo provjerite izvod)</label> ') : '') . '</td></tr>'; /* v78 (12. krug, t4) */
     }
     $h .= '</tbody></table></div>';
   }
@@ -914,7 +914,7 @@ function sj_view_expired(array $rd): string {
   $ex = sj_expired_orders();
   if (!$ex) return '';
   $c = sj_config(); $auto = max(0, (int)($c['auto_cancel_hours'] ?? 0)); $now = time();
-  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. ' . ($auto > 0 && !empty($c['deadline_tick']) ? 'Komad je vraćen u prodaju, osim ako je kupac prije isteka roka javio uplatu („Uplatio/la sam”) ili ste kliknuli „Potvrda primljena”: tada se čuva do automatskog storna (oznaka „torba čuvana do …”).' : 'Komad je vraćen u prodaju.') . ' Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
+  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. ' . ($auto > 0 && !empty($c['deadline_tick']) ? 'Komad je vraćen u prodaju, osim ako je kupac prije isteka roka javio uplatu („Uplatio/la sam”) ili ste kliknuli „Potvrda primljena”: tada se čuva do automatskog storna (oznaka „torba čuvana do …”).' : 'Komad je vraćen u prodaju.') . ' Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka (subota, nedjelja i blagdan pomiču storno na 23:59 radnog dana) i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
   foreach ($ex as $o) {
     $no = (string)($o['no'] ?? ''); $tok = (string)($o['reservation']['token'] ?? '');
     $u = (int)strtotime(sj_pay_until($o)); $ago = max(0, intdiv($now - $u, 3600));

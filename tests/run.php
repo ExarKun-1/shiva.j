@@ -206,7 +206,7 @@ $ok(str_contains($tOn, 'Narudžbu bez uplate storniramo 48 sati nakon isteka rok
   && str_contains($tOff, 'Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom.'),
   'v78 (t3): Uvjeti t. 5 u e-mailu — automatski storno iz Postavki (bez rokova rečenica bez sati)');
 $ok(str_contains($tOn, 'Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.')
-  && !preg_match('/posebn\w* želj|osobnim specifikacijama izvan ponude|Kada pravo na raskid nemate/u', $tOn) && str_contains($tOn, 'pravo na raskid imate i za artikle izrađene po narudžbi'),
+  && !preg_match('/posebn\w* želj|osobnim specifikacijama izvan ponude|Kada pravo na raskid nemate/u', $tOn) && str_contains($tOn, 'Pravo na raskid imate i za artikle izrađene po narudžbi'),
   'v78 (t6, bez želja): Uvjeti t. 6 pakiranje i isporuka za okoliš; bez posebnih želja i iznimke od raskida');
 $okL = !sj_has_link('100 cm. Hvala') && !sj_has_link('Ilica 1.Online') && !sj_has_link('Pozdrav.Eu sam') && !sj_has_link('pratite me @ana') && !sj_has_link('Ana-Marija Šimić') && !sj_has_link('BOX NOW 1234, Ilica 1, 10000 Zagreb')
   && sj_has_link('www.prevara.example') && sj_has_link('https://x.y') && sj_has_link('pisi na a@b.hr') && sj_has_link('posjeti prevara.hr') && sj_unlink('idi na http://zlo.example sad') === 'idi na [uklonjeno] sad';
