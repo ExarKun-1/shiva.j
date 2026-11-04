@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v47');
+define('SJ_VERSION', 'admin v48');
 
 /* ---------- postavke ---------- */
 
@@ -38,7 +38,12 @@ function sj_defaults(): array {
     'require_confirm'  => true,                        // narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila
     'show_ostalo'      => false,                       // v62: rubrika „Ostalo” (artikli po narudžbi) na stranici; kod ostaje
     'confirm_minutes'  => 60,                          // koliko minuta vrijedi link za potvrdu
-    'mail_mode'        => 'mail',                      // 'mail' = PHP mail(); 'log' = data/mail-log.txt (test)
+    'mail_mode'        => 'mail',                      // 'mail' = PHP mail(); 'smtp' = SMTP s prijavom (v79); 'log' = data/mail-log.txt (test)
+    'smtp_host'        => '',                          // v79: npr. smtp.shivaj.hr (Croadria: smtp.<domena>)
+    'smtp_port'        => 465,                         // v79: 465 = SSL, 587 = STARTTLS
+    'smtp_secure'      => 'ssl',                       // v79: 'ssl' | 'starttls' | 'none' (samo 127.0.0.1, testovi)
+    'smtp_user'        => '',                          // v79: cijela e-adresa sandučića
+    'smtp_pass'        => '',                          // v79: lozinka sandučića; nikad se ne prikazuje u adminu
     'allowed_origins'  => [],                          // dodatni dopušteni izvori za API (npr. testni)
     /* Načini dostave — jedini izvor istine: stranica ih čita iz api/status, a servis
        po njima računa iznos narudžbe. price u EUR (0 = besplatno), address = traži se
@@ -1316,9 +1321,88 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
     $entry = "=== " . date('c') . " | To: $to | Subject: $subject | Attachment: " . ($attachmentPath ? $attName : '-') . "\n" . $text . "\n\n";
     return (bool)file_put_contents(SJ_DATA . '/mail-log.txt', $entry, FILE_APPEND | LOCK_EX);
   }
+  /* v79: SMTP s prijavom (Croadria: „potrebno je autorizirati se … i preko web skripte”) — bez tihog prelaska na mail() */
+  if (($c['mail_mode'] ?? 'mail') === 'smtp') {
+    $hdr = array_values(array_filter($headers, fn($h) => !str_starts_with($h, 'Return-Path:'))); /* Return-Path upisuje primatelj */
+    $domain = substr(strrchr($from, '@') ?: '@shivaj.hr', 1);
+    array_unshift($hdr, 'Date: ' . date('r'), 'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $domain . '>', 'To: <' . $to . '>', 'Subject: ' . $encSubject);
+    return sj_smtp_send($c, $from, $to, implode("\r\n", $hdr) . "\r\n\r\n" . $body);
+  }
   /* -f = adresa pošiljatelja na omotnici (Return-Path); bez nje poslužitelj šalje kao korisnik hostinga,
      pa provjere SPF/DMARC padaju i potvrda s IBAN-om završi u neželjenoj pošti */
   $sent = @mail($to, $encSubject, $body, implode("\r\n", $headers), '-f' . $from);
   if (!$sent) $sent = @mail($to, $encSubject, $body, implode("\r\n", $headers)); /* neki hostinzi ne dopuštaju -f */
   return $sent;
+}
+
+/* v79: zadnji ishod slanja preko SMTP-a (za upozorenje u adminu i „Pošalji probni e-mail"); lozinka se nikad ne zapisuje */
+function sj_smtp_status_path(): string { return SJ_DATA . '/smtp-zadnja-greska.json'; }
+function sj_smtp_status(): array { $s = sj_read_json(sj_smtp_status_path(), []); return is_array($s) ? $s : []; }
+function sj_smtp_note(bool $ok, string $msg = ''): void {
+  if (!is_dir(SJ_DATA)) @mkdir(SJ_DATA, 0755, true);
+  $msg = sj_clean($msg, 300);
+  @file_put_contents(sj_smtp_status_path(), json_encode(['at' => sj_iso(time()), 'ok' => $ok, 'msg' => $msg], JSON_UNESCAPED_UNICODE), LOCK_EX);
+  if (!$ok) @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' SMTP: ' . $msg . "\n", FILE_APPEND | LOCK_EX);
+}
+/* v79: što nedostaje u postavkama SMTP-a ('' = sve upisano) */
+function sj_smtp_missing(array $c): string {
+  $m = [];
+  if (!preg_match('/^[A-Za-z0-9.-]{1,253}$/', (string)($c['smtp_host'] ?? ''))) $m[] = 'poslužitelj';
+  if ((int)($c['smtp_port'] ?? 0) < 1 || (int)($c['smtp_port'] ?? 0) > 65535) $m[] = 'port';
+  if (trim((string)($c['smtp_user'] ?? '')) === '') $m[] = 'korisničko ime';
+  if ((string)($c['smtp_pass'] ?? '') === '') $m[] = 'lozinka';
+  return implode(', ', $m);
+}
+/* v79: mali SMTP klijent (RFC 5321, AUTH PLAIN/LOGIN po RFC 4616/4954), bez vanjskih biblioteka.
+   ssl = TLS od početka (465), starttls = STARTTLS (587), none = bez šifriranja, dopušteno samo prema 127.0.0.1 (testovi).
+   Certifikat poslužitelja se provjerava. Vraća true kad poslužitelj prihvati poruku (250 nakon DATA). */
+function sj_smtp_send(array $c, string $from, string $to, string $message): bool {
+  if (($miss = sj_smtp_missing($c)) !== '') { sj_smtp_note(false, 'u Postavkama nedostaje: ' . $miss); return false; }
+  $host = (string)$c['smtp_host']; $port = (int)$c['smtp_port']; $sec = (string)($c['smtp_secure'] ?? 'ssl');
+  $local = in_array(strtolower($host), ['127.0.0.1', 'localhost'], true);
+  if (!in_array($sec, ['ssl', 'starttls', 'none'], true)) $sec = 'ssl';
+  if ($sec === 'none' && !$local) { sj_smtp_note(false, 'bez šifriranja lozinka bi putovala otvoreno — odaberite SSL (465) ili STARTTLS (587)'); return false; }
+  $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host, 'SNI_enabled' => true]]);
+  $fp = @stream_socket_client(($sec === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
+  if (!$fp) { sj_smtp_note(false, 'poslužitelj ' . $host . ':' . $port . ' nije dostupan (' . sj_clean((string)$errstr, 120) . ')'); return false; }
+  stream_set_timeout($fp, 15);
+  $read = function () use ($fp): array { /* višeredni odgovor „250-…” do „250 …” */
+    $all = '';
+    while (($l = fgets($fp, 1024)) !== false) { $all .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; }
+    return [(int)substr($all, 0, 3), trim($all)];
+  };
+  $say = function (string $cmd) use ($fp, $read): array { fwrite($fp, $cmd . "\r\n"); return $read(); };
+  $fail = function (string $what, array $r) use ($fp): bool {
+    @fwrite($fp, "QUIT\r\n"); @fclose($fp);
+    sj_smtp_note(false, $what . ($r[1] !== '' ? ' — poslužitelj: ' . preg_replace('/\s+/', ' ', $r[1]) : ' — poslužitelj ne odgovara'));
+    return false;
+  };
+  $helo = preg_replace('/[^A-Za-z0-9.-]/', '', (string)(substr(strrchr($from, '@') ?: '', 1))) ?: 'localhost';
+  if (($r = $read())[0] !== 220) return $fail('poslužitelj nije spreman', $r);
+  if (($e = $say('EHLO ' . $helo))[0] !== 250) return $fail('EHLO odbijen', $e);
+  if ($sec === 'starttls') {
+    if (($r = $say('STARTTLS'))[0] !== 220) return $fail('STARTTLS odbijen', $r);
+    if (!@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) return $fail('TLS nije uspostavljen (certifikat?)', [0, '']);
+    if (($e = $say('EHLO ' . $helo))[0] !== 250) return $fail('EHLO odbijen', $e);
+  }
+  $user = (string)$c['smtp_user']; $pass = (string)$c['smtp_pass'];
+  $mech = preg_match('/^250[ -]AUTH[ =](.*)$/mi', $e[1], $mm) ? strtoupper($mm[1]) : '';
+  if (str_contains($mech, 'PLAIN')) {
+    if (($r = $say('AUTH PLAIN ' . base64_encode("\0" . $user . "\0" . $pass)))[0] !== 235) return $fail('prijava odbijena (provjerite korisničko ime i lozinku)', $r);
+  } elseif (str_contains($mech, 'LOGIN')) {
+    if (($r = $say('AUTH LOGIN'))[0] !== 334) return $fail('prijava odbijena', $r);
+    if (($r = $say(base64_encode($user)))[0] !== 334) return $fail('prijava odbijena (korisničko ime)', $r);
+    if (($r = $say(base64_encode($pass)))[0] !== 235) return $fail('prijava odbijena (provjerite korisničko ime i lozinku)', $r);
+  } else return $fail('poslužitelj ne nudi prijavu (AUTH PLAIN ili LOGIN)', $e);
+  if (($r = $say('MAIL FROM:<' . $from . '>'))[0] !== 250) return $fail('pošiljatelj odbijen (adresa pošiljatelja mora biti sandučić s kojim se prijavljujete)', $r);
+  if (!in_array(($r = $say('RCPT TO:<' . $to . '>'))[0], [250, 251], true)) return $fail('primatelj odbijen', $r);
+  if (($r = $say('DATA'))[0] !== 354) return $fail('DATA odbijen', $r);
+  $msg = preg_replace("/\r\n|\r|\n/", "\r\n", $message) ?? '';
+  $msg = preg_replace('/^\./m', '..', $msg) ?? ''; /* RFC 5321 4.5.2: red koji počinje točkom */
+  $out = rtrim($msg, "\r\n") . "\r\n.\r\n";
+  while ($out !== '') { $n = @fwrite($fp, $out); if (!$n) return $fail('veza prekinuta tijekom slanja', [0, '']); $out = (string)substr($out, $n); }
+  if (($r = $read())[0] !== 250) return $fail('poruka odbijena', $r);
+  @fwrite($fp, "QUIT\r\n"); @fclose($fp);
+  sj_smtp_note(true);
+  return true;
 }
