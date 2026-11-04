@@ -526,7 +526,25 @@ function sj_handle_action(string $act, array &$c): string {
       $c['ttl_hours'] = $ttl;
       $c['confirm_customer'] = !empty($_POST['confirm_customer']);
       $c['show_ostalo'] = !empty($_POST['show_ostalo']);
-      $c['mail_mode'] = (($_POST['mail_mode'] ?? 'mail') === 'log') ? 'log' : 'mail';
+      $c['mail_mode'] = in_array($_POST['mail_mode'] ?? 'mail', ['log', 'smtp'], true) ? (string)$_POST['mail_mode'] : 'mail';
+      /* v79: SMTP s prijavom; lozinka se upisuje, nikad ne prikazuje — prazno polje zadržava postojeću */
+      if (isset($_POST['smtp_host'])) {
+        $sh = strtolower(trim((string)$_POST['smtp_host']));
+        if ($sh !== '' && !preg_match('/^[a-z0-9.-]{1,253}$/', $sh)) throw new RuntimeException('SMTP poslužitelj nije ispravan (npr. smtp.shivaj.hr).');
+        $sp = (int)($_POST['smtp_port'] ?? 465);
+        if ($sp < 1 || $sp > 65535) throw new RuntimeException('SMTP port: 465 (SSL) ili 587 (STARTTLS).');
+        $c['smtp_host'] = $sh; $c['smtp_port'] = $sp;
+        $c['smtp_secure'] = in_array($_POST['smtp_secure'] ?? 'ssl', ['ssl', 'starttls', 'none'], true) ? (string)$_POST['smtp_secure'] : 'ssl';
+        $c['smtp_user'] = sj_clean((string)($_POST['smtp_user'] ?? ''), 120);
+        $np = (string)($_POST['smtp_pass'] ?? '');
+        if (!empty($_POST['smtp_pass_clear'])) $c['smtp_pass'] = '';
+        elseif ($np !== '') { if (strlen($np) > 200 || preg_match('/[\r\n\0]/', $np)) throw new RuntimeException('Lozinka sandučića nije ispravna.'); $c['smtp_pass'] = $np; }
+      }
+      if ($c['mail_mode'] === 'smtp' && ($miss = sj_smtp_missing($c)) !== '') throw new RuntimeException('Za SMTP upišite: ' . $miss . '.');
+      /* vijeće V79-1: pošiljatelj na omotnici = sandučić s kojim se prijavljuje (inače 553 ili pad DMARC-a) */
+      if ($c['mail_mode'] === 'smtp' && strcasecmp(trim((string)($c['from_email'] ?: $c['owner_email'])), trim((string)$c['smtp_user'])) !== 0)
+        throw new RuntimeException('Za SMTP adresa pošiljatelja (gore) mora biti ista kao korisničko ime sandučića (' . (string)$c['smtp_user'] . ').');
+      @unlink(sj_smtp_status_path()); /* vijeće V79-3: nakon izmjene postavki staro upozorenje nestaje do sljedećeg slanja */
       $c['payment']['recipient'] = sj_clean((string)($_POST['recipient'] ?? ''), 80);
       $c['payment']['address'] = sj_clean((string)($_POST['address'] ?? ''), 120);
       $c['payment']['iban'] = $iban;
@@ -586,8 +604,12 @@ function sj_handle_action(string $act, array &$c): string {
     }
 
     case 'test_mail': {
+      @unlink(sj_smtp_status_path()); /* probni e-mail uvijek pokušava (bez pauze nakon pada veze) */
       $ok = sj_send_mail($c['owner_email'], $c['shop'] . ' — probna poruka iz admina', "Ovo je probna poruka. Ako je stigla, slanje e-maila s hostinga radi.\n\n" . sj_site_url() . '/admin/');
-      return $ok ? 'Probna poruka poslana na ' . $c['owner_email'] . ($c['mail_mode'] === 'log' ? ' (način: log, vidi data/mail-log.txt)' : '') : 'Slanje nije uspjelo — provjerite postavke e-maila na hostingu.';
+      /* v79: kod SMTP-a stvarni razlog (prijava odbijena, poslužitelj nedostupan…) */
+      $why = ($c['mail_mode'] === 'smtp' && !$ok) ? (string)(sj_smtp_status()['msg'] ?? '') : '';
+      return $ok ? 'Probna poruka poslana na ' . $c['owner_email'] . ($c['mail_mode'] === 'log' ? ' (način: log, vidi data/mail-log.txt)' : ($c['mail_mode'] === 'smtp' ? ' (SMTP: poslužitelj ju je prihvatio; provjerite je li stigla)' : ' (PHP mail(): provjerite je li stigla — ako nije, odaberite SMTP s prijavom)'))
+        : 'Slanje nije uspjelo' . ($why !== '' ? ' (SMTP: ' . $why . ')' : ' — provjerite postavke e-maila na hostingu ili odaberite SMTP s prijavom') . '.';
     }
   }
   throw new RuntimeException('Nepoznata radnja.');
@@ -967,7 +989,9 @@ function sj_settings_draft(array $c, array $in): array {
   foreach (['recipient', 'address', 'iban', 'model'] as $k) if (isset($in[$k])) $c['payment'][$k] = sj_clean((string)$in[$k], 120);
   $c['confirm_customer'] = !empty($in['confirm_customer']);
   $c['show_ostalo'] = !empty($in['show_ostalo']);
-  $c['mail_mode'] = (($in['mail_mode'] ?? '') === 'log') ? 'log' : 'mail';
+  $c['mail_mode'] = in_array($in['mail_mode'] ?? '', ['log', 'smtp'], true) ? (string)$in['mail_mode'] : 'mail';
+  /* v79: upisani SMTP podaci ostaju u obrascu nakon greške; lozinka nikad (polje je uvijek prazno) */
+  foreach (['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user'] as $k) if (isset($in[$k])) $c[$k] = sj_clean((string)$in[$k], 120);
   if (isset($in['shipping'])) $c['_ship_draft'] = (string)$in['shipping'];
   foreach (['remind_hours', 'auto_cancel_hours', 'signature'] as $k) if (isset($in[$k])) $c[$k] = sj_clean((string)$in[$k], 60);
   if (isset($in['has_require_confirm'])) $c['require_confirm'] = !empty($in['require_confirm']);
@@ -1002,8 +1026,24 @@ function sj_view_settings(array $c): string {
   $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila (zaštita od robota i lažnih narudžbi)</label>';
   $h .= '<label class="check"><input type="checkbox" name="confirm_customer" value="1"' . (!empty($c['confirm_customer']) ? ' checked' : '') . '> Automatski pošalji kupcu potvrdu narudžbe s podacima za uplatu i barkodom</label>';
   $h .= '<label class="check"><input type="checkbox" name="show_ostalo" value="1"' . (!empty($c['show_ostalo']) ? ' checked' : '') . '> Prikaži rubriku „Ostalo” (remeni, torbice, platnene torbe po narudžbi) na stranici</label>';
-  $h .= '<label class="check"><input type="checkbox" name="mail_mode" value="log"' . ($c['mail_mode'] === 'log' ? ' checked' : '') . '> Testni način: e-mailove ne šalji, nego zapiši u data/mail-log.txt</label>';
   $h .= '</div>';
+  /* v79: način slanja e-maila — PHP mail() ili SMTP s prijavom (Croadria: smtp.<domena>, 465 SSL, autorizacija) */
+  $mm = (string)$c['mail_mode']; $hasPass = (string)($c['smtp_pass'] ?? '') !== ''; $st = sj_smtp_status();
+  $h .= '<h3 id="slanje">Slanje e-maila</h3><p class="muted">Ako „Pošalji probni e-mail” (dolje) s načinom PHP mail() ne stigne, odaberite SMTP s prijavom i upišite podatke sandučića s kojeg šaljete (kod Croadrije: poslužitelj smtp.vaša-domena, port 465, SSL; korisničko ime je cijela e-adresa). Adresa pošiljatelja gore mora biti taj isti sandučić.</p><div class="stack">';
+  foreach (['mail' => 'PHP mail() — bez prijave (zadano)', 'smtp' => 'SMTP s prijavom (sandučić na domeni)', 'log' => 'Testni način: e-mailove ne šalji, nego zapiši u data/mail-log.txt'] as $v => $lab)
+    $h .= '<label class="check"><input type="radio" name="mail_mode" value="' . $v . '"' . ($mm === $v ? ' checked' : '') . '> ' . e($lab) . '</label>';
+  $h .= '</div><div class="grid2">';
+  $h .= '<label>SMTP poslužitelj <input name="smtp_host" value="' . e((string)($c['smtp_host'] ?? '')) . '" placeholder="npr. smtp.shivaj.hr" autocomplete="off"></label>';
+  $h .= '<label>Port <input name="smtp_port" type="number" min="1" max="65535" value="' . e((string)($c['smtp_port'] ?? 465)) . '"></label>';
+  $sec = (string)($c['smtp_secure'] ?? 'ssl');
+  $h .= '<label>Šifriranje <select name="smtp_secure">' . implode('', array_map(fn($v, $l) => '<option value="' . $v . '"' . ($sec === $v ? ' selected' : '') . '>' . e($l) . '</option>', ['ssl', 'starttls'], ['SSL (port 465)', 'STARTTLS (port 587)'])) . '</select></label>';
+  $h .= '<label>Korisničko ime (cijela e-adresa) <input name="smtp_user" value="' . e((string)($c['smtp_user'] ?? '')) . '" placeholder="npr. info@shivaj.hr" autocomplete="off"></label>';
+  $h .= '<label>Lozinka sandučića <input name="smtp_pass" type="password" value="" autocomplete="new-password" placeholder="' . ($hasPass ? 'spremljena — upišite samo za promjenu' : 'nije upisana') . '"><small class="muted">Iz sigurnosnih razloga lozinka se ovdje nikad ne prikazuje.</small></label>';
+  if ($hasPass) $h .= '<label class="check"><input type="checkbox" name="smtp_pass_clear" value="1"> Obriši spremljenu lozinku</label>';
+  $h .= '</div>';
+  /* V79-11: zadnji pad slanja već pokazuje upozorenje na vrhu stranice; ovdje samo nepotpune postavke */
+  if ($mm === 'smtp' && ($ms = sj_smtp_missing($c)) !== '')
+    $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: ' . e('za SMTP nedostaje: ' . $ms . '.') . ' Dok se to ne popravi, kupci ne dobivaju e-mailove.</p>';
   $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impressum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite Claudeu da ih uskladi i na stranici.</p><div class="grid2">';
   $h .= '<label>Primatelj <input name="recipient" value="' . e($p['recipient']) . '"></label>';
   $h .= '<label>Adresa primatelja <input name="address" value="' . e($p['address']) . '"></label>';
@@ -1118,6 +1158,9 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
 <main><h1>' . e($title) . '</h1>';
   if ($msg !== '') echo '<div class="msg">' . e($msg) . '</div>';
   if ($err !== '') echo '<div class="err">' . e($err) . '</div>';
+  /* v79: SMTP odabran, a zadnje slanje palo — kupci ne dobivaju potvrde */
+  if ($nav && ($c['mail_mode'] ?? '') === 'smtp' && ($st = sj_smtp_status()) && isset($st['ok']) && !$st['ok'])
+    echo '<div class="err">E-mail se ne šalje: zadnji pokušaj preko SMTP-a (' . e(sj_fmt_hr((string)($st['at'] ?? ''))) . ') nije uspio — ' . e((string)($st['msg'] ?? '')) . '. Provjerite <a href="?s=postavke#slanje">Postavke → Slanje e-maila</a>.</div>';
   /* v25: upozorenje na svakom ekranu dok adresa stranice ili adresa pošiljatelja nisu upisane */
   if ($nav && $s !== 'postavke') {
     $miss = [];

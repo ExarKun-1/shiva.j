@@ -402,7 +402,8 @@ $pH = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0985', 'back' => '?
 $cH['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encode($cH));
 $o85 = null; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) if ($x['no'] === 'SJ-2026-0985') $o85 = $x;
 $rL = json_decode(file_get_contents($D . '/rezervacije.json'), true)['res']['luna'] ?? [];
-$exp85 = min((int)strtotime($o85['payUntil']) + 48 * 3600, (int)strtotime($o85['at']) + 168 * 3600);
+require_once __DIR__ . '/../admin/lib.php'; /* samo čiste funkcije (radni dani i blagdani) */
+$exp85 = sj_auto_cancel_at((int)strtotime($o85['payUntil']), 48); /* v78 (t3): storno u subotu, nedjelju ili blagdan → 23:59 radnog dana; v76: bez granice od 7 dana */
 $ok(str_contains($pH, 'potvrda zabilježena') && (int)strtotime($rL['until'] ?? '') === $exp85 && ($o85['reservation']['until'] ?? '') === ($rL['until'] ?? '-') && (int)strtotime($o85['payUntil']) < $exp85,
   'v72: „Potvrda primljena” — rok za uplatu do 23:59 radnog dana, torba rezervirana do automatskog storna (najviše 7 dana od narudžbe)');
 $ok(str_contains($pH, 'torba je rezervirana do') && str_contains($pH, '(do automatskog storna)'), 'v72 (D72-10): poruka vlasnici navodi i rok za uplatu i do kada je torba rezervirana');
@@ -507,6 +508,30 @@ $ok(str_contains($anon('kriva-y'), 'Još 1 pokušaj'), 'v26: prije blokade admin
 $anon('kriva-z');
 $locked = $anon('vlasnica-123456');
 $ok(str_contains($first, 'Pogrešna lozinka.') && str_contains($locked, 'Previše pogrešnih pokušaja s ove veze') && !str_contains($locked, 'Pogrešna lozinka'), 'v25: blokada prijave ima vlastitu poruku');
+
+/* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
+$cfgS = file_get_contents($D . '/config.json');
+$smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);
+$s0 = $req('POST', array_merge($smtp, ['smtp_pass' => '']));
+$cS = json_decode(file_get_contents($D . '/config.json'), true);
+$ok(str_contains($s0, 'Za SMTP upišite: lozinka') && ($cS['mail_mode'] ?? '') !== 'smtp', 'v79: SMTP bez lozinke se ne sprema — poruka „Za SMTP upišite: lozinka”');
+$req('POST', array_merge($smtp, ['smtp_pass' => 'Tajna-79-xyz']));
+$cS = json_decode(file_get_contents($D . '/config.json'), true);
+$vS = $req('GET', ['s' => 'postavke']);
+$ok(($cS['mail_mode'] ?? '') === 'smtp' && ($cS['smtp_pass'] ?? '') === 'Tajna-79-xyz' && ($cS['smtp_host'] ?? '') === 'smtp.shivaj.hr' && !str_contains($vS, 'Tajna-79-xyz') && str_contains($vS, 'spremljena — upišite samo za promjenu') && str_contains($vS, 'value="smtp" checked'),
+  'v79: SMTP spremljen; lozinka se u obrascu ne prikazuje (samo „spremljena”)');
+$req('POST', array_merge($smtp, ['smtp_pass' => '']));
+$ok((json_decode(file_get_contents($D . '/config.json'), true)['smtp_pass'] ?? '') === 'Tajna-79-xyz', 'v79: prazno polje lozinke zadržava spremljenu');
+$tm = $req('POST', ['act' => 'test_mail', 'back' => '?s=postavke']);
+$vW = $req('GET', ['s' => 'rez']);
+$ok(str_contains($tm, 'Slanje nije uspjelo (SMTP:') && !str_contains($tm . $vW, 'Tajna-79-xyz') && str_contains($vW, 'E-mail se ne šalje: zadnji pokušaj preko SMTP-a'), 'v79: probni e-mail pokazuje SMTP razlog; upozorenje na svim stranicama admina, bez lozinke');
+$req('POST', array_merge($smtp, ['mail_mode' => 'mail', 'smtp_pass' => '', 'smtp_pass_clear' => '1']));
+$ok((json_decode(file_get_contents($D . '/config.json'), true)['smtp_pass'] ?? 'x') === '', 'v79: kvačica „Obriši spremljenu lozinku” briše lozinku');
+$mis = $req('POST', array_merge($smtp, ['from_email' => 'drugi@shivaj.hr', 'smtp_pass' => 'a']));
+$ok(str_contains($mis, 'mora biti ista kao korisničko ime sandučića'), 'v79 (vijeće V79-1): SMTP — adresa pošiljatelja mora biti isti sandučić');
+$bad = $req('POST', array_merge($smtp, ['smtp_host' => 'smtp.shivaj.hr/../x', 'smtp_pass' => 'a']));
+$ok(str_contains($bad, 'SMTP poslužitelj nije ispravan'), 'v79: neispravan naziv poslužitelja se ne sprema');
+file_put_contents($D . '/config.json', $cfgS); @unlink($D . '/smtp-zadnja-greska.json');
 
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
