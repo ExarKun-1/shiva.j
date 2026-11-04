@@ -725,7 +725,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await p73.click('.card .add-btn:not([disabled]) >> nth=0'); await p73.click('#openCart'); await p73.waitForTimeout(300);
     const terms = await p73.textContent('.order-terms').catch(() => '');
     const pos = await p73.evaluate(() => { const t = document.querySelector('.order-terms'), b = document.getElementById('orderBtn'); return !!(t && b && (t.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); });
-    ok(/Narudžbom prihvaćate Uvjete kupnje \(pravo na raskid u 14 dana\) i Izjavu o zaštiti osobnih podataka\./.test(terms) && pos && (await p73.textContent('#orderBtn')).trim() === 'Naruči s obvezom plaćanja', 'v73: iznad gumba „Naruči s obvezom plaćanja” redak o Uvjetima i Izjavi');
+    ok(/Narudžbom prihvaćate Uvjete kupnje \(pravo na raskid u 14 dana\); kako postupamo s podacima, piše u Izjavi o zaštiti osobnih podataka\./.test(terms) && pos && (await p73.textContent('#orderBtn')).trim() === 'Naruči s obvezom plaćanja', 'v73: iznad gumba „Naruči s obvezom plaćanja” redak o Uvjetima i Izjavi');
     await m73.close(); }
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));

@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v48');
+define('SJ_VERSION', 'admin v49');
 
 /* ---------- postavke ---------- */
 
@@ -126,6 +126,12 @@ function sj_ship_price(array $ship, float $goods): float {
   return round((float)($ship['price'] ?? 0), 2);
 }
 /* v68: potpis e-mailova kupcima (Postavke) */
+/* v80 (završna recenzija, S-2): ime u pozdravu samo kad je samo slovima — inače bi „ime” s poveznicom
+   (npr. „Uplatite na secure-pay.shop”) stiglo na tuđu adresu s adrese trgovine; tada samo „Dobar dan,” */
+function sj_hi(string $name): string {
+  $name = trim($name);
+  return preg_match("/^\p{L}[\p{L} .'’\-]{0,79}$/u", $name) ? 'Dobar dan, ' . $name . ',' : 'Dobar dan,';
+}
 function sj_signature(): string { $s = trim((string)(sj_config()['signature'] ?? '')); return $s !== '' ? $s : (string)sj_config()['shop']; }
 /* v68: rok za uplatu narudžbe; ISO ili ''. v69: rok je zapisan uz narudžbu (payUntil) i ne mijenja se kad vlasnica
    promijeni rok u Postavkama; za starije narudžbe (bez payUntil) samo za prikaz: vrijeme narudžbe + trenutni rok */
@@ -413,7 +419,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
   $no = (string)($o['no'] ?? ''); $name = (string)($o['name'] ?? ''); $until = sj_fmt_deadline(sj_pay_until($o)); $untilAcc = sj_fmt_deadline(sj_pay_until($o), 'acc');
   $uq = []; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $uq[] = '„' . (string)($it['name'] ?? '') . '”';
   $many = count($uq) > 1;
-  $hi = 'Dobar dan, ' . $name . ",\n\n"; $bye = "\n\nSrdačan pozdrav,\n" . sj_signature();
+  $hi = sj_hi($name) . "\n\n"; $bye = "\n\nSrdačan pozdrav,\n" . sj_signature();
   /* v70 (odluka vlasnice, 5. krug): jedno obećanje — „Uplatio/la sam” čuva do točnog datuma; snimka je drugi put */
   $claim = empty($o['claimedAt']) ? sj_claim_url($o) : '';
   $alt = 'Link ne radi? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.';
@@ -516,7 +522,7 @@ function sj_paid_mail(array $o): string { /* 'sent' | 'already' | 'failed' | 'sk
       : 'Paket ' . ($lead !== '' ? 'obično šaljemo za ' . $lead : 'šaljemo uskoro') . '; kad krene, poslat ćemo vam poruku s potvrdom slanja.';
   }
   $ok = sj_send_mail((string)$o['email'], $c['shop'] . " — uplata je stigla, narudžba $no",
-    'Dobar dan, ' . (string)($o['name'] ?? '') . ",\n\nuplata za narudžbu br. $no je stigla, hvala! " . $next . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
+    sj_hi((string)($o['name'] ?? '')) . "\n\nuplata za narudžbu br. $no je stigla, hvala! " . $next . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
   /* vijeće N71-2: neuspjelo slanje — oznaka se briše, kvačica se vraća i vlasnica dobiva upozorenje */
   if (!$ok) { sj_order_edit(['no' => $no], function (array &$x) { unset($x['paidMailAt']); }); return 'failed'; }
   return 'sent';
@@ -530,7 +536,7 @@ function sj_cancel_mail(array $o, string $reason): bool {
   $uq = []; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $uq[] = '„' . (string)($it['name'] ?? '') . '”';
   $why = ['nije uplaćeno u roku' => ' jer uplata nije stigla u roku', 'kupac odustao' => ' na vaš zahtjev', 'torba oštećena ili nedostupna' => '; žao nam je, ' . ($uq ? (count($uq) > 1 ? 'torbe nisu dostupne' : 'torba nije dostupna') : 'artikl nije dostupan')][$reason] ?? '';
   return sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
-    'Dobar dan, ' . (string)($o['name'] ?? '') . ",\n\nnarudžba br. $no je stornirana$why."
+    sj_hi((string)($o['name'] ?? '')) . "\n\nnarudžba br. $no je stornirana$why."
     /* v69 (D69-13): za „nije uplaćeno u roku” isto obećanje kao kod automatskog storna */
     . ($reason === 'nije uplaćeno u roku'
       ? "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo cijeli iznos.' : 'narudžbu obnavljamo ili vam vraćamo cijeli iznos.')
@@ -1407,7 +1413,8 @@ function sj_smtp_send(array $c, string $from, string $to, string $message): bool
   $msg = preg_replace('/^\./m', '..', $msg) ?? ''; /* RFC 5321 4.5.2: red koji počinje točkom */
   $out = rtrim($msg, "\r\n") . "\r\n.\r\n";
   while ($out !== '') { $n = @fwrite($fp, $out); if (!$n) return $fail('veza prekinuta tijekom slanja', [0, '']); $out = (string)substr($out, $n); }
-  if (($r = $read())[0] !== 250) return $fail('poruka odbijena', $r);
+  stream_set_timeout($fp, 60); /* v80 (S-3): poslužitelj smije provjeriti poruku (antivirus) prije odgovora 250 */
+  if (($r = $read())[0] !== 250) return $fail($r[0] === 0 ? 'poslužitelj nije potvrdio primitak poruke (možda je ipak poslana)' : 'poruka odbijena', $r, $r[0] === 0 ? 'data' : '');
   @fwrite($fp, "QUIT\r\n"); @fclose($fp);
   sj_smtp_note(true);
   return true;
