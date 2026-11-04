@@ -10,6 +10,7 @@ require __DIR__ . '/lib.php';
 sj_session_start();
 $c = sj_config();
 /* v22: poruka nakon radnje dolazi iz sesije (jednokratno), ne iz adrese — link s ?m= ne može podmetnuti lažnu poruku */
+ini_set('display_errors', '0'); /* v80 (završna recenzija): bez putanja datoteka u upozorenjima PHP-a */
 $msg = sj_clean((string)($_SESSION['sj_flash'] ?? ''), 2000); /* v62: dulji popisi (npr. Storniraj sve s ove adrese) */ unset($_SESSION['sj_flash']);
 $err = '';
 
@@ -533,10 +534,14 @@ function sj_handle_action(string $act, array &$c): string {
         if ($sh !== '' && !preg_match('/^[a-z0-9.-]{1,253}$/', $sh)) throw new RuntimeException('SMTP poslužitelj nije ispravan (npr. smtp.shivaj.hr).');
         $sp = (int)($_POST['smtp_port'] ?? 465);
         if ($sp < 1 || $sp > 65535) throw new RuntimeException('SMTP port: 465 (SSL) ili 587 (STARTTLS).');
+        $c0smtp = ['h' => (string)($c['smtp_host'] ?? ''), 'u' => (string)($c['smtp_user'] ?? '')];
         $c['smtp_host'] = $sh; $c['smtp_port'] = $sp;
         $c['smtp_secure'] = in_array($_POST['smtp_secure'] ?? 'ssl', ['ssl', 'starttls', 'none'], true) ? (string)$_POST['smtp_secure'] : 'ssl';
         $c['smtp_user'] = sj_clean((string)($_POST['smtp_user'] ?? ''), 120);
         $np = (string)($_POST['smtp_pass'] ?? '');
+        /* v80 (završna recenzija): promjena poslužitelja ili korisnika traži lozinku ponovno — inače bi preuzeta
+           sesija admina mogla poslati spremljenu lozinku na svoj poslužitelj („Pošalji probni e-mail”) */
+        if ($np === '' && ($sh !== (string)($c0smtp['h'] ?? '') || strcasecmp($c['smtp_user'], (string)($c0smtp['u'] ?? '')) !== 0)) $c['smtp_pass'] = '';
         if (!empty($_POST['smtp_pass_clear'])) $c['smtp_pass'] = '';
         elseif ($np !== '') { if (strlen($np) > 200 || preg_match('/[\r\n\0]/', $np)) throw new RuntimeException('Lozinka sandučića nije ispravna.'); $c['smtp_pass'] = $np; }
       }
@@ -1032,7 +1037,7 @@ function sj_view_settings(array $c): string {
   $h .= '<h3 id="slanje">Slanje e-maila</h3><p class="muted">Ako „Pošalji probni e-mail” (dolje) s načinom PHP mail() ne stigne, odaberite SMTP s prijavom i upišite podatke sandučića s kojeg šaljete (kod Croadrije: poslužitelj smtp.vaša-domena, port 465, SSL; korisničko ime je cijela e-adresa). Adresa pošiljatelja gore mora biti taj isti sandučić.</p><div class="stack">';
   foreach (['mail' => 'PHP mail() — bez prijave (zadano)', 'smtp' => 'SMTP s prijavom (sandučić na domeni)', 'log' => 'Testni način: e-mailove ne šalji, nego zapiši u data/mail-log.txt'] as $v => $lab)
     $h .= '<label class="check"><input type="radio" name="mail_mode" value="' . $v . '"' . ($mm === $v ? ' checked' : '') . '> ' . e($lab) . '</label>';
-  $h .= '</div><div class="grid2">';
+  $h .= '</div><div class="grid2 smtp-only">'; /* v80: polja SMTP-a samo kad je SMTP odabran */
   $h .= '<label>SMTP poslužitelj <input name="smtp_host" value="' . e((string)($c['smtp_host'] ?? '')) . '" placeholder="npr. smtp.shivaj.hr" autocomplete="off"></label>';
   $h .= '<label>Port <input name="smtp_port" type="number" min="1" max="65535" value="' . e((string)($c['smtp_port'] ?? 465)) . '"></label>';
   $sec = (string)($c['smtp_secure'] ?? 'ssl');
@@ -1115,7 +1120,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   @media (max-width:700px){.grid2{grid-template-columns:1fr}}
   button,.btn{background:var(--thread);color:var(--paper);border:1.5px solid var(--thread);border-radius:2px;padding:8px 13px;font:inherit;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;display:inline-block}
   button.alt,.btn.alt{background:none;color:var(--thread);border-style:dashed}.btn.small,button.small{padding:5px 9px;font-size:.72rem}
-  .inline{display:inline-block;margin:0 4px 4px 0}.chk-claimed{display:inline-flex;align-items:center;gap:4px;font-size:.85em;margin:0 6px 4px 0;width:auto}.chk-claimed input{width:auto;margin:0}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .inline{display:inline-block;margin:0 4px 4px 0}form:has(input[name=mail_mode][value=smtp]:not(:checked)) .smtp-only{display:none}.chk-claimed{display:inline-flex;align-items:center;gap:4px;font-size:.85em;margin:0 6px 4px 0;width:auto}.chk-claimed input{width:auto;margin:0}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   /* v21: na mobitelu rezervacije i narudžbe kao kartice — gumbi su ispod imena, ne izvan zaslona */
   /* v22: na karticama natpis polja ispred vrijednosti (zaglavlje tablice je skriveno) */
   @media (max-width:700px){.cards td::before{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
