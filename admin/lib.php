@@ -1337,11 +1337,12 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
 
 /* v79: zadnji ishod slanja preko SMTP-a (za upozorenje u adminu i „Pošalji probni e-mail"); lozinka se nikad ne zapisuje */
 function sj_smtp_status_path(): string { return SJ_DATA . '/smtp-zadnja-greska.json'; }
-function sj_smtp_status(): array { $s = sj_read_json(sj_smtp_status_path(), []); return is_array($s) ? $s : []; }
-function sj_smtp_note(bool $ok, string $msg = ''): void {
+function sj_smtp_status(): array { clearstatcache(); $s = json_decode((string)@file_get_contents(sj_smtp_status_path()), true); return is_array($s) ? $s : []; } /* bez predmemorije: mijenja se unutar istog zahtjeva */
+function sj_smtp_note(bool $ok, string $msg = '', string $kind = ''): void {
   if (!is_dir(SJ_DATA)) @mkdir(SJ_DATA, 0755, true);
   $msg = sj_clean($msg, 300);
-  @file_put_contents(sj_smtp_status_path(), json_encode(['at' => sj_iso(time()), 'ok' => $ok, 'msg' => $msg], JSON_UNESCAPED_UNICODE), LOCK_EX);
+  /* vijeće V79-2: odbijena adresa jednog kupca (RCPT) nije kvar slanja — samo zapis, bez upozorenja u adminu */
+  if ($kind !== 'rcpt') @file_put_contents(sj_smtp_status_path(), json_encode(['at' => sj_iso(time()), 'ok' => $ok, 'msg' => $msg, 'kind' => $kind], JSON_UNESCAPED_UNICODE), LOCK_EX);
   if (!$ok) @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' SMTP: ' . $msg . "\n", FILE_APPEND | LOCK_EX);
 }
 /* v79: što nedostaje u postavkama SMTP-a ('' = sve upisano) */
@@ -1362,19 +1363,23 @@ function sj_smtp_send(array $c, string $from, string $to, string $message): bool
   $local = in_array(strtolower($host), ['127.0.0.1', 'localhost'], true);
   if (!in_array($sec, ['ssl', 'starttls', 'none'], true)) $sec = 'ssl';
   if ($sec === 'none' && !$local) { sj_smtp_note(false, 'bez šifriranja lozinka bi putovala otvoreno — odaberite SSL (465) ili STARTTLS (587)'); return false; }
-  $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host, 'SNI_enabled' => true]]);
-  $fp = @stream_socket_client(($sec === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
-  if (!$fp) { sj_smtp_note(false, 'poslužitelj ' . $host . ':' . $port . ' nije dostupan (' . sj_clean((string)$errstr, 120) . ')'); return false; }
-  stream_set_timeout($fp, 15);
+  /* vijeće V79-4: nakon pada veze ne pokušava se ponovno 5 minuta (inače svaki e-mail čeka do isteka vremena) */
+  $st = sj_smtp_status();
+  if (isset($st['ok']) && !$st['ok'] && ($st['kind'] ?? '') === 'conn' && (int)strtotime((string)($st['at'] ?? '')) > time() - 300) return false;
+  $tls = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT') ? STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT : 0); /* V79-9 */
+  $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host, 'SNI_enabled' => true, 'crypto_method' => $tls]]);
+  $fp = @stream_socket_client(($sec === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 8, STREAM_CLIENT_CONNECT, $ctx);
+  if (!$fp) { sj_smtp_note(false, 'poslužitelj ' . $host . ':' . $port . ' nije dostupan (' . (trim((string)$errstr) !== '' ? sj_clean((string)$errstr, 120) : 'možda certifikat ili krivi port/šifriranje') . ')', 'conn'); return false; }
+  stream_set_timeout($fp, 8);
   $read = function () use ($fp): array { /* višeredni odgovor „250-…” do „250 …” */
     $all = '';
-    while (($l = fgets($fp, 1024)) !== false) { $all .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; }
+    while (($l = fgets($fp, 8192)) !== false) { $all .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; } /* V79-7 */
     return [(int)substr($all, 0, 3), trim($all)];
   };
-  $say = function (string $cmd) use ($fp, $read): array { fwrite($fp, $cmd . "\r\n"); return $read(); };
-  $fail = function (string $what, array $r) use ($fp): bool {
+  $say = function (string $cmd) use ($fp, $read): array { @fwrite($fp, $cmd . "\r\n"); return $read(); };
+  $fail = function (string $what, array $r, string $kind = '') use ($fp): bool {
     @fwrite($fp, "QUIT\r\n"); @fclose($fp);
-    sj_smtp_note(false, $what . ($r[1] !== '' ? ' — poslužitelj: ' . preg_replace('/\s+/', ' ', $r[1]) : ' — poslužitelj ne odgovara'));
+    sj_smtp_note(false, $what . ($r[1] !== '' ? ' — poslužitelj: ' . preg_replace('/\s+/', ' ', $r[1]) : ' — poslužitelj ne odgovara'), $r[0] === 0 && $kind === '' ? 'conn' : $kind);
     return false;
   };
   $helo = preg_replace('/[^A-Za-z0-9.-]/', '', (string)(substr(strrchr($from, '@') ?: '', 1))) ?: 'localhost';
@@ -1382,7 +1387,8 @@ function sj_smtp_send(array $c, string $from, string $to, string $message): bool
   if (($e = $say('EHLO ' . $helo))[0] !== 250) return $fail('EHLO odbijen', $e);
   if ($sec === 'starttls') {
     if (($r = $say('STARTTLS'))[0] !== 220) return $fail('STARTTLS odbijen', $r);
-    if (!@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) return $fail('TLS nije uspostavljen (certifikat?)', [0, '']);
+    if ((int)(stream_get_meta_data($fp)['unread_bytes'] ?? 0) > 0) return $fail('neočekivani podaci prije TLS-a', [0, '']); /* V79-5 */
+    if (!@stream_socket_enable_crypto($fp, true, $tls)) return $fail('TLS nije uspostavljen (certifikat?)', [0, '']);
     if (($e = $say('EHLO ' . $helo))[0] !== 250) return $fail('EHLO odbijen', $e);
   }
   $user = (string)$c['smtp_user']; $pass = (string)$c['smtp_pass'];
@@ -1394,8 +1400,8 @@ function sj_smtp_send(array $c, string $from, string $to, string $message): bool
     if (($r = $say(base64_encode($user)))[0] !== 334) return $fail('prijava odbijena (korisničko ime)', $r);
     if (($r = $say(base64_encode($pass)))[0] !== 235) return $fail('prijava odbijena (provjerite korisničko ime i lozinku)', $r);
   } else return $fail('poslužitelj ne nudi prijavu (AUTH PLAIN ili LOGIN)', $e);
-  if (($r = $say('MAIL FROM:<' . $from . '>'))[0] !== 250) return $fail('pošiljatelj odbijen (adresa pošiljatelja mora biti sandučić s kojim se prijavljujete)', $r);
-  if (!in_array(($r = $say('RCPT TO:<' . $to . '>'))[0], [250, 251], true)) return $fail('primatelj odbijen', $r);
+  if (($r = $say('MAIL FROM:<' . $from . '>' . (preg_match('/^250[ -]8BITMIME/mi', $e[1]) ? ' BODY=8BITMIME' : '')))[0] !== 250) /* V79-6 */ return $fail('pošiljatelj odbijen (adresa pošiljatelja mora biti sandučić s kojim se prijavljujete)', $r);
+  if (!in_array(($r = $say('RCPT TO:<' . $to . '>'))[0], [250, 251], true)) return $fail('primatelj ' . $to . ' odbijen', $r, 'rcpt');
   if (($r = $say('DATA'))[0] !== 354) return $fail('DATA odbijen', $r);
   $msg = preg_replace("/\r\n|\r|\n/", "\r\n", $message) ?? '';
   $msg = preg_replace('/^\./m', '..', $msg) ?? ''; /* RFC 5321 4.5.2: red koji počinje točkom */

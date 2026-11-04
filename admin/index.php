@@ -541,6 +541,10 @@ function sj_handle_action(string $act, array &$c): string {
         elseif ($np !== '') { if (strlen($np) > 200 || preg_match('/[\r\n\0]/', $np)) throw new RuntimeException('Lozinka sandučića nije ispravna.'); $c['smtp_pass'] = $np; }
       }
       if ($c['mail_mode'] === 'smtp' && ($miss = sj_smtp_missing($c)) !== '') throw new RuntimeException('Za SMTP upišite: ' . $miss . '.');
+      /* vijeće V79-1: pošiljatelj na omotnici = sandučić s kojim se prijavljuje (inače 553 ili pad DMARC-a) */
+      if ($c['mail_mode'] === 'smtp' && strcasecmp(trim((string)($c['from_email'] ?: $c['owner_email'])), trim((string)$c['smtp_user'])) !== 0)
+        throw new RuntimeException('Za SMTP adresa pošiljatelja (gore) mora biti ista kao korisničko ime sandučića (' . (string)$c['smtp_user'] . ').');
+      @unlink(sj_smtp_status_path()); /* vijeće V79-3: nakon izmjene postavki staro upozorenje nestaje do sljedećeg slanja */
       $c['payment']['recipient'] = sj_clean((string)($_POST['recipient'] ?? ''), 80);
       $c['payment']['address'] = sj_clean((string)($_POST['address'] ?? ''), 120);
       $c['payment']['iban'] = $iban;
@@ -600,6 +604,7 @@ function sj_handle_action(string $act, array &$c): string {
     }
 
     case 'test_mail': {
+      @unlink(sj_smtp_status_path()); /* probni e-mail uvijek pokušava (bez pauze nakon pada veze) */
       $ok = sj_send_mail($c['owner_email'], $c['shop'] . ' — probna poruka iz admina', "Ovo je probna poruka. Ako je stigla, slanje e-maila s hostinga radi.\n\n" . sj_site_url() . '/admin/');
       /* v79: kod SMTP-a stvarni razlog (prijava odbijena, poslužitelj nedostupan…) */
       $why = ($c['mail_mode'] === 'smtp' && !$ok) ? (string)(sj_smtp_status()['msg'] ?? '') : '';
@@ -1036,8 +1041,9 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Lozinka sandučića <input name="smtp_pass" type="password" value="" autocomplete="new-password" placeholder="' . ($hasPass ? 'spremljena — upišite samo za promjenu' : 'nije upisana') . '"><small class="muted">Iz sigurnosnih razloga lozinka se ovdje nikad ne prikazuje.</small></label>';
   if ($hasPass) $h .= '<label class="check"><input type="checkbox" name="smtp_pass_clear" value="1"> Obriši spremljenu lozinku</label>';
   $h .= '</div>';
-  if ($mm === 'smtp' && (($ms = sj_smtp_missing($c)) !== '' || (isset($st['ok']) && !$st['ok'])))
-    $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: ' . e($ms !== '' ? 'za SMTP nedostaje: ' . $ms . '.' : 'zadnje slanje nije uspjelo (' . sj_fmt_hr((string)($st['at'] ?? '')) . '): ' . (string)($st['msg'] ?? '') . '.') . ' Dok se to ne popravi, kupci ne dobivaju e-mailove.</p>';
+  /* V79-11: zadnji pad slanja već pokazuje upozorenje na vrhu stranice; ovdje samo nepotpune postavke */
+  if ($mm === 'smtp' && ($ms = sj_smtp_missing($c)) !== '')
+    $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: ' . e('za SMTP nedostaje: ' . $ms . '.') . ' Dok se to ne popravi, kupci ne dobivaju e-mailove.</p>';
   $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impressum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite Claudeu da ih uskladi i na stranici.</p><div class="grid2">';
   $h .= '<label>Primatelj <input name="recipient" value="' . e($p['recipient']) . '"></label>';
   $h .= '<label>Adresa primatelja <input name="address" value="' . e($p['address']) . '"></label>';

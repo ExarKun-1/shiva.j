@@ -34,7 +34,7 @@ const server = net.createServer(sock => {
       else if (up.startsWith('AUTH PLAIN ')) { const [, u, p] = Buffer.from(line.slice(11), 'base64').toString().split('\0'); s.auth = { mech: 'PLAIN', user: u, pass: p }; say(u === USER && p === PASS ? '235 ok' : '535 5.7.8 Authentication failed'); }
       else if (up === 'AUTH LOGIN') { login = 1; say('334 VXNlcm5hbWU6'); }
       else if (up.startsWith('MAIL FROM:')) { s.from = line.slice(10); say('250 ok'); }
-      else if (up.startsWith('RCPT TO:')) { s.to.push(line.slice(8)); say('250 ok'); }
+      else if (up.startsWith('RCPT TO:')) { if (/odbij@/.test(line)) say('550 5.1.1 no such user'); else { s.to.push(line.slice(8)); say('250 ok'); } }
       else if (up === 'DATA') { inData = true; say('354 kraj s <CRLF>.<CRLF>'); }
       else if (up === 'QUIT') { say('221 bok'); sock.end(); }
       else say('502 ne znam');
@@ -57,7 +57,7 @@ const php = code => new Promise(res => execFile('php', ['-r', "require '" + SITE
     const r = await fetch(U + 'order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
     const cs = sessions.find(s => s.to.some(t => /kupac79@primjer\.hr/.test(t)));
-    ok(d.ok && d.mailCustomer === true && cs && cs.auth && cs.auth.mech === 'PLAIN' && cs.auth.user === USER && cs.auth.pass === PASS && cs.from === '<' + USER + '>',
+    ok(d.ok && d.mailCustomer === true && cs && cs.auth && cs.auth.mech === 'PLAIN' && cs.auth.user === USER && cs.auth.pass === PASS && cs.from === '<' + USER + '> BODY=8BITMIME',
       'v79: narudžba — potvrda kupcu preko SMTP-a, prijava AUTH PLAIN, omotnica MAIL FROM = sandučić');
     const msg = cs ? cs.data : '';
     ok(/^Date: /m.test(msg) && /^Message-ID: <[a-f0-9]{24}@shivaj\.hr>$/m.test(msg) && /^To: <kupac79@primjer\.hr>$/m.test(msg) && /^Subject: =\?UTF-8\?B\?/m.test(msg) && /^From: =\?UTF-8\?B\?[^?]+\?= <info@shivaj\.hr>$/m.test(msg) && !/^Return-Path:/m.test(msg),
@@ -72,6 +72,9 @@ const php = code => new Promise(res => execFile('php', ['-r', "require '" + SITE
     ok(/true/.test(o2) && s2.auth && s2.auth.mech === 'LOGIN' && s2.auth.pass === PASS && /\r\n\.\.drugi red s točkom\r\n\.\.\.treći\r\n/.test(s2.data),
       'v79: AUTH LOGIN kad poslužitelj ne nudi PLAIN; red koji počinje točkom dobiva dodatnu (RFC 5321)');
     mechs = 'PLAIN LOGIN';
+    // 2b) odbijena adresa jednog kupca: false, ali bez upozorenja za cijelu trgovinu (vijeće V79-2)
+    const o2b = await php("var_export(sj_send_mail('odbij@primjer.hr', 'Proba', 'tekst'));");
+    ok(/false/.test(o2b) && read('smtp-zadnja-greska.json', {}).ok === true && /primatelj odbij@primjer\.hr odbijen/.test(fs.readFileSync(D + 'greske.log', 'utf8')), 'v79 (vijeće V79-2): odbijena adresa kupca — zapis u greske.log, bez upozorenja „e-mail se ne šalje”');
     // 3) kriva lozinka: false, razlog u zapisu, lozinka nigdje
     try { fs.unlinkSync(D + 'greske.log'); } catch (e) {}
     setCfg({ smtp_pass: 'kriva-lozinka-XYZ' });
