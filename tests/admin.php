@@ -358,9 +358,13 @@ $vC = $req('GET', ['s' => 'narudzbe']);
 $ok(preg_match('#kupac javio uplatu</span> <span class="muted">[^<]*— provjerite izvod</span><br><span class="muted">rok za uplatu do [^<]*\(još \d+ h\)#u', $vC) === 1, 'v69 (D69-9): otvorena narudžba — „kupac javio uplatu” prvi, zatim rok za uplatu s preostalim satima');
 /* v78 (odluka vlasnice, 12. krug, t4): kvačica „i one s javljenom uplatom” */
 file_put_contents($D . '/narudzbe.json', json_encode([$mk('SJ-2026-0973', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003', 'claimedAt' => $isoAgo(1)]), $mk('SJ-2026-0974', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003'])]));
+@unlink($D . '/mail-log.txt');
 $relE = $req('POST', ['act' => 'res_release_ip', 'ip' => 'feedfacecafe0003', 'claimed' => '1', 'back' => '?s=rez']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $ok(!empty($nn['SJ-2026-0973']['cancelledAt']) && !empty($nn['SJ-2026-0974']['cancelledAt']) && !str_contains($relE, 'Nisu stornirane'), 'v78 (t4): s kvačicom „i one s javljenom uplatom” skupni storno obuhvaća i te narudžbe');
+$logE = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(str_contains($logE, 'SJ-2026-0973 je stornirana') && !str_contains($logE, 'SJ-2026-0974 je stornirana') && str_contains($logE, 'najkasnije u roku od sedam dana') && str_contains($relE, 'E-mail o stornu poslan kupcima koji su javili uplatu: 1'),
+  'v81 (13. krug, p5): skupni storno s kvačicom — e-mail o stornu samo kupcu koji je javio uplatu (povrat u 7 dana)');
 /* v70: „Potvrda primljena” — rok do 23:59 sljedećeg radnog dana (najviše 96 h), najviše dvaput, 7 dana od narudžbe;
    komad koji je otišao drugome se ne uzima; trag proofAt[]; kratki e-mail kupcu (kvačica) */
 @unlink($D . '/mail-log.txt');
@@ -460,7 +464,7 @@ $q1b = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0995', 'mail' => '1
 $q2 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0996', 'back' => '?s=narudzbe']);
 $logP = (string)@file_get_contents($D . '/mail-log.txt');
 $ok(substr_count($vM, 'Pošalji kupcu e-mail da je uplata stigla') >= 2 && str_contains($q1, 'Kupac je dobio e-mail da je uplata stigla') && substr_count($logP, 'uplata je stigla, narudžba SJ-2026-0995') === 1
-  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket obično šaljemo za 1–2 radna dana; kad krene, poslat ćemo vam poruku s potvrdom slanja') && str_contains($q1b, 'već ranije dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
+  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket šaljemo u roku 1–2 radna dana; kad krene, poslat ćemo vam poruku s potvrdom slanja') && str_contains($q1b, 'već ranije dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
   'v71: „Označi plaćenom” s kvačicom šalje „uplata je stigla” jednom (rok slanja iz Postavki); bez kvačice ne šalje');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */
 $c68['require_confirm'] = true; file_put_contents($D . '/config.json', json_encode($c68));

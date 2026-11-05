@@ -90,6 +90,7 @@ if (!sj_logged_in()) {
    ne smije izgubiti od automatskog storna u istom zahtjevu */
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST')
   try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
+  try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
 
 /* ---------- radnje ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -276,6 +277,9 @@ function sj_handle_action(string $act, array &$c): string {
       /* v69 (vijeće, N69-7): kupci koji su javili uplatu („Uplatio/la sam”) se ne storniraju skupno;
          v78 (odluka vlasnice, 12. krug, t4): osim ako je kvačica „i one s javljenom uplatom” uključena */
       $withClaimed = ($_POST['claimed'] ?? '') === '1';
+      /* v81 (odluka vlasnice, 13. krug, p5): kupci koji su javili uplatu dobivaju kratki e-mail o stornu (ZOO čl. 366.) */
+      $mailNos = [];
+      if ($withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if ((!empty($oc['claimedAt']) || !empty($oc['proofAt'])) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) $mailNos[] = (string)($oc['no'] ?? '');
       $claimed = []; $claimedNo = [];
       if (!$withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if ((!empty($oc['claimedAt']) || !empty($oc['proofAt'])) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) { $claimedNo[] = (string)($oc['no'] ?? ''); if (!empty($oc['reservation']['token'])) $claimed[] = (string)$oc['reservation']['token']; }
       $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip, $claimed) {
@@ -297,8 +301,9 @@ function sj_handle_action(string $act, array &$c): string {
         return true;
       }, []);
       sj_made_counts(true);
+      $mailed = 0; foreach ($mailNos as $mn) { $om = sj_order_find(['no' => $mn]); if ($om && !empty($om['cancelledAt']) && sj_cancel_mail($om, 'skupni storno')) $mailed++; }
       $who = array_merge($who, $collNo); /* narudžbe s rezervacijom su već stornirane gore, pa se ne ponavljaju */
-      return 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($claimedNo ? ' Nisu stornirane narudžbe za koje je kupac javio uplatu: ' . implode(', ', $claimedNo) . ' — provjerite izvod.' : '') . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
+      return ($mailed ? 'E-mail o stornu poslan kupcima koji su javili uplatu: ' . $mailed . '. ' : '') . 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($claimedNo ? ' Nisu stornirane narudžbe za koje je kupac javio uplatu: ' . implode(', ', $claimedNo) . ' — provjerite izvod.' : '') . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
     }
 
     case 'res_release':
@@ -401,8 +406,8 @@ function sj_handle_action(string $act, array &$c): string {
       if (!empty($_POST['mail']) && !empty($ord['email']))
         $mailed = sj_send_mail((string)$ord['email'], $c['shop'] . ' — primili smo potvrdu o uplati, narudžba ' . $no,
           'Dobar dan, ' . (string)($ord['name'] ?? '') . ",\n\nprimili smo vašu potvrdu o uplati za narudžbu br. $no. "
-          . ($allGone ? 'Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu. Kad uplata stigne, vraćamo vam cijeli iznos; javit ćemo vam se.'
-            : ($lost ? 'Ostatak narudžbe čuvamo za vas do ' . $untilTxt . '; kad uplata stigne, pripremamo ga. Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; za ' . ($lm ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos.'
+          . ($allGone ? 'Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu. Kad uplata stigne, vraćamo vam cijeli iznos što prije, a najkasnije u roku od sedam dana; javit ćemo vam se.'
+            : ($lost ? 'Ostatak narudžbe čuvamo za vas do ' . $untilTxt . '; kad uplata stigne, pripremamo ga. Nažalost, ' . $lostQ . ($lm ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; za ' . ($lm ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos što prije, a najkasnije u roku od sedam dana.'
             : sj_ucfirst(sj_hold_phrase($ord)) . ' do ' . $untilTxt . '; kad uplata stigne, pripremamo narudžbu.'))
           . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
       /* v72 (vijeće, D72-10): vlasnica vidi oba datuma — rok za uplatu i do kada je torba rezervirana */

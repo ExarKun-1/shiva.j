@@ -190,7 +190,7 @@ $ok(sj_care_applies(['material' => 'Umjetna koža, podstava od lana']) && sj_car
   'v74 (vijeće V74-1/5): upute za njegu samo uz torbe od umjetne kože (prazan materijal torbe = umjetna koža), ne uz tkaninu ni Ostalo');
 $ok(str_starts_with(sj_care_text(), 'Bok, ja sam tvoja nova torba.') && str_ends_with(sj_care_text(), 'Uz malo brige dugo ćemo ići zajedno.'), 'v74: tekst uputa za njegu doslovno iz index.html');
 $c75 = sj_defaults(); $tA = sj_terms_text($c75); $c75['ship_lead'] = ''; $tB = sj_terms_text($c75); $c75['ship_lead'] = '3 $1 dana'; $tC = sj_terms_text($c75);
-$ok(str_contains($tA, 'nakon primitka uplate, obično u roku 1–2 radna dana. Modele') && str_contains($tB, 'nakon primitka uplate. Modele') && str_contains($tC, 'obično u roku 3 $1 dana.') && str_contains($tA, 'najkasnije u roku 14 dana od primitka uplate'),
+$ok(str_contains($tA, 'nakon primitka uplate, u roku 1–2 radna dana. Modele') && str_contains($tB, 'nakon primitka uplate. Modele') && str_contains($tC, 'u roku 3 $1 dana.') && str_contains($tA, 'najkasnije u roku 14 dana od primitka uplate'),
   'v75: Uvjeti t. 6 — rok slanja iz Postavki (zadano 1–2 radna dana; prazno bez roka), Stalna kolekcija najkasnije 14 dana');
 $Z = fn(string $x) => (new DateTime($x, new DateTimeZone('Europe/Zagreb')))->getTimestamp();
 $ok(sj_pay_deadline($Z('2026-11-06 20:00'), 24) === $Z('2026-11-09 23:59') && sj_pay_deadline($Z('2026-11-05 20:00'), 24) === $Z('2026-11-06 20:00')
@@ -201,11 +201,27 @@ $ok(sj_auto_cancel_at($Z('2026-11-06 20:00'), 48) === $Z('2026-11-09 23:59') && 
   && sj_auto_cancel_at($Z('2026-12-23 12:00'), 48) === $Z('2026-12-28 23:59') && sj_auto_cancel_at($Z('2026-11-04 10:00'), 48) === $Z('2026-11-06 10:00')
   && sj_cancel_due(['expiredAt' => sj_iso($Z('2026-11-06 20:00'))], 48) === $Z('2026-11-09 23:59'),
   'v78 (t3): automatski storno koji pada u subotu, nedjelju ili blagdan pomiče se na 23:59 prvoga radnog dana (pet 20:00 + 48 h → pon 23:59; 23. 12. → pon 28. 12.); radni dan bez promjene');
+/* v81 (13. krug, p2): unikat se drži do 23:59 prvoga radnog dana nakon roka (ZZP čl. 15.) */
+$ok(sj_hold_after_deadline($Z('2026-11-06 20:00')) === $Z('2026-11-09 23:59') && sj_hold_after_deadline($Z('2026-11-04 10:00')) === $Z('2026-11-05 23:59') && sj_hold_after_deadline($Z('2026-12-23 12:00')) === $Z('2026-12-24 23:59'),
+  'v81 (p2): držanje unikata do 23:59 prvoga radnog dana nakon roka (pet → pon; sri → čet; 23. 12. → 24. 12.)');
+/* v81 (13. krug, p4): automatsko brisanje — neostvarene 30 dana nakon storna, plaćene 3 godine nakon uplate */
+$nowP = time(); $isoP = fn(int $d) => gmdate('Y-m-d\TH:i:s\Z', $nowP - $d * 86400);
+$mkP = fn(string $no, array $x) => $x + ['no' => $no, 'at' => $isoP(40), 'name' => 'Ana Kupac', 'email' => 'ana@primjer.hr', 'phone' => '091', 'address' => 'Ulica 1, Zabok', 'note' => 'napomena', 'claim' => str_repeat('a', 32), 'ip' => 'abcd', 'items' => '- Luna (remen: crna, 140 cm) — 65,00 €', 'shipping' => 'BOX NOW — paketomat: Zabok 1',
+  'order' => ['customer' => ['name' => 'Ana Kupac', 'email' => 'ana@primjer.hr'], 'items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'note' => 'remen: crna, 140 cm']], 'shipping' => ['id' => 'boxnow', 'label' => 'BOX NOW paketomat', 'locker' => 'Zabok 1'], 'note' => 'n']];
+file_put_contents(SJ_DATA . '/narudzbe.json', json_encode([$mkP('SJ-2026-0901', ['cancelledAt' => $isoP(31)]), $mkP('SJ-2026-0902', ['cancelledAt' => $isoP(5)]), $mkP('SJ-2026-0903', ['paidAt' => $isoP(1100), 'at' => $isoP(1101)]), $mkP('SJ-2026-0904', ['paidAt' => $isoP(100)]), $mkP('SJ-2026-0905', [])]));
+file_put_contents(SJ_DATA . '/raskidi.json', json_encode([['at' => $isoP(1100), 'name' => 'Stari', 'email' => 's@p.hr'], ['at' => $isoP(10), 'name' => 'Novi', 'email' => 'n@p.hr']]));
+@unlink(SJ_DATA . '/brisanje.json');
+$nP = sj_privacy_purge(); $nP2 = sj_privacy_purge();
+$byP = []; foreach (json_decode(file_get_contents(SJ_DATA . '/narudzbe.json'), true) as $x) $byP[$x['no']] = $x; $rkP = json_decode(file_get_contents(SJ_DATA . '/raskidi.json'), true);
+$anon = fn($x) => !empty($x['anonymizedAt']) && ($x['name'] ?? '') === '(anonimizirano)' && !isset($x['email']) && !isset($x['phone']) && !isset($x['order']['customer']) && !str_contains(json_encode($x, JSON_UNESCAPED_UNICODE), 'crna, 140') && !str_contains(json_encode($x, JSON_UNESCAPED_UNICODE), 'Zabok 1') && str_contains($x['items'], 'Luna');
+$ok($nP === 3 && $nP2 === 0 && $anon($byP['SJ-2026-0901']) && $anon($byP['SJ-2026-0903']) && empty($byP['SJ-2026-0902']['anonymizedAt']) && empty($byP['SJ-2026-0904']['anonymizedAt']) && empty($byP['SJ-2026-0905']['anonymizedAt']) && count($rkP) === 1 && $rkP[0]['name'] === 'Novi',
+  'v81 (p4): anonimizirane neostvarene narudžbe nakon 30 dana i plaćene nakon 3 godine (ostaju broj, iznos i nazivi), izjava o raskidu nakon 3 godine; najviše jednom dnevno');
+file_put_contents(SJ_DATA . '/narudzbe.json', '[]'); @unlink(SJ_DATA . '/raskidi.json');
 $c78 = sj_defaults(); $c78['deadline_tick'] = true; $c78['auto_cancel_hours'] = 48; $tOn = sj_terms_text($c78); $c78['deadline_tick'] = false; $tOff = sj_terms_text($c78);
 $ok(str_contains($tOn, 'Narudžbu bez uplate storniramo 48 sati nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana) i o tome vas obavještavamo e-mailom.')
   && str_contains($tOff, 'Narudžbu bez uplate storniramo i o tome vas obavještavamo e-mailom.'),
   'v78 (t3): Uvjeti t. 5 u e-mailu — automatski storno iz Postavki (bez rokova rečenica bez sati)');
-$ok(str_contains($tOn, 'Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.')
+$ok(str_contains($tOn, 'Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom; manje artikle (npr. kozmetičke torbice) ponekad šaljemo u plastičnoj ambalaži. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.')
   && !preg_match('/posebn\w* želj|osobnim specifikacijama izvan ponude|Kada pravo na raskid nemate/u', $tOn) && str_contains($tOn, 'Pravo na raskid imate i za artikle izrađene po narudžbi'),
   'v78 (t6, bez želja): Uvjeti t. 6 pakiranje i isporuka za okoliš; bez posebnih želja i iznimke od raskida');
 $okL = !sj_has_link('100 cm. Hvala') && !sj_has_link('Ilica 1.Online') && !sj_has_link('Pozdrav.Eu sam') && !sj_has_link('pratite me @ana') && !sj_has_link('Ana-Marija Šimić') && !sj_has_link('BOX NOW 1234, Ilica 1, 10000 Zagreb')

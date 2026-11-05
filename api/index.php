@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v46)
+   SHIVA.J — javni API na hostingu   (api/index.php v47)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,8 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v47 (stranica v81; 13. krug): pravilo 7 dana samo nakon automatskog storna i „lažna narudžba” (veza samo za lažnu);
+        unikat se drži do 23:59 radnog dana nakon roka (ZZP čl. 15.); povrat u 7 dana; automatsko brisanje podataka
    v46 (stranica v80; završna recenzija): pozdrav s imenom samo kad je ime slovima (sj_hi); rokovi nakon odgovora
         posjetitelju; povrat na drugi IBAN uz potvrdu s e-adrese narudžbe; artikl bez roka izrade ne preuzima tuđi rok
    v45 (stranica v78; 12. krug): nakon storna isti e-mail ili veza 7 dana ne naručuje istu torbu (t1); raskid neplaćene
@@ -246,6 +248,7 @@ if ($a === 'status') {
     ignore_user_abort(true); @set_time_limit(0);
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
+    try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
   });
   $d = sj_res_read();
   $pay = $c['payment'];
@@ -686,7 +689,7 @@ if ($a === 'paidclaim') {
     . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''), null, (string)($o['email'] ?? ''));
   /* v78 (odluka vlasnice, 12. krug, t5): kupac dobiva kratki e-mail s datumom do kojeg čuvamo narudžbu (jednom po
      narudžbi: claimedAt se upisuje samo jednom, pa ovaj put prolazi samo prvi klik) */
-  $lostTxt = $lost ? ' Nažalost, ' . implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)) . (count($lost) > 1 ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; javit ćemo vam se oko povrata tog iznosa.' : '';
+  $lostTxt = $lost ? ' Nažalost, ' . implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)) . (count($lost) > 1 ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; javit ćemo vam se oko povrata tog iznosa (vraćamo ga najkasnije u roku od sedam dana).' : '';
   if ((string)($o['email'] ?? '') !== '')
     sj_send_mail((string)$o['email'], $c['shop'] . ' — zabilježili smo vašu obavijest o uplati, narudžba ' . $no, /* vijeće V78-P7: uplatu još ne vidimo */
       sj_hi((string)($o['name'] ?? '')) . "\n\nhvala, zabilježili smo vašu obavijest da ste uplatili narudžbu br. " . $no . '. '
@@ -916,9 +919,9 @@ function sj_place_order_locked(array $P): array {
       $out = ['prev' => $prev];
       $now = time();
       $rec = ['token' => $tok !== '' ? $tok : sj_token(), 'ip' => $ip, 'ip_prev' => $ipPrev, 'name' => $cust['name'], 'email' => $cust['email'], 'since' => $since !== '' ? $since : sj_iso($now),
-              'at' => sj_iso($now), 'until' => sj_iso(sj_pay_deadline($now, (int)$ttl)), 'ordered' => true]; /* v76: vikend i blagdani */
+              'at' => sj_iso($now), 'until' => sj_iso(sj_hold_after_deadline(sj_pay_deadline($now, (int)$ttl))), 'ordered' => true]; /* v76: vikend i blagdani; v81 (p2): torba se drži do 23:59 radnog dana nakon roka */
       foreach ($holdIds as $id) $d['res'][$id] = $rec + ['id' => $id];
-      return $out + ['token' => $rec['token'], 'until' => $rec['until'], 'hours' => $ttl];
+      return $out + ['token' => $rec['token'], 'until' => $rec['until'], 'pay' => sj_iso(sj_pay_deadline($now, (int)$ttl)), 'hours' => $ttl];
     }, sj_res_default());
     if (isset($r['taken']) || isset($r['mine']) || isset($r['limit'])) return $r;
     $back = $r;
@@ -935,7 +938,8 @@ function sj_place_order_locked(array $P): array {
         'goods' => round($goods, 2), 'total' => $total, 'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'hours' => $res['hours']] : null];
   /* v69: rok za uplatu zapisan uz narudžbu (isti kao rezervacija; ne mijenja se kad vlasnica promijeni rok u Postavkama)
      i tajna za poveznicu „Uplatio/la sam” (samo u e-mailovima kupcu) */
-  $payUntil = $res ? (string)$res['until'] : sj_iso(sj_pay_deadline(time(), (int)$ttl)); /* v76: vikend i blagdani */
+  /* v81 (p2): rok za uplatu je zaseban od rezervacije (rezervacija traje do 23:59 radnog dana nakon roka) */
+  $payUntil = ($res && !empty($res['pay'])) ? (string)$res['pay'] : sj_iso(sj_pay_deadline(time(), (int)$ttl)); /* v76: vikend i blagdani */
   $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time()), 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
             'total' => sj_fmt_eur($total), 'items' => $itemsText, 'shipping' => $shipText, 'address' => trim($cust['street'] . ', ' . $cust['city'], ', '),
             'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o,
@@ -960,7 +964,7 @@ function sj_ip_open_orders(array $mine): int {
   if (!$mine) return 0;
   $n = 0; $now = time();
   foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o)
-    if (empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['unconfirmed']) && !empty($o['payUntil']) && ((int)strtotime((string)$o['payUntil']) > $now || (((!empty($o['claimedAt']) && empty($o['claimLate'])) || !empty($o['proofAt'])) && (int)strtotime((string)($o['reservation']['until'] ?? '')) > $now)) && sj_same_ip($o, $mine)) $n++; /* v72: i istekla narudžba čija torba se još drži */
+    if (empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['unconfirmed']) && !empty($o['payUntil']) && ((int)strtotime((string)$o['payUntil']) > $now || (int)strtotime((string)($o['reservation']['until'] ?? '')) > $now) && sj_same_ip($o, $mine)) $n++; /* v72: i istekla narudžba čija torba se još drži; v81 (p2): i bez klika (držanje do radnog dana) */
   return $n;
 }
 /* v78 (odluka vlasnice, 12. krug, t1): nakon storna isti e-mail ili ista veza 7 dana ne može ponovno naručiti istu torbu
@@ -972,7 +976,11 @@ function sj_recent_cancel_text(array $P): string {
   $now = time(); $hit = []; $until = 0;
   foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $o) {
     $ca = (int)strtotime((string)($o['cancelledAt'] ?? '')); if ($ca <= 0 || $ca + SJ_REORDER_BLOCK_DAYS * 86400 <= $now) continue;
-    $same = ($ek !== '' && sj_email_key((string)($o['email'] ?? '')) === $ek) || ($mine && sj_same_ip($o, $mine));
+    /* v81 (odluka vlasnice, 13. krug, p1): samo automatski storno (nije plaćeno u roku) i „lažna narudžba”;
+       ista internetska veza samo za „lažna narudžba” (vezu na mobilnoj mreži dijele i neznanci) */
+    $fake = (string)($o['cancelReason'] ?? '') === 'lažna narudžba'; $auto = (string)($o['cancelBy'] ?? '') === 'automatski';
+    if (!$fake && !$auto) continue;
+    $same = ($ek !== '' && sj_email_key((string)($o['email'] ?? '')) === $ek) || ($fake && $mine && sj_same_ip($o, $mine));
     if (!$same) continue;
     foreach ((array)($o['order']['items'] ?? []) as $it) { $id = (string)($it['id'] ?? ''); if (isset($ids[$id])) { $hit[$id] = $ids[$id]; $until = max($until, $ca + SJ_REORDER_BLOCK_DAYS * 86400); } }
   }
@@ -1277,7 +1285,8 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   /* v71 (odluka vlasnice, 6. krug): bez riječi „klik”; i za narudžbu bez unikata — što znači rok (automatski storno iz Postavki) */
   $ifNo = $claimUrl !== '' ? 'Ako do roka ne vidimo uplatu, a niste nam javili da ste platili („Uplatio/la sam”), ' : 'Ako do roka ne vidimo uplatu ni vašu potvrdu o uplati, ';
   $autoH = !empty($c['deadline_tick']) ? max(0, (int)($c['auto_cancel_hours'] ?? 0)) : 0; /* vijeće N71-5: samo kad rokovi rade */
-  if ($anyUnique) $t[] = $ifNo . ($nUnique > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.';
+  /* v81 (p2): torba se drži do 23:59 radnog dana nakon roka (obična uplata poslana do roka) */
+  if ($anyUnique) $t[] = 'Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka. ' . ($nUnique > 1 ? 'Torbe zato čuvamo' : 'Torbu zato čuvamo') . ' još do ' . sj_fmt_deadline(($res && !empty($res['until'])) ? (string)$res['until'] : sj_iso(sj_hold_after_deadline((int)strtotime($payUntil)))) . '; ako ni tada ne vidimo uplatu' . ($claimUrl !== '' ? ', a niste nam javili da ste platili („Uplatio/la sam”), ' : ' ni vašu potvrdu o uplati, ') . ($nUnique > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.';
   elseif ($autoH > 0) $t[] = $ifNo . 'narudžbu storniramo ' . sj_hours_text($autoH) /* vijeće V78-S6: kao Uvjeti t. 5 */ . ' nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana).';
   $t[] = '';
   $pickup = (($o['shipping']['id'] ?? '') === 'pickup');
@@ -1295,12 +1304,12 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $subj = $allColl && !$anyUnique ? (count($madeIt) > 1 ? 'vaše torbe' : 'vašu torbu') : sj_and_join(array_map(fn($it) => '„' . (string)$it['name'] . '”', $madeIt));
     $sent = 'Čim uplata bude vidljiva, ' . ($allColl ? 'šijemo ' : 'izrađujemo ') . $subj . ($ld ? (count($ldU) > 1 ? ' (rok izrade od primitka uplate: ' . $ld[0] . ')' : ' (rok izrade ' . $ld[0] . ' od primitka uplate)') : ' (rok izrade teče od primitka uplate)');
     if ($anyUnique) $sent .= $pickup ? ', a kad je sve gotovo, cijelu narudžbu pripremamo za preuzimanje u radionici.'
-      : ', zatim cijelu narudžbu — ' . sj_and_join(array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', $items)) . ' — šaljemo zajedno, u jednom paketu' . ($shipLead !== '' ? '; slanje je obično ' . $shipLead . ' nakon izrade.' : ', kad je sve gotovo.');
-    else $sent .= $pickup ? ', a gotovu narudžbu pripremamo za preuzimanje u radionici.' : '; gotovu narudžbu pažljivo pakiramo i šaljemo' . ($shipLead !== '' ? ', obično ' . $shipLead . ' nakon izrade.' : '.');
+      : ', zatim cijelu narudžbu — ' . sj_and_join(array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', $items)) . ' — šaljemo zajedno, u jednom paketu' . ($shipLead !== '' ? '; slanje je u roku ' . $shipLead . ' nakon izrade.' : ', kad je sve gotovo.');
+    else $sent .= $pickup ? ', a gotovu narudžbu pripremamo za preuzimanje u radionici.' : '; gotovu narudžbu pažljivo pakiramo i šaljemo' . ($shipLead !== '' ? ', u roku ' . $shipLead . ' nakon izrade.' : '.');
     $t[] = $sent . ($pickup ? ($pickupCalls ? '' : ' Javit ćemo vam se kad bude spremno za preuzimanje i dogovoriti termin.') : ' Poslat ćemo vam poruku s potvrdom slanja.');
   } else
   $t[] = 'Čim uplata bude vidljiva, ' . ($pickup ? $torbu . ' pripremamo za preuzimanje u radionici.' : $torbu . ' pažljivo pakiramo i šaljemo.')
-    . ($pickup ? ($pickupCalls ? '' : ' Javit ćemo vam se kad bude spremno za preuzimanje i dogovoriti termin.') : ($shipLead !== '' ? ' Slanje je obično za ' . $shipLead . '.' : '') . ' Poslat ćemo vam poruku s potvrdom slanja.');
+    . ($pickup ? ($pickupCalls ? '' : ' Javit ćemo vam se kad bude spremno za preuzimanje i dogovoriti termin.') : ($shipLead !== '' ? ' Slanje je u roku ' . $shipLead . '.' : '') . ' Poslat ćemo vam poruku s potvrdom slanja.');
   if ($anyMade && array_filter($madeIt, fn($it) => trim((string)($it['note'] ?? '')) !== '')) {
     $t[] = '';
     /* v65: želja kupca (boja, duljina) — potvrda i obećanje iz košarice */
