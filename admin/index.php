@@ -303,7 +303,7 @@ function sj_handle_action(string $act, array &$c): string {
         return true;
       }, []);
       sj_made_counts(true);
-      $mailed = 0; foreach ($mailNos as $mn) { $om = sj_order_find(['no' => $mn]); if ($om && !empty($om['cancelledAt']) && sj_cancel_mail($om, 'skupni storno')) $mailed++; }
+      $mailed = 0; foreach ($mailNos as $mn) { $om = sj_order_find(['no' => $mn]); if (!$om || empty($om['cancelledAt'])) continue; if (sj_cancel_mail($om, 'skupni storno')) $mailed++; else $collWho[] = $mn . (($om['email'] ?? '') !== '' ? ' — ' . $om['email'] : '') . ' (e-mail o stornu nije poslan)'; } /* v82 (recenzija, R82-1): kome e-mail nije otišao, vlasnica se javlja sama */
       $who = array_merge($who, $collWho); /* narudžbe s rezervacijom su već stornirane gore, pa se ne ponavljaju */
       return ($mailed ? 'E-mail o stornu poslan kupcima koji su javili uplatu: ' . $mailed . '. ' : '') . 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($claimedNo ? ' Nisu stornirane narudžbe za koje je kupac javio uplatu: ' . implode(', ', $claimedNo) . ' — provjerite izvod.' : '') . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
     }
@@ -940,7 +940,7 @@ function sj_view_withdrawals(): string {
   if (!$l) return '';
   $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave (smijete pričekati torbu ili dokaz o slanju), na račun s kojeg je uplaćeno.</p><div class="rokl">';
   foreach (array_slice($l, 0, 50) as $x) {
-    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b><span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara') : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
+    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b><span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
   }
   return $h . '</div>';
 }

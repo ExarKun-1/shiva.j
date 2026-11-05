@@ -447,7 +447,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const pD = await post('paidclaim', { no: d1.data.orderNo, t: oD.claim });
       const oD2 = read('narudzbe.json').find(x => x.no === d1.data.orderNo) || {};
       const mlD = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(m0);
-      ok(d1.data.ok && pD.data.state === 'late' && oD2.claimLate === true && !!oD2.claimedAt && /mjesto u kolekciji za „[^”]+” u međuvremenu je popunjeno/.test(mlD) && !/Rok za uplatu produžen je jednom/.test(mlD),
+      ok(d1.data.ok && pD.data.state === 'late' && /^Mjesto u kolekciji za „/.test(pD.data.message || '') && !/Rok za uplatu je već istekao/.test(pD.data.message || '') && oD2.claimLate === true && !!oD2.claimedAt && /mjesto u kolekciji za „[^”]+” u međuvremenu je popunjeno/.test(mlD) && !/Rok za uplatu produžen je jednom/.test(mlD),
         'v81 (recenzija B1): popunjeno mjesto u kolekciji nakon roka — klik zabilježen kao kasni, vlasnica upozorena, bez lažnog „produženo” ' + JSON.stringify([d1.data.error, pD.data.state]));
       fs.writeFileSync(D + 'proizvodi.json', pl0); clearLimits(); }
     // v78 (t3): automatski storno u Uvjetima (status autoCancel) kad rokovi rade

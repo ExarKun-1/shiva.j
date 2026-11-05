@@ -532,6 +532,10 @@ $an4 = $mk('SJ-2026-0993', ['payUntil' => $isoIn(5), 'unconfirmed' => true, 'ano
 file_put_contents($D . '/narudzbe.json', json_encode([$an2, $an3, $an4]));
 $pg = $req('GET', ['s' => 'narudzbe']);
 $ok(substr_count($pg, 'podaci obrisani') >= 3 && !str_contains($pg, 'Označiti narudžbu SJ-2026-0993 plaćenom') && !str_contains($pg, 'Stornirati narudžbu SJ-2026-0993') && !str_contains($pg, 'Označiti narudžbu SJ-2026-0991 plaćenom') && str_contains($pg, '<b>zatvoreno</b>'), 'v82 (N2): obrisana narudžba prikazana zatvorenom, bez gumba');
+file_put_contents($D . '/raskidi.json', json_encode([['at' => $isoAgo(1), 'name' => 'Kupac', 'no' => 'SJ-2026-0991', 'email' => 'k@example.com', 'order' => 'SJ-2026-0991', 'emailMatch' => false, 'orderGone' => true]]));
+$pgR = $req('GET', ['s' => 'narudzbe']);
+$ok(str_contains($pgR, 'podaci narudžbe su obrisani, e-mail se ne može provjeriti') && !str_contains($pgR, 'e-mail se NE podudara'), 'v82 (R82-4): raskid uz obrisanu narudžbu — bez lažnog „NE podudara”');
+file_put_contents($D . '/raskidi.json', '[]');
 /* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
 $cfgS = file_get_contents($D . '/config.json');
 $smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);

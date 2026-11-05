@@ -224,6 +224,11 @@ file_put_contents(sj_res_path(), json_encode($rs)); @unlink(SJ_DATA . '/brisanje
 $byQ = []; foreach (json_decode(file_get_contents(SJ_DATA . '/narudzbe.json'), true) as $x) $byQ[$x['no']] = $x; $rsA = json_decode(file_get_contents(sj_res_path()), true);
 $ok(empty($byQ['SJ-2026-0911']['anonymizedAt']) && !empty($byQ['SJ-2026-0912']['anonymizedAt']) && $rsA['sold']['stara']['name'] === '' && $rsA['sold']['stara']['email'] === '' && $rsA['sold']['nova']['name'] === 'Novi Kupac',
   'v81 (recenzija R81-5/6): storno uz javljenu uplatu čuva se 3 godine; ime i e-mail u oznakama „plaćeno” brišu se nakon 3 godine');
+/* v82 (završna recenzija, R82-3): otvorena neplaćena narudžba bez odluke (kasni klik) briše se 3 godine od narudžbe */
+file_put_contents(SJ_DATA . '/narudzbe.json', json_encode([$mkP('SJ-2026-0913', ['at' => $isoP(1100), 'payUntil' => $isoP(1099), 'claimedAt' => $isoP(1099), 'claimLate' => true]), $mkP('SJ-2026-0914', ['payUntil' => $isoP(39), 'claimedAt' => $isoP(39), 'claimLate' => true])]));
+@unlink(SJ_DATA . '/brisanje.json'); sj_privacy_purge();
+$byR = []; foreach (json_decode(file_get_contents(SJ_DATA . '/narudzbe.json'), true) as $x) $byR[$x['no']] = $x;
+$ok(!empty($byR['SJ-2026-0913']['anonymizedAt']) && empty($byR['SJ-2026-0914']['anonymizedAt']) && ($byR['SJ-2026-0914']['email'] ?? '') === 'ana@primjer.hr', 'v82 (R82-3): otvorena narudžba bez odluke briše se 3 godine od narudžbe, mlađa ostaje');
 file_put_contents(sj_res_path(), json_encode($rs0 ?: ['res' => [], 'sold' => []]));
 /* recenzija R81-2: bez klika automatski storno nikad prije obećanog držanja (i kad je u Postavkama manje od 48 h) */
 $puC = $Z('2026-11-09 23:30'); $oC = ['payUntil' => gmdate('Y-m-d\TH:i:s\Z', $puC), 'expiredAt' => gmdate('Y-m-d\TH:i:s\Z', $puC)];
