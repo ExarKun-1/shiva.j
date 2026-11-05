@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v47)
+   SHIVA.J — javni API na hostingu   (api/index.php v48)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v48 (v82, završna recenzija): raskid uz obrisanu narudžbu bilježi „orderGone” (admin ne javlja lažno nepodudaranje e-maila);
    v47 (stranica v81; 13. krug): pravilo 7 dana samo nakon automatskog storna i „lažna narudžba” (veza samo za lažnu);
         unikat se drži do 23:59 radnog dana nakon roka (ZZP čl. 15.); povrat u 7 dana; automatsko brisanje podataka
    v46 (stranica v80; završna recenzija): pozdrav s imenom samo kad je ime slovima (sj_hi); rokovi nakon odgovora
@@ -548,11 +549,11 @@ if ($a === 'raskid') {
   $match = null;
   if (preg_match('/(\d{4})\s*-\s*(\d{4,6})/', $r['no'], $mm)) {
     $o = sj_order_find(['no' => 'SJ-' . $mm[1] . '-' . $mm[2]]);
-    if ($o) $match = ['no' => (string)$o['no'], 'email' => strcasecmp((string)($o['order']['customer']['email'] ?? $o['email'] ?? ''), $r['email']) === 0];
+    if ($o) $match = ['no' => (string)$o['no'], 'email' => strcasecmp((string)($o['order']['customer']['email'] ?? $o['email'] ?? ''), $r['email']) === 0, 'gone' => !empty($o['anonymizedAt'])]; /* v82 (R82-4): obrisana narudžba — e-mail se ne može usporediti */
   }
   $id = sj_token();
   sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use ($r, $at, $id, $match) {
-    $list[] = $r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?')), 'order' => $match['no'] ?? null, 'emailMatch' => $match['email'] ?? null];
+    $list[] = $r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?')), 'order' => $match['no'] ?? null, 'emailMatch' => $match['email'] ?? null] + (!empty($match['gone']) ? ['orderGone' => true] : []);
     if (count($list) > 2000) $list = array_slice($list, -2000); /* vijeće (N73-5) */
   }, []);
   /* v78 (odluka vlasnice, 12. krug, t2): neplaćena narudžba (bez uplate i bez javljene uplate) odmah se stornira, a torba
@@ -680,7 +681,9 @@ if ($a === 'paidclaim') {
       . (!empty($out['full']) ? 'PAŽNJA: mjesto u kolekciji za ' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$out['full'])) . ' u međuvremenu je popunjeno.' . "\n\n" : '')
       . 'Rok nije produžen i torba nije ponovno rezervirana. Provjerite izvod banke: ako je uplata stigla, u adminu → Narudžbe → „Rok istekao” kliknite „Označi plaćenom” (ako je torba ili mjesto u međuvremenu otišlo drugome, admin će to javiti — tada se javite kupcu oko povrata).'
       . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''), null, (string)($o['email'] ?? ''));
-    sj_json_out(['ok' => true, 'state' => 'late', 'message' => sj_late_text($o, 'Rok za uplatu je već istekao')]);
+    /* v82 (završna recenzija, R82-2): rok još teče ili se torba drži, ali je mjesto u kolekciji popunjeno — kupcu to i pišemo, ne „rok je istekao” */
+    $fullTxt = !empty($out['full']) ? 'Mjesto u kolekciji za ' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$out['full'])) . ' u međuvremenu je popunjeno. Javili smo vlasnici: provjerit će uplatu i javiti vam se. Ako narudžbu ne možemo ispuniti, vraćamo vam uplaćeni iznos što prije, a najkasnije u roku od sedam dana.' : '';
+    sj_json_out(['ok' => true, 'state' => 'late', 'message' => $fullTxt !== '' ? $fullTxt : sj_late_text($o, 'Rok za uplatu je već istekao')]);
   }
   if ($st === 'already') { $oa = (array)(sj_order_find(['no' => $no]) ?? []);
     /* v70 (D70-5): nakon isteka (ili klik nakon isteka, v69.1) bez obećanja da se torba čuva */

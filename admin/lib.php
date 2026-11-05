@@ -15,7 +15,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v50');
+define('SJ_VERSION', 'admin v51');
 
 /* ---------- postavke ---------- */
 
@@ -389,7 +389,9 @@ function sj_privacy_purge(bool $force = false, ?int $now = null): int {
         $base = $unreal ? ((int)strtotime((string)($o['cancelledAt'] ?? '')) ?: (int)strtotime((string)($o['at'] ?? '')))
                         : ((int)strtotime((string)($o['paidAt'] ?? '')) ?: (int)strtotime((string)($o['at'] ?? '')));
         if ($base <= 0) continue;
-        if (!$unreal && empty($o['paidAt']) && empty($o['cancelledAt'])) continue; /* otvorena neplaćena narudžba: rješavaju je rokovi i storno */
+        /* otvorena neplaćena narudžba: rješavaju je rokovi i storno; ako ostane bez odluke (kasni klik, „Ukloni oznaku”,
+           stara bez roka), v82 (završna recenzija, R82-3): briše se 3 godine od narudžbe, kao i ostale */
+        if (!$unreal && empty($o['paidAt']) && empty($o['cancelledAt'])) $base = (int)strtotime((string)($o['at'] ?? '')) ?: $base;
         if (!$unreal && empty($o['paidAt'])) $base = (int)strtotime((string)($o['cancelledAt'] ?? '')) ?: $base; /* sporni storno: 3 godine od storna */
         if ($base + ($unreal ? SJ_PURGE_UNREAL_DAYS : SJ_PURGE_KEEP_DAYS) * 86400 > $now) continue;
         sj_anonymize_order($o, $now); $n++;
