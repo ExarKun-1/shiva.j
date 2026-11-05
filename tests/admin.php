@@ -527,6 +527,11 @@ $pP = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0991', 'back' => '?
 shell_exec('php -r ' . escapeshellarg("require '" . $site . "/admin/lib.php'; sj_order_unpaid_if_empty([], '', 'SJ-2026-0992');"));
 $lst = json_decode(file_get_contents($D . '/narudzbe.json'), true);
 $ok(str_contains($pP, 'podaci narudžbe su obrisani') && empty($lst[0]['proofAt']) && !empty($lst[1]['paidAt']), 'v81 (S1): obrisana narudžba — bez „Potvrda primljena” i bez vraćanja u neplaćene');
+/* v82 (recenzija v81, N2): obrisana nepotvrđena narudžba u Narudžbama je zatvorena — bez „nije plaćeno”, obrasca za plaćanje i storna */
+$an4 = $mk('SJ-2026-0993', ['payUntil' => $isoIn(5), 'unconfirmed' => true, 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)']); unset($an4['email']);
+file_put_contents($D . '/narudzbe.json', json_encode([$an2, $an3, $an4]));
+$pg = $req('GET', ['s' => 'narudzbe']);
+$ok(substr_count($pg, 'podaci obrisani') >= 3 && !str_contains($pg, 'Označiti narudžbu SJ-2026-0993 plaćenom') && !str_contains($pg, 'Stornirati narudžbu SJ-2026-0993') && !str_contains($pg, 'Označiti narudžbu SJ-2026-0991 plaćenom') && str_contains($pg, '<b>zatvoreno</b>'), 'v82 (N2): obrisana narudžba prikazana zatvorenom, bez gumba');
 /* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
 $cfgS = file_get_contents($D . '/config.json');
 $smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);

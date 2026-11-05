@@ -669,7 +669,7 @@ function sj_proof_form(array $o): string {
 }
 /* v68: neplaćene narudžbe kojima je prošao rok za uplatu (popis „Rok istekao”) */
 function sj_expired_orders(): array {
-  return array_values(array_filter(sj_read_json(SJ_DATA . '/narudzbe.json', []), fn($o) => empty($o['unconfirmed']) && sj_order_expired($o)));
+  return array_values(array_filter(sj_read_json(SJ_DATA . '/narudzbe.json', []), fn($o) => empty($o['unconfirmed']) && empty($o['anonymizedAt']) && sj_order_expired($o))); /* v82 (N2): obrisana nije na kartici „Rok istekao” */
 }
 
 function sj_state_badges(array $p, bool $busy = false): string {
@@ -896,6 +896,8 @@ function sj_view_orders(): string {
     if (sj_order_expired($o)) $paid = '<span class="badge ink">rok istekao</span> <b>nije plaćeno</b><br><a href="#rok">odluka na kartici „Rok istekao” gore ↑</a>';
     /* v63: neplaćenu, nestorniranu narudžbu vlasnica može stornirati (i onu samo iz Stalne kolekcije) */
     if (empty($o['paidAt']) && empty($o['cancelledAt']) && !sj_order_expired($o)) $paid .= sj_cancel_form($no, '?s=narudzbe', 'Stornirati narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ', ' . ($o['email'] ?? '') . ')? Torbe i mjesta u Stalnoj kolekciji se oslobađaju.');
+    /* v82 (recenzija v81, N2): obrisana narudžba je zatvorena — bez gumba (poslužitelj ih ionako odbija, R81-3) */
+    if (!empty($o['anonymizedAt'])) $paid = (!empty($o['paidAt']) ? '<b>plaćeno</b> ' . e(sj_fmt_hr($o['paidAt'])) : (!empty($o['cancelledAt']) ? '<b>stornirano</b> ' . e(sj_fmt_hr($o['cancelledAt'])) : '<b>zatvoreno</b> <span class="muted">(nije potvrđena ni plaćena)</span>')) . '<br><span class="muted">podaci obrisani ' . e(sj_fmt_hr($o['anonymizedAt'])) . '</span>';
     /* v64: telefon, adresa ili paketomat, napomena i vrsta stavke (unikat / Stalna kolekcija / po narudžbi) */
     /* v65: jedna linija po stavki — naziv, cijena, vrsta i želja kupca (umjesto drugog popisa) */
     $kinds = [];
