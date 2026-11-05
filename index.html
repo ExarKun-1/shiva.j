@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v80 (2026-11-04)
+     SHIVA.J WEBSHOP — v81 (2026-11-05)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v81 — uz api v47, admin v50 (odgovori vlasnice, 13. krug): t. 4 pravilo 7 dana (samo nakon storna
+           neplaćene i lažne narudžbe), t. 5 uplata pravodobna kad banka zaprimi nalog, torba se drži do 23:59 radnog
+           dana nakon roka, povrat u 7 dana; t. 6 pakiranje (plastika za manje artikle), rok slanja bez „obično”
      v80 — uz api v46, admin v49 (završna recenzija: sigurnost 8, pravo 8, kupac 8, dizajn 8,5, admin 6):
            materijal i mjere u košarici (ZZP čl. 74.), Uvjeti t. 5 („Uplatio/la sam”, snimka ručno), t. 7.5 (drugi
            IBAN uz potvrdu), Izjava (Gmail izvan EGP-a, 7 dana i po e-adresi), poruka nakon raskida, rok izrade po artiklu
@@ -1286,20 +1289,20 @@
 
       <details><summary><h3>4. Narudžba i sklapanje ugovora</h3></summary>
       <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz e-maila koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u e-mailu nije zaprimljena</span>. Prije slanja u košarici možete provjeriti i ispraviti svaki podatak. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a e-mailom vam odmah nakon <span data-if-confirm>potvrde</span><span data-if-noconfirm>narudžbe</span> šaljemo i potvrdu narudžbe, s ovim Uvjetima i obrascem za jednostrani raskid ugovora; ugovor je sklopljen kad primite tu potvrdu. Ugovor sklapamo na hrvatskom jeziku. Narudžbu i Uvjete koji su tada vrijedili čuvamo i na zahtjev vam ih šaljemo.</p>
-      <p>Ako je narudžba stornirana, isti artikl s iste e-mail adrese ili s iste internetske veze (npr. kućni wi-fi ili mobilna mreža) možete ponovno naručiti tek 7 dana nakon storna (zaštita od lažnih narudžbi). Ako je riječ o pogrešci, pišite nam e-mailom.</p>
-      <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> se unikatna torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu.</p>
+      <p>Ako je narudžba stornirana jer nije plaćena u roku, isti artikl s iste e-mail adrese možete ponovno naručiti tek 7 dana nakon storna; nakon storna lažne narudžbe to vrijedi i za istu internetsku vezu (npr. kućni wi-fi ili mobilna mreža). Ako je riječ o pogrešci, pišite nam e-mailom.</p>
+      <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> se unikatna torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu što prije, a najkasnije u roku od sedam dana.</p>
       </details>
 
       <details><summary><h3>5. Plaćanje</h3></summary>
       <p>Plaća se uplatom na račun SHIVA.&nbsp;J, obrt za dizajn, IBAN <span class="nowrap">HR98 2360 0001 1027 9044 2</span>, model HR00, a kao poziv na broj upisuje se broj narudžbe (npr. 2026-0007). U mobilnom bankarstvu možete skenirati barkod prikazan nakon narudžbe: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami. Plaćanje karticom trenutno nije moguće.</p>
       <p>Rok za uplatu je <span data-ttl-text>24 sata</span> od <span data-if-confirm>potvrde </span>narudžbe. Ako taj rok pada u subotu, nedjelju ili na blagdan, produljuje se do 23:59 prvoga sljedećeg radnog dana. Točan datum i sat vidite odmah nakon narudžbe i u potvrdi narudžbe. Do tada je unikatna torba rezervirana samo za vas. Ako vaša banka nudi instant uplatu, odaberite je: obična uplata poslana navečer, vikendom ili uoči blagdana može stići tek sljedeći radni dan.</p>
-      <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi. Ako to učinite prije isteka roka, rok se produljuje do 23:59 prvoga radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas. Ako link ne radi, pošaljite nam snimku potvrde o uplati; snimku pregledavamo ručno.</p>
-      <p>Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Ako nam niste javili da ste platili, torba se istekom roka vraća u prodaju. Narudžbu bez uplate storniramo<span data-terms-auto-wrap> <span data-terms-auto>48 sati</span> nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana)</span> i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos.</p>
+      <p>Već ste platili, a uplata još nije stigla? Kliknite „Uplatio/la sam” u e-mailu o narudžbi. Ako to učinite prije isteka roka ili dok je torba još rezervirana za vas, rok se produljuje do 23:59 prvoga radnog dana nakon isteka roka (subote, nedjelje i blagdani se preskaču; točan datum vidite odmah), a torba ostaje rezervirana za vas. Ako link ne radi, pošaljite nam snimku potvrde o uplati; snimku pregledavamo ručno.</p>
+      <p>Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka. Ako uplata ne stigne: nakon isteka roka dobit ćete e-mail. Torba ostaje rezervirana za vas do 23:59 prvoga radnog dana nakon isteka roka, a zatim se, ako uplata nije stigla i niste nam javili da ste platili, vraća u prodaju. Narudžbu bez uplate storniramo<span data-terms-auto-wrap> <span data-terms-auto>48 sati</span> nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana)</span> i o tome vas obavještavamo e-mailom. Ako ste u međuvremenu platili, a torbu je kupio netko drugi, vraćamo vam cijeli iznos što prije, a najkasnije u roku od sedam dana.</p>
       </details>
 
       <details><summary><h3>6. Izrada i dostava</h3></summary>
-      <p>Gotove unikate pakiramo i šaljemo (ili pripremamo za preuzimanje u radionici) nakon primitka uplate<span data-terms-ship-wrap>, obično u roku <span data-terms-ship-lead>1–2 radna dana</span></span>. Modele po narudžbi izrađujemo u roku navedenom uz artikl (modele iz Stalne kolekcije najkasnije u roku 14 dana od primitka uplate), a zatim ih šaljemo; ako ste u jednoj narudžbi naručili i unikat i model po narudžbi, šaljemo ih zajedno kad je sve gotovo. Kad paket pošaljemo, javit ćemo vam e-mailom. Za preuzimanje u radionici javit ćemo vam se da dogovorimo termin.</p>
-      <p>Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.</p>
+      <p>Gotove unikate pakiramo i šaljemo (ili pripremamo za preuzimanje u radionici) nakon primitka uplate<span data-terms-ship-wrap>, u roku <span data-terms-ship-lead>1–2 radna dana</span></span>. Modele po narudžbi izrađujemo u roku navedenom uz artikl (modele iz Stalne kolekcije najkasnije u roku 14 dana od primitka uplate), a zatim ih šaljemo; ako ste u jednoj narudžbi naručili i unikat i model po narudžbi, šaljemo ih zajedno kad je sve gotovo. Kad paket pošaljemo, javit ćemo vam e-mailom. Za preuzimanje u radionici javit ćemo vam se da dogovorimo termin.</p>
+      <p>Torbe pakiramo u kartonsku kutiju s papirnatim punjenjem, zamotanu u papir i zatvorenu papirnatom ljepljivom trakom; manje artikle (npr. kozmetičke torbice) ponekad šaljemo u plastičnoj ambalaži. Zasebnu isporuku prihvatljivu za okoliš ne nudimo.</p>
       <p>Rizik oštećenja ili gubitka torbe prelazi na vas kad je preuzmete vi ili osoba koju ste odredili, a koja nije prijevoznik. Ako je pošiljka pri preuzimanju vidljivo oštećena, molimo zabilježite to kod dostavljača i javite nam se.</p>
       </details>
 
@@ -1364,7 +1367,7 @@
 
       <details><summary><h3>2. Koje podatke prikupljamo</h3></summary>
       <ul class="legal-list">
-        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi; nakon storna s iste veze ili e-adrese 7 dana nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Narudžba:</b> ime i prezime, e-mail adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi: nakon storna neplaćene narudžbe s iste e-adrese, a nakon storna lažne narudžbe i s iste veze, 7 dana nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
         <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
         <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, e-mail adresa, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
         <li><b>Kontakt e-mailom ili na Instagramu:</b> podaci koje nam sami navedete.</li>
@@ -1469,7 +1472,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v80</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v81</p>
 </footer>
 
 <!-- Košarica -->
@@ -2395,7 +2398,7 @@ function renderShipLead(){
     const pickup = !!(so && so.id === "pickup");
     const made = cart.filter(p => p.made), uniq = cart.filter(p => !p.made);
     let txt = "";
-    if(kako) txt = SHIP_LEAD ? " Slanje obično " + SHIP_LEAD + " nakon uplate." : "";
+    if(kako) txt = SHIP_LEAD ? " Slanje u roku " + SHIP_LEAD + " nakon uplate." : "";
     else if(made.length){
       /* v65: ukupno čekanje prije narudžbe — samo iz upisanih rokova (lead, ship_lead) */
       const q = p => "„" + p.name + "”";
@@ -2403,13 +2406,13 @@ function renderShipLead(){
       const ld = [...new Set(made.filter(p => filled(p.lead)).map(p => filled(p.lead)))];
       const leads = ld.length > 1 ? [made.filter(p => filled(p.lead)).map(p => q(p) + " " + filled(p.lead)).join(", ")] : ld;
       const leadIn = ld.length > 1 ? "rok izrade od uplate: " + leads[0] : leads.length ? "izrada " + leads[0] + " od uplate" : "";
-      const after = !pickup && SHIP_LEAD ? ", zatim slanje obično " + SHIP_LEAD : "";
+      const after = !pickup && SHIP_LEAD ? ", zatim slanje u roku " + SHIP_LEAD : "";
       txt = uniq.length
         ? (pickup ? "Sve pripremamo zajedno, za preuzimanje kad je gotovo: " : "Sve šaljemo zajedno, u jednom paketu: ") + uniq.map(q).join(" i ") + " čeka da sašijemo " + made.map(q).join(" i ")
           + (leadIn ? " (" + leadIn + ")" : "") + (pickup ? "" : after) + ". Želite li " + (uniq.length > 1 ? "torbe " + uniq.map(q).join(" i ") + " prije, naručite ih" : "torbu " + q(uniq[0]) + " prije, naručite je") + " zasebno" + (pickup ? "." : " (tada plaćate dvije dostave).")
-        : leadIn ? leadIn.charAt(0).toUpperCase() + leadIn.slice(1) + (ld.length > 1 ? "." + (after ? " Zatim slanje obično " + SHIP_LEAD + "." : "") : after + ".") : after ? "Slanje obično " + SHIP_LEAD + " nakon izrade." : "";
+        : leadIn ? leadIn.charAt(0).toUpperCase() + leadIn.slice(1) + (ld.length > 1 ? "." + (after ? " Zatim slanje u roku " + SHIP_LEAD + "." : "") : after + ".") : after ? "Slanje u roku " + SHIP_LEAD + " nakon izrade." : "";
     }
-    else txt = SHIP_LEAD && !pickup ? "Slanje obično " + SHIP_LEAD + " nakon uplate." : "";
+    else txt = SHIP_LEAD && !pickup ? "Slanje u roku " + SHIP_LEAD + " nakon uplate." : "";
     el.hidden = !txt;
     el.textContent = txt.replace(/(\d)–(\d)/g, "$1\u2060–\u2060$2"); /* v66: „1–2” se ne lomi */
     /* v66: redak o čekanju već kaže „izrada … od uplate” — napomena ispod obrasca se ne ponavlja */
@@ -3105,7 +3108,7 @@ function paymentPanel(last){
     ? (madeIt.length === 1 ? (anyUnique ? "Torbu " + qn(madeIt[0]) : "Vašu torbu") : "Torbe " + andJoin(madeIt.map(qn))) + " šijemo"
     : andJoin(madeIt.map(qn)) + " izrađujemo"; /* v67: nazivi, ne „ono što ste naručili po narudžbi” */
   /* v64: ukupno čekanje — uz rok izrade i rok slanja iz Postavki (ništa se ne izmišlja) */
-  const shipAfter = SHIP_LEAD ? " (slanje obično " + escHtml(SHIP_LEAD) + " nakon izrade)" : "";
+  const shipAfter = SHIP_LEAD ? " (slanje u roku " + escHtml(SHIP_LEAD) + " nakon izrade)" : "";
   const thanks = anyUnique && untilIso
     ? `${many ? "Torbe „" + uniqueNames.join("” i „") + "” su rezervirane za vas." : "Torba „" + uniqueNames[0] + "” je rezervirana za vas."}` /* v69: rok samo u koraku ispod (D68-5) */
     : anyUnique ? "Narudžba je zaprimljena. Molimo vas da uplatite što prije i pošaljete nam potvrdu uplate."
@@ -3164,8 +3167,8 @@ function paymentPanel(last){
         <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
           <span class="pay-late">${claimLine}</span></li>
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
-          : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
-          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", obično " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
+          : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
+          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
         <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
       </ol>
       <h3 class="pay-title">Podaci za uplatu</h3>

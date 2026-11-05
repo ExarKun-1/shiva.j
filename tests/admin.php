@@ -358,9 +358,13 @@ $vC = $req('GET', ['s' => 'narudzbe']);
 $ok(preg_match('#kupac javio uplatu</span> <span class="muted">[^<]*— provjerite izvod</span><br><span class="muted">rok za uplatu do [^<]*\(još \d+ h\)#u', $vC) === 1, 'v69 (D69-9): otvorena narudžba — „kupac javio uplatu” prvi, zatim rok za uplatu s preostalim satima');
 /* v78 (odluka vlasnice, 12. krug, t4): kvačica „i one s javljenom uplatom” */
 file_put_contents($D . '/narudzbe.json', json_encode([$mk('SJ-2026-0973', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003', 'claimedAt' => $isoAgo(1)]), $mk('SJ-2026-0974', ['payUntil' => $isoIn(20), 'ip' => 'feedfacecafe0003'])]));
+@unlink($D . '/mail-log.txt');
 $relE = $req('POST', ['act' => 'res_release_ip', 'ip' => 'feedfacecafe0003', 'claimed' => '1', 'back' => '?s=rez']);
 $nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
 $ok(!empty($nn['SJ-2026-0973']['cancelledAt']) && !empty($nn['SJ-2026-0974']['cancelledAt']) && !str_contains($relE, 'Nisu stornirane'), 'v78 (t4): s kvačicom „i one s javljenom uplatom” skupni storno obuhvaća i te narudžbe');
+$logE = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(str_contains($logE, 'SJ-2026-0973 je stornirana') && !str_contains($logE, 'SJ-2026-0974 je stornirana') && str_contains($logE, 'najkasnije u roku od sedam dana') && str_contains($relE, 'E-mail o stornu poslan kupcima koji su javili uplatu: 1'),
+  'v81 (13. krug, p5): skupni storno s kvačicom — e-mail o stornu samo kupcu koji je javio uplatu (povrat u 7 dana)');
 /* v70: „Potvrda primljena” — rok do 23:59 sljedećeg radnog dana (najviše 96 h), najviše dvaput, 7 dana od narudžbe;
    komad koji je otišao drugome se ne uzima; trag proofAt[]; kratki e-mail kupcu (kvačica) */
 @unlink($D . '/mail-log.txt');
@@ -460,7 +464,7 @@ $q1b = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0995', 'mail' => '1
 $q2 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0996', 'back' => '?s=narudzbe']);
 $logP = (string)@file_get_contents($D . '/mail-log.txt');
 $ok(substr_count($vM, 'Pošalji kupcu e-mail da je uplata stigla') >= 2 && str_contains($q1, 'Kupac je dobio e-mail da je uplata stigla') && substr_count($logP, 'uplata je stigla, narudžba SJ-2026-0995') === 1
-  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket obično šaljemo za 1–2 radna dana; kad krene, poslat ćemo vam poruku s potvrdom slanja') && str_contains($q1b, 'već ranije dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
+  && str_contains($logP, 'uplata za narudžbu br. SJ-2026-0995 je stigla, hvala! Paket šaljemo u roku 1–2 radna dana; kad krene, poslat ćemo vam poruku s potvrdom slanja') && str_contains($q1b, 'već ranije dobio e-mail') && str_contains($q2, 'Kupac nije dobio e-mail') && !str_contains($logP, 'SJ-2026-0996'),
   'v71: „Označi plaćenom” s kvačicom šalje „uplata je stigla” jednom (rok slanja iz Postavki); bez kvačice ne šalje');
 /* zastarjela kartica Postavki ne isključuje potvrdu e-mailom */
 $c68['require_confirm'] = true; file_put_contents($D . '/config.json', json_encode($c68));
@@ -509,6 +513,20 @@ $anon('kriva-z');
 $locked = $anon('vlasnica-123456');
 $ok(str_contains($first, 'Pogrešna lozinka.') && str_contains($locked, 'Previše pogrešnih pokušaja s ove veze') && !str_contains($locked, 'Pogrešna lozinka'), 'v25: blokada prijave ima vlastitu poruku');
 
+/* recenzija R81-3: anonimizirana narudžba ne može se označiti plaćenom (nema podataka kupca) */
+$an = $mk('SJ-2026-0990', ['cancelledAt' => $isoAgo(900), 'cancelBy' => 'automatski', 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)']); unset($an['email']);
+file_put_contents($D . '/narudzbe.json', json_encode([$an]));
+$pA = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0990', 'back' => '?s=narudzbe']);
+$oA = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
+$ok(str_contains($pA, 'Podaci ove narudžbe obrisani su') && !empty($oA['cancelledAt']) && empty($oA['paidAt']), 'v81 (R81-3): anonimizirana narudžba — „Označi plaćenom” odbijen s objašnjenjem');
+/* recenzija S1: anonimizirana neostvarena narudžba (bez storna) ne prima „Potvrda primljena”; „Nije prodana” ne vraća obrisanu plaćenu narudžbu u otvorene */
+$an2 = $mk('SJ-2026-0991', ['payUntil' => $isoAgo(800), 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)', 'order' => ['total' => 48, 'items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 48]]]]); unset($an2['email']);
+$an3 = $mk('SJ-2026-0992', ['paidAt' => $isoAgo(9000), 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)']); unset($an3['email']);
+file_put_contents($D . '/narudzbe.json', json_encode([$an2, $an3]));
+$pP = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0991', 'back' => '?s=narudzbe']);
+shell_exec('php -r ' . escapeshellarg("require '" . $site . "/admin/lib.php'; sj_order_unpaid_if_empty([], '', 'SJ-2026-0992');"));
+$lst = json_decode(file_get_contents($D . '/narudzbe.json'), true);
+$ok(str_contains($pP, 'podaci narudžbe su obrisani') && empty($lst[0]['proofAt']) && !empty($lst[1]['paidAt']), 'v81 (S1): obrisana narudžba — bez „Potvrda primljena” i bez vraćanja u neplaćene');
 /* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
 $cfgS = file_get_contents($D . '/config.json');
 $smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);
