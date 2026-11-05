@@ -653,17 +653,20 @@ if ($a === 'paidclaim') {
        produžuje rok) — inače bi jedna veza, uz granicu od 3 aktivne narudžbe, mogla oživljavati istekle i držati
        više narudžbi. Klik se samo bilježi i javlja vlasnici, koja provjeri izvod i odluči („Označi plaćenom”). */
     /* v81 (recenzija R81-1): dok se torba još drži (do 23:59 radnog dana nakon roka, ZZP čl. 15.), klik vrijedi kao na vrijeme */
-    if ((int)strtotime(sj_pay_until($o)) <= $now && sj_held_until($o) <= $now) {
+    $late = function (array $full) use ($no, $now, $o) {
       $okLate = false;
       sj_order_edit(['no' => $no], function (array &$x) use ($now, &$okLate) {
         if (!empty($x['cancelledAt']) || !empty($x['paidAt']) || !empty($x['claimedAt'])) return;
         $okLate = true; $x['claimedAt'] = sj_iso($now); $x['claimLate'] = true;
       });
       if (!$okLate) { $x = sj_order_find(['no' => $no]) ?? []; return ['state' => !empty($x['paidAt']) ? 'paid' : (!empty($x['cancelledAt']) ? 'cancelled' : 'already'), 'payUntil' => sj_pay_until($x)]; }
-      return ['state' => 'late', 'o' => $o];
-    }
+      return ['state' => 'late', 'o' => $o, 'full' => $full];
+    };
+    if ((int)strtotime(sj_pay_until($o)) <= $now && sj_held_until($o) <= $now) return $late([]);
     /* v70 (odluka vlasnice, 5. krug): do 23:59 sljedećeg radnog dana (v76: bez granica od 96 h i 120 h; ranije: najviše 96 h od klika i 120 h od narudžbe) */
     $r = sj_hold_extend($no, sj_claim_until($o, $now), ['claimedAt' => sj_iso($now)]);
+    /* v81 (recenzija B1): nakon roka, dok se torba drži, mjesto u kolekciji može biti popunjeno — tada kao klik nakon roka */
+    if (($r['state'] ?? '') === 'full') return $late((array)($r['lost'] ?? []));
     return $r['ok'] ? $r : ['state' => $r['state'], 'payUntil' => $r['payUntil'] ?? sj_pay_until($o)];
   }, []);
   if (($out['err'] ?? 0) === 403) sj_json_out(['ok' => false, 'error' => 'Neispravan link. Otvorite poveznicu „Uplatio/la sam” iz najnovijeg e-maila o narudžbi.'], 403);
@@ -674,6 +677,7 @@ if ($a === 'paidclaim') {
     $o = (array)$out['o']; $c = sj_config();
     sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — kupac javlja uplatu nakon isteka roka: ' . $no . ' — ' . (string)($o['name'] ?? ''),
       'Za narudžbu ' . $no . ' javljena je uplata („Uplatio/la sam”) nakon isteka roka: ' . (string)($o['name'] ?? '') . ', ' . (string)($o['email'] ?? '') . ', ' . (string)($o['total'] ?? '') . ', poziv na broj ' . sj_payment_ref($no) . ".\n\n"
+      . (!empty($out['full']) ? 'PAŽNJA: mjesto u kolekciji za ' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$out['full'])) . ' u međuvremenu je popunjeno.' . "\n\n" : '')
       . 'Rok nije produžen i torba nije ponovno rezervirana. Provjerite izvod banke: ako je uplata stigla, u adminu → Narudžbe → „Rok istekao” kliknite „Označi plaćenom” (ako je torba ili mjesto u međuvremenu otišlo drugome, admin će to javiti — tada se javite kupcu oko povrata).'
       . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''), null, (string)($o['email'] ?? ''));
     sj_json_out(['ok' => true, 'state' => 'late', 'message' => sj_late_text($o, 'Rok za uplatu je već istekao')]);

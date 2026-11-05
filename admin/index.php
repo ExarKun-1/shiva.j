@@ -290,20 +290,21 @@ function sj_handle_action(string $act, array &$c): string {
         return $n;
       }, sj_res_default());
       $who = [];
-      foreach ($n as [$id, $em, $tk]) { $on = $tk !== '' ? (string)(sj_order_find(['token' => $tk])['no'] ?? '') : ''; $who[] = sj_product_names([$id]) . ($on !== '' ? ' ' . $on : '') . ($em !== '' ? ' — ' . $em : ''); }
+      foreach ($n as [$id, $em, $tk]) { $on = $tk !== '' ? (string)(sj_order_find(['token' => $tk])['no'] ?? '') : ''; if ($on !== '' && in_array($on, $mailNos, true)) continue; $who[] = sj_product_names([$id]) . ($on !== '' ? ' ' . $on : '') . ($em !== '' ? ' — ' . $em : ''); }
       /* v69 (vijeće na v68, N68-2): i neplaćene narudžbe s iste veze bez rezervacije (samo Stalna kolekcija) — inače
          drže mjesta; razlog „lažna narudžba”, kupci ne dobivaju e-mail */
-      $collNo = [];
-      sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($ip, &$collNo, $withClaimed) {
+      $collNo = []; $collWho = [];
+      sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($ip, &$collNo, &$collWho, $withClaimed, $mailNos) {
         foreach ($list as &$o) if (empty($o['paidAt']) && empty($o['cancelledAt']) && ($withClaimed || (empty($o['claimedAt']) && empty($o['proofAt']))) && sj_same_ip($o, [$ip])) {
           $o['cancelledAt'] = sj_iso(time()); $o['cancelReason'] = 'lažna narudžba'; $o['cancelBy'] = 'vlasnica';
-          $collNo[] = (string)($o['no'] ?? '') . (($o['email'] ?? '') !== '' ? ' — ' . $o['email'] : '');
+          $collNo[] = (string)($o['no'] ?? '');
+          if (!in_array((string)($o['no'] ?? ''), $mailNos, true)) $collWho[] = (string)($o['no'] ?? '') . (($o['email'] ?? '') !== '' ? ' — ' . $o['email'] : ''); /* N1: kupci s e-mailom nisu u popisu „javite mu se” */
         }
         return true;
       }, []);
       sj_made_counts(true);
       $mailed = 0; foreach ($mailNos as $mn) { $om = sj_order_find(['no' => $mn]); if ($om && !empty($om['cancelledAt']) && sj_cancel_mail($om, 'skupni storno')) $mailed++; }
-      $who = array_merge($who, $collNo); /* narudžbe s rezervacijom su već stornirane gore, pa se ne ponavljaju */
+      $who = array_merge($who, $collWho); /* narudžbe s rezervacijom su već stornirane gore, pa se ne ponavljaju */
       return ($mailed ? 'E-mail o stornu poslan kupcima koji su javili uplatu: ' . $mailed . '. ' : '') . 'Stornirano s iste adrese: ' . sj_count_words(count($n), 'rezervacija', 'rezervacije', 'rezervacija') . ($collNo ? ' i ' . sj_count_words(count($collNo), 'narudžba', 'narudžbe', 'narudžbi') : '') . ' (razlog: lažna narudžba). Torbe i mjesta su ponovno u prodaji.' . ($claimedNo ? ' Nisu stornirane narudžbe za koje je kupac javio uplatu: ' . implode(', ', $claimedNo) . ' — provjerite izvod.' : '') . ($who ? ' Kupci ne dobivaju automatsku poruku; ako je netko od njih pravi, javite mu se: ' . implode('; ', $who) . '.' : '');
     }
 

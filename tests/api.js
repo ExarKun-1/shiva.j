@@ -434,6 +434,22 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const oC2 = read('narudzbe.json').find(x => x.no === c1.data.orderNo) || {};
       ok(c1.data.ok && Date.parse(resC.until) > Date.parse(c1.data.payUntil) && gC.state === 'open' && pC.data.state === 'extended' && !oC2.claimLate && Date.parse(oC2.payUntil) > Date.now(),
         'v81 (p2, R81-1): rezervacija traje dulje od roka; klik nakon roka dok se torba drži produljuje rok (ne „kasni klik”)'); clearLimits(); }
+    // v81 (recenzija B1): klik nakon roka dok se torba drži, a mjesto u kolekciji je u međuvremenu popunjeno — „kasni klik”, ne lažno „produženo”
+    { clearLimits();
+      const pl0 = fs.readFileSync(D + 'proizvodi.json', 'utf8');
+      const setLim = v => { const pl = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const k = pl.find(x => x.id === 'klasik'); k.made_limit = v; if (!pl.some(x => x.id === 't81d')) pl.push(Object.assign({}, pl.find(x => x.id === 'luna'), { id: 't81d', name: 'Proba 81D', sold: false, reserved: false })); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(pl, null, 2)); return pl; };
+      const plD = setLim(99); const tot = Number(plD.find(x => x.id === 't81d').price) + Number(plD.find(x => x.id === 'klasik').price);
+      const d1 = await post('order', strapFill(order('api-key-v81d-aaaa', 'v81d@primjer.hr', [{ id: 't81d' }, { id: 'klasik' }], tot)));
+      { const n = read('narudzbe.json'); const o = n.find(x => x.no === d1.data.orderNo); if (o) { o.payUntil = new Date(Date.now() - 3600000).toISOString(); o.expiredAt = o.payUntil; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); } }
+      setLim(0);
+      const oD = read('narudzbe.json').find(x => x.no === d1.data.orderNo) || {};
+      const m0 = fs.existsSync(D + 'mail-log.txt') ? fs.readFileSync(D + 'mail-log.txt', 'utf8').length : 0;
+      const pD = await post('paidclaim', { no: d1.data.orderNo, t: oD.claim });
+      const oD2 = read('narudzbe.json').find(x => x.no === d1.data.orderNo) || {};
+      const mlD = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(m0);
+      ok(d1.data.ok && pD.data.state === 'late' && oD2.claimLate === true && !!oD2.claimedAt && /mjesto u kolekciji za „[^”]+” u međuvremenu je popunjeno/.test(mlD) && !/Rok za uplatu produžen je jednom/.test(mlD),
+        'v81 (recenzija B1): popunjeno mjesto u kolekciji nakon roka — klik zabilježen kao kasni, vlasnica upozorena, bez lažnog „produženo” ' + JSON.stringify([d1.data.error, pD.data.state]));
+      fs.writeFileSync(D + 'proizvodi.json', pl0); clearLimits(); }
     // v78 (t3): automatski storno u Uvjetima (status autoCancel) kad rokovi rade
     { const c = read('config.json'); const old = JSON.stringify(c); c.deadline_tick = true; c.auto_cancel_hours = 48; fs.writeFileSync(D + 'config.json', JSON.stringify(c, null, 2));
       const stA = await (await fetch(U + 'status')).json();

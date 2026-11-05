@@ -241,6 +241,7 @@ function sj_proof_block(array $o, ?int $now = null): string {
   $now = $now ?? time();
   if (!empty($o['paidAt'])) return 'narudžba je već plaćena';
   if (!empty($o['cancelledAt'])) return 'narudžba je stornirana';
+  if (!empty($o['anonymizedAt'])) return 'podaci narudžbe su obrisani'; /* v81 (recenzija S1) */
   if (empty($o['payUntil'])) return 'narudžba nema rok za uplatu';
   if (count((array)($o['proofAt'] ?? [])) >= 2) return 'potvrda je već dvaput zabilježena';
   return '';
@@ -398,7 +399,7 @@ function sj_privacy_purge(bool $force = false, ?int $now = null): int {
   }
   /* recenzija R81-5: i ime i e-mail u oznakama „plaćeno” (rezervacije.json) nakon 3 godine */
   if (is_file(sj_res_path())) sj_with_lock(sj_res_path(), function (array &$d) use (&$n, $now) {
-    foreach ((array)($d['sold'] ?? []) as $id => $x) { $pt = (int)strtotime((string)($x['paidAt'] ?? '')); if (is_array($x) && $pt > 0 && $pt + SJ_PURGE_KEEP_DAYS * 86400 <= $now && (($x['name'] ?? '') !== '' || ($x['email'] ?? '') !== '')) { $d['sold'][$id]['name'] = ''; $d['sold'][$id]['email'] = ''; $n++; } }
+    foreach ((array)($d['sold'] ?? []) as $id => $x) { if (!is_array($x)) continue; $pt = (int)strtotime((string)($x['paidAt'] ?? '')); if ($pt > 0 && $pt + SJ_PURGE_KEEP_DAYS * 86400 <= $now && (($x['name'] ?? '') !== '' || ($x['email'] ?? '') !== '')) { $d['sold'][$id]['name'] = ''; $d['sold'][$id]['email'] = ''; $n++; } }
     return true;
   }, sj_res_default());
   if (is_file(SJ_DATA . '/raskidi.json')) sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use (&$n, $now) {
@@ -858,7 +859,7 @@ function sj_product_names(array $ids): string {
 /* v28: kad narudžbi s tim tokenom / brojem više nijedna torba nije plaćena, ni narudžba nije plaćena */
 function sj_order_unpaid_if_empty(array $sold, string $tok, string $no): void {
   foreach ($sold as $x) if (($tok !== '' && ($x['token'] ?? '') === $tok) || ($no !== '' && ($x['no'] ?? '') === $no)) return;
-  if ($tok !== '' || $no !== '') sj_order_edit($no !== '' ? ['no' => $no] : ['token' => $tok], function (array &$o) { unset($o['paidAt']); });
+  if ($tok !== '' || $no !== '') sj_order_edit($no !== '' ? ['no' => $no] : ['token' => $tok], function (array &$o) { if (empty($o['anonymizedAt'])) unset($o['paidAt']); }); /* v81 (S1): obrisana narudžba ostaje zatvorena */
 }
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.

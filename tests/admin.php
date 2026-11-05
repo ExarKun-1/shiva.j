@@ -519,6 +519,14 @@ file_put_contents($D . '/narudzbe.json', json_encode([$an]));
 $pA = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0990', 'back' => '?s=narudzbe']);
 $oA = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
 $ok(str_contains($pA, 'Podaci ove narudžbe obrisani su') && !empty($oA['cancelledAt']) && empty($oA['paidAt']), 'v81 (R81-3): anonimizirana narudžba — „Označi plaćenom” odbijen s objašnjenjem');
+/* recenzija S1: anonimizirana neostvarena narudžba (bez storna) ne prima „Potvrda primljena”; „Nije prodana” ne vraća obrisanu plaćenu narudžbu u otvorene */
+$an2 = $mk('SJ-2026-0991', ['payUntil' => $isoAgo(800), 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)', 'order' => ['total' => 48, 'items' => [['id' => 'luna', 'name' => 'Luna', 'qty' => 1, 'price' => 48]]]]); unset($an2['email']);
+$an3 = $mk('SJ-2026-0992', ['paidAt' => $isoAgo(9000), 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)']); unset($an3['email']);
+file_put_contents($D . '/narudzbe.json', json_encode([$an2, $an3]));
+$pP = $req('POST', ['act' => 'order_proof', 'no' => 'SJ-2026-0991', 'back' => '?s=narudzbe']);
+shell_exec('php -r ' . escapeshellarg("require '" . $site . "/admin/lib.php'; sj_order_unpaid_if_empty([], '', 'SJ-2026-0992');"));
+$lst = json_decode(file_get_contents($D . '/narudzbe.json'), true);
+$ok(str_contains($pP, 'podaci narudžbe su obrisani') && empty($lst[0]['proofAt']) && !empty($lst[1]['paidAt']), 'v81 (S1): obrisana narudžba — bez „Potvrda primljena” i bez vraćanja u neplaćene');
 /* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
 $cfgS = file_get_contents($D . '/config.json');
 $smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);
