@@ -216,6 +216,18 @@ $byP = []; foreach (json_decode(file_get_contents(SJ_DATA . '/narudzbe.json'), t
 $anon = fn($x) => !empty($x['anonymizedAt']) && ($x['name'] ?? '') === '(anonimizirano)' && !isset($x['email']) && !isset($x['phone']) && !isset($x['order']['customer']) && !str_contains(json_encode($x, JSON_UNESCAPED_UNICODE), 'crna, 140') && !str_contains(json_encode($x, JSON_UNESCAPED_UNICODE), 'Zabok 1') && str_contains($x['items'], 'Luna');
 $ok($nP === 3 && $nP2 === 0 && $anon($byP['SJ-2026-0901']) && $anon($byP['SJ-2026-0903']) && empty($byP['SJ-2026-0902']['anonymizedAt']) && empty($byP['SJ-2026-0904']['anonymizedAt']) && empty($byP['SJ-2026-0905']['anonymizedAt']) && count($rkP) === 1 && $rkP[0]['name'] === 'Novi',
   'v81 (p4): anonimizirane neostvarene narudžbe nakon 30 dana i plaćene nakon 3 godine (ostaju broj, iznos i nazivi), izjava o raskidu nakon 3 godine; najviše jednom dnevno');
+/* recenzija R81-6/R81-5: sporni storno (javljena uplata) čuva se 3 godine; oznake „plaćeno” bez imena nakon 3 godine */
+file_put_contents(SJ_DATA . '/narudzbe.json', json_encode([$mkP('SJ-2026-0911', ['cancelledAt' => $isoP(40), 'claimedAt' => $isoP(41)]), $mkP('SJ-2026-0912', ['cancelledAt' => $isoP(1100), 'unpaidAt' => $isoP(1101)])]));
+$rs0 = json_decode((string)@file_get_contents(sj_res_path()), true) ?: []; $rs = $rs0 + ['res' => [], 'sold' => []];
+$rs['sold']['stara'] = ['id' => 'stara', 'name' => 'Stari Kupac', 'email' => 'st@p.hr', 'paidAt' => $isoP(1100)]; $rs['sold']['nova'] = ['id' => 'nova', 'name' => 'Novi Kupac', 'email' => 'no@p.hr', 'paidAt' => $isoP(10)];
+file_put_contents(sj_res_path(), json_encode($rs)); @unlink(SJ_DATA . '/brisanje.json'); sj_privacy_purge();
+$byQ = []; foreach (json_decode(file_get_contents(SJ_DATA . '/narudzbe.json'), true) as $x) $byQ[$x['no']] = $x; $rsA = json_decode(file_get_contents(sj_res_path()), true);
+$ok(empty($byQ['SJ-2026-0911']['anonymizedAt']) && !empty($byQ['SJ-2026-0912']['anonymizedAt']) && $rsA['sold']['stara']['name'] === '' && $rsA['sold']['stara']['email'] === '' && $rsA['sold']['nova']['name'] === 'Novi Kupac',
+  'v81 (recenzija R81-5/6): storno uz javljenu uplatu čuva se 3 godine; ime i e-mail u oznakama „plaćeno” brišu se nakon 3 godine');
+file_put_contents(sj_res_path(), json_encode($rs0 ?: ['res' => [], 'sold' => []]));
+/* recenzija R81-2: bez klika automatski storno nikad prije obećanog držanja (i kad je u Postavkama manje od 48 h) */
+$puC = $Z('2026-11-09 23:30'); $oC = ['payUntil' => gmdate('Y-m-d\TH:i:s\Z', $puC), 'expiredAt' => gmdate('Y-m-d\TH:i:s\Z', $puC)];
+$ok(sj_cancel_due($oC, 1) === $Z('2026-11-10 23:59') && sj_cancel_due($oC, 48) === $Z('2026-11-11 23:30'), 'v81 (R81-2): automatski storno (1 h u Postavkama) tek nakon držanja do 23:59 radnog dana; 48 h bez promjene');
 file_put_contents(SJ_DATA . '/narudzbe.json', '[]'); @unlink(SJ_DATA . '/raskidi.json');
 $c78 = sj_defaults(); $c78['deadline_tick'] = true; $c78['auto_cancel_hours'] = 48; $tOn = sj_terms_text($c78); $c78['deadline_tick'] = false; $tOff = sj_terms_text($c78);
 $ok(str_contains($tOn, 'Narudžbu bez uplate storniramo 48 sati nakon isteka roka (ako to pada u subotu, nedjelju ili na blagdan, u 23:59 prvoga sljedećeg radnog dana) i o tome vas obavještavamo e-mailom.')

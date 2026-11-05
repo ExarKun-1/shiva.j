@@ -380,7 +380,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       clearLimits(); }
     // v78 (12. krug): t2 raskid neplaćene narudžbe je stornira; t1 ista torba 7 dana s istog e-maila ili veze; t5 e-mail nakon „Uplatio/la sam”
     { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
-      { const pl = prods(); const l = pl.find(x => x.id === 'luna'); pl.push(Object.assign({}, l, { id: 't78a', name: 'Proba 78A', sold: false, reserved: false }), Object.assign({}, l, { id: 't78b', name: 'Proba 78B', sold: false, reserved: false })); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(pl, null, 2)); }
+      { const pl = prods(); const l = pl.find(x => x.id === 'luna'); pl.push(Object.assign({}, l, { id: 't78a', name: 'Proba 78A', sold: false, reserved: false }), Object.assign({}, l, { id: 't78b', name: 'Proba 78B', sold: false, reserved: false }), Object.assign({}, l, { id: 't78c', name: 'Proba 78C', sold: false, reserved: false })); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(pl, null, 2)); }
       const a1 = await post('order', order('api-key-v78a-aaaa', 'v78a@primjer.hr', [{ id: 't78a' }], 65));
       const rk = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr' });
       const oA = read('narudzbe.json').find(x => x.no === a1.data.orderNo) || {};
@@ -423,6 +423,17 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       ok(cl1.data.ok && cl1.data.state === 'extended' && cl2.data.state === 'already' && mlC.length === 1 && mlC[0].includes('v78b@primjer.hr') && /Torbu čuvamo za vas do /.test(mlC[0]),
         'v78 (t5): nakon „Uplatio/la sam” kupac dobiva kratki e-mail s datumom do kojeg čuvamo torbu (samo jednom)');
       clearLimits(); }
+    // v81 (recenzija R81-1): „Uplatio/la sam” nakon roka, a dok se torba još drži (do 23:59 radnog dana) — vrijedi kao na vrijeme
+    { clearLimits();
+      const c1 = await post('order', order('api-key-v81c-aaaa', 'v81c@primjer.hr', [{ id: 't78c' }], 65));
+      { const n = read('narudzbe.json'); const o = n.find(x => x.no === c1.data.orderNo); o.payUntil = new Date(Date.now() - 3600000).toISOString(); o.expiredAt = o.payUntil; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+      const oC = read('narudzbe.json').find(x => x.no === c1.data.orderNo) || {};
+      const resC = (read('rezervacije.json').res || {}).t78c || {};
+      const gC = await (await fetch(U + 'paidclaim?no=' + c1.data.orderNo + '&t=' + oC.claim)).json();
+      const pC = await post('paidclaim', { no: c1.data.orderNo, t: oC.claim });
+      const oC2 = read('narudzbe.json').find(x => x.no === c1.data.orderNo) || {};
+      ok(c1.data.ok && Date.parse(resC.until) > Date.parse(c1.data.payUntil) && gC.state === 'open' && pC.data.state === 'extended' && !oC2.claimLate && Date.parse(oC2.payUntil) > Date.now(),
+        'v81 (p2, R81-1): rezervacija traje dulje od roka; klik nakon roka dok se torba drži produljuje rok (ne „kasni klik”)'); clearLimits(); }
     // v78 (t3): automatski storno u Uvjetima (status autoCancel) kad rokovi rade
     { const c = read('config.json'); const old = JSON.stringify(c); c.deadline_tick = true; c.auto_cancel_hours = 48; fs.writeFileSync(D + 'config.json', JSON.stringify(c, null, 2));
       const stA = await (await fetch(U + 'status')).json();

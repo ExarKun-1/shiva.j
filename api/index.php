@@ -628,7 +628,7 @@ if ($a === 'paidclaim') {
     $o = null; /* v70 (N70-2): isto traženje kao POST (samo narudzbe.json, ne arhiva) */
     foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $x) if (($x['no'] ?? '') === $no) { $o = $x; break; }
     if (!$o || empty($o['claim']) || !hash_equals((string)$o['claim'], $sec)) sj_json_out(['ok' => false, 'error' => 'Neispravan link.'], 403);
-    $st = !empty($o['paidAt']) ? 'paid' : (!empty($o['cancelledAt']) ? 'cancelled' : (!empty($o['claimedAt']) || sj_proof_held($o) ? 'already' : ((int)strtotime(sj_pay_until($o)) <= time() ? 'late' : 'open')));
+    $st = !empty($o['paidAt']) ? 'paid' : (!empty($o['cancelledAt']) ? 'cancelled' : (!empty($o['claimedAt']) || sj_proof_held($o) ? 'already' : ((int)strtotime(sj_pay_until($o)) <= time() && sj_held_until($o) <= time() ? 'late' : 'open'))); /* R81-1 */
     $n = 0; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $n++;
     sj_json_out(['ok' => true, 'state' => $st, 'unique' => $n, 'message' => $st === 'already' ? sj_already_text($o) : null, 'payUntil' => sj_pay_until($o), 'claimUntil' => $st === 'open' ? sj_iso(sj_claim_until($o, time())) : null]);
   }
@@ -652,7 +652,8 @@ if ($a === 'paidclaim') {
     /* v69.1 (vijeće, 5. krug): nakon isteka roka klik više NE oživljava narudžbu (ne rezervira torbu ni mjesto i ne
        produžuje rok) — inače bi jedna veza, uz granicu od 3 aktivne narudžbe, mogla oživljavati istekle i držati
        više narudžbi. Klik se samo bilježi i javlja vlasnici, koja provjeri izvod i odluči („Označi plaćenom”). */
-    if ((int)strtotime(sj_pay_until($o)) <= $now) {
+    /* v81 (recenzija R81-1): dok se torba još drži (do 23:59 radnog dana nakon roka, ZZP čl. 15.), klik vrijedi kao na vrijeme */
+    if ((int)strtotime(sj_pay_until($o)) <= $now && sj_held_until($o) <= $now) {
       $okLate = false;
       sj_order_edit(['no' => $no], function (array &$x) use ($now, &$okLate) {
         if (!empty($x['cancelledAt']) || !empty($x['paidAt']) || !empty($x['claimedAt'])) return;
@@ -978,7 +979,7 @@ function sj_recent_cancel_text(array $P): string {
     $ca = (int)strtotime((string)($o['cancelledAt'] ?? '')); if ($ca <= 0 || $ca + SJ_REORDER_BLOCK_DAYS * 86400 <= $now) continue;
     /* v81 (odluka vlasnice, 13. krug, p1): samo automatski storno (nije plaćeno u roku) i „lažna narudžba”;
        ista internetska veza samo za „lažna narudžba” (vezu na mobilnoj mreži dijele i neznanci) */
-    $fake = (string)($o['cancelReason'] ?? '') === 'lažna narudžba'; $auto = (string)($o['cancelBy'] ?? '') === 'automatski';
+    $fake = (string)($o['cancelReason'] ?? '') === 'lažna narudžba'; $auto = (string)($o['cancelBy'] ?? '') === 'automatski' || (string)($o['cancelReason'] ?? '') === 'nije uplaćeno u roku'; /* R81: i ručni storno istog razloga (Uvjeti t. 4) */
     if (!$fake && !$auto) continue;
     $same = ($ek !== '' && sj_email_key((string)($o['email'] ?? '')) === $ek) || ($fake && $mine && sj_same_ip($o, $mine));
     if (!$same) continue;

@@ -513,6 +513,12 @@ $anon('kriva-z');
 $locked = $anon('vlasnica-123456');
 $ok(str_contains($first, 'Pogrešna lozinka.') && str_contains($locked, 'Previše pogrešnih pokušaja s ove veze') && !str_contains($locked, 'Pogrešna lozinka'), 'v25: blokada prijave ima vlastitu poruku');
 
+/* recenzija R81-3: anonimizirana narudžba ne može se označiti plaćenom (nema podataka kupca) */
+$an = $mk('SJ-2026-0990', ['cancelledAt' => $isoAgo(900), 'cancelBy' => 'automatski', 'anonymizedAt' => $isoAgo(1), 'name' => '(anonimizirano)']); unset($an['email']);
+file_put_contents($D . '/narudzbe.json', json_encode([$an]));
+$pA = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0990', 'back' => '?s=narudzbe']);
+$oA = json_decode(file_get_contents($D . '/narudzbe.json'), true)[0];
+$ok(str_contains($pA, 'Podaci ove narudžbe obrisani su') && !empty($oA['cancelledAt']) && empty($oA['paidAt']), 'v81 (R81-3): anonimizirana narudžba — „Označi plaćenom” odbijen s objašnjenjem');
 /* v79: Postavke → Slanje e-maila (SMTP s prijavom): lozinka se ne prikazuje, prazno polje je zadržava, kvačica je briše */
 $cfgS = file_get_contents($D . '/config.json');
 $smtp = array_merge($set, ['site_url' => 'https://shivaj.hr', 'oib' => '', 'from_email' => 'info@shivaj.hr', 'mail_mode' => 'smtp', 'smtp_host' => 'smtp.shivaj.hr', 'smtp_port' => '465', 'smtp_secure' => 'ssl', 'smtp_user' => 'info@shivaj.hr']);

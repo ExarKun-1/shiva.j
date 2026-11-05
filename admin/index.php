@@ -88,9 +88,10 @@ if (!sj_logged_in()) {
 /* v68: rokovi za uplatu (podsjetnik, rok istekao, automatski storno) i pri otvaranju admina.
    v69 (vijeće na v68, N68-3): samo pri prikazu stranice (GET), nikad prije vlasničine radnje — klik „Označi plaćenom”
    ne smije izgubiti od automatskog storna u istom zahtjevu */
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST')
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
   try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
+}
 
 /* ---------- radnje ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -426,6 +427,7 @@ function sj_handle_action(string $act, array &$c): string {
       if (!preg_match('/^SJ-\d{4}-\d{4,6}$/', $no)) throw new RuntimeException('Neispravan broj narudžbe.');
       $ord = sj_order_find(['no' => $no]); /* i u arhivi (starije od zadnjih 300) */
       if (!$ord) throw new RuntimeException('Narudžba nije nađena.');
+      if (!empty($ord['anonymizedAt'])) throw new RuntimeException('Podaci ove narudžbe obrisani su (rok čuvanja je istekao). Kupca potražite u e-mailovima; uplatu riješite ručno (povrat ili nova narudžba).'); /* R81-3 */
       /* v69 (vijeće na v68, N68-3): automatski storno nije vlasničina odluka — „Označi plaćenom” ga poništava; komad koji
          je u međuvremenu otišao drugome navodi se u upozorenju (kao i nakon isteka roka) */
       if ($act === 'order_paid' && !empty($ord['cancelledAt']) && ($ord['cancelBy'] ?? '') === 'automatski') {
@@ -946,7 +948,7 @@ function sj_view_expired(array $rd): string {
   $ex = sj_expired_orders();
   if (!$ex) return '';
   $c = sj_config(); $auto = max(0, (int)($c['auto_cancel_hours'] ?? 0)); $now = time();
-  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. ' . ($auto > 0 && !empty($c['deadline_tick']) ? 'Komad je vraćen u prodaju, osim ako je kupac prije isteka roka javio uplatu („Uplatio/la sam”) ili ste kliknuli „Potvrda primljena”: tada se čuva do automatskog storna (oznaka „torba čuvana do …”).' : 'Komad je vraćen u prodaju.') . ' Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka (subota, nedjelja i blagdan pomiču storno na 23:59 radnog dana) i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
+  $h = '<h3 id="rok">Rok istekao (' . count($ex) . ')</h3><p class="muted">Neplaćene narudžbe kojima je prošao rok za uplatu. ' . ($auto > 0 && !empty($c['deadline_tick']) ? 'Unikat se drži do 23:59 prvoga radnog dana nakon roka (uplata poslana do roka može stići sljedeći radni dan); ako je kupac javio uplatu („Uplatio/la sam”) ili ste kliknuli „Potvrda primljena”, čuva se do automatskog storna (oznaka „torba čuvana do …”). Zatim se vraća u prodaju.' : 'Komad je vraćen u prodaju.') . ' Usporedite poziv na broj s izvodom banke: ako je uplata stigla, kliknite „Označi plaćenom”; ako nije, „Storniraj narudžbu”.' . ($auto > 0 ? ' Ako ne kliknete ništa, narudžba se automatski stornira ' . sj_hours_text($auto) . ' nakon isteka roka (subota, nedjelja i blagdan pomiču storno na 23:59 radnog dana) i kupac dobiva e-mail.' : '') . '</p><div class="rokl">';
   foreach ($ex as $o) {
     $no = (string)($o['no'] ?? ''); $tok = (string)($o['reservation']['token'] ?? '');
     $u = (int)strtotime(sj_pay_until($o)); $ago = max(0, intdiv($now - $u, 3600));

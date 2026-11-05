@@ -344,6 +344,8 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
 function sj_cancel_due(array $o, int $auto): int {
   $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
   $due = sj_auto_cancel_at($exp, $auto); /* v78 (t3) */
+  /* v81 (recenzija R81-2): bez klika storno nikad prije obećanog držanja (23:59 radnog dana nakon roka, Uvjeti t. 5) */
+  if (empty($o['claimedAt']) && empty($o['proofAt']) && ($pu = (int)strtotime(sj_pay_until($o))) > 0) $due = max($due, sj_hold_after_deadline($pu));
   $hu = (!empty($o['claimedAt']) || !empty($o['proofAt'])) ? (int)strtotime((string)($o['reservation']['until'] ?? '')) : 0;
   return $hu > $exp ? min($due, $hu) : $due;
 }
@@ -364,6 +366,7 @@ function sj_anonymize_order(array &$o, int $now): void {
     if (!empty($o['order']['shipping']['label'])) $o['shipping'] = (string)$o['order']['shipping']['label'];
   } else { $o['items'] = ''; $o['shipping'] = ''; }
   if (isset($o['reservation']) && is_array($o['reservation'])) unset($o['reservation']['token']);
+  if (str_starts_with((string)($o['cancelReason'] ?? ''), 'drugo')) $o['cancelReason'] = 'drugo';
   $o['anonymizedAt'] = sj_iso($now);
 }
 function sj_privacy_purge(bool $force = false, ?int $now = null): int {
@@ -379,19 +382,27 @@ function sj_privacy_purge(bool $force = false, ?int $now = null): int {
     sj_with_lock($f, function (array &$list) use (&$n, $now) {
       foreach ($list as &$o) {
         if (!is_array($o) || !empty($o['anonymizedAt'])) continue;
-        $unreal = !empty($o['cancelledAt']) || (!empty($o['unconfirmed']) && empty($o['paidAt']));
+        /* recenzija R81-6: storno uz javljenu ili označenu uplatu (mogući povrat ili spor) čuva se 3 godine kao izvršena narudžba */
+        $disputed = !empty($o['claimedAt']) || !empty($o['proofAt']) || !empty($o['unpaidAt']) || !empty($o['uncancelledAt']) || !empty($o['paidAt']);
+        $unreal = (!empty($o['cancelledAt']) || (!empty($o['unconfirmed']) && empty($o['paidAt']))) && !$disputed;
         $base = $unreal ? ((int)strtotime((string)($o['cancelledAt'] ?? '')) ?: (int)strtotime((string)($o['at'] ?? '')))
                         : ((int)strtotime((string)($o['paidAt'] ?? '')) ?: (int)strtotime((string)($o['at'] ?? '')));
         if ($base <= 0) continue;
-        if (!$unreal && empty($o['paidAt'])) continue; /* otvorena neplaćena narudžba: rješavaju je rokovi i storno */
+        if (!$unreal && empty($o['paidAt']) && empty($o['cancelledAt'])) continue; /* otvorena neplaćena narudžba: rješavaju je rokovi i storno */
+        if (!$unreal && empty($o['paidAt'])) $base = (int)strtotime((string)($o['cancelledAt'] ?? '')) ?: $base; /* sporni storno: 3 godine od storna */
         if ($base + ($unreal ? SJ_PURGE_UNREAL_DAYS : SJ_PURGE_KEEP_DAYS) * 86400 > $now) continue;
         sj_anonymize_order($o, $now); $n++;
       }
       return true;
     }, []);
   }
+  /* recenzija R81-5: i ime i e-mail u oznakama „plaćeno” (rezervacije.json) nakon 3 godine */
+  if (is_file(sj_res_path())) sj_with_lock(sj_res_path(), function (array &$d) use (&$n, $now) {
+    foreach ((array)($d['sold'] ?? []) as $id => $x) { $pt = (int)strtotime((string)($x['paidAt'] ?? '')); if (is_array($x) && $pt > 0 && $pt + SJ_PURGE_KEEP_DAYS * 86400 <= $now && (($x['name'] ?? '') !== '' || ($x['email'] ?? '') !== '')) { $d['sold'][$id]['name'] = ''; $d['sold'][$id]['email'] = ''; $n++; } }
+    return true;
+  }, sj_res_default());
   if (is_file(SJ_DATA . '/raskidi.json')) sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use (&$n, $now) {
-    $keep = array_values(array_filter($list, fn($r) => !is_array($r) || (int)strtotime((string)($r['at'] ?? '')) + SJ_PURGE_KEEP_DAYS * 86400 > $now));
+    $keep = array_values(array_filter($list, fn($r) => !is_array($r) || ($t = (int)strtotime((string)($r['at'] ?? ''))) <= 0 || $t + SJ_PURGE_KEEP_DAYS * 86400 > $now));
     $n += count($list) - count($keep); $list = $keep; return true;
   }, []);
   return $n;
@@ -522,7 +533,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
     }
     sj_send_mail((string)$c['owner_email'], $c['shop'] . " — rok za uplatu prošao: $no — $name",
       "Rok za uplatu narudžbe $no ($name, " . (string)($o['total'] ?? '') . ", poziv na broj " . sj_payment_ref($no) . ") prošao je u $untilAcc." . ($uq ? (($hO = sj_held_info($o))['until'] > time()
-        ? ' ' . (!empty($o['claimedAt']) ? 'Kupac je javio uplatu („Uplatio/la sam”)' : (!empty($o['proofAt']) ? 'Kliknuli ste „Potvrda primljena”' : 'Uplata poslana do roka može stići sljedeći radni dan (ZZP čl. 15.)')) . ', pa ' . (count($hO['held']) > 1 ? 'su torbe „' . implode('” i „', $hO['held']) . '” i dalje rezervirane' : 'je torba „' . $hO['held'][0] . '” i dalje rezervirana') . ' za kupca do ' . sj_fmt_deadline(sj_iso($hO['until'])) . ' (do automatskog storna).'
+        ? ' ' . (!empty($o['claimedAt']) ? 'Kupac je javio uplatu („Uplatio/la sam”)' : (!empty($o['proofAt']) ? 'Kliknuli ste „Potvrda primljena”' : 'Uplata poslana do roka može stići sljedeći radni dan (ZZP čl. 15.)')) . ', pa ' . (count($hO['held']) > 1 ? 'su torbe „' . implode('” i „', $hO['held']) . '” i dalje rezervirane' : 'je torba „' . $hO['held'][0] . '” i dalje rezervirana') . ' za kupca do ' . sj_fmt_deadline(sj_iso($hO['until'])) . ((!empty($o['claimedAt']) || !empty($o['proofAt'])) ? ' (do automatskog storna).' : '.')
           . ($hO['taken'] ? ' ' . (count($hO['taken']) > 1 ? 'Torbe „' . implode('” i „', $hO['taken']) . '” otišle su' : 'Torba „' . $hO['taken'][0] . '” otišla je') . ' drugom kupcu: ako kupac plati, vratite mu iznos za ' . (count($hO['taken']) > 1 ? 'njih' : 'nju') . '.' : '')
           . (($fO = array_diff($hO['gone'], $hO['taken'])) ? ' ' . (count($fO) > 1 ? 'Torbe „' . implode('” i „', $fO) . '” vraćene su' : 'Torba „' . implode('', $fO) . '” vraćena je') . ' u prodaju.' : '')
         : ' ' . ($many ? 'Torbe su vraćene' : 'Torba je vraćena') . ' u prodaju.') : '')
