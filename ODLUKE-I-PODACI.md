@@ -251,3 +251,4 @@ Rekonstruirano iz sažetka starog razgovora. Od 20. 9. 2026. sve navedeno **jest
 cd C:\SHIVAJ.HANDMADE\shiva.j
 php -S 127.0.0.1:8090 -t . -d display_errors=1 -d upload_max_filesize=20M -d post_max_size=20M -d memory_limit=256M router.php
 ```
+| PHP 8.4 (6. 11. 2026.) | Plesk na CroAdriji nudi PHP 8.3.36 do 8.4.27 (i 7.4.33 „secured”, ne koristiti: kod treba PHP 8). Svi testovi (run 49, admin 110, api 94, e2e 197, smtp, confirm, gas, proba, pdf417) prolaze na PHP 8.4.27 (službena Docker slika php:8.4-cli), bez ijedne greške ili upozorenja u zapisu (E_ALL) — **ali bez proširenja GD** (Debianovi paketi iz sesije blokirani). Ako se fotografija ne vidi ili ne sprema: prvo Admin → Postavke → Provjera „GD da/NE” (vidi Upute v03, odjeljak E). |
