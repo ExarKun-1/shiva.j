@@ -69,6 +69,13 @@ def put(z, name, text):
     z.writestr(zi, text)
 
 
+def strip_comments(html):
+    # HTML komentari izvan <script>/<style>; sadržaj skripti i stilova ostaje netaknut
+    parts = re.split(r'(<script\b.*?</script>|<style\b.*?</style>)', html, flags=re.S | re.I)
+    out = [p if i % 2 else re.sub(r'<!--(?!\[if).*?-->\n?', '', p, flags=re.S) for i, p in enumerate(parts)]
+    return ''.join(out)
+
+
 def build(kind, v, code=''):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'shivaj-{v}-{kind}.zip')
@@ -78,6 +85,9 @@ def build(kind, v, code=''):
             if n == 'data/PRVA-PRIJAVA.txt':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
                 txt = open(os.path.join(ROOT, n), encoding='utf-8').read().rstrip('\n') + f'\nkod: {code}\n'
                 put(z, n, txt)
+                continue
+            if n == 'index.html':  # v82 (pregled prije objave): bez HTML komentara (interne bilješke i povijest verzija) u izvornom kodu za kupce
+                put(z, n, strip_comments(open(os.path.join(ROOT, n), encoding='utf-8').read()))
                 continue
             z.write(os.path.join(ROOT, n), n)
         if kind == 'prvi':

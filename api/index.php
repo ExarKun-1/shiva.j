@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v48)
+   SHIVA.J — javni API na hostingu   (api/index.php v49)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v49 (v82, pregled prije objave): poštanski broj kod dostave na adresu; ignore_user_abort/set_time_limit/getmypid samo ako postoje.
    v48 (v82, završna recenzija): raskid uz obrisanu narudžbu bilježi „orderGone” (admin ne javlja lažno nepodudaranje e-maila);
    v47 (stranica v81; 13. krug): pravilo 7 dana samo nakon automatskog storna i „lažna narudžba” (veza samo za lažnu);
         unikat se drži do 23:59 radnog dana nakon roka (ZZP čl. 15.); povrat u 7 dana; automatsko brisanje podataka
@@ -431,6 +432,7 @@ if ($a === 'order') {
   if ($ship && $ship['locker'] && $locker === '') sj_json_out(['ok' => false, 'error' => 'Odaberite ili upišite paketomat.'], 400);
   if (preg_match('~(https?:|www\.|@)~i', $locker)) sj_json_out(['ok' => false, 'error' => 'Za paketomat upišite samo naziv ili adresu.'], 400);
   if ($ship && $ship['address'] && ($cust['street'] === '' || $cust['city'] === '')) sj_json_out(['ok' => false, 'error' => 'Upišite adresu za dostavu.'], 400);
+  if ($ship && $ship['address'] && !preg_match('/^\s*\d{5}\s+\S/u', $cust['city'])) sj_json_out(['ok' => false, 'error' => 'Upišite poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb.', 'field' => 'city'], 400); /* v82 (pregled prije objave): dostavna služba treba poštanski broj */
   if (!$ship || !$ship['address']) { $cust['street'] = ''; $cust['city'] = ''; } /* ne čuvamo što ne treba */
   $shipPrice = $ship ? sj_ship_price($ship, $goods) : 0.0; /* v68: besplatna dostava iznad praga (samo odabrani načini) */
   $total = round($goods + $shipPrice, 2);

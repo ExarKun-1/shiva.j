@@ -696,7 +696,7 @@ function sj_view_products(): string {
   foreach ($list as $i => $p) {
     $id = (string)($p['id'] ?? '');
     $img = !empty($p['imgs'][0]) ? '<img src="../' . e($p['imgs'][0]) . '" alt="">' : '<span class="noimg">' . e(mb_substr((string)($p['name'] ?? '?'), 0, 1)) . '</span>';
-    $live = !empty($p['sold']) ? '' : (isset($res['sold'][$id]) ? '<span class="badge ink">plaćeno (rez.)</span>' : (isset($res['res'][$id]) ? '<span class="badge">rezervirano do ' . e(sj_fmt_hr($res['res'][$id]['until'])) . '</span>' : ''));
+    $live = !empty($p['sold']) ? '' : (isset($res['sold'][$id]) ? '<span class="badge ink">plaćeno (rez.)</span>' : (isset($res['res'][$id]) ? (empty($res['res'][$id]['ordered']) ? '<span class="badge">u košarici (nije narudžba)</span>' : '<span class="badge">rezervirano do ' . e(sj_fmt_hr($res['res'][$id]['until'])) . '</span>') : ''));
     $back = '?s=torbe';
     $h .= '<tr' . (!empty($p['hidden']) ? ' class="dim"' : '') . '>';
     $h .= '<td class="thumb">' . $img . '</td>';
@@ -770,7 +770,7 @@ function sj_view_form(array $c, string $id): string {
   $h .= '<label class="check"><input type="checkbox" name="hero" value="1"' . (!empty($p['hero']) ? ' checked' : '') . '> Na naslovnici (velika fotografija na vrhu stranice; samo jedna torba)</label>';
   $h .= '</div></div>';
   $h .= '<label>Priča torbe (u povećanom prikazu, 2–3 rečenice, do 400 znakova) <textarea name="story" maxlength="400" rows="3" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;font:inherit">' . e($p['story'] ?? '') . '</textarea></label>';
-  $h .= '<p class="muted">Upute za fotografije: docs/UPUTE-FOTOGRAFIRANJE.md (5 kadrova: sprijeda, u prostoru, na osobi, detalj s rukom, unutrašnjost).</p>';
+  $h .= '<p class="muted">Fotografije: 5 kadrova — sprijeda, u prostoru, na osobi, detalj s rukom, unutrašnjost. Svjetlo uz prozor, bez izravnog sunca; lampe i bljeskalica ugašene.</p>';
 
   $h .= '<h3>Fotografije</h3>';
   if (!empty($p['imgs'])) {
@@ -791,7 +791,7 @@ function sj_view_reservations(array $c): string {
   $names = []; $soldFlag = [];
   foreach (sj_products() as $p) { $names[$p['id'] ?? ''] = $p['name'] ?? ''; if (!empty($p['sold'])) $soldFlag[(string)($p['id'] ?? '')] = true; }
   $back = '?s=rez';
-  $h = '<h3>Aktivne rezervacije — istječu nakon ' . (int)$c['ttl_hours'] . ' h (rok za uplatu)</h3>';
+  $h = '<h3>Aktivne rezervacije — do kada vrijedi koja, piše u stupcu „Vrijedi do” (rok za uplatu, a za unikat još do kraja sljedećeg radnog dana)</h3>';
   if (!$d['res']) $h .= '<p class="muted">Trenutno nema rezervacija.</p>';
   else {
     $h .= '<div class="tablewrap"><table class="cards t-rez"><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th>Veza (oznaka)</th><th></th></tr></thead><tbody>';
@@ -834,7 +834,7 @@ function sj_view_reservations(array $c): string {
   /* v21: prazan prvi izbor, jasan gumb i potvrda — na mobitelu se ne smije slučajno prodati prva torba s popisa */
   $h .= '<h3>Ručno: torba prodana izvan stranice</h3><p class="muted">Samo za torbu prodanu bez narudžbe na stranici (npr. na sajmu). Plaćene narudžbe označite gumbom „Označi plaćenom” u Narudžbama ili gore.</p><form method="post" class="inline form" data-confirm-sel="Označiti „%s” prodanom izvan stranice? Više se neće nuditi kupcima."><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="res_sold_manual"><input type="hidden" name="back" value="' . e($back) . '"><select name="id" required><option value="">— odaberite torbu —</option>' . $opts . '</select> <button>Označi odabranu torbu prodanom</button></form>';
   $h .= '<p class="muted">„Veza (oznaka)” je skraćena, neprepoznatljiva oznaka veze s koje je stigla rezervacija (mijenja se svaki tjedan), a ne adresa kupca; „košarica, nije narudžba” je torba u nečijoj košarici, koja druge kupce ne blokira. Ako jedna adresa drži više torbi, a kupci se ne javljaju, gumb „Storniraj sve s ove adrese” vraća ih u prodaju odjednom.</p>';
-  $h .= '<p class="muted">Tijek: narudžba → kupac uplati i pošalje potvrdu → „Označi plaćenom” (ovdje ili iz e-maila) → „Označi trajno prodanom” kad torbu pošaljete ili predate. „Storniraj” i „Ukloni oznaku” vraćaju torbu u prodaju; trajno prodana vraća se samo gumbom „Vrati u prodaju”.</p>';
+  $h .= '<p class="muted">Tijek: narudžba → kupac uplati (i po želji klikne „Uplatio/la sam” ili pošalje potvrdu) → „Označi plaćenom” (ovdje ili iz e-maila) → „Označi trajno prodanom” kad torbu pošaljete ili predate. „Storniraj” i „Ukloni oznaku” vraćaju torbu u prodaju; trajno prodana vraća se samo gumbom „Vrati u prodaju”.</p>';
   return $h;
 }
 
@@ -940,7 +940,10 @@ function sj_view_withdrawals(): string {
   if (!$l) return '';
   $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave (smijete pričekati torbu ili dokaz o slanju), na račun s kojeg je uplaćeno.</p><div class="rokl">';
   foreach (array_slice($l, 0, 50) as $x) {
-    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b><span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
+    /* v82 (pregled prije objave): neplaćena narudžba — nema novca za vratiti */
+    $ox = !empty($x['order']) ? sj_order_find(['no' => (string)$x['order']]) : null;
+    $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? ' <span class="badge">nije plaćeno — ništa za vratiti</span>' : '';
+    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
   }
   return $h . '</div>';
 }
@@ -1059,7 +1062,7 @@ function sj_view_settings(array $c): string {
   /* V79-11: zadnji pad slanja već pokazuje upozorenje na vrhu stranice; ovdje samo nepotpune postavke */
   if ($mm === 'smtp' && ($ms = sj_smtp_missing($c)) !== '')
     $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: ' . e('za SMTP nedostaje: ' . $ms . '.') . ' Dok se to ne popravi, kupci ne dobivaju e-mailove.</p>';
-  $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impressum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite Claudeu da ih uskladi i na stranici.</p><div class="grid2">';
+  $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impressum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite osobi koja održava stranicu da ih uskladi i u tekstu stranice.</p><div class="grid2">';
   $h .= '<label>Primatelj <input name="recipient" value="' . e($p['recipient']) . '"></label>';
   $h .= '<label>Adresa primatelja <input name="address" value="' . e($p['address']) . '"></label>';
   $h .= '<label>IBAN <input name="iban" value="' . e($p['iban']) . '"></label>';

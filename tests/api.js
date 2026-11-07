@@ -164,7 +164,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const stF = await (await fetch(U + 'status')).json();
     ok(stF.freeShip && stF.freeShip.min === 120 && JSON.stringify(stF.freeShip.ids) === '["boxnow"]' && stF.limits.bags === 5 && stF.limits.articles === 10 && stF.sizes[0].opis === 'Stane mobitel.' && stF.sizeAll === 'Remen do 120 cm.', 'v68: status — besplatna dostava, granice, mjere i tekst za sve torbe');
     const box = { id: 'boxnow', label: 'BOX NOW paketomat', price: 4, locker: 'Zabok' }, gls = { id: 'gls', label: 'GLS', price: 6, locker: '' };
-    const orderShip = (key, email, items, goods, ship, total) => ({ _gotcha: '', Napomena: '', _order: { key, customer: Object.assign(cust(email), { street: 'Ulica 1', city: 'Zabok' }), items, shipping: ship, goods, total } });
+    const orderShip = (key, email, items, goods, ship, total) => ({ _gotcha: '', Napomena: '', _order: { key, customer: Object.assign(cust(email), { street: 'Ulica 1', city: '49210 Zabok' }), items, shipping: ship, goods, total } });
     const fsA = await post('order', orderShip('api-key-fs1-gggg', 'fs1@primjer.hr', [{ id: 'nera' }, { id: 'kozmeticka', qty: 2 }], 125, box, 125));
     const fsB = await post('order', orderShip('api-key-fs2-gggg', 'fs2@primjer.hr', [{ id: 'vela' }, { id: 'kozmeticka', qty: 3 }], 130, gls, 136));
     const fsC = await post('order', orderShip('api-key-fs3-gggg', 'fs3@primjer.hr', [{ id: 'luna' }, { id: 'remen', qty: 1 }], 80, box, 84));
@@ -174,6 +174,8 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     ok(/ROK ZA UPLATU: do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(mlF) && /instant uplatu/.test(mlF) && /Jasmina · Shiva\.J/.test(mlF) && typeof fsA.data.payUntil === 'string', 'v68: potvrda kupcu — točan rok za uplatu, savjet za instant uplatu, potpis; odgovor nosi payUntil');
     { const c0 = read('config.json'); c0.free_ship = { min: 0, ids: ['boxnow'] }; fs.writeFileSync(D + 'config.json', JSON.stringify(c0, null, 2)); }
     clearRes(); clearLimits();
+    const pcBad = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-pc1-gggg', customer: Object.assign(cust('pc1@primjer.hr'), { street: 'Ulica 1', city: 'Zabok' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: 15, total: 21 } });
+    ok(pcBad.status === 400 && pcBad.data.field === 'city' && /poštanski broj/.test(pcBad.data.error || ''), 'v82: dostava na adresu bez poštanskog broja se odbija (polje city) ' + JSON.stringify([pcBad.status, pcBad.data]));
     // 15d) v62/v63: Stalna kolekcija — najviše 3 zaprimljene narudžbe po modelu, 1 komad po narudžbi, jedna neplaćena po e-mailu
     clearRes(); clearLimits();
     setProd('klasik', { made_open_from: new Date().toISOString(), made_limit: 3 });
