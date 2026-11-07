@@ -70,9 +70,10 @@ def put(z, name, text):
 
 
 def strip_comments(html):
-    # HTML komentari izvan <script>/<style>; sadržaj skripti i stilova ostaje netaknut
+    # HTML komentari izvan <script>/<style>; sadržaj skripti i stilova ostaje netaknut.
+    # Oznake <!-- UVJETI-START --> i sl. OSTAJU: po njima PHP izrezuje Uvjete i Njegu za e-mail kupcu (sj_terms_text, sj_care_text).
     parts = re.split(r'(<script\b.*?</script>|<style\b.*?</style>)', html, flags=re.S | re.I)
-    out = [p if i % 2 else re.sub(r'<!--(?!\[if).*?-->\n?', '', p, flags=re.S) for i, p in enumerate(parts)]
+    out = [p if i % 2 else re.sub(r'<!--(?!\[if)(?!\s*[A-Z]+-(?:START|END)\s*-->).*?-->\n?', '', p, flags=re.S) for i, p in enumerate(parts)]
     return ''.join(out)
 
 

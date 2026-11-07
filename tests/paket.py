@@ -19,6 +19,8 @@ bad = re.compile(r'(^|/)(\.git|docs|tests|proba|tools)/|\.md$|primjer|router\.ph
 ok(not [n for n in fn + un if bad.search(n)], 'bez uputa, testova, primjera i lokalnog routera')
 kod = re.search(r'^kod: (\S{12,})$', first.read('data/PRVA-PRIJAVA.txt').decode(), re.M)
 ok(kod and kod.group(1) in open(os.path.join(ROOT, 'dist', f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt'), encoding='utf-8').read(), 'v51: prvi paket nosi nasumičan kod za prvu prijavu, kod je i u dist/')
+pg = first.read('index.html').decode()
+ok(all(m in pg for m in ('<!-- UVJETI-START -->', '<!-- UVJETI-END -->', '<!-- NJEGA-START -->', '<!-- NJEGA-END -->')) and 'SHIVA.J WEBSHOP — v' not in pg, 'v82: stranica u paketu bez bilješki, ali s oznakama za Uvjete i Njegu u e-mailu')
 ok(v in first.read('PROCITAJ.txt').decode() and 'NEMA' in upd.read('PROCITAJ.txt').decode(), 'PROCITAJ.txt s verzijom ' + v)
 ok(all(((first.getinfo(n).external_attr >> 16) & 0o444) == 0o444 for n in ('torbe.json', 'PROCITAJ.txt', 'data/PRVA-PRIJAVA.txt')), 'v58: datoteke napisane u paketu čitljive su poslužitelju (0644)')
 

@@ -2602,6 +2602,8 @@ function applyShipping(){
   document.getElementById("addrFields").hidden = !needAddr;
   document.getElementById("fAddr").required = needAddr;
   document.getElementById("fCity").required = needAddr;
+  /* v82 (recenzija): uzorak poštanskog broja samo kad je polje vidljivo — inače bi skriveno polje tiho blokiralo slanje */
+  if (needAddr) document.getElementById("fCity").setAttribute("pattern", "\\s*\\d{5}\\s+\\S.*"); else document.getElementById("fCity").removeAttribute("pattern");
   document.getElementById("lockerFields").hidden = !needLocker;
   document.getElementById("fLocker").required = needLocker;
   /* v64: poruka provjere ostala bi na skrivenom polju (npr. BOX NOW bez paketomata, pa preuzimanje) i obrazac se ne bi
