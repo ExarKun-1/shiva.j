@@ -5,7 +5,7 @@
   shivaj-vNN-nadogradnja.zip  nova verzija: samo kod, BEZ data/, torbe.json i img/ — prave narudžbe, lozinka,
                               ponuda i fotografije koje je admin spremio u img/ na hostingu ostaju netaknute
 
-Raspakirati u public_html (File Manager → Upload → Extract, ili FileZilla nakon raspakiravanja na računalu).
+Raspakirati u httpdocs (Plesk; na drugim hostinzima public_html) (File Manager → Upload → Extract, ili FileZilla nakon raspakiravanja na računalu).
 """
 import os, re, secrets, sys, time, zipfile
 
@@ -19,7 +19,7 @@ NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.
 
 README = {
     'prvi': """Shiva.J {v} — PRVO POSTAVLJANJE
-1. Raspakirajte sve u public_html (korijen web stranice).
+1. Raspakirajte sve u httpdocs (Plesk; na drugim hostinzima public_html — korijen web stranice).
    NIJE za nadogradnju žive stranice: prepisao bi ponudu (torbe.json). Za novu verziju uzmite paket „nadogradnja”.
 2. Otvorite https://vasa-domena.hr/admin, upišite KOD (ispisan pri izradi paketa i spremljen u dist/ pokraj zipa,
    ne na hostingu) i postavite lozinku.
@@ -28,7 +28,7 @@ README = {
 Upute: docs/UPUTE-OBJAVA-CROADRIA-v03.md u repozitoriju.
 """,
     'nadogradnja': """Shiva.J {v} — NADOGRADNJA
-1. Raspakirajte u public_html i dopustite zamjenu postojećih datoteka.
+1. Raspakirajte u httpdocs (ili public_html) i dopustite zamjenu postojećih datoteka.
 2. Paket namjerno NEMA mapa data/ i img/ ni datoteke torbe.json: narudžbe, lozinka, postavke, ponuda i fotografije
    ostaju kakve jesu. Ako changelog kaže da je nova i slika, nju prenesite zasebno.
 3. Paket zamjenjuje i .htaccess: ako vam je hosting dodao svoja pravila (npr. preusmjeravanje na https), ponovno ih
@@ -69,6 +69,14 @@ def put(z, name, text):
     z.writestr(zi, text)
 
 
+def strip_comments(html):
+    # HTML komentari izvan <script>/<style>; sadržaj skripti i stilova ostaje netaknut.
+    # Oznake <!-- UVJETI-START --> i sl. OSTAJU: po njima PHP izrezuje Uvjete i Njegu za e-mail kupcu (sj_terms_text, sj_care_text).
+    parts = re.split(r'(<script\b.*?</script>|<style\b.*?</style>)', html, flags=re.S | re.I)
+    out = [p if i % 2 else re.sub(r'<!--(?!\[if)(?!\s*[A-Z]+-(?:START|END)\s*-->).*?-->\n?', '', p, flags=re.S) for i, p in enumerate(parts)]
+    return ''.join(out)
+
+
 def build(kind, v, code=''):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'shivaj-{v}-{kind}.zip')
@@ -78,6 +86,9 @@ def build(kind, v, code=''):
             if n == 'data/PRVA-PRIJAVA.txt':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
                 txt = open(os.path.join(ROOT, n), encoding='utf-8').read().rstrip('\n') + f'\nkod: {code}\n'
                 put(z, n, txt)
+                continue
+            if n == 'index.html':  # v82 (pregled prije objave): bez HTML komentara (interne bilješke i povijest verzija) u izvornom kodu za kupce
+                put(z, n, strip_comments(open(os.path.join(ROOT, n), encoding='utf-8').read()))
                 continue
             z.write(os.path.join(ROOT, n), n)
         if kind == 'prvi':

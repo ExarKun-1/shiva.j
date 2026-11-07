@@ -10,12 +10,14 @@
    Javno: torbe.json (vidljive torbe) i img/ (fotografije).
    ========================================================= */
 declare(strict_types=1);
+/* v82 (pregled prije objave): datumi (godina u broju narudžbe, arhive, tjedni) po hrvatskom vremenu i kad hosting radi u UTC-u */
+date_default_timezone_set('Europe/Zagreb');
 
 define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v51');
+define('SJ_VERSION', 'admin v52');
 
 /* ---------- postavke ---------- */
 
@@ -1228,11 +1230,15 @@ function sj_care_applies(array $p): bool {
   if ($m === '' || str_contains($m, '{')) $m = 'umjetna koža';
   return (bool)preg_match('/umjetn/iu', $m);
 }
+/* v82 (recenzija): bez oznaka u index.html e-mail kupcu ide bez Uvjeta ili Njege — to se ne smije dogoditi tiho */
+function sj_marker_missing(string $what): void {
+  @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' index.html: nema oznaka ' . $what . '-START/END — e-mail kupcu ide bez tog teksta' . "\n", FILE_APPEND | LOCK_EX);
+}
 /* v74: upute za njegu torbe (tekst vlasnice) — doslovno iz index.html, između NJEGA-START i NJEGA-END */
 function sj_care_text(): string {
   static $t = null; if ($t !== null) return $t;
   $html = @file_get_contents(dirname(__DIR__) . '/index.html');
-  if ($html === false || !preg_match('/<!-- NJEGA-START -->(.*?)<!-- NJEGA-END -->/s', $html, $m)) return $t = '';
+  if ($html === false || !preg_match('/<!-- NJEGA-START -->(.*?)<!-- NJEGA-END -->/s', $html, $m)) { sj_marker_missing('NJEGA'); return $t = ''; }
   $p = preg_split('#</p>\s*#', $m[1]) ?: [];
   $p = array_values(array_filter(array_map(fn($x) => trim(html_entity_decode(strip_tags($x), ENT_QUOTES | ENT_HTML5, 'UTF-8')), $p), fn($x) => $x !== ''));
   return $t = implode("\n\n", $p);
@@ -1248,7 +1254,7 @@ function sj_terms_text(?array $c = null): string {
   $key = (!empty($c['require_confirm']) ? 'c' : 'n') . (int)$c['ttl_hours'] . '|' . (string)($c['ship_lead'] ?? '') . '|' . md5(json_encode($c['shipping'] ?? [])) . '|' . $autoH;
   if (isset($cache[$key])) return $cache[$key];
   $html = @file_get_contents(dirname(__DIR__) . '/index.html');
-  if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) return $cache[$key] = '';
+  if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) { sj_marker_missing('UVJETI'); return $cache[$key] = ''; }
   $h = $m[1];
   $drop = !empty($c['require_confirm']) ? 'data-if-noconfirm' : 'data-if-confirm';
   $h = preg_replace('#<span ' . $drop . '>.*?</span>#s', '', $h) ?? '';
@@ -1316,6 +1322,7 @@ function sj_json_out($data, int $status = 200, array $headers = []): void {
 
 /* Sprema prenesenu sliku kao img/<base>-<n>.jpg, smanjenu na najviše 1400 px. Vraća relativnu putanju ili null. */
 function sj_store_image(string $tmpPath, string $base): ?string {
+  if (!function_exists('imagecreatetruecolor')) throw new RuntimeException('Fotografija nije spremljena: na poslužitelju nije uključeno PHP proširenje GD (Plesk → PHP → proširenja, ili zamolite podršku hostinga). Ostali podaci torbe su ispravni — spremite ih bez fotografije pa je dodajte kad GD proradi.'); /* v82 */
   $info = @getimagesize($tmpPath);
   if (!$info) return null;
   [$w, $h, $type] = $info;

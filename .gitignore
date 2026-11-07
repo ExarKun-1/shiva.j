@@ -18,3 +18,6 @@ _site/
 
 # paketi za prijenos na hosting (tools/paket.py)
 dist/
+
+# Python
+__pycache__/

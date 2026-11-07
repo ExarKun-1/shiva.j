@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v81 (2026-11-05)
+     SHIVA.J WEBSHOP — v82 (2026-11-07)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,7 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v82 — uz api v49, admin v52 (pregled prije objave): dostava na adresu traži poštanski broj (5 znamenki).
      v81 — uz api v47, admin v50 (odgovori vlasnice, 13. krug): t. 4 pravilo 7 dana (samo nakon storna
            neplaćene i lažne narudžbe), t. 5 uplata pravodobna kad banka zaprimi nalog, torba se drži do 23:59 radnog
            dana nakon roka, povrat u 7 dana; t. 6 pakiranje (plastika za manje artikle), rok slanja bez „obično”
@@ -1472,7 +1473,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v81</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v82</p>
 </footer>
 
 <!-- Košarica -->
@@ -1519,7 +1520,7 @@
         </div>
         <div>
           <label for="fCity">Poštanski broj i mjesto</label>
-          <input id="fCity" required placeholder="npr. 10000 Zagreb" maxlength="80">
+          <input id="fCity" required placeholder="npr. 10000 Zagreb" maxlength="80" pattern="\s*\d{5}\s+\S.*" title="Poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb">
         </div>
       </div>
       <div id="lockerFields" hidden>
@@ -2601,6 +2602,8 @@ function applyShipping(){
   document.getElementById("addrFields").hidden = !needAddr;
   document.getElementById("fAddr").required = needAddr;
   document.getElementById("fCity").required = needAddr;
+  /* v82 (recenzija): uzorak poštanskog broja samo kad je polje vidljivo — inače bi skriveno polje tiho blokiralo slanje */
+  if (needAddr) document.getElementById("fCity").setAttribute("pattern", "\\s*\\d{5}\\s+\\S.*"); else document.getElementById("fCity").removeAttribute("pattern");
   document.getElementById("lockerFields").hidden = !needLocker;
   document.getElementById("fLocker").required = needLocker;
   /* v64: poruka provjere ostala bi na skrivenom polju (npr. BOX NOW bez paketomata, pa preuzimanje) i obrazac se ne bi
@@ -2726,7 +2729,7 @@ const VALID_MSG = {
   fEmail: "Upišite ispravnu e-mail adresu, npr. ime@primjer.hr.",
   fPhone: "Upišite broj telefona brojkama, npr. 091 234 5678.",
   fAddr: "Upišite ulicu i kućni broj.",
-  fCity: "Upišite poštanski broj i mjesto.",
+  fCity: "Upišite poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb.",
   fLocker: "Odaberite paketomat na karti ili upišite njegovu adresu.",
   fConsent: "Za narudžbu je potrebno prihvatiti Uvjete kupnje."
 };

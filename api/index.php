@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v48)
+   SHIVA.J — javni API na hostingu   (api/index.php v49)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v49 (v82, pregled prije objave): poštanski broj kod dostave na adresu; ignore_user_abort/set_time_limit/getmypid samo ako postoje.
    v48 (v82, završna recenzija): raskid uz obrisanu narudžbu bilježi „orderGone” (admin ne javlja lažno nepodudaranje e-maila);
    v47 (stranica v81; 13. krug): pravilo 7 dana samo nakon automatskog storna i „lažna narudžba” (veza samo za lažnu);
         unikat se drži do 23:59 radnog dana nakon roka (ZZP čl. 15.); povrat u 7 dana; automatsko brisanje podataka
@@ -246,7 +247,7 @@ if ($a === 'status') {
   /* v80 (završna recenzija, S-1): rokovi se obrađuju NAKON odgovora posjetitelju — slanje do 20 e-mailova (SMTP) ne smije
      zadržati stranicu ni biti prekinuto istekom vremena zahtjeva (oznake su već upisane, pa bi se e-mailovi izgubili) */
   register_shutdown_function(function () {
-    ignore_user_abort(true); @set_time_limit(0);
+    if (function_exists('ignore_user_abort')) ignore_user_abort(true); if (function_exists('set_time_limit')) @set_time_limit(0); /* v82 (pregled prije objave): hosting ih može isključiti — u PHP 8 to je Error i rokovi se ne bi obradili */
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
     try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
@@ -285,7 +286,8 @@ function sj_status_made_left(): object {
   if (is_array($c) && ($c['k'] ?? '') === $key && (int)($c['t'] ?? 0) > time() - 60 && is_array($c['v'] ?? null)) return (object)$c['v'];
   $v = array_map(fn($p) => sj_made_left($p), array_filter(sj_products_by_id(), fn($p) => sj_is_collection($p) && empty($p['sold'])));
   if (!is_dir(SJ_DATA . '/tmp')) @mkdir(SJ_DATA . '/tmp', 0755, true);
-  @file_put_contents($cf . '.' . getmypid(), json_encode(['k' => $key, 't' => time(), 'v' => $v])) && @rename($cf . '.' . getmypid(), $cf);
+  $tmp = $cf . '.' . (function_exists('getmypid') ? getmypid() : bin2hex(random_bytes(4))); /* v82: getmypid može biti isključen */
+  @file_put_contents($tmp, json_encode(['k' => $key, 't' => time(), 'v' => $v])) && @rename($tmp, $cf);
   return (object)$v;
 }
 
@@ -430,6 +432,7 @@ if ($a === 'order') {
   if ($ship && $ship['locker'] && $locker === '') sj_json_out(['ok' => false, 'error' => 'Odaberite ili upišite paketomat.'], 400);
   if (preg_match('~(https?:|www\.|@)~i', $locker)) sj_json_out(['ok' => false, 'error' => 'Za paketomat upišite samo naziv ili adresu.'], 400);
   if ($ship && $ship['address'] && ($cust['street'] === '' || $cust['city'] === '')) sj_json_out(['ok' => false, 'error' => 'Upišite adresu za dostavu.'], 400);
+  if ($ship && $ship['address'] && !preg_match('/^\s*\d{5}\s+\S/u', $cust['city'])) sj_json_out(['ok' => false, 'error' => 'Upišite poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb.', 'field' => 'city'], 400); /* v82 (pregled prije objave): dostavna služba treba poštanski broj */
   if (!$ship || !$ship['address']) { $cust['street'] = ''; $cust['city'] = ''; } /* ne čuvamo što ne treba */
   $shipPrice = $ship ? sj_ship_price($ship, $goods) : 0.0; /* v68: besplatna dostava iznad praga (samo odabrani načini) */
   $total = round($goods + $shipPrice, 2);
