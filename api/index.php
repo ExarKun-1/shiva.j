@@ -246,7 +246,7 @@ if ($a === 'status') {
   /* v80 (završna recenzija, S-1): rokovi se obrađuju NAKON odgovora posjetitelju — slanje do 20 e-mailova (SMTP) ne smije
      zadržati stranicu ni biti prekinuto istekom vremena zahtjeva (oznake su već upisane, pa bi se e-mailovi izgubili) */
   register_shutdown_function(function () {
-    ignore_user_abort(true); @set_time_limit(0);
+    if (function_exists('ignore_user_abort')) ignore_user_abort(true); if (function_exists('set_time_limit')) @set_time_limit(0); /* v82 (pregled prije objave): hosting ih može isključiti — u PHP 8 to je Error i rokovi se ne bi obradili */
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
     try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
@@ -285,7 +285,8 @@ function sj_status_made_left(): object {
   if (is_array($c) && ($c['k'] ?? '') === $key && (int)($c['t'] ?? 0) > time() - 60 && is_array($c['v'] ?? null)) return (object)$c['v'];
   $v = array_map(fn($p) => sj_made_left($p), array_filter(sj_products_by_id(), fn($p) => sj_is_collection($p) && empty($p['sold'])));
   if (!is_dir(SJ_DATA . '/tmp')) @mkdir(SJ_DATA . '/tmp', 0755, true);
-  @file_put_contents($cf . '.' . getmypid(), json_encode(['k' => $key, 't' => time(), 'v' => $v])) && @rename($cf . '.' . getmypid(), $cf);
+  $tmp = $cf . '.' . (function_exists('getmypid') ? getmypid() : bin2hex(random_bytes(4))); /* v82: getmypid može biti isključen */
+  @file_put_contents($tmp, json_encode(['k' => $key, 't' => time(), 'v' => $v])) && @rename($tmp, $cf);
   return (object)$v;
 }
 

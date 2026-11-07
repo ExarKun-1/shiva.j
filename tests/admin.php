@@ -276,7 +276,7 @@ file_put_contents($D . '/rezervacije.json', json_encode(['res' => ['vela' => ['i
 file_put_contents($D . '/narudzbe.json', json_encode([
   ['no' => 'SJ-2026-0911', 'at' => $isoAgo(13), 'payUntil' => $isoAgo(-11), 'name' => 'Pod P', 'email' => 'p13@p.hr', 'total' => '59,00 €', 'reservation' => ['token' => 'tP'], 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
   ['no' => 'SJ-2026-0912', 'at' => $isoAgo(30), 'payUntil' => $isoAgo(6), 'name' => 'Ist I', 'email' => 'i30@p.hr', 'total' => '64,00 €', 'reservation' => null, 'order' => ['items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'qty' => 1, 'price' => 60, 'made' => true]]]],
-  ['no' => 'SJ-2026-0913', 'at' => $isoAgo(80), 'payUntil' => $isoAgo(56), 'expiredAt' => $isoAgo(50), 'name' => 'Auto A', 'email' => 'a80@p.hr', 'total' => '74,00 €', 'reservation' => ['token' => 'tA80'], 'order' => ['items' => [['id' => 'vela', 'name' => 'Vela', 'qty' => 1, 'price' => 70]]]],
+  ['no' => 'SJ-2026-0913', 'at' => $isoAgo(200), 'payUntil' => $isoAgo(176), 'expiredAt' => $isoAgo(170), /* v82: tjedan unatrag — storno 48 h nakon roka pomiče se preko vikenda (v78 t3), pa test ne smije ovisiti o danu u tjednu */ 'name' => 'Auto A', 'email' => 'a80@p.hr', 'total' => '74,00 €', 'reservation' => ['token' => 'tA80'], 'order' => ['items' => [['id' => 'vela', 'name' => 'Vela', 'qty' => 1, 'price' => 70]]]],
   ['no' => 'SJ-2026-0914', 'at' => $isoAgo(13), 'payUntil' => $isoAgo(-11), 'name' => 'Placen P', 'email' => 'pl@p.hr', 'paidAt' => $isoAgo(12), 'total' => '59,00 €', 'order' => ['items' => [['id' => 'mira', 'name' => 'Mira', 'qty' => 1, 'price' => 48]]]],
 ]));
 $req('GET', ['s' => 'narudzbe']);

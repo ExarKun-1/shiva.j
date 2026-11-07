@@ -10,6 +10,8 @@
    Javno: torbe.json (vidljive torbe) i img/ (fotografije).
    ========================================================= */
 declare(strict_types=1);
+/* v82 (pregled prije objave): datumi (godina u broju narudžbe, arhive, tjedni) po hrvatskom vremenu i kad hosting radi u UTC-u */
+date_default_timezone_set('Europe/Zagreb');
 
 define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
@@ -1316,6 +1318,7 @@ function sj_json_out($data, int $status = 200, array $headers = []): void {
 
 /* Sprema prenesenu sliku kao img/<base>-<n>.jpg, smanjenu na najviše 1400 px. Vraća relativnu putanju ili null. */
 function sj_store_image(string $tmpPath, string $base): ?string {
+  if (!function_exists('imagecreatetruecolor')) throw new RuntimeException('Fotografija nije spremljena: na poslužitelju nije uključeno PHP proširenje GD (Plesk → PHP → proširenja, ili zamolite podršku hostinga). Ostali podaci torbe su ispravni — spremite ih bez fotografije pa je dodajte kad GD proradi.'); /* v82 */
   $info = @getimagesize($tmpPath);
   if (!$info) return null;
   [$w, $h, $type] = $info;
