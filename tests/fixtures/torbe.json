@@ -4,7 +4,7 @@
     "name": "Luna",
     "desc": "Okrugla torba · patchwork u pastelnim tonovima",
     "price": 65,
-    "dims": "{DIMENZIJE}",
+    "dims": "26 × 7 cm",
     "material": "{MATERIJAL}",
     "imgs": [
       "img/luna-1.jpg",
@@ -19,7 +19,7 @@
     "name": "Tara",
     "desc": "Okrugla torba · patchwork u toplim tonovima",
     "price": 55,
-    "dims": "{DIMENZIJE}",
+    "dims": "26 × 7 cm",
     "material": "{MATERIJAL}",
     "imgs": [
       "img/tara-1.jpg"
@@ -32,7 +32,7 @@
     "name": "Klasik crna",
     "desc": "Klasična crna torba · šije se ponovno",
     "price": 60,
-    "dims": "{DIMENZIJE}",
+    "dims": "30 × 24 × 9 cm",
     "material": "umjetna koža",
     "imgs": [
       "img/og.jpg"
@@ -93,9 +93,9 @@
     "name": "Zamjenski remen",
     "desc": "Podesivi remen za torbu ili ruksak · izbor boje i duljine",
     "price": 15,
-    "dims": "{DIMENZIJE}",
-    "material": "{MATERIJAL}",
-    "lead": "{ROK IZRADE, npr. 5 radnih dana}",
+    "dims": "100 ili 140 cm, širina 3 cm",
+    "material": "umjetna koža, metalni karabineri",
+    "lead": "5 radnih dana",
     "imgs": [],
     "sold": false
   },
@@ -106,9 +106,9 @@
     "name": "Kozmetička torbica",
     "desc": "Podstavljena torbica s patentnim zatvaračem · izbor boje",
     "price": 20,
-    "dims": "{DIMENZIJE}",
-    "material": "{MATERIJAL}",
-    "lead": "{ROK IZRADE, npr. 5 radnih dana}",
+    "dims": "20 × 12 × 6 cm",
+    "material": "pamučna tkanina, patentni zatvarač",
+    "lead": "5 radnih dana",
     "imgs": [],
     "sold": false
   },
@@ -119,9 +119,9 @@
     "name": "Platnena torba za plažu",
     "desc": "Velika platnena torba s unutarnjim džepom · izbor boje",
     "price": 25,
-    "dims": "{DIMENZIJE}",
-    "material": "{MATERIJAL}",
-    "lead": "{ROK IZRADE, npr. 7 radnih dana}",
+    "dims": "40 × 36 × 12 cm",
+    "material": "pamučno platno",
+    "lead": "7 radnih dana",
     "imgs": [],
     "sold": false
   }

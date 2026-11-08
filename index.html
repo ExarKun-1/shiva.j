@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v82 (2026-11-07)
+     SHIVA.J WEBSHOP — v83 (2026-11-08)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v83 — uz api v50, admin v53 (završno vijeće): bez „na upit” (artikl bez mjera/roka nije u ponudi), Kako 03, vikend u košarici,
+           privatnost t. 5 i t. 8 prema kodu, sažetak umjesto osobnih podataka u pregledniku, CLS naslovnice, gumbi 44 px, Escape, aria-invalid.
      v82 — uz api v49, admin v52 (pregled prije objave): dostava na adresu traži poštanski broj (5 znamenki).
      v81 — uz api v47, admin v50 (odgovori vlasnice, 13. krug): t. 4 pravilo 7 dana (samo nakon storna
            neplaćene i lažne narudžbe), t. 5 uplata pravodobna kad banka zaprimi nalog, torba se drži do 23:59 radnog
@@ -454,6 +456,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
 <!-- Favicon: prošiveni "S" u boji konca -->
@@ -560,7 +563,7 @@
   /* hamburger — vidljiv samo na mobitelu */
   .menu-btn{
     display:none;background:none;border:none;
-    width:40px;height:40px;flex-direction:column;justify-content:center;gap:6px;align-items:center;
+    width:44px;height:44px;flex-direction:column;justify-content:center;gap:6px;align-items:center;
   }
   .menu-btn span{display:block;width:22px;border-top:1.5px dashed var(--ink);transition:transform .25s,opacity .25s}
   body.menu-open .menu-btn span:nth-child(1){transform:translateY(7.5px) rotate(45deg);border-top-style:solid}
@@ -737,6 +740,9 @@
   .hero-bag .ring::before{content:"";position:absolute;inset:-14px;border-radius:50%;border:1.5px dashed var(--thread);opacity:.7}
   .hero-bag img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;background:var(--thread-light)}
   .hero-bag figcaption{margin-top:26px;display:flex;justify-content:center;gap:14px;align-items:baseline;flex-wrap:wrap}
+  /* v83 (vijeće, CLS): mjesto za torbu na naslovnici rezervirano je od početka, pa se stranica ne pomiče kad stigne torbe.json */
+  .hero-bag .ring-ph{background:var(--thread-light);border-radius:50%;cursor:default}
+  .hero-bag .hb-ph{min-height:4.6em}
   .hero-bag .hb-name{font-family:'Marcellus',serif;font-size:1.25rem}
   .hero-bag .hb-line{color:var(--ink-soft);font-size:.92rem;flex-basis:100%}
   .hero-bag .hb-tag{font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread);flex-basis:100%}
@@ -820,6 +826,7 @@
   .cat-tab{
     font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
     color:var(--ink-soft);padding:12px 0 3px;border-bottom:1.5px dashed transparent;display:inline-block;
+    min-height:44px; /* v83 (vijeće): dodir na mobitelu */
   }
   .cat-tab:hover{color:var(--ink)}
   .cat-tab.on{color:var(--thread);border-bottom-color:var(--thread)}
@@ -1027,8 +1034,9 @@
   .locker-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
   .locker-btn{
     border:1.5px dashed var(--thread);background:none;color:var(--thread);border-radius:var(--radius);
-    padding:9px 12px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;
+    padding:9px 12px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;min-height:44px;
   }
+  .bc-zoom{display:inline-block;padding:12px 4px;min-height:44px} /* v83 */
   .locker-btn:hover{background:var(--thread);color:var(--paper);border-style:solid}
   .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread)}
   #boxnowmap:not(:empty){margin-top:10px}
@@ -1170,7 +1178,7 @@
   </div>
 </header>
 
-<section class="hero" id="hero">
+<section class="hero has-bag" id="hero">
   <div class="hero-text">
     <p class="mono eyebrow">Ručni rad · Hrvatska</p>
     <h1>Torbe koje postoje samo jednom.</h1>
@@ -1179,7 +1187,7 @@
     <a class="hero-cta" href="#torbe">Pogledaj torbe ↓</a>
   </div>
   <!-- torba na naslovnici: puni je renderHero() iz torbe.json -->
-  <figure class="hero-bag" id="heroBag" hidden></figure>
+  <figure class="hero-bag" id="heroBag" aria-hidden="true"><span class="ring ring-ph"></span><figcaption class="hb-ph"></figcaption></figure>
 </section>
 
 <!-- Pisali su o nama: javno objavljeni članci o Jasmini i Shiva.J (društveni dokaz).
@@ -1279,9 +1287,9 @@
       </details>
 
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
-      <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate; modele iz Stalne kolekcije sašijemo najkasnije u roku 14 dana od primitka uplate. Dimenzije i materijali navedeni su uz artikl, a ako nisu, javljamo ih na upit.</p>
-      <p>Ručna izrada: mala odstupanja u šavu, nijansi tkanine i uzorku u odnosu na fotografiju svojstvo su ručne izrade i na to vas posebno upozoravamo; vaša zakonska prava zbog nedostataka time se ne ograničavaju. Boje se na različitim zaslonima mogu prikazivati malo drukčije.</p>
-      <p>Artikle izrađujemo samo iz ponude: kod modela iz Stalne kolekcije boju i duljinu remena birate u košarici između ponuđenih, a kod ostalih artikala po narudžbi možete upisati boju i duljinu navedene u opisu artikla. Izradu izvan ponude (npr. po vlastitoj mjeri, s natpisom ili od druge tkanine) ne nudimo.</p>
+      <p>Sve torbe ručno šivamo u Zaboku. Torbe označene „Jedan primjerak” unikati su: postoje u jednom primjerku i na fotografiji je upravo torba koju kupujete. Modeli iz Stalne kolekcije i drugi artikli označeni „Po narudžbi” izrađuju se nakon vaše narudžbe i uplate, istog kroja kao na fotografiji; po modelu primamo ograničen broj narudžbi (u jednoj narudžbi jedan komad svakog modela), a mjesto je vaše potvrdom narudžbe. Rok izrade naveden je uz svaki artikl i teče od primitka uplate; modele iz Stalne kolekcije sašijemo najkasnije u roku 14 dana od primitka uplate. Dimenzije i materijali navedeni su uz svaki artikl.</p>
+      <p>Ručna izrada: mala odstupanja u šavu, nijansi materijala i uzorku u odnosu na fotografiju svojstvo su ručne izrade i na to vas posebno upozoravamo; vaša zakonska prava zbog nedostataka time se ne ograničavaju. Boje se na različitim zaslonima mogu prikazivati malo drukčije.</p>
+      <p>Artikle izrađujemo samo iz ponude: kod modela iz Stalne kolekcije boju i duljinu remena birate u košarici između ponuđenih, a kod ostalih artikala po narudžbi možete upisati boju i duljinu navedene u opisu artikla. Izradu izvan ponude (npr. po vlastitoj mjeri, s natpisom ili od drugog materijala) ne nudimo.</p>
       </details>
 
       <details><summary><h3>3. Cijene i dostava</h3></summary>
@@ -1320,7 +1328,7 @@
       <h4>7.4. Povrat torbe</h4>
       <p>Torbu vratite ili je predajte nama (SHIVA.&nbsp;J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a u svakom slučaju najkasnije u roku od 14 dana od dana kada ste nam uputili svoju odluku o jednostranom raskidu ugovora. Smatra se da ste svoju obvezu izvršili na vrijeme ako prije isteka tog roka torbu pošaljete ili predate nama. Izravne troškove povrata robe morate snositi sami. Molimo torbu dobro zapakirajte; preporučujemo slanje s praćenjem.</p>
       <h4>7.5. Povrat novca</h4>
-      <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo<span data-terms-cheap-wrap>; od dostava koje nudimo najjeftinija je <span data-terms-cheapest>BOX NOW paketomat</span></span>).</p>
+      <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo<span data-terms-cheap-wrap>; od dostava koje nudimo, ne računajući osobno preuzimanje, najjeftinija je <span data-terms-cheapest>BOX NOW paketomat</span></span>).</p>
       <p>Povrat novca bit će izvršen na isti način na koji ste izvršili uplatu, na račun s kojeg ste platili; na drugi račun (npr. IBAN upisan u izjavu o raskidu) samo na vaš izričit zahtjev, nakon što nam ga potvrdite odgovorom s e-adrese s koje ste naručili. Za povrat ne snosite nikakve troškove. Povrat novca možemo izvršiti tek nakon što nam torba bude vraćena ili nakon što nam dostavite dokaz da ste nam je poslali natrag, ovisno o tome što je prije.</p>
       <h4>7.6. Stanje vraćene torbe</h4>
       <p>Odgovorni ste za svako umanjenje vrijednosti robe koje je rezultat rukovanja robom, osim onog koje je bilo potrebno za utvrđivanje prirode, obilježja i funkcionalnosti robe. Torbu smijete pregledati i isprobati kao što biste to mogli u trgovini. Iznos umanjenja određujemo prema stvarnoj šteti, na primjer prema trošku čišćenja ili popravka, i pisano vam ga obrazlažemo uz fotografije. Pravo na raskid time ne gubite.</p>
@@ -1385,7 +1393,7 @@
       </details>
 
       <details><summary><h3>5. Koliko dugo čuvamo podatke</h3></summary>
-      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon), poruke s kupcem i izjave o raskidu čuvamo tri godine od preuzimanja torbe. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo u roku 30 dana. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Izjave o raskidu, reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
+      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) i poruke s kupcem čuvamo tri godine od uplate, a izjave o raskidu tri godine od dana izjave. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo 30 dana nakon storna; ako je kupac javio da je platio ili poslao potvrdu o uplati, čuvamo ih tri godine od storna, zbog mogućeg povrata novca. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
       </details>
 
       <details><summary><h3>6. Vaša prava</h3></summary>
@@ -1397,7 +1405,7 @@
       </details>
 
       <details><summary><h3>8. Kolačići i pohrana u pregledniku</h3></summary>
-      <p>Stranica ne postavlja kolačiće. Sadržaj košarice i podatke koje ste upisali u obrazac preglednik pamti samo na vašem uređaju (lokalna pohrana), da ih ne biste morali upisivati ponovno; to je nužno za rad košarice i ne šalje se nikome. Možete ih obrisati brisanjem podataka stranice u pregledniku. Kolačiće može koristiti samo karta BOX NOW, i to tek kad je otvorite.</p>
+      <p>Stranica ne postavlja kolačiće. Preglednik samo na vašem uređaju (lokalna pohrana) pamti sadržaj košarice (artikle, količinu i napomenu uz artikl), odabranu dostavu, rezervaciju napravljenu s tog uređaja i podatke za uplatu zadnje narudžbe (24 sata). Ime, e-mail, telefon i adresu ne pamti. To je nužno za rad košarice i ne šalje se nikome. Možete ih obrisati brisanjem podataka stranice u pregledniku. Kolačiće može koristiti samo karta BOX NOW, i to tek kad je otvorite.</p>
       </details>
 
       <details><summary><h3>9. Sigurnost</h3></summary>
@@ -1473,7 +1481,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v82</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v83</p>
 </footer>
 
 <!-- Košarica -->
@@ -1845,6 +1853,7 @@ const grid = document.getElementById("productGrid");
 /* v69: veze na podrubrike Ostalog skrolaju bez promjene adrese (adresa ostaje #ostalo) */
 grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t){ t.tabIndex = -1; t.scrollIntoView({ behavior: "smooth" }); t.focus({ preventScroll: true }); } });
 function renderGrid(){
+  renderHero(); /* v83 (recenzija): i kad je kategorija prazna — inače rezervirano mjesto na naslovnici ostaje prazan krug */
   grid.innerHTML = "";
   /* slobodni unikati prvi, zatim artikli po narudžbi (u Torbama s podnaslovom), na kraju prodani i rezervirani
      unikati (v48: klasične torbe ne smiju biti iza svih otišlih) */
@@ -1908,10 +1917,10 @@ function renderGrid(){
       </div>
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
-      ${p.made && !gone ? `<p class="lead">Izrada: ${filled(p.lead) ? escHtml(filled(p.lead)) + " od uplate" : "rok na upit"}</p>` : ""}
+      ${p.made && !gone && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(filled(p.lead))} od uplate</p>` : ""}
       ${p.made && !p.sold && madeLeft(p) !== null ? (madeLeft(p) > 0 ? `<p class="lead">Još ${madeLeft(p)} ${madeLeft(p) === 1 ? "mjesto" : madeLeft(p) < 5 ? "mjesta" : "mjesta"} za narudžbu</p>` : `<p class="ask-ig">Sva mjesta za ovaj model su zauzeta. Javite nam se na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:${escHtml(OWNER_EMAIL)}">e-mailom</a> pa vam napišemo kad otvorimo nova mjesta.</p>`) : ""}
       ${(() => { /* v51: mjere i dostava u jednom retku (manje sitnih redaka na kartici) */
-        const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : (p.cat || "torbe") === "torbe" && !gone ? "Mjere: na upit" : "";
+        const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : ""; /* v83: artikl bez mjera nije u ponudi (admin ga ne objavljuje) */
         const sh = !gone && !wait && shipFrom !== null ? (dm ? "dostava od " : "Dostava od ") + fmt(shipFrom) : "";
         /* v54: mjere mogu i same sadržavati „·”, pa dostava ide iza crtice, u komadu koji se ne prelama */
         return dm || sh ? `<p class="ship-from">${dm}${dm && sh ? " · " : ""}${sh ? `<span class="nw">${sh}</span>` : ""}</p>` : "";
@@ -2011,7 +2020,7 @@ function renderHero(){
   const line = filled(p.tagline) || p.desc || "";
   fig.innerHTML = `<button type="button" class="ring" data-view="${escHtml(p.id)}" aria-label="Pogledaj torbu: ${escHtml(p.name)}"><img src="${escHtml(p.imgs[0])}" alt="${escHtml(p.name)}" fetchpriority="high"></button>
     <figcaption><span class="hb-tag">Jedan primjerak</span><span class="hb-name">${escHtml(p.name)}</span><span class="price">${fmt(p.price)}</span>${line ? `<span class="hb-line">${escHtml(line)}</span>` : ""}</figcaption>`;
-  fig.hidden = false;
+  fig.hidden = false; fig.removeAttribute("aria-hidden");
   hero.classList.add("has-bag");
 }
 /* anonimno brojanje događaja (samo zbroj po danu, bez ikakvih podataka o posjetitelju):
@@ -2049,11 +2058,10 @@ function openLightbox(id){
   document.getElementById("lbPrice").textContent = fmt(lbCurrent.price);
   document.getElementById("lbDesc").textContent = lbCurrent.desc;
   const dims = filled(lbCurrent.dims), mat = filled(lbCurrent.material);
-  /* v46: torbe bez upisanih mjera pokazuju „na upit” — ništa se ne izmišlja, a kupac zna da može pitati */
-  const dd = document.getElementById("lbDims"), askDims = !dims && (lbCurrent.cat || "torbe") === "torbe" && !isGone(lbCurrent);
-  dd.classList.toggle("ask-dd", askDims);
-  if(askDims) dd.innerHTML = `na upit — pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:${escHtml(OWNER_EMAIL)}">e-mailom</a>`;
-  else dd.textContent = dims;
+  /* v83 (završno vijeće): bez „na upit” — artikl bez mjera nije u ponudi (ZZP čl. 60. i 74.) */
+  const dd = document.getElementById("lbDims"), askDims = false;
+  dd.classList.remove("ask-dd");
+  dd.textContent = dims;
   document.getElementById("lbMaterial").textContent = mat;
   document.getElementById("lbDimsRow").hidden = !dims && !askDims;
   /* v48: prodana ili rezervirana torba (npr. s Instagrama) vodi na slobodne, umjesto pitanja „prije narudžbe” */
@@ -2078,7 +2086,7 @@ function openLightbox(id){
   const st = document.getElementById("lbStory"); st.textContent = filled(lbCurrent.story); st.hidden = !st.textContent;
   /* v52: artikl po narudžbi bez upisanog roka izrade — „rok na upit” */
   document.getElementById("lbLeadRow").hidden = !lbCurrent.made || !!lbCurrent.sold;
-  document.getElementById("lbLead").textContent = lbCurrent.made ? (filled(lbCurrent.lead) ? filled(lbCurrent.lead) + " od uplate" : "rok na upit") : "";
+  document.getElementById("lbLead").textContent = lbCurrent.made && filled(lbCurrent.lead) ? filled(lbCurrent.lead) + " od uplate" : "";
   document.getElementById("lbLead").classList.toggle("ask-dd", !filled(lbCurrent.lead));
   /* bez dimenzija, materijala i roka izrade ne ostaje prazna crtkana linija */
   document.querySelector(".lb-specs").hidden = ["lbDimsRow", "lbMaterialRow", "lbLeadRow"].every(id => document.getElementById(id).hidden);
@@ -2201,6 +2209,10 @@ menuBtn.addEventListener("click", () => {
 document.getElementById("mobileMenu").addEventListener("click", e => {
   if(e.target.tagName === "A"){ document.body.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded","false"); }
 });
+/* v83 (vijeće): Escape zatvara mobilni izbornik i vraća fokus na gumb */
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && document.body.classList.contains("menu-open")){ document.body.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded","false"); menuBtn.focus(); }
+});
 
 /* ---------- košarica ---------- */
 const drawer = document.getElementById("drawer");
@@ -2286,8 +2298,8 @@ function renderCart(){
   const q = n => `„${n}”`;
   /* v68: svaka narudžba rezervira svoje torbe (iznimka „bez rezervacije” je ukinuta); rok za uplatu = rezervacija */
   if(!hold.hidden) hold.innerHTML = escHtml(uniques.length
-    ? `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) : "Torbu " + q(uniques[0])} rezerviramo za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe; u tom roku uplatite.`
-    : `Rok za uplatu je ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe; ono što šijemo po narudžbi izrađujemo nakon uplate.`);
+    ? `${uniques.length > 1 ? "Torbe " + uniques.slice(0, -1).map(q).join(", ") + " i " + q(uniques[uniques.length - 1]) : "Torbu " + q(uniques[0])} rezerviramo za vas ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe (preko vikenda i blagdana do 23:59 prvoga sljedećeg radnog dana); u tom roku uplatite.`
+    : `Rok za uplatu je ${hoursText(currentTtl)} od ${REQUIRE_CONFIRM ? "potvrde " : ""}narudžbe (preko vikenda i blagdana do 23:59 prvoga sljedećeg radnog dana); ono što šijemo po narudžbi izrađujemo nakon uplate.`);
   /* napomena ispod forme ne ponavlja redak o rezervaciji kad se on prikazuje */
   document.getElementById("orderNoteHold").hidden = !hold.hidden || !uniques.length;
   const anyMade = cart.some(p => p.made);
@@ -2399,7 +2411,7 @@ function renderShipLead(){
     const pickup = !!(so && so.id === "pickup");
     const made = cart.filter(p => p.made), uniq = cart.filter(p => !p.made);
     let txt = "";
-    if(kako) txt = SHIP_LEAD ? " Slanje u roku " + SHIP_LEAD + " nakon uplate." : "";
+    if(kako) txt = SHIP_LEAD ? " Unikate šaljemo u roku " + SHIP_LEAD + " nakon uplate." : ""; /* v83 (vijeće): ne „slanje” za sve — artikli po narudžbi idu kad ih sašijemo */
     else if(made.length){
       /* v65: ukupno čekanje prije narudžbe — samo iz upisanih rokova (lead, ship_lead) */
       const q = p => "„" + p.name + "”";
@@ -2666,9 +2678,14 @@ function loadBoxnowWidget(onReady){
    bez druge narudžbe i drugog e-maila. Ključ vrijedi dok je sadržaj narudžbe isti (otisak: stavke, dostava,
    paketomat, podaci kupca, napomena); svaka promjena = nova narudžba, novi ključ. */
 function orderKey(orderData, note){
-  const fp = JSON.stringify([orderData.customer, orderData.items.map(i => [i.id, i.qty, i.note]), orderData.shipping && [orderData.shipping.id, orderData.shipping.locker], note]);
+  /* v83 (vijeće): u preglednik ide samo sažetak (FNV-1a), ne ime, e-mail ni adresa (Politika privatnosti t. 8) */
+  const fpRaw = JSON.stringify([orderData.customer, orderData.items.map(i => [i.id, i.qty, i.note]), orderData.shipping && [orderData.shipping.id, orderData.shipping.locker], note]);
+  let fh = 0x811c9dc5; for (let i = 0; i < fpRaw.length; i++) { fh ^= fpRaw.charCodeAt(i); fh = Math.imul(fh, 16777619) >>> 0; }
+  const fp = "h" + fh.toString(36) + "." + fpRaw.length.toString(36);
   const saved = storeGet("okey");
   if(saved && typeof saved === "object" && saved.key && saved.fp === fp) return saved.key;
+  /* v83: stari zapis (v82 i ranije) nosio je osobne podatke — briše se */
+  if(saved && typeof saved === "object" && typeof saved.fp === "string" && saved.fp[0] !== "h") storeSet("okey", null);
   const key = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
   storeSet("okey", { key, fp });
   return key;
@@ -2740,12 +2757,14 @@ function updateOrderFix(){
   const bad = [...orderFormEl.querySelectorAll("input,textarea")].filter(el => FIX_NAME[el.id] && el.offsetParent !== null && !el.checkValidity());
   const fix = document.getElementById("orderFix");
   const txt = bad.length ? "Ispravite: " + bad.map(el => FIX_NAME[el.id]).join(", ") + "." : "";
+  /* v83 (vijeće): čitač zaslona na samom polju kaže da nije ispravno i čita poruku */
+  orderFormEl.querySelectorAll("input,textarea").forEach(el => { if(!FIX_NAME[el.id]) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad.includes(el)){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " orderFix").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
   if(fix.textContent !== txt) fix.textContent = txt; /* v51: čitač zaslona čita samo promjenu */
   fix.hidden = !bad.length;
 }
 document.getElementById("orderBtn").addEventListener("click", updateOrderFix);
-orderFormEl.addEventListener("input", () => { if(!document.getElementById("orderFix").hidden) updateOrderFix(); });
-orderFormEl.addEventListener("change", () => { if(!document.getElementById("orderFix").hidden) updateOrderFix(); });
+orderFormEl.addEventListener("input", () => { if(!document.getElementById("orderFix").hidden) setTimeout(updateOrderFix, 0); }); /* v83: nakon brisanja poruke provjere na polju */
+orderFormEl.addEventListener("change", () => { if(!document.getElementById("orderFix").hidden) setTimeout(updateOrderFix, 0); }); /* v83: nakon brisanja poruke provjere na polju */
 orderFormEl.addEventListener("invalid", e => { const m = VALID_MSG[e.target.id]; if(m && !e.target.validity.customError) e.target.setCustomValidity(m); }, true);
 ["input", "change"].forEach(t => orderFormEl.addEventListener(t, e => { if(e.target.setCustomValidity) e.target.setCustomValidity("");
   /* v66: drugi e-mail — gumb ponovno radi */
@@ -2933,6 +2952,8 @@ function claimFromLink(){
     if(!v.no) miss.push("broj narudžbe (ili datum narudžbe i naziv torbe)");
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v.email)) miss.push("ispravan e-mail za potvrdu");
     if(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban)) miss.push("IBAN u obliku HR12 3456 … (ili ga ostavite prazno)");
+    /* v83 (vijeće): neispravna polja označena za čitač zaslona */
+    [["rName", !v.name], ["rNo", !v.no], ["rEmail", !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v.email)], ["rIban", !!(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban))]].forEach(([id, bad]) => { const el = $(id); if(!el) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " raskidError").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
     if(miss.length) return err($("raskidError"), "Molimo upišite: " + miss.join(", ") + ".");
     err($("raskidError"), "");
     $("raskidPreview").textContent = "Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.\n"
@@ -3152,7 +3173,7 @@ function paymentPanel(last){
   /* barkod: za svaku narudžbu novi HUB-3 barkod s iznosom, modelom, pozivom na broj i opisom (crta ga js/hub3-barcode.js
      tek kad se ploča prikaže); dok se crta ili ako ne uspije, vidi se opći barkod iz Postavki (samo primatelj i IBAN) */
   pendingHub3 = (payOk && so && ref) ? hub3Text({ amount: totalNum, recipient: PAYMENT.recipient, address: PAYMENT.address, iban: PAYMENT.iban, model: PAYMENT.model, ref, desc }) : "";
-  const genericCap = `Skenirajte barkod u aplikaciji svoje banke: primatelj i IBAN popune se sami. Zatim upišite iznos ${so ? escHtml(amountTxt) : ""}, model ${escHtml(PAYMENT.model)} i poziv na broj ${escHtml(ref || "(datum uplate)")}; iznos i poziv na broj možete kopirati gumbima iznad.`;
+  const genericCap = `Skenirajte barkod u aplikaciji svoje banke: primatelj i IBAN popune se sami. Zatim upišite iznos ${so ? escHtml(amountTxt) : ""}, model ${escHtml(PAYMENT.model)} i poziv na broj ${escHtml(ref || "(datum uplate)")}; iznos i poziv na broj možete kopirati gumbima „Kopiraj”.`;
   const barcode = (PAYMENT.barcode || pendingHub3) ? `
       <figure class="pay-barcode" id="payBarcode"${PAYMENT.barcode ? "" : " hidden"}>
         <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">

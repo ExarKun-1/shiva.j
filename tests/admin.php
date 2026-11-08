@@ -113,7 +113,7 @@ $ok(preg_match('/^Content-Security-Policy: .*frame-ancestors \'none\'/mi', $fake
 /* v23: obrazac Uredi bez „Prodano” briše i zapis plaćeno; ručna prodaja odbija artikl po narudžbi; potvrde bez inline JS-a */
 $form = $req('GET', ['s' => 'uredi', 'id' => 'luna']);
 preg_match('/name="csrf" value="([^"]+)"/', $form, $cm);
-$curl(['--data-urlencode', 'csrf=' . ($cm[1] ?? ''), '--data-urlencode', 'act=save_product', '--data-urlencode', 'id=luna', '--data-urlencode', 'name=Luna', '--data-urlencode', 'price=65', '--data-urlencode', 'cat=torbe', '--data-urlencode', 'back=?s=torbe', "http://127.0.0.1:$port/admin/"]);
+$curl(['--data-urlencode', 'csrf=' . ($cm[1] ?? ''), '--data-urlencode', 'act=save_product', '--data-urlencode', 'id=luna', '--data-urlencode', 'name=Luna', '--data-urlencode', 'price=65', '--data-urlencode', 'cat=torbe', '--data-urlencode', 'dims=26 × 7 cm', '--data-urlencode', 'back=?s=torbe', "http://127.0.0.1:$port/admin/"]);
 $ok($prodSold('luna') === false && !isset($rd()['sold']['luna']), 'v23: Uredi bez „Prodano” — briše i zapis plaćeno');
 $out7 = $req('POST', ['act' => 'res_sold_manual', 'id' => 'klasik', 'back' => '?s=rez']);
 $ok(str_contains($out7, 'po narudžbi ne prodaju se ručno') && !isset($rd()['sold']['klasik']), 'v23: ručna prodaja odbija artikl po narudžbi');
@@ -269,6 +269,20 @@ $ok(str_contains($fv, 'name="size" value="26 × 7 cm"') && str_contains($fv, 'va
 $req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Okrugla proba', 'price' => '90', 'vrsta' => 'unikat', 'size' => '26 × 7 cm', 'dims' => '', 'back' => '?s=torbe']);
 $req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Novcanic proba', 'price' => '18', 'vrsta' => 'ostalo', 'sub' => 'novcanici', 'size' => 'druga', 'dims' => '12 × 9 cm', 'back' => '?s=torbe']);
 $pp = []; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) $pp[$x['name']] = $x;
+/* v83 (završno vijeće, ZZP čl. 60. i 74.): bez mjera / roka izrade artikl se sprema kao skriven i nije u torbe.json */
+$g1 = $req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Bez mjera proba', 'price' => '40', 'vrsta' => 'unikat', 'size' => 'druga', 'dims' => '', 'back' => '?s=torbe']);
+$g2 = $req('POST', ['act' => 'save_product', 'id' => '', 'name' => 'Bez roka proba', 'price' => '20', 'vrsta' => 'ostalo', 'sub' => 'novcanici', 'size' => 'druga', 'dims' => '10 × 8 cm', 'material' => 'pamuk', 'lead' => '{ROK IZRADE}', 'back' => '?s=torbe']);
+$gp = []; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) $gp[$x['name']] = $x;
+$gpub = array_column(json_decode(file_get_contents($site . '/torbe.json'), true) ?: [], 'name');
+$ok(!empty($gp['Bez mjera proba']['hidden']) && !empty($gp['Bez roka proba']['hidden']) && str_contains($g1, 'SKRIVENO') && str_contains($g1, 'nedostaje mjere') && str_contains($g2, 'nedostaje rok izrade')
+  && !in_array('Bez mjera proba', $gpub, true) && !in_array('Bez roka proba', $gpub, true) && in_array('Novcanic proba', $gpub, true) === false, 'v83: artikl bez mjera ili roka izrade spremljen kao skriven, s porukom, i nije na stranici');
+$bm = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if (($x['name'] ?? '') === 'Bez mjera proba') $bm = $x;
+$t1 = $req('POST', ['act' => 'toggle', 'id' => $bm['id'], 'field' => 'hidden', 'to' => '0', 'back' => '?s=torbe']);
+$bm1 = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if (($x['id'] ?? '') === $bm['id']) $bm1 = $x;
+$g3 = $req('POST', ['act' => 'save_product', 'id' => $bm['id'], 'name' => 'Bez mjera proba', 'price' => '40', 'vrsta' => 'unikat', 'size' => 'druga', 'dims' => '20 × 15 cm', 'hidden' => '1', 'back' => '?s=torbe']);
+$bm2 = null; foreach (json_decode(file_get_contents($D . '/proizvodi.json'), true) as $x) if (($x['id'] ?? '') === $bm['id']) $bm2 = $x;
+$ok(str_contains($t1, 'ostaje skriven') && !empty($bm1['hidden']) && str_contains($g3, 'podaci su sada potpuni') && empty($bm2['hidden']) && empty($bm2['auto_hidden'])
+  && in_array('Bez mjera proba', array_column(json_decode(file_get_contents($site . '/torbe.json'), true), 'name'), true), 'v83 (recenzija): „Prikaži” ne otkriva nepotpun artikl; kad se podaci upišu, automatski skriven artikl vraća se na stranicu');
 $ok(($pp['Okrugla proba']['size'] ?? '') === '26 × 7 cm' && ($pp['Okrugla proba']['dims'] ?? '') === '26 × 7 cm' && ($pp['Novcanic proba']['sub'] ?? '') === 'novcanici' && ($pp['Novcanic proba']['dims'] ?? '') === '12 × 9 cm' && !isset($pp['Novcanic proba']['size']), 'v68: torba s kućicom mjere (dims = mjera) i artikl s podrubrikom i drugom mjerom');
 /* rokovi za uplatu pri otvaranju admina: podsjetnik, rok istekao, automatski storno */
 $c68['deadline_tick'] = true; file_put_contents($D . '/config.json', json_encode($c68)); @unlink($D . '/rokovi.json'); @unlink($D . '/mail-log.txt');

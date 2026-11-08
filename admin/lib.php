@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v52');
+define('SJ_VERSION', 'admin v53');
 
 /* ---------- postavke ---------- */
 
@@ -692,7 +692,8 @@ function sj_blocking_ids(array $d, array $freeIds): array {
   return $out;
 }
 
-/* Vidljivi proizvodi po id-u (za admin; isto što i sj_products_by_id u api/index.php) */
+/* Vidljivi proizvodi po id-u (za admin). Za razliku od sj_products_by_id u api/index.php ne izostavlja nepotpune (v83):
+   postojeće narudžbe i rezervacije takvog artikla vlasnica i dalje vodi do kraja (produženje, plaćeno). */
 function sj_products_by_id_all(): array {
   $out = [];
   foreach (sj_products() as $p) if (!empty($p['id']) && empty($p['hidden'])) $out[(string)$p['id']] = $p;
@@ -994,10 +995,36 @@ function sj_products_update(callable $fn) {
   }, []);
 }
 
+/* v83 (završno vijeće; ZZP čl. 60. st. 1. t. 1. i 8., čl. 74. st. 1. — NN 59/26): artikl se smije naručiti tek kad su
+   uz njega upisani glavni podaci — mjere, materijal (torbe su uvijek od umjetne kože, v64, pa im prazno polje ne smeta)
+   i, za artikl po narudžbi, rok izrade. Bez toga bi narudžba bila neobvezujuća. Vraća što nedostaje (prazno = potpun). */
+function sj_val_filled($v): bool { $t = trim((string)$v); return $t !== '' && !preg_match('/^\{.*\}$/u', $t); }
+function sj_product_missing(array $p): array {
+  $miss = [];
+  if (!sj_val_filled($p['dims'] ?? '')) $miss[] = 'mjere';
+  if (($p['cat'] ?? 'torbe') === 'ostalo' && !sj_val_filled($p['material'] ?? '')) $miss[] = 'materijal';
+  if (!empty($p['made']) && !sj_val_filled($p['lead'] ?? '')) $miss[] = 'rok izrade';
+  return $miss;
+}
+function sj_product_orderable(array $p): bool { return !empty($p['sold']) || !sj_product_missing($p); }
+
+/* v83 (recenzija): nakon nadogradnje javni torbe.json uskladi se s pravilom o potpunim podacima i bez izmjene popisa
+   (poziva se pri otvaranju admina; piše samo kad se sadržaj razlikuje) */
+function sj_sync_public_products(): void {
+  if (!is_file(sj_products_path())) return;
+  sj_with_lock(sj_products_path(), function (array &$list) {
+    $list = array_values($list); $cur = sj_read_json(SJ_PUBLIC_JSON, null);
+    $want = []; foreach ($list as $p) { if (!empty($p['hidden']) || !sj_product_orderable($p)) continue; unset($p['hidden']); $want[] = $p; }
+    if (!is_array($cur) || json_encode(array_values($cur)) !== json_encode($want)) sj_write_public_products($list);
+    return true;
+  }, []);
+}
+
 function sj_write_public_products(array $list): void {
   $public = [];
   foreach ($list as $p) {
     if (!empty($p['hidden'])) continue;
+    if (!sj_product_orderable($p)) continue; /* v83: nepotpun artikl nije na stranici */
     unset($p['hidden']);
     $public[] = $p;
   }
