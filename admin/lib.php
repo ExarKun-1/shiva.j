@@ -1295,6 +1295,8 @@ function sj_terms_text(?array $c = null): string {
   $cheap = $paid ? (string)$paid[0]['label'] : '';
   $h = preg_replace('#<span data-terms-cheap-wrap>(.*?)<span data-terms-cheapest>.*?</span></span>#s', $cheap !== '' ? '${1}SJCHEAPEST' : '', $h) ?? '';
   $h = preg_replace('#<span data-terms-auto-wrap>(.*?)<span data-terms-auto>.*?</span>(.*?)</span>#s', $autoH > 0 ? '${1}SJAUTOH${2}' : '', $h) ?? '';
+  /* v84 (recenzija): slika EU obavijesti nema smisla u e-mailu — umjesto nje kratka uputa na stranicu */
+  $h = preg_replace('#<figure class="lg-notice">.*?</figure>#s', '<p>Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici, u Uvjetima kupnje (točka 8).</p>', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';

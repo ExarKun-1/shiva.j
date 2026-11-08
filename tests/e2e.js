@@ -119,8 +119,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(!dimsTxt.some(t => /na upit/.test(t)) && /Mjere: 26 × 7 cm/.test(await pd.textContent('.card:has(h3:has(.card-name:text-is("Luna")))')), 'v83: nigdje „Mjere: na upit” (artikl bez mjera nije u ponudi)');
   ok(/Unikate šaljemo u roku 1\u2060?–\u2060?2 radna dana nakon uplate/.test(await pd.textContent('#kako')), 'v50/v83: rok slanja u „Kako naručiti” (unikati; po narudžbi kad ih sašijemo)');
   { const imp = await pd.textContent('#impressum'), t1 = await pd.textContent('#uvjeti');
-    const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length]; });
-    ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 1, 'v84: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u košarici ' + JSON.stringify(lg)); }
+    const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length, !!document.querySelector('#impressum .lg-badge')]; });
+    ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 2 && lg[3] === true, 'v84: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u košarici ' + JSON.stringify(lg)); }
   ok(!/na upit/.test(await pd.textContent('#uvjeti')) && /navedeni su uz svaki artikl/.test(await pd.textContent('#uvjeti')) && !/tkanin/.test(await pd.textContent('#uvjeti')), 'v83: Uvjeti t. 2 — mjere i materijal uz svaki artikl, bez „na upit” i „tkanine”');
   await pd.evaluate(() => { location.hash = '#kolekcija'; }); await pd.waitForTimeout(300);
   await pd.evaluate(() => { location.hash = '#ostalo'; }); await pd.waitForTimeout(300);
