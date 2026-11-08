@@ -253,6 +253,7 @@ preg_match('/const STRAP_COLORS = (\[[^\]]*\]);/u', $html, $mC); preg_match('/co
 /* v84 (recenzija): e-mail s Uvjetima bez opisa slike EU obavijesti, s uputom na stranicu */
 $tt84 = sj_terms_text();
 $ok(!str_contains($tt84, 'Klikom') && str_contains($tt84, 'Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici'), 'v84: e-mail Uvjeta — umjesto slike EU obavijesti uputa na stranicu');
+$ok(str_contains($tt84, 'telefon: 099 886 6877') && str_contains($tt84, 'tel. 099 886 6877'), 'v85: e-mail Uvjeta nosi telefon obrta (t. 1 i obrazac za raskid)');
 $ok(json_decode($mC[1] ?? 'null', true) === SJ_STRAP_COLORS && json_decode($mL[1] ?? 'null', true) === SJ_STRAP_LENGTHS, 'v77: popis boja i duljina remena isti na stranici i u PHP-u');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
