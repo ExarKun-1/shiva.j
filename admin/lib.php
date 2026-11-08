@@ -692,7 +692,8 @@ function sj_blocking_ids(array $d, array $freeIds): array {
   return $out;
 }
 
-/* Vidljivi proizvodi po id-u (za admin; isto što i sj_products_by_id u api/index.php) */
+/* Vidljivi proizvodi po id-u (za admin). Za razliku od sj_products_by_id u api/index.php ne izostavlja nepotpune (v83):
+   postojeće narudžbe i rezervacije takvog artikla vlasnica i dalje vodi do kraja (produženje, plaćeno). */
 function sj_products_by_id_all(): array {
   $out = [];
   foreach (sj_products() as $p) if (!empty($p['id']) && empty($p['hidden'])) $out[(string)$p['id']] = $p;
@@ -1006,6 +1007,18 @@ function sj_product_missing(array $p): array {
   return $miss;
 }
 function sj_product_orderable(array $p): bool { return !empty($p['sold']) || !sj_product_missing($p); }
+
+/* v83 (recenzija): nakon nadogradnje javni torbe.json uskladi se s pravilom o potpunim podacima i bez izmjene popisa
+   (poziva se pri otvaranju admina; piše samo kad se sadržaj razlikuje) */
+function sj_sync_public_products(): void {
+  if (!is_file(sj_products_path())) return;
+  sj_with_lock(sj_products_path(), function (array &$list) {
+    $list = array_values($list); $cur = sj_read_json(SJ_PUBLIC_JSON, null);
+    $want = []; foreach ($list as $p) { if (!empty($p['hidden']) || !sj_product_orderable($p)) continue; unset($p['hidden']); $want[] = $p; }
+    if (!is_array($cur) || json_encode(array_values($cur)) !== json_encode($want)) sj_write_public_products($list);
+    return true;
+  }, []);
+}
 
 function sj_write_public_products(array $list): void {
   $public = [];

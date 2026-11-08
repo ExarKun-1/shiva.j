@@ -91,6 +91,7 @@ if (!sj_logged_in()) {
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
   try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
+  try { sj_sync_public_products(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' torbe.json: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v83 */
 }
 
 /* ---------- radnje ---------- */
@@ -175,13 +176,16 @@ function sj_handle_action(string $act, array &$c): string {
       if (!empty($_POST['hidden'])) $p['hidden'] = true;
       /* v83 (završno vijeće, ZZP čl. 60. i 74.): bez mjera, materijala ili roka izrade artikl se sprema kao skriven */
       $missNow = empty($p['sold']) ? sj_product_missing($p) : [];
-      if ($missNow && empty($p['hidden'])) $p['hidden'] = true; else $missNow = [];
+      if ($missNow && empty($p['hidden'])) { $p['hidden'] = true; $p['auto_hidden'] = true; } else $missNow = [];
       if (!empty($_POST['hero'])) $p['hero'] = true;
       if ($p['tagline'] === '') unset($p['tagline']);
       if ($p['story'] === '') unset($p['story']);
 
       $idx = null;
       foreach ($list as $i => $x) if (($x['id'] ?? '') === $oldId && $oldId !== '') $idx = $i;
+      /* v83 (recenzija): skriven samo zbog nepotpunih podataka, a sada je potpun — vraća se na stranicu */
+      $autoShown = false;
+      if ($idx !== null && !empty($list[$idx]['auto_hidden']) && !empty($p['hidden']) && empty($p['auto_hidden']) && !sj_product_missing($p)) { unset($p['hidden']); $autoShown = true; }
       if ($idx !== null) { $p['id'] = $oldId; $p['imgs'] = array_values((array)($list[$idx]['imgs'] ?? [])); if ($made && !empty($list[$idx]['made_open_from'])) $p['made_open_from'] = $list[$idx]['made_open_from']; }
       else $p['id'] = sj_unique_id(sj_slug($name), $list);
 
@@ -204,6 +208,7 @@ function sj_handle_action(string $act, array &$c): string {
       if ($idx !== null) $list[$idx] = $p; else $list[] = $p;
       /* naslovnica: samo jedna torba */
       if (!empty($p['hero'])) foreach ($list as $i => $x) if (($x['id'] ?? '') !== $p['id']) unset($list[$i]['hero']);
+      if ($autoShown) return 'Spremljeno: „' . $name . '” — podaci su sada potpuni i artikl se vidi na stranici.';
       return $missNow ? 'Spremljeno, ali SKRIVENO (nije na stranici): za „' . $name . '” nedostaje ' . implode(', ', $missNow) . '. Bez toga kupac ne smije naručiti (Zakon o zaštiti potrošača). Upišite i spremite ponovno.' : 'Spremljeno: „' . $name . '”.';
       });
       if ($unsold !== '') sj_with_lock(sj_res_path(), function (array &$d) use ($unsold) {
@@ -258,7 +263,10 @@ function sj_handle_action(string $act, array &$c): string {
         foreach ($list as $i => $p) {
           if (($p['id'] ?? '') === $id) {
             $on = $to ?? empty($p[$field]);
+            /* v83 (recenzija): „Prikaži” nepotpun artikl ne vraća na stranicu — isto pravilo kao spremanje */
+            if ($field === 'hidden' && !$on && empty($p['sold']) && ($mt = sj_product_missing($p))) return '„' . (string)($p['name'] ?? $id) . '” ostaje skriven: nedostaje ' . implode(', ', $mt) . '. Upišite to u „Uredi” i spremite — artikl se tada sam vrati na stranicu.';
             if ($on) $list[$i][$field] = true; else unset($list[$i][$field]);
+            if ($field === 'hidden') unset($list[$i]['auto_hidden']);
             if ($field === 'sold' && !$on) $list[$i]['sold'] = false;
             $n = (string)($p['name'] ?? $id); $made = !empty($p['made']);
             [$kn, $f] = sj_kind($p); $a = $f ? 'a' : ''; /* rod slaže imenica: „Torba … skrivena”, „Artikl … skriven” */

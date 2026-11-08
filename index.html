@@ -1853,6 +1853,7 @@ const grid = document.getElementById("productGrid");
 /* v69: veze na podrubrike Ostalog skrolaju bez promjene adrese (adresa ostaje #ostalo) */
 grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t){ t.tabIndex = -1; t.scrollIntoView({ behavior: "smooth" }); t.focus({ preventScroll: true }); } });
 function renderGrid(){
+  renderHero(); /* v83 (recenzija): i kad je kategorija prazna — inače rezervirano mjesto na naslovnici ostaje prazan krug */
   grid.innerHTML = "";
   /* slobodni unikati prvi, zatim artikli po narudžbi (u Torbama s podnaslovom), na kraju prodani i rezervirani
      unikati (v48: klasične torbe ne smiju biti iza svih otišlih) */
@@ -2683,6 +2684,8 @@ function orderKey(orderData, note){
   const fp = "h" + fh.toString(36) + "." + fpRaw.length.toString(36);
   const saved = storeGet("okey");
   if(saved && typeof saved === "object" && saved.key && saved.fp === fp) return saved.key;
+  /* v83: stari zapis (v82 i ranije) nosio je osobne podatke — briše se */
+  if(saved && typeof saved === "object" && typeof saved.fp === "string" && saved.fp[0] !== "h") storeSet("okey", null);
   const key = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
   storeSet("okey", { key, fp });
   return key;

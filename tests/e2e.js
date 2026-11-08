@@ -156,6 +156,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   // v83 (završno vijeće): naslovnica rezervira mjesto za torbu od početka (bez skakanja), Escape zatvara izbornik, gumbi ≥ 44 px
   { const raw = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     ok(/<section class="hero has-bag" id="hero">/.test(raw) && /<figure class="hero-bag" id="heroBag" aria-hidden="true"><span class="ring ring-ph">/.test(raw), 'v83: mjesto za torbu na naslovnici rezervirano u HTML-u (CLS)'); }
+  { const pe = await m.newPage(); await pe.route('**/torbe.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+    await pe.goto(URL, { waitUntil: 'networkidle' }); await pe.waitForTimeout(300);
+    const he = await pe.evaluate(() => [document.getElementById('hero').classList.contains('has-bag'), document.getElementById('heroBag').hidden]);
+    ok(he[0] === false && he[1] === true, 'v83 (recenzija): prazna ponuda — rezervirano mjesto na naslovnici nestaje ' + JSON.stringify(he)); await pe.close(); }
   await pm.click('#menuBtn'); await pm.waitForTimeout(150); await pm.keyboard.press('Escape'); await pm.waitForTimeout(150);
   const mEsc = await pm.evaluate(() => [document.body.classList.contains('menu-open'), document.getElementById('menuBtn').getAttribute('aria-expanded'), document.activeElement && document.activeElement.id]);
   ok(mEsc[0] === false && mEsc[1] === 'false' && mEsc[2] === 'menuBtn', 'v83: Escape zatvara mobilni izbornik i vraća fokus na gumb ' + JSON.stringify(mEsc));

@@ -1235,7 +1235,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $n = (string)($it['name'] ?? '');
     $names[] = $n . ($q > 1 ? " × $q" : '');
     /* v77 (recenzija R76-P6, ZZP čl. 76. st. 2. i čl. 60. st. 1. t. 1.): glavna obilježja — materijal i mjere uz stavku */
-    $pI = $byIdC[(string)($it['id'] ?? '')] ?? []; $fl = fn($v) => (($v = trim((string)$v)) !== '' && !str_contains($v, '{')) ? $v : '';
+    $pI = $byIdC[(string)($it['id'] ?? '')] ?? []; $fl = fn($v) => sj_val_filled($v) ? trim((string)$v) : ''; /* v83: isto pravilo kao stranica i admin */
     $mat = $pI ? ($fl($pI['material'] ?? '') ?: ((string)($pI['cat'] ?? 'torbe') === 'torbe' ? 'umjetna koža' : '')) : ''; /* vijeće V77-4 */ $dim = $fl($pI['dims'] ?? '');
     $spec = implode(', ', array_filter([$mat, $dim]));
     $lines[] = '- ' . $n . ($q > 1 ? " × $q" : '') . (!empty($it['note']) ? ' (' . $it['note'] . ')' : '') . ' — ' . sj_fmt_eur((float)($it['price'] ?? 0) * $q) . ($spec !== '' ? "\n  " . $spec : '');
