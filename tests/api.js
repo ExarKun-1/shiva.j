@@ -174,6 +174,11 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     ok(/ROK ZA UPLATU: do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(mlF) && /instant uplatu/.test(mlF) && /Jasmina · Shiva\.J/.test(mlF) && typeof fsA.data.payUntil === 'string', 'v68: potvrda kupcu — točan rok za uplatu, savjet za instant uplatu, potpis; odgovor nosi payUntil');
     { const c0 = read('config.json'); c0.free_ship = { min: 0, ids: ['boxnow'] }; fs.writeFileSync(D + 'config.json', JSON.stringify(c0, null, 2)); }
     clearRes(); clearLimits();
+    { setProd('platnena', { lead: '{ROK IZRADE}' });
+      const ic = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-ic1-gggg', customer: Object.assign(cust('ic1@primjer.hr'), { street: 'Ulica 1', city: '49210 Zabok' }), items: [{ id: 'platnena', qty: 1 }], shipping: gls, goods: 25, total: 31 } });
+      const stI = await (await fetch(U + 'status')).json();
+      setProd('platnena', { lead: '7 radnih dana' });
+      ok(!ic.data.ok && ic.status >= 400 && !JSON.stringify(stI).includes('"platnena"'), 'v83: artikl po narudžbi bez roka izrade ne može se naručiti ' + JSON.stringify([ic.status, ic.data])); }
     const pcBad = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-pc1-gggg', customer: Object.assign(cust('pc1@primjer.hr'), { street: 'Ulica 1', city: 'Zabok' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: 15, total: 21 } });
     ok(pcBad.status === 400 && pcBad.data.field === 'city' && /poštanski broj/.test(pcBad.data.error || ''), 'v82: dostava na adresu bez poštanskog broja se odbija (polje city) ' + JSON.stringify([pcBad.status, pcBad.data]));
     // 15d) v62/v63: Stalna kolekcija — najviše 3 zaprimljene narudžbe po modelu, 1 komad po narudžbi, jedna neplaćena po e-mailu

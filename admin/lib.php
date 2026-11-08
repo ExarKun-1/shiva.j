@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v52');
+define('SJ_VERSION', 'admin v53');
 
 /* ---------- postavke ---------- */
 
@@ -994,10 +994,24 @@ function sj_products_update(callable $fn) {
   }, []);
 }
 
+/* v83 (završno vijeće; ZZP čl. 60. st. 1. t. 1. i 8., čl. 74. st. 1. — NN 59/26): artikl se smije naručiti tek kad su
+   uz njega upisani glavni podaci — mjere, materijal (torbe su uvijek od umjetne kože, v64, pa im prazno polje ne smeta)
+   i, za artikl po narudžbi, rok izrade. Bez toga bi narudžba bila neobvezujuća. Vraća što nedostaje (prazno = potpun). */
+function sj_val_filled($v): bool { $t = trim((string)$v); return $t !== '' && !preg_match('/^\{.*\}$/u', $t); }
+function sj_product_missing(array $p): array {
+  $miss = [];
+  if (!sj_val_filled($p['dims'] ?? '')) $miss[] = 'mjere';
+  if (($p['cat'] ?? 'torbe') === 'ostalo' && !sj_val_filled($p['material'] ?? '')) $miss[] = 'materijal';
+  if (!empty($p['made']) && !sj_val_filled($p['lead'] ?? '')) $miss[] = 'rok izrade';
+  return $miss;
+}
+function sj_product_orderable(array $p): bool { return !empty($p['sold']) || !sj_product_missing($p); }
+
 function sj_write_public_products(array $list): void {
   $public = [];
   foreach ($list as $p) {
     if (!empty($p['hidden'])) continue;
+    if (!sj_product_orderable($p)) continue; /* v83: nepotpun artikl nije na stranici */
     unset($p['hidden']);
     $public[] = $p;
   }

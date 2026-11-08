@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   SHIVA.J — javni API na hostingu   (api/index.php v49)
+   SHIVA.J — javni API na hostingu   (api/index.php v50)
      GET  api/status          rezervirane i prodane torbe, ttlHours,
                               načini dostave i podaci za uplatu (iz postavki)
      POST api/reserve         rezervacija torbi iz narudžbe (409 ako zauzeto)
@@ -18,6 +18,7 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v50 (v83, završno vijeće): artikl bez mjera, materijala (Ostalo) ili roka izrade nije u ponudi (ZZP čl. 60. i 74.).
    v49 (v82, pregled prije objave): poštanski broj kod dostave na adresu; ignore_user_abort/set_time_limit/getmypid samo ako postoje.
    v48 (v82, završna recenzija): raskid uz obrisanu narudžbu bilježi „orderGone” (admin ne javlja lažno nepodudaranje e-maila);
    v47 (stranica v81; 13. krug): pravilo 7 dana samo nakon automatskog storna i „lažna narudžba” (veza samo za lažnu);
@@ -230,7 +231,7 @@ function sj_storno_url(string $token): string { $u = sj_site_url_trusted(); retu
 /* Popis proizvoda po id-u, bez skrivenih */
 function sj_products_by_id(): array {
   $out = [];
-  foreach (sj_products() as $p) if (!empty($p['id']) && empty($p['hidden'])) $out[(string)$p['id']] = $p;
+  foreach (sj_products() as $p) if (!empty($p['id']) && empty($p['hidden']) && sj_product_orderable($p)) $out[(string)$p['id']] = $p; /* v83: bez mjera ili roka izrade nije u ponudi */
   return $out;
 }
 
