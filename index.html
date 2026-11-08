@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v83 (2026-11-08)
+     SHIVA.J WEBSHOP — v84 (2026-11-08)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v84 — MBO 98020200 (ZET čl. 6.) u impresumu i Uvjetima t. 1; službena EU obavijest „Zakonsko jamstvo” (ZZP čl. 60. st. 7.,
+           Uredba (EU) 2025/1960, Prilog I., HR) u Uvjetima t. 8 i u košarici.
      v83 — uz api v50, admin v53 (završno vijeće): bez „na upit” (artikl bez mjera/roka nije u ponudi), Kako 03, vikend u košarici,
            privatnost t. 5 i t. 8 prema kodu, sažetak umjesto osobnih podataka u pregledniku, CLS naslovnice, gumbi 44 px, Escape, aria-invalid.
      v82 — uz api v49, admin v52 (pregled prije objave): dostava na adresu traži poštanski broj (5 znamenki).
@@ -1037,6 +1039,12 @@
     padding:9px 12px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;min-height:44px;
   }
   .bc-zoom{display:inline-block;padding:12px 4px;min-height:44px} /* v83 */
+  /* v84: usklađena obavijest EU o zakonskom jamstvu (ZZP čl. 60. st. 7.; Uredba (EU) 2025/1960) — slika se ne mijenja */
+  .lg-notice{margin:14px 0 6px;max-width:360px}
+  .lg-notice img{width:100%;height:auto;display:block;border:1px solid var(--line,#ddd)}
+  .lg-notice figcaption{font-size:.8rem;color:var(--ink-soft);margin-top:6px}
+  .lg-badge{display:flex;gap:12px;align-items:center;margin:10px 0;padding:6px 0;min-height:44px;color:var(--ink);text-decoration:none;font-size:.85rem;line-height:1.35}
+  .lg-badge img{width:48px;height:auto;border:1px solid var(--line,#ddd);flex:none}
   .locker-btn:hover{background:var(--thread);color:var(--paper);border-style:solid}
   .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread)}
   #boxnowmap:not(:empty){margin-top:10px}
@@ -1283,7 +1291,7 @@
       <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz e-maila</span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite odmah i dobivate ih e-mailom. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku 14 dana. Detalji su u nastavku.</p>
 <!-- UVJETI-START -->
       <details><summary><h3>1. Prodavatelj</h3></summary>
-      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
+      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, upisan u Obrtni registar, MBO: 98020200, e-mail: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
       </details>
 
       <details><summary><h3>2. Torbe i ostali artikli</h3></summary>
@@ -1344,6 +1352,7 @@
 
       <details><summary><h3>8. Materijalni nedostaci</h3></summary>
       <p>Za materijalne nedostatke odgovaramo prema Zakonu o obveznim odnosima, najmanje dvije godine od preuzimanja torbe; to vrijedi i za artikle izrađene po narudžbi. To je vaše zakonsko pravo i ne možemo ga ograničiti. Zasebno (komercijalno) jamstvo ne dajemo.</p>
+      <figure class="lg-notice"><a href="img/zakonsko-jamstvo-hr.jpg" target="_blank" rel="noopener"><img src="img/zakonsko-jamstvo-hr.jpg" width="900" height="1271" loading="lazy" alt="Zakonsko jamstvo — usklađena obavijest Europske unije: roba koja se prodaje u EU zaštićena je zakonskim jamstvom od najmanje dvije godine; ako ne odgovara opisu ili ne funkcionira kako je predviđeno, prodavatelj mora ponuditi besplatan popravak ili zamjenu, a u nekim slučajevima sniženje cijene ili povrat plaćenog iznosa. Problem prijavite što prije i predočite dokaz o kupnji."></a><figcaption>Usklađena obavijest EU o zakonskom jamstvu (Provedbena uredba (EU) 2025/1960). Klikom se otvara u punoj veličini.</figcaption></figure>
       <p>Odgovaramo za nedostatke koje je torba imala kad ste je preuzeli (npr. greška u šavu, kopči ili materijalu). Ne odgovaramo za uobičajeno trošenje ni za oštećenja nastala nepravilnim rukovanjem ili nepridržavanjem uputa za njegu (uz torbe od umjetne kože na stranici, pod „Njega torbe”, i u e-mailu s potvrdom narudžbe). Na mala odstupanja zbog ručne izrade upozoravamo u točki 2.; vaša zakonska prava time se ne ograničavaju.</p>
       <p>Nedostatak nam javite u roku od dva mjeseca od kad ste ga otkrili, e-mailom na shivaj.handmade@gmail.com ili poštom na adresu iz točke 1., uz opis i fotografiju nedostatka. Torbu preuzimamo i vraćamo na naš trošak, a nedostatak uklanjamo besplatno. Unikatnu torbu nije moguće zamijeniti istim komadom, pa nedostatak uklanjamo popravkom, ako je izvediv. Za modele iz Stalne kolekcije možete birati između popravka i novog komada; ako bi novi komad u odnosu na popravak bio nerazmjerno skup (npr. kod sitnog nedostatka koji se lako popravi), nedostatak uklanjamo popravkom, a ako popravak nije izvediv, šaljemo vam novi komad. Ako nedostatak uklonimo popravkom, rok naše odgovornosti produljuje se jednom za 12 mjeseci. Ako popravak ili zamjena nisu mogući ili ne uspiju, imate pravo na sniženje cijene ili raskid ugovora i povrat novca (kod neznatnog nedostatka samo na sniženje cijene).</p>
       </details>
@@ -1420,7 +1429,8 @@
         <h3>Impressum</h3>
         <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec</p>
         <p>Matije Gupca 33, 49210 Zabok, Hrvatska</p>
-        <p>OIB: 50934176320 · IBAN: <span class="nowrap">HR98 2360 0001 1027 9044 2</span></p>
+        <p>OIB: 50934176320 · Obrtni registar, MBO: 98020200</p>
+        <p>IBAN: <span class="nowrap">HR98 2360 0001 1027 9044 2</span></p>
         <p>e-mail: shivaj.handmade@gmail.com · Instagram: @shiva.j_handmade</p>
         <p style="margin-top:14px">Pravo na jednostrani raskid ugovora u roku 14 dana, prigovori i ostali uvjeti kupnje opisani su u odjeljku <a href="#uvjeti">Uvjeti kupnje</a>; ugovor možete raskinuti i <a href="#raskid">ovdje na stranici</a>.</p>
       </div>
@@ -1481,7 +1491,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v83</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v84</p>
 </footer>
 
 <!-- Košarica -->
@@ -1497,6 +1507,7 @@
       <span>Ukupno</span><span id="totalAmount"></span>
     </div>
     <form class="order-form" id="orderForm" hidden>
+      <a class="lg-badge" href="img/zakonsko-jamstvo-hr.jpg" target="_blank" rel="noopener"><img src="img/zakonsko-jamstvo-hr.jpg" width="64" height="90" loading="lazy" alt=""><span><b>Zakonsko jamstvo: najmanje 2 godine</b><br>usklađena obavijest EU — otvori</span></a>
       <p class="trust-line">Bez registracije · Plaćanje uplatom · <span id="trustTerms">Prihvaćaju se <a href="#uvjeti" class="drawer-link">Uvjeti kupnje</a></span></p>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
