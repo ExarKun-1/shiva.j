@@ -11,7 +11,7 @@ import os, re, secrets, sys, time, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
-CODE = ['index.html', '.htaccess', 'js', 'api', 'admin']          # uvijek
+CODE = ['index.html', '.htaccess', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg']  # uvijek (v84: obavezna EU obavijest o jamstvu)
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
 FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.txt']
 NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$'
@@ -29,7 +29,8 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v03.md u repozitoriju.
 """,
     'nadogradnja': """Shiva.J {v} — NADOGRADNJA
 1. Raspakirajte u httpdocs (ili public_html) i dopustite zamjenu postojećih datoteka.
-2. Paket namjerno NEMA mapa data/ i img/ ni datoteke torbe.json: narudžbe, lozinka, postavke, ponuda i fotografije
+2. Paket namjerno NEMA mape data/ ni datoteke torbe.json, a iz img/ nosi samo službenu EU obavijest o jamstvu
+   (img/zakonsko-jamstvo-hr.jpg): narudžbe, lozinka, postavke, ponuda i fotografije
    ostaju kakve jesu. Ako changelog kaže da je nova i slika, nju prenesite zasebno.
 3. Paket zamjenjuje i .htaccess: ako vam je hosting dodao svoja pravila (npr. preusmjeravanje na https), ponovno ih
    uključite u panelu.

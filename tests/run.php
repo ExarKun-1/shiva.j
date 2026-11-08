@@ -250,6 +250,9 @@ $ok(sj_strap_split('remen: crna, 140 cm; inicijali', $kol) === ['crna, 140 cm', 
   'v77 (vijeće V77-1): „iz ponude” samo za Stalnu kolekciju i samo s popisa boja i duljina');
 $html = (string)file_get_contents(__DIR__ . '/../index.html');
 preg_match('/const STRAP_COLORS = (\[[^\]]*\]);/u', $html, $mC); preg_match('/const STRAP_LENGTHS = (\[[^\]]*\]);/u', $html, $mL);
+/* v84 (recenzija): e-mail s Uvjetima bez opisa slike EU obavijesti, s uputom na stranicu */
+$tt84 = sj_terms_text();
+$ok(!str_contains($tt84, 'Klikom') && str_contains($tt84, 'Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici'), 'v84: e-mail Uvjeta — umjesto slike EU obavijesti uputa na stranicu');
 $ok(json_decode($mC[1] ?? 'null', true) === SJ_STRAP_COLORS && json_decode($mL[1] ?? 'null', true) === SJ_STRAP_LENGTHS, 'v77: popis boja i duljina remena isti na stranici i u PHP-u');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
