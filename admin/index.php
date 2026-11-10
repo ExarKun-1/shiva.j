@@ -11,7 +11,7 @@ sj_session_start();
 $c = sj_config();
 /* v22: poruka nakon radnje dolazi iz sesije (jednokratno), ne iz adrese — link s ?m= ne može podmetnuti lažnu poruku */
 ini_set('display_errors', '0'); /* v80 (završna recenzija): bez putanja datoteka u upozorenjima PHP-a */
-$msg = sj_clean((string)($_SESSION['sj_flash'] ?? ''), 2000); /* v62: dulji popisi (npr. Storniraj sve s ove adrese) */ unset($_SESSION['sj_flash']);
+$msg = sj_clean((string)($_SESSION['sj_flash'] ?? ''), 6000); /* v62: dulji popisi (npr. Storniraj sve s ove adrese) */ unset($_SESSION['sj_flash']);
 $err = '';
 
 /* ---------- prvo pokretanje: lozinka ---------- */
@@ -96,7 +96,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 
 /* ---------- radnje ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-  if (!sj_check_csrf()) {
+  /* v89: zahtjev veći od post_max_size stiže prazan — javi pravi razlog umjesto „sesija je istekla” */
+  $clen = (int)($_SERVER['CONTENT_LENGTH'] ?? 0); $pmax = sj_ini_bytes((string)ini_get('post_max_size'));
+  if (!$_POST && !$_FILES && $pmax > 0 && $clen > $pmax) {
+    $err = 'Poslano je previše odjednom (' . round($clen / 1048576, 1) . ' MB, poslužitelj prima najviše ' . round($pmax / 1048576, 1) . ' MB). Ništa nije spremljeno — pošaljite manje fotografija odjednom, ili u Plesku povećajte post_max_size (upute za objavu, PHP postavke).';
+  } elseif (!sj_check_csrf()) {
     $err = 'Sesija je istekla ili je obrazac zastario. Pokušajte ponovno.';
   } else {
     try {
@@ -136,8 +140,8 @@ function sj_handle_action(string $act, array &$c): string {
     case 'save_product': {
       /* cijela izmjena pod bravom popisa proizvoda (sj_products_update) */
       /* v23: isključeno „Prodano” u obrascu briše i zapis „plaćeno” (kao „Vrati u prodaju”) */
-      $unsold = '';
-      $out = sj_products_update(function (array &$list) use (&$unsold) {
+      $unsold = ''; $photoWarn = [];
+      $out = sj_products_update(function (array &$list) use (&$unsold, &$photoWarn) {
       $oldId = sj_clean((string)($_POST['id'] ?? ''), 40);
       $name = sj_clean((string)($_POST['name'] ?? ''), 80);
       if ($name === '') throw new RuntimeException('Naziv je obavezan.');
@@ -194,10 +198,15 @@ function sj_handle_action(string $act, array &$c): string {
 
       if (!empty($_FILES['photos']['tmp_name']) && is_array($_FILES['photos']['tmp_name'])) {
         foreach ($_FILES['photos']['tmp_name'] as $i => $tmp) {
+          /* v89: prevelika fotografija (postavke PHP-a) više se ne preskače tiho */
+          $ue = (int)($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK); $fn = sj_clean((string)($_FILES['photos']['name'][$i] ?? ''), 80);
+          if ($ue !== UPLOAD_ERR_OK && $ue !== UPLOAD_ERR_NO_FILE) { $photoWarn[] = sj_upload_error_text($ue, $fn); continue; }
           if (!$tmp || !is_uploaded_file($tmp)) continue;
-          if ((int)($_FILES['photos']['size'][$i] ?? 0) > 20 * 1024 * 1024) throw new RuntimeException('Fotografija je veća od 20 MB.');
-          $path = sj_store_image($tmp, $p['id']);
-          if (!$path) throw new RuntimeException('Fotografija nije prepoznata (JPG, PNG ili WEBP).');
+          if ((int)($_FILES['photos']['size'][$i] ?? 0) > 20 * 1024 * 1024) { $photoWarn[] = ($fn !== '' ? '„' . $fn . '”' : 'Fotografija') . ' nije spremljena: veća je od 20 MB.'; continue; }
+          /* v89 (recenzija): jedna loša fotografija ne poništava spremanje teksta torbe */
+          try { $path = sj_store_image($tmp, $p['id']); }
+          catch (RuntimeException $ex) { if (!function_exists('imagecreatetruecolor')) throw $ex; $photoWarn[] = ($fn !== '' ? '„' . $fn . '”: ' : '') . $ex->getMessage(); continue; }
+          if (!$path) { $photoWarn[] = ($fn !== '' ? '„' . $fn . '”' : 'Fotografija') . ' nije prepoznata (JPG, PNG ili WEBP; fotografiju s iPhonea spremite kao JPG).'; continue; }
           $p['imgs'][] = $path;
         }
       }
@@ -213,6 +222,7 @@ function sj_handle_action(string $act, array &$c): string {
       });
       if ($unsold !== '') sj_with_lock(sj_res_path(), function (array &$d) use ($unsold) {
         $d = array_replace(sj_res_default(), $d); unset($d['sold'][$unsold]); return true; }, sj_res_default());
+      if ($photoWarn) $out .= ' POZOR — fotografije: ' . implode(' ', $photoWarn);
       return $out;
     }
 
@@ -1125,7 +1135,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
     foreach ($items as $k => $v) $navHtml .= '<a href="?s=' . $k . '"' . (($s === $k || ($k === 'torbe' && in_array($s, ['nova', 'uredi'], true))) ? ' class="on"' : '') . '>' . $v . '</a>';
     $navHtml .= '<a href="../" target="_blank" rel="noopener">Stranica ↗</a><a href="?odjava=1">Odjava</a>';
   }
-  echo '<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . e($title) . ' — ' . e($c['shop']) . ' admin</title>
+  echo '<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/img/ikona.svg" type="image/svg+xml"><title>' . e($title) . ' — ' . e($c['shop']) . ' admin</title>
 <style>
   :root{--paper:#F6F6F3;--ink:#1B1A17;--soft:#5C5A53;--thread:#2E4A3A;--line:#DDDCD5}
   *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}

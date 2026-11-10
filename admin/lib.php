@@ -1349,12 +1349,31 @@ function sj_json_out($data, int $status = 200, array $headers = []): void {
 
 /* ---------- fotografije ---------- */
 
+/* v89: „20M” / „512K” / „1G” iz php.ini → bajtovi (0 = bez ograničenja ili nepoznato) */
+function sj_ini_bytes(string $v): int {
+  $v = trim($v); if ($v === '' || $v === '-1') return 0;
+  $n = (float)$v; $u = strtolower(substr($v, -1));
+  return (int)round($n * ($u === 'g' ? 1073741824 : ($u === 'm' ? 1048576 : ($u === 'k' ? 1024 : 1))));
+}
+/* v89: razlog neuspjelog prijenosa fotografije, za vlasnicu */
+function sj_upload_error_text(int $code, string $name): string {
+  $n = $name !== '' ? '„' . $name . '”' : 'Fotografija';
+  if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE)
+    return $n . ' nije spremljena: veća je od ograničenja poslužitelja (upload_max_filesize = ' . (string)ini_get('upload_max_filesize') . '). U Plesku → PHP postavke upišite 20M (upute za objavu) ili fotografiju prije prijenosa smanjite.';
+  if ($code === UPLOAD_ERR_PARTIAL) return $n . ' nije spremljena: prijenos je prekinut. Pokušajte ponovno.';
+  return $n . ' nije spremljena (greška poslužitelja pri prijenosu, kod ' . $code . '). Javite osobi koja održava stranicu.';
+}
+
 /* Sprema prenesenu sliku kao img/<base>-<n>.jpg, smanjenu na najviše 1400 px. Vraća relativnu putanju ili null. */
 function sj_store_image(string $tmpPath, string $base): ?string {
   if (!function_exists('imagecreatetruecolor')) throw new RuntimeException('Fotografija nije spremljena: na poslužitelju nije uključeno PHP proširenje GD (Plesk → PHP → proširenja, ili zamolite podršku hostinga). Ostali podaci torbe su ispravni — spremite ih bez fotografije pa je dodajte kad GD proradi.'); /* v82 */
   $info = @getimagesize($tmpPath);
   if (!$info) return null;
   [$w, $h, $type] = $info;
+  /* v89: fotografije s fotoaparata (npr. 4000 × 4000) — GD treba oko 4 B po pikselu; najviše 50 MP */
+  if ($w * $h > 50000000) throw new RuntimeException('Fotografija je prevelika (' . round($w * $h / 1e6) . ' MP; najviše 50 MP). Smanjite je prije prijenosa.');
+  $need = (int)($w * $h * 4 * 2.2) + 33554432; $lim = sj_ini_bytes((string)ini_get('memory_limit'));
+  if ($lim > 0 && $lim < $need) @ini_set('memory_limit', (string)max($need, 268435456));
   switch ($type) {
     case IMAGETYPE_JPEG: $img = @imagecreatefromjpeg($tmpPath); break;
     case IMAGETYPE_PNG:  $img = @imagecreatefrompng($tmpPath); break;
@@ -1367,9 +1386,8 @@ function sj_store_image(string $tmpPath, string $base): ?string {
   if ($type === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
     $exif = @exif_read_data($tmpPath);
     $o = (int)($exif['Orientation'] ?? 1);
-    if ($o === 3) $img = imagerotate($img, 180, 0);
-    elseif ($o === 6) $img = imagerotate($img, -90, 0);
-    elseif ($o === 8) $img = imagerotate($img, 90, 0);
+    $ang = $o === 3 ? 180 : ($o === 6 ? -90 : ($o === 8 ? 90 : 0));
+    if ($ang) { $rot = imagerotate($img, $ang, 0); if ($rot) { imagedestroy($img); $img = $rot; } } /* v89: stara kopija odmah iz memorije */
     $w = imagesx($img); $h = imagesy($img);
   }
 

@@ -11,7 +11,7 @@ import os, re, secrets, sys, time, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
-CODE = ['index.html', '.htaccess', 'favicon.ico', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg', 'img/ikona.svg', 'img/ikona-180.png']  # uvijek (v84: EU obavijest o jamstvu; v86: logo; v87: ikona)
+CODE = ['index.html', '.htaccess', 'favicon.ico', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg', 'img/ikona.svg', 'img/ikona-180.png', 'img/.htaccess']  # uvijek (v84: EU obavijest o jamstvu; v86: logo; v87: ikona)
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
 FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.txt']
 NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$'
@@ -25,7 +25,7 @@ README = {
    ne na hostingu) i postavite lozinku.
 3. Admin → Postavke: upišite adresu stranice (npr. https://shivaj.hr), e-mail, primatelja i IBAN. Bez adrese stranice
    narudžbe se ne primaju.
-Upute: docs/UPUTE-OBJAVA-CROADRIA-v03.md u repozitoriju.
+Upute: docs/UPUTE-OBJAVA-CROADRIA-v04.md u repozitoriju.
 """,
     'nadogradnja': """Shiva.J {v} — NADOGRADNJA
 1. Raspakirajte u httpdocs (ili public_html) i dopustite zamjenu postojećih datoteka.

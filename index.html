@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v88 (2026-11-10)
+     SHIVA.J WEBSHOP — v89 (2026-11-10)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,8 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v89 — pregled prije objave: poruka i „Pokušaj ponovno” kad se ponuda ne učita (košarica ostaje sačuvana), noscript, dodirne površine 44 px,
+           mreža na 320 px, og:url/og:image i canonical na shivaj.hr, nova og.jpg (Jasminina torba i logo).
      v88 — košarica: umjesto sličice EU obavijesti kratka poveznica „Zakonsko jamstvo 2 godine” u traci (otvara Uvjete t. 8); puna obavijest u Uvjetima i impresumu.
      v87 — ikona stranice „.J” iz loga (img/ikona.svg; img/ikona-180.png za iPhone), umjesto privremenog „S”.
      v86 — logo obrta (img/logo.svg, iz Jasmininog PDF-a, Adobe Illustrator) u zaglavlju i podnožju umjesto natpisa.
@@ -469,18 +471,17 @@
 <!-- Ikona stranice: „.J” iz loga (v87); favicon.ico u korijenu za stariji Safari i admin -->
 <link rel="icon" href="img/ikona.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="img/ikona-180.png">
-<!-- Open Graph — pregled linka na Instagramu/WhatsAppu/Facebooku.
-     Nakon objave: zamijenite URL-ove svojom domenom i prenesite
-     img/og.jpg (1200×630 px, najbolja fotografija torbe s logom). -->
+<!-- Open Graph — pregled linka na Instagramu/WhatsAppu/Facebooku (v89: domena shivaj.hr; img/og.jpg iz Jasminine fotografije i loga) -->
+<link rel="canonical" href="https://shivaj.hr/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Shiva.J">
 <meta property="og:title" content="Shiva.J — Ručno šivane torbe iz Zaboka">
 <meta property="og:description" content="Torbe koje postoje samo jednom; modele iz Stalne kolekcije šijemo po narudžbi. Ručni rad, Zabok.">
-<meta property="og:url" content="https://exarkun-1.github.io/shivaj-webshop/">
-<meta property="og:image" content="https://exarkun-1.github.io/shivaj-webshop/img/og.jpg">
+<meta property="og:url" content="https://shivaj.hr/">
+<meta property="og:image" content="https://shivaj.hr/img/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Okrugla torba Shiva.J u krugu, uz natpis: Torbe koje postoje samo jednom.">
+<meta property="og:image:alt" content="Logo Shiva.J i crno-bijela okrugla torba od umjetne kože u krugu, uz natpis: Torbe koje postoje samo jednom. Ručni rad, Zabok.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
 <link href="https://fonts.bunny.net/css?family=marcellus:400|karla:300,400,400i,500,600|space-mono:400,700&display=swap" rel="stylesheet">
@@ -591,7 +592,7 @@
   }
   .mobile-menu a{
     font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;
-    padding:6px 0;color:var(--ink-soft);
+    padding:6px 0;min-height:44px;display:flex;align-items:center;color:var(--ink-soft); /* v89: 44 px za prst */
   }
   body.menu-open .mobile-menu{display:flex}
 
@@ -649,7 +650,7 @@
   .lb-specs dd{color:var(--ink)}
   .lb-info .story{color:var(--ink);line-height:1.65;white-space:pre-line}
   .lb-info .tagline{font-family:'Marcellus',serif;font-size:1.05rem;color:var(--thread)}
-  .lb-full{position:absolute;left:10px;top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;background:rgba(246,246,243,.92);color:var(--ink);padding:0 10px;min-height:32px;display:inline-flex;align-items:center;border-radius:var(--radius);z-index:2}
+  .lb-full{position:absolute;left:10px;top:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;background:rgba(246,246,243,.92);color:var(--ink);padding:0 12px;min-height:44px;display:inline-flex;align-items:center;border-radius:var(--radius);z-index:2}
   .lb-close{
     position:absolute;top:4px;right:4px;z-index:2;
     background:none;border:none;font-size:1.6rem;line-height:1;color:var(--ink-soft);
@@ -768,7 +769,7 @@
 
   .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));
     gap:40px 28px;
   }
   .card{display:flex;flex-direction:column;gap:12px}
@@ -1104,7 +1105,7 @@
   .mono-val{font-family:'Space Mono',monospace;font-size:.88rem}
   .copy-btn{
     margin-left:8px;background:none;border:1px solid #8F8D84;border-radius:var(--radius);
-    padding:0 10px;min-height:36px;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;
+    padding:0 10px;min-height:44px;font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;
     text-transform:uppercase;color:var(--ink);vertical-align:middle;
   }
   .pay-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
@@ -1230,6 +1231,7 @@
   <p class="shop-intro" id="shopIntro" hidden></p>
 
   <div class="grid" id="productGrid"><!-- proizvodi se generiraju iz JS --></div>
+  <noscript><p class="grid-empty">Za pregled i narudžbu torbi uključite JavaScript u pregledniku. Možete nam pisati i na Instagramu <a href="https://www.instagram.com/shiva.j_handmade/">@shiva.j_handmade</a> ili e-mailom na <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a>.</p></noscript>
 </main>
 
 <section class="how" id="kako">
@@ -1505,7 +1507,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v88</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v89</p>
 </footer>
 
 <!-- Košarica -->
@@ -1629,8 +1631,7 @@
    torbi. Prazno "" = bez servisa: narudžba se otvara u kupčevu
    e-mail programu (mailto), ništa se ne gubi.
    ========================================================= */
-/* Adresa poslužitelja: "api" (PHP na istom hostingu) ili, na probnoj stranici, adresa Google Apps Script
-   web-aplikacije (…/exec) iz window.SJ_API. apiUrl("status", "v=1") → api/status?v=1 ili …/exec?r=status&v=1 */
+/* Adresa poslužitelja: "api" (PHP na istom hostingu) ili adresa iz window.SJ_API. apiUrl("status", "v=1") → api/status?v=1 ili …/exec?r=status&v=1 */
 const API_BASE = (typeof window.SJ_API === "string" && window.SJ_API) ? window.SJ_API : "api";
 function apiUrl(path, query){
   if(/\/exec$/.test(API_BASE)) return API_BASE + "?r=" + path + (query ? "&" + query : "");
@@ -1821,25 +1822,28 @@ function restoreCart(){
   renderCart();
 }
 
-/* ---------- popis torbi iz torbe.json (ugrađeni popis je rezerva) ---------- */
+/* ---------- popis torbi iz torbe.json ---------- */
+/* v89: neuspjelo učitavanje (mreža, poslužitelj) razlikuje se od prazne ponude */
+let PRODUCTS_FAILED = false;
 async function loadProducts(){
   if(!PRODUCTS_URL || location.protocol === "file:") return false;
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const timer = setTimeout(() => ctrl.abort(), 8000);
     const url = PRODUCTS_URL + (PRODUCTS_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
     const res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
     clearTimeout(timer);
-    if(!res.ok) return false;
+    if(!res.ok){ PRODUCTS_FAILED = true; return false; }
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data && Array.isArray(data.products) ? data.products : null);
-    if(!list) return false;
+    if(!list){ PRODUCTS_FAILED = true; return false; }
     const ok = list.filter(p => p && p.id && p.name && typeof p.price === "number");
     /* prazna datoteka je ispravno stanje (npr. dok se unose prve torbe), ne greška */
     PRODUCTS.length = 0;
     ok.forEach(p => PRODUCTS.push(p));
+    PRODUCTS_FAILED = false;
     return true;
-  } catch(err){ return false; /* nema datoteke ili je neispravna → ugrađeni popis */ }
+  } catch(err){ PRODUCTS_FAILED = true; return false; /* mreža, istek vremena ili neispravna datoteka → poruka „ne možemo učitati” */ }
 }
 
 /* ---------- kategorije (#torbe, #ostalo) ---------- */
@@ -1898,6 +1902,18 @@ function renderGrid(){
     const nav = document.createElement("p"); nav.className = "sub-links";
     nav.innerHTML = keys.map(k => `<a href="#sub-${escHtml(k || "ostalo")}" class="cat-tab" data-sub="${escHtml(k || "ostalo")}">${escHtml((SUBS.find(x => x[0] === k) || [, "Ostalo"])[1])}</a>`).join("");
     if(keys.length > 1) grid.appendChild(nav);
+  }
+  if(!list.length && PRODUCTS_FAILED && !PRODUCTS.length){
+    grid.innerHTML = `
+      <div class="grid-empty" role="status">
+        <p class="grid-empty-title">Ponudu trenutno ne možemo učitati</p>
+        <p>Provjerite internetsku vezu i pokušajte ponovno za minutu. Ako ne uspije, pišite nam na
+          <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a> ili e-mailom.</p>
+        <p><button type="button" class="add-btn" id="retryProducts">Pokušaj ponovno</button></p>
+      </div>`;
+    document.getElementById("retryProducts").addEventListener("click", e => { e.currentTarget.disabled = true; e.currentTarget.textContent = "Učitavam…"; loadProducts().then(() => { if(PRODUCTS_FAILED){ renderGrid(); return; } restoreCart(); renderGrid(); refreshReservations(); /* v89 (recenzija): rezervacije i sve ostalo kao pri prvom učitavanju */ window.dispatchEvent(new HashChangeEvent("hashchange")); }); });
+    document.getElementById("availCount").textContent = "";
+    return;
   }
   if(!list.length){
     grid.innerHTML = `
@@ -3022,7 +3038,7 @@ function showOrderSuccess(srv){
     const p = PRODUCTS.find(x => x.id === item.id);
     if(p && !p.made) p.reserved = true;
   });
-  cart = [];
+  cart = []; storeSet("cart", null); /* v89 (recenzija): i kad košarica još nije vraćena (ponuda se nije učitala) */
   saveCart();
   storeSet("okey", null);
   /* v53: narudžba je potvrđena — preglednik više ne smatra rezervaciju „svojom” (torba se ne prikazuje slobodnom) */
@@ -3372,7 +3388,7 @@ function showToast(msg, ms){
 
 renderShopHead(); renderShipping();
 loadProducts().then(() => {
-  restoreCart();
+  if(!PRODUCTS_FAILED) restoreCart(); /* v89: bez ponude spremljena košarica ostaje netaknuta do ponovnog pokušaja */
   renderGrid();
   const bagId = bagFromHash();
   if(bagId && PRODUCTS.some(p => p.id === bagId)){ const c = catOf(PRODUCTS.find(p => p.id === bagId)); if(c !== currentCat){ currentCat = c; renderShopHead(); renderGrid(); } setTimeout(() => { openLightbox(bagId); lbReturnFocus = null; }, 150); }

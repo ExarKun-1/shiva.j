@@ -180,6 +180,20 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   // v83 (završno vijeće): naslovnica rezervira mjesto za torbu od početka (bez skakanja), Escape zatvara izbornik, gumbi ≥ 44 px
   { const raw = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     ok(/<section class="hero has-bag" id="hero">/.test(raw) && /<figure class="hero-bag" id="heroBag" aria-hidden="true"><span class="ring ring-ph">/.test(raw), 'v83: mjesto za torbu na naslovnici rezervirano u HTML-u (CLS)'); }
+  { const pf = await m.newPage(); let fails = 1;
+    await pf.addInitScript(() => { try { localStorage.setItem('shivaj.cart', JSON.stringify([{ id: 'luna', qty: 1 }])); } catch (e) {} });
+    await pf.route('**/torbe.json*', r => fails-- > 0 ? r.fulfill({ status: 500, body: 'x' }) : r.continue());
+    await pf.goto(URL, { waitUntil: 'networkidle' }); await pf.waitForTimeout(300);
+    const f1 = await pf.evaluate(() => [document.querySelector('.grid-empty-title')?.textContent, !!document.getElementById('retryProducts'), localStorage.getItem('shivaj.cart')]);
+    await pf.click('#retryProducts'); await pf.waitForTimeout(800);
+    const f2 = await pf.evaluate(() => [document.querySelectorAll('#productGrid .card').length, document.getElementById('cartCount')?.textContent]);
+    ok(f1[0] === 'Ponudu trenutno ne možemo učitati' && f1[1] && /luna/.test(f1[2] || '') && f2[0] > 0, 'v89: ponuda se nije učitala — posebna poruka, košarica sačuvana, „Pokušaj ponovno” učita torbe ' + JSON.stringify([f1, f2])); await pf.close(); }
+  { const pt = await m.newPage(); await pt.goto(URL, { waitUntil: 'networkidle' });
+    const t1 = await pt.evaluate(() => { const b = document.createElement('button'); b.className = 'copy-btn'; b.textContent = 'Kopiraj'; document.body.appendChild(b); const h = b.getBoundingClientRect().height; b.remove();
+      const head = document.head.innerHTML; return [h, /github\.io/.test(head), document.querySelector('link[rel=canonical]')?.href, document.querySelector('meta[property="og:image"]')?.content, !!document.querySelector('noscript')]; });
+    await pt.click('#menuBtn').catch(() => {}); await pt.waitForTimeout(200);
+    const mh = await pt.evaluate(() => Math.min(...[...document.querySelectorAll('.mobile-menu a')].map(a => a.getBoundingClientRect().height).filter(x => x > 0)));
+    ok(t1[0] >= 44 && !t1[1] && t1[2] === 'https://shivaj.hr/' && t1[3] === 'https://shivaj.hr/img/og.jpg' && t1[4] && mh >= 44, 'v89: gumbi „Kopiraj” i izbornik 44 px, og/canonical na shivaj.hr, noscript ' + JSON.stringify([t1, mh])); await pt.close(); }
   { const pe = await m.newPage(); await pe.route('**/torbe.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
     await pe.goto(URL, { waitUntil: 'networkidle' }); await pe.waitForTimeout(300);
     const he = await pe.evaluate(() => [document.getElementById('hero').classList.contains('has-bag'), document.getElementById('heroBag').hidden]);

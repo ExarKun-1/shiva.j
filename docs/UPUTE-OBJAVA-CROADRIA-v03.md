@@ -1,3 +1,5 @@
+> **ZASTARJELO** — vrijede `UPUTE-OBJAVA-CROADRIA-v04.md`.
+
 # Shiva.J — postavljanje i održavanje stranice na Croadriji · upute v03
 
 Ove upute zamjenjuju `shivaj_upute_objava_croadria_v02.md`. Nazivi u Croadrijinu kontrolnom panelu mogu se

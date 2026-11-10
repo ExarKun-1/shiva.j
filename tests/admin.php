@@ -574,6 +574,22 @@ $bad = $req('POST', array_merge($smtp, ['smtp_host' => 'smtp.shivaj.hr/../x', 's
 $ok(str_contains($bad, 'SMTP poslužitelj nije ispravan'), 'v79: neispravan naziv poslužitelja se ne sprema');
 file_put_contents($D . '/config.json', $cfgS); @unlink($D . '/smtp-zadnja-greska.json');
 
+/* v89: poslužitelj s malim ograničenjima — prevelika fotografija i prevelik zahtjev daju jasnu poruku */
+$p2 = 8092; $srv2 = proc_open(['php', '-d', 'upload_max_filesize=10K', '-d', 'post_max_size=60K', '-S', "127.0.0.1:$p2", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pp2);
+usleep(700000);
+$u2 = "http://127.0.0.1:$p2/admin/";
+preg_match('/name="csrf" value="([^"]+)"/', $curl([$u2 . '?s=torbe']), $c2);
+$big = tempnam(sys_get_temp_dir(), 'sjimg'); file_put_contents($big, str_repeat('x', 30000));
+$o2 = $curl(['-F', 'csrf=' . ($c2[1] ?? ''), '-F', 'act=save_product', '-F', 'name=Proba fotografija', '-F', 'price=40', '-F', 'vrsta=unikat', '-F', 'size=26 × 7 cm', '-F', 'back=?s=torbe', '-F', 'photos[]=@' . $big . ';filename=velika.jpg;type=image/jpeg', $u2]);
+if (preg_match('/^Location: (.*)$/mi', $o2, $l2)) $o2 = $curl([$u2 . trim($l2[1])]);
+$ok(str_contains($o2, '„velika.jpg” nije spremljena: veća je od ograničenja poslužitelja (upload_max_filesize = 10K)') && str_contains($o2, 'Spremljeno'), 'v89: prevelika fotografija — torba spremljena, a fotografija javljena po imenu i razlogu');
+file_put_contents($big, str_repeat('x', 90000));
+$o3 = $curl(['-F', 'csrf=' . ($c2[1] ?? ''), '-F', 'act=save_product', '-F', 'name=Proba', '-F', 'photos[]=@' . $big . ';filename=a.jpg', $u2]);
+if (preg_match('/^Location: (.*)$/mi', $o3, $l3)) $o3 = $curl([$u2 . trim($l3[1])]);
+$ok(str_contains($o3, 'Poslano je previše odjednom') && !str_contains($o3, 'Sesija je istekla'), 'v89: zahtjev veći od post_max_size — pravi razlog umjesto „sesija je istekla”');
+@unlink($big); proc_terminate($srv2);
+$ok(sj_ini_bytes('20M') === 20971520 && sj_ini_bytes('512K') === 524288 && sj_ini_bytes('1G') === 1073741824 && sj_ini_bytes('-1') === 0, 'v89: sj_ini_bytes čita php.ini vrijednosti');
+
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
 $f = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
