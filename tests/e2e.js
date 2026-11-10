@@ -120,7 +120,13 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Unikate šaljemo u roku 1\u2060?–\u2060?2 radna dana nakon uplate/.test(await pd.textContent('#kako')), 'v50/v83: rok slanja u „Kako naručiti” (unikati; po narudžbi kad ih sašijemo)');
   { const imp = await pd.textContent('#impressum'), t1 = await pd.textContent('#uvjeti');
     const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length, !!document.querySelector('#impressum .lg-badge')]; });
-    ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 2 && lg[3] === true, 'v84: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u košarici ' + JSON.stringify(lg)); }
+    ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 1 && lg[3] === true, 'v84: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u košarici ' + JSON.stringify(lg)); }
+  { const j88 = await pd.evaluate(() => { const a = document.querySelector('#orderForm .trust-line a[href="#jamstvo"]'); return [!!a && a.textContent.trim(), document.querySelectorAll('#orderForm .lg-badge, #orderForm img[src*="zakonsko"]').length, !!document.querySelector('details#jamstvo .lg-notice')]; });
+    await pd.evaluate(() => { document.getElementById('jamstvo').open = false; location.hash = ''; });
+    await pd.evaluate(() => { const a = document.createElement('a'); a.href = '#jamstvo'; document.body.appendChild(a); a.click(); a.remove(); }); await pd.waitForTimeout(150);
+    const op88 = await pd.evaluate(() => document.getElementById('jamstvo').open);
+    await pd.evaluate(() => { document.getElementById('jamstvo').open = false; history.replaceState(null, '', location.pathname); window.scrollTo(0, 0); });
+    ok(JSON.stringify(j88) === '["Zakonsko jamstvo 2 godine",0,true]' && op88, 'v88: u košarici kratka poveznica bez sličice, otvara Uvjete t. 8 s obaviješću EU ' + JSON.stringify([j88, op88])); }
   { const ik = await pd.evaluate(async () => { const l = document.querySelector('link[rel="icon"]'), a = document.querySelector('link[rel="apple-touch-icon"]');
       const r = await fetch(l.getAttribute('href')); const im = new Image(); im.src = a.getAttribute('href'); await im.decode().catch(() => {});
       return [l.getAttribute('href'), r.status, (r.headers.get('content-type') || '').split(';')[0], im.naturalWidth, im.naturalHeight]; });
