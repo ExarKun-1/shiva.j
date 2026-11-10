@@ -11,7 +11,7 @@ import os, re, secrets, sys, time, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
-CODE = ['index.html', '.htaccess', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg']  # uvijek (v84: obavezna EU obavijest o jamstvu; v86: logo)
+CODE = ['index.html', '.htaccess', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg', 'img/ikona.svg', 'img/ikona-180.png']  # uvijek (v84: EU obavijest o jamstvu; v86: logo; v87: ikona)
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
 FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.txt']
 NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$'
