@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v87 (2026-11-10)
+     SHIVA.J WEBSHOP — v88 (2026-11-10)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,7 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v88 — košarica: umjesto sličice EU obavijesti kratka poveznica „Zakonsko jamstvo 2 godine” u traci (otvara Uvjete t. 8); puna obavijest u Uvjetima i impresumu.
      v87 — ikona stranice „.J” iz loga (img/ikona.svg; img/ikona-180.png za iPhone), umjesto privremenog „S”.
      v86 — logo obrta (img/logo.svg, iz Jasmininog PDF-a, Adobe Illustrator) u zaglavlju i podnožju umjesto natpisa.
      v85 — telefon obrta 099 886 6877 (ZZP čl. 60. st. 1. t. 2.) u Uvjetima t. 1, obrascu za raskid (Pravilnik NN 105/2026,
@@ -703,7 +704,7 @@
   .legal h4{font-family:'Space Mono',monospace;font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--thread);margin:18px 0 6px}
   .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid{scroll-margin-top:72px}
+  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid,#jamstvo{scroll-margin-top:72px}
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -1009,7 +1010,7 @@
   .raskid-lead{margin:0}
   .legal .raskid-fn .edit-order{align-self:flex-start;border-bottom:none}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
-  .trust-line a{border-bottom:1.5px dashed var(--thread)}
+  .trust-line a{border-bottom:1.5px dashed var(--thread);white-space:nowrap}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
   .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-6px}
@@ -1360,7 +1361,7 @@
    – datum</pre>
       </details>
 
-      <details><summary><h3>8. Materijalni nedostaci</h3></summary>
+      <details id="jamstvo"><summary><h3>8. Materijalni nedostaci</h3></summary>
       <p>Za materijalne nedostatke odgovaramo prema Zakonu o obveznim odnosima, najmanje dvije godine od preuzimanja torbe; to vrijedi i za artikle izrađene po narudžbi. To je vaše zakonsko pravo i ne možemo ga ograničiti. Zasebno (komercijalno) jamstvo ne dajemo.</p>
       <figure class="lg-notice"><a href="img/zakonsko-jamstvo-hr.jpg" target="_blank" rel="noopener"><img src="img/zakonsko-jamstvo-hr.jpg" width="900" height="1271" loading="lazy" alt="Zakonsko jamstvo — usklađena obavijest Europske unije: roba koja se prodaje u EU zaštićena je zakonskim jamstvom od najmanje dvije godine; ako ne odgovara opisu ili ne funkcionira kako je predviđeno, prodavatelj mora ponuditi besplatan popravak ili zamjenu, a u nekim slučajevima sniženje cijene ili povrat plaćenog iznosa. Problem prijavite što prije i predočite dokaz o kupnji."></a><figcaption>Usklađena obavijest EU o zakonskom jamstvu (Provedbena uredba (EU) 2025/1960). Klikom se otvara u punoj veličini, u novoj kartici.</figcaption></figure>
       <p>Odgovaramo za nedostatke koje je torba imala kad ste je preuzeli (npr. greška u šavu, kopči ili materijalu). Ne odgovaramo za uobičajeno trošenje ni za oštećenja nastala nepravilnim rukovanjem ili nepridržavanjem uputa za njegu (uz torbe od umjetne kože na stranici, pod „Njega torbe”, i u e-mailu s potvrdom narudžbe). Na mala odstupanja zbog ručne izrade upozoravamo u točki 2.; vaša zakonska prava time se ne ograničavaju.</p>
@@ -1504,7 +1505,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v87</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v88</p>
 </footer>
 
 <!-- Košarica -->
@@ -1520,8 +1521,7 @@
       <span>Ukupno</span><span id="totalAmount"></span>
     </div>
     <form class="order-form" id="orderForm" hidden>
-      <a class="lg-badge" href="img/zakonsko-jamstvo-hr.jpg" target="_blank" rel="noopener"><img src="img/zakonsko-jamstvo-hr.jpg" width="64" height="90" loading="lazy" alt=""><span><b>Zakonsko jamstvo: najmanje 2 godine</b><br>usklađena obavijest EU — otvara se u novoj kartici</span></a>
-      <p class="trust-line">Bez registracije · Plaćanje uplatom · <span id="trustTerms">Prihvaćaju se <a href="#uvjeti" class="drawer-link">Uvjeti kupnje</a></span></p>
+      <p class="trust-line">Bez registracije · Plaćanje uplatom · <a href="#jamstvo" class="drawer-link" title="Usklađena obavijest EU, Uvjeti kupnje t. 8">Zakonsko jamstvo 2 godine</a> · <span id="trustTerms">Prihvaćaju se <a href="#uvjeti" class="drawer-link">Uvjeti kupnje</a></span></p>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com">e-mailom</a>.</p>
       <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
       <div class="hp-field" aria-hidden="true">
@@ -1859,6 +1859,10 @@ function renderShopHead(){
     ? cats.map(k => `<a class="cat-tab${k.id === currentCat ? " on" : ""}" href="#${k.id}">${k.label}</a>`).join("")
     : "";
 }
+/* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */
+function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
+document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
+if(location.hash === "#jamstvo"){ setTimeout(openJamstvo, 0); addEventListener("load", () => { openJamstvo(); setTimeout(openJamstvo, 600); }); } /* kao #raskid: visina se mijenja dok se stranica učitava */
 window.addEventListener("hashchange", () => {
   const bagId = bagFromHash();
   if(bagId && PRODUCTS.some(p => p.id === bagId)){
