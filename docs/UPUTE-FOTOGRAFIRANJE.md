@@ -26,7 +26,9 @@ Ovaj dio je praktična uputa, ne znanstveni nalaz. [5]
 
 ## Pet kadrova po torbi
 
-1. **Glavna fotografija.** Torba sprijeda, na mirnoj neutralnoj podlozi (lan ili svijetlo drvo). Ista podloga i ista udaljenost za sve torbe, kvadratni kadar, torba zauzima oko tri četvrtine slike. Ovo je kartica u trgovini, a ujednačenost daje dojam kolekcije. Za ujednačenost nema pokusa, to je dobra praksa. [5]
+**Fujifilm X-T200:** omjer slike 1:1 (fotoaparat nema 4:5), simulacija filma Provia/Standard za prirodne boje. Iz 1:1 dobije se i kartica 4:5 i krug na naslovnici.
+
+1. **Glavna fotografija.** Torba sprijeda, na mirnoj neutralnoj podlozi (lan ili svijetlo drvo). Ista podloga i ista udaljenost za sve torbe, kvadratni kadar (1:1), torba zauzima oko tri četvrtine slike. **Ostavite prostor sa strana torbe:** kartica u trgovini je uspravna (4:5) i sa svake strane odreže oko desetinu kvadratne slike, pa torba i naramenice ne smiju dirati lijevi ni desni rub. Na naslovnici se ista fotografija prikazuje u krugu, zato torba stoji na sredini. Ovo je kartica u trgovini, a ujednačenost daje dojam kolekcije. Za ujednačenost nema pokusa, to je dobra praksa. [5]
 2. **Torba u prostoru.** Na stolu, stolici ili klupi, uz nekoliko stvarnih predmeta. Pokusi pokazuju da proizvod u stvarnom prostoru dobiva bolje ocjene, veću namjeru kupnje i veću spremnost da se plati nego isti proizvod izrezan na bijelom. [6] [7]
 3. **Na osobi.** Preko ramena, i na leđima ako je torba i ruksak. Lice nije potrebno. Iz te fotografije kupac vidi veličinu. [4]
 4. **Detalj šava i umjetne kože, s rukom.** Krupni plan prošivenih spojeva, kopči i teksture, a u kadru vaša ruka drži ili dodiruje torbu. Zamišljeni dodir povećava osjećaj da je proizvod „već moj”. [8] [9] Ujedno pokazuje ručni rad, a ručno rađeni predmeti kupcima su privlačniji jer u njima osjećaju uloženu brigu. [10]
