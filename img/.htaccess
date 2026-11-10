@@ -5,4 +5,4 @@
 <IfModule mod_php.c>
   php_flag engine off
 </IfModule>
-Options -ExecCGI -Indexes
+# (bez „Options”: Plesk često ne dopušta ExecCGI u .htaccess → 500; popis mape već isključuje korijenski .htaccess)
