@@ -704,7 +704,7 @@
   .legal h4{font-family:'Space Mono',monospace;font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--thread);margin:18px 0 6px}
   .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid{scroll-margin-top:72px}
+  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid,#jamstvo{scroll-margin-top:72px}
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -1010,7 +1010,7 @@
   .raskid-lead{margin:0}
   .legal .raskid-fn .edit-order{align-self:flex-start;border-bottom:none}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
-  .trust-line a{border-bottom:1.5px dashed var(--thread)}
+  .trust-line a{border-bottom:1.5px dashed var(--thread);white-space:nowrap}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
   .order-lead{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-6px}
@@ -1862,7 +1862,7 @@ function renderShopHead(){
 /* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */
 function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
 document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
-if(location.hash === "#jamstvo") setTimeout(openJamstvo, 0);
+if(location.hash === "#jamstvo"){ setTimeout(openJamstvo, 0); addEventListener("load", () => { openJamstvo(); setTimeout(openJamstvo, 600); }); } /* kao #raskid: visina se mijenja dok se stranica učitava */
 window.addEventListener("hashchange", () => {
   const bagId = bagFromHash();
   if(bagId && PRODUCTS.some(p => p.id === bagId)){
