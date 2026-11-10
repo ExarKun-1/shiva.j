@@ -20,7 +20,7 @@ Isti PHP servis zaprima narudžbe sa stranice, šalje ih vlasnici e-mailom i **a
 
 ## Što se prenosi na hosting
 
-U `public_html` (korijen stranice):
+U `httpdocs` (korijen stranice na Plesku):
 
 | Što | Odakle |
 |---|---|
