@@ -11,7 +11,7 @@ sj_session_start();
 $c = sj_config();
 /* v22: poruka nakon radnje dolazi iz sesije (jednokratno), ne iz adrese — link s ?m= ne može podmetnuti lažnu poruku */
 ini_set('display_errors', '0'); /* v80 (završna recenzija): bez putanja datoteka u upozorenjima PHP-a */
-$msg = sj_clean((string)($_SESSION['sj_flash'] ?? ''), 2000); /* v62: dulji popisi (npr. Storniraj sve s ove adrese) */ unset($_SESSION['sj_flash']);
+$msg = sj_clean((string)($_SESSION['sj_flash'] ?? ''), 6000); /* v62: dulji popisi (npr. Storniraj sve s ove adrese) */ unset($_SESSION['sj_flash']);
 $err = '';
 
 /* ---------- prvo pokretanje: lozinka ---------- */
@@ -202,9 +202,11 @@ function sj_handle_action(string $act, array &$c): string {
           $ue = (int)($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK); $fn = sj_clean((string)($_FILES['photos']['name'][$i] ?? ''), 80);
           if ($ue !== UPLOAD_ERR_OK && $ue !== UPLOAD_ERR_NO_FILE) { $photoWarn[] = sj_upload_error_text($ue, $fn); continue; }
           if (!$tmp || !is_uploaded_file($tmp)) continue;
-          if ((int)($_FILES['photos']['size'][$i] ?? 0) > 20 * 1024 * 1024) throw new RuntimeException('Fotografija je veća od 20 MB.');
-          $path = sj_store_image($tmp, $p['id']);
-          if (!$path) throw new RuntimeException('Fotografija nije prepoznata (JPG, PNG ili WEBP).');
+          if ((int)($_FILES['photos']['size'][$i] ?? 0) > 20 * 1024 * 1024) { $photoWarn[] = ($fn !== '' ? '„' . $fn . '”' : 'Fotografija') . ' nije spremljena: veća je od 20 MB.'; continue; }
+          /* v89 (recenzija): jedna loša fotografija ne poništava spremanje teksta torbe */
+          try { $path = sj_store_image($tmp, $p['id']); }
+          catch (RuntimeException $ex) { if (!function_exists('imagecreatetruecolor')) throw $ex; $photoWarn[] = ($fn !== '' ? '„' . $fn . '”: ' : '') . $ex->getMessage(); continue; }
+          if (!$path) { $photoWarn[] = ($fn !== '' ? '„' . $fn . '”' : 'Fotografija') . ' nije prepoznata (JPG, PNG ili WEBP; fotografiju s iPhonea spremite kao JPG).'; continue; }
           $p['imgs'][] = $path;
         }
       }

@@ -1827,24 +1827,23 @@ function restoreCart(){
 let PRODUCTS_FAILED = false;
 async function loadProducts(){
   if(!PRODUCTS_URL || location.protocol === "file:") return false;
-  PRODUCTS_FAILED = true;
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     const url = PRODUCTS_URL + (PRODUCTS_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
     const res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
     clearTimeout(timer);
-    if(!res.ok) return false;
+    if(!res.ok){ PRODUCTS_FAILED = true; return false; }
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data && Array.isArray(data.products) ? data.products : null);
-    if(!list) return false;
+    if(!list){ PRODUCTS_FAILED = true; return false; }
     const ok = list.filter(p => p && p.id && p.name && typeof p.price === "number");
     /* prazna datoteka je ispravno stanje (npr. dok se unose prve torbe), ne greška */
     PRODUCTS.length = 0;
     ok.forEach(p => PRODUCTS.push(p));
     PRODUCTS_FAILED = false;
     return true;
-  } catch(err){ return false; /* mreža, istek vremena ili neispravna datoteka → poruka „ne možemo učitati” */ }
+  } catch(err){ PRODUCTS_FAILED = true; return false; /* mreža, istek vremena ili neispravna datoteka → poruka „ne možemo učitati” */ }
 }
 
 /* ---------- kategorije (#torbe, #ostalo) ---------- */
@@ -1912,7 +1911,7 @@ function renderGrid(){
           <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a> ili e-mailom.</p>
         <p><button type="button" class="add-btn" id="retryProducts">Pokušaj ponovno</button></p>
       </div>`;
-    document.getElementById("retryProducts").addEventListener("click", e => { e.currentTarget.disabled = true; e.currentTarget.textContent = "Učitavam…"; loadProducts().then(() => { if(!PRODUCTS_FAILED) restoreCart(); renderGrid(); }); });
+    document.getElementById("retryProducts").addEventListener("click", e => { e.currentTarget.disabled = true; e.currentTarget.textContent = "Učitavam…"; loadProducts().then(() => { if(PRODUCTS_FAILED){ renderGrid(); return; } restoreCart(); renderGrid(); refreshReservations(); /* v89 (recenzija): rezervacije i sve ostalo kao pri prvom učitavanju */ window.dispatchEvent(new HashChangeEvent("hashchange")); }); });
     document.getElementById("availCount").textContent = "";
     return;
   }
@@ -3039,7 +3038,7 @@ function showOrderSuccess(srv){
     const p = PRODUCTS.find(x => x.id === item.id);
     if(p && !p.made) p.reserved = true;
   });
-  cart = [];
+  cart = []; storeSet("cart", null); /* v89 (recenzija): i kad košarica još nije vraćena (ponuda se nije učitala) */
   saveCart();
   storeSet("okey", null);
   /* v53: narudžba je potvrđena — preglednik više ne smatra rezervaciju „svojom” (torba se ne prikazuje slobodnom) */
