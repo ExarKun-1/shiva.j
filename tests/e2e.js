@@ -121,6 +121,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   { const imp = await pd.textContent('#impressum'), t1 = await pd.textContent('#uvjeti');
     const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length, !!document.querySelector('#impressum .lg-badge')]; });
     ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 2 && lg[3] === true, 'v84: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u košarici ' + JSON.stringify(lg)); }
+  { const ik = await pd.evaluate(async () => { const l = document.querySelector('link[rel="icon"]'), a = document.querySelector('link[rel="apple-touch-icon"]');
+      const r = await fetch(l.getAttribute('href')); const im = new Image(); im.src = a.getAttribute('href'); await im.decode().catch(() => {});
+      return [l.getAttribute('href'), r.status, (r.headers.get('content-type') || '').split(';')[0], im.naturalWidth, im.naturalHeight]; });
+    ok(JSON.stringify(ik) === '["img/ikona.svg",200,"image/svg+xml",180,180]', 'v87: ikona stranice .J (SVG) i ikona za iPhone 180×180 ' + JSON.stringify(ik)); }
   { const lg86 = await pd.evaluate(() => [...document.querySelectorAll('img[src="img/logo.svg"]')].map(i => [i.closest('header') ? 'h' : i.closest('footer') ? 'f' : '?', i.alt]));
     const hl = await pd.evaluate(async () => { const i = document.querySelector('header .wordmark img'); await i.decode().catch(() => {}); const r = i.getBoundingClientRect(); return [i.naturalWidth > 0, Math.round(r.height), Math.round(r.width)]; });
     ok(JSON.stringify(lg86) === '[["h","Shiva.J"],["f","Shiva.J"]]' && hl[0] && hl[1] === 28 && hl[2] > 90 && hl[2] < 130, 'v86: logo u zaglavlju i podnožju, učitan, 28 px visok ' + JSON.stringify([lg86, hl])); }
