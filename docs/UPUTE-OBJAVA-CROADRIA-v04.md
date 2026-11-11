@@ -66,7 +66,8 @@ uključujući e-mail s podacima za uplatu. Zato:
   - Bez File Managera: raspakirajte zip na računalu i u FileZilli prenesite sadržaj u `httpdocs`.
 - [ ] **Provjera zaštite** — svaka od ovih adresa mora vratiti grešku 403 ili 404, nikako sadržaj:
   `https://shivaj.hr/data/config.json`, `…/data/PRVA-PRIJAVA.txt`, `…/data/narudzbe.json`, `…/admin/lib.php`,
-  `…/docs/`, `…/img/.htaccess`. Ako se bilo što otvori: Plesk → Apache & nginx Settings → isključiti „Serve static files
+  `…/docs/`, `…/img/.htaccess`, `…/data/mail-log.txt`, `…/data/greske.log`, `…/data/zahtjevi.json`, `…/data/kopije/`.
+  Najlakše: Admin → Postavke → **Provjeri zaštitu podataka** (v90) radi to sam i crveno upozorava. Ako se bilo što otvori: Plesk → Apache & nginx Settings → isključiti „Serve static files
   directly by nginx” (ili mu maknuti `json`/`txt`), pa provjeriti ponovno.
 
 ### 6. Admin
@@ -137,9 +138,14 @@ Datoteke na hostingu pritom se ne diraju.
 
 ---
 
-## D. Sigurnosna kopija (jednom mjesečno)
-Plesk → Files → `httpdocs` → označite mapu `data/`, mapu `img/` i datoteku `torbe.json` → **Compress** (zip) → **Download**.
-Spremite kopiju na računalo, npr. `C:\SHIVAJ.HANDMADE\kopije\2026-11.zip`.
+## D. Sigurnosne kopije i vraćanje
+- **Dnevno, samo od sebe (v90):** jednom dnevno (cron `api/status` ili otvaranje admina) sve `data/*.json` kopiraju se u
+  `data/kopije/GGGG-MM-DD/`; čuva se zadnjih 14 dana. Admin → Postavke → Provjera pokazuje datum zadnje kopije.
+- **Jednom mjesečno, na računalo:** Plesk → Files → `httpdocs` → označite mapu `data/`, mapu `img/` i datoteku
+  `torbe.json` → **Compress** (zip) → **Download**. Spremite npr. `C:\SHIVAJ.HANDMADE\kopije\2026-11.zip`.
+- **Vraćanje** (npr. admin javlja „HITNO: datoteka … je oštećena”): u `data/kopije/` otvorite zadnji dan prije
+  kvara, kopirajte samo tu datoteku natrag u `data/` (zamijeni). Narudžbe se zatim ponovno primaju. Brojač narudžbi
+  sam nastavlja od najvećeg postojećeg broja, pa se poziv na broj ne ponavlja ni kad se vrati starija `config.json`.
 
 ---
 

@@ -590,6 +590,11 @@ $ok(str_contains($o3, 'Poslano je previše odjednom') && !str_contains($o3, 'Ses
 @unlink($big); proc_terminate($srv2);
 $ok(sj_ini_bytes('20M') === 20971520 && sj_ini_bytes('512K') === 524288 && sj_ini_bytes('1G') === 1073741824 && sj_ini_bytes('-1') === 0, 'v89: sj_ini_bytes čita php.ini vrijednosti');
 
+/* v90 (recenzija): oštećena rezervacije.json — admin pokazuje okvir s trakom HITNO, ne praznu stranicu */
+$rb90 = file_get_contents($D . '/rezervacije.json'); file_put_contents($D . '/rezervacije.json', '{"res":{"x":');
+$pg90 = $req('GET', ['s' => 'torbe']); $pn90 = $req('GET', ['s' => 'narudzbe']);
+$ok(str_contains($pg90, '200 OK') && str_contains($pg90, 'HITNO') && str_contains($pg90, 'Ovaj prikaz se ne može otvoriti') && str_contains($pn90, 'HITNO'), 'v90: oštećene rezervacije — Torbe i Narudžbe prikazuju traku HITNO umjesto prazne stranice');
+file_put_contents($D . '/rezervacije.json', $rb90); @unlink($D . '/ostecene-datoteke.json');
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
 $f = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));

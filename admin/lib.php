@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v53');
+define('SJ_VERSION', 'admin v54');
 
 /* ---------- postavke ---------- */
 
@@ -484,6 +484,9 @@ function sj_deadline_tick(bool $force = false): array {
 function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
   /* vijeće V78-S9: narudžba je možda u međuvremenu stornirana (raskid) ili plaćena — tada bez e-maila o roku */
   if ($kind !== 'cancel') { $fresh = sj_order_find(['no' => (string)($o['no'] ?? '')]); if ($fresh && (!empty($fresh['cancelledAt']) || !empty($fresh['paidAt']))) return; }
+  /* v90 (vijeće): ni e-mail o stornu ako je vlasnica u međuvremenu označila plaćeno */
+  else { $fresh = sj_order_find(['no' => (string)($o['no'] ?? '')]); if ($fresh && !empty($fresh['paidAt'])) return; }
+  $okC = true;
   $no = (string)($o['no'] ?? ''); $name = (string)($o['name'] ?? ''); $until = sj_fmt_deadline(sj_pay_until($o)); $untilAcc = sj_fmt_deadline(sj_pay_until($o), 'acc');
   $uq = []; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $uq[] = '„' . (string)($it['name'] ?? '') . '”';
   $many = count($uq) > 1;
@@ -498,7 +501,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       : ($claim !== '' ?  'Kliknite „Uplatio/la sam” i ' . $hold . ' ' . sj_claim_preview($o) . ":\n$claim\n($alt)"
       : 'Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke, pa ćemo provjeriti izvod.');
     /* v69 (odluka vlasnice): podaci za uplatu u podsjetniku, ali bez barkoda (da se ne plati dvaput) */
-    sj_send_mail((string)$o['email'], $c['shop'] . " — podsjetnik za uplatu, narudžba $no",
+    $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — podsjetnik za uplatu, narudžba $no",
       $hi . "podsjetnik: vaša narudžba br. $no čeka uplatu do $until." . ($uq ? ' Do tada ' . ($many ? 'su torbe ' . implode(' i ', $uq) . ' rezervirane' : 'je torba ' . $uq[0] . ' rezervirana') . ' samo za vas.' : '')
       /* v69 (D69-4): najprije za one koji su platili (da ne zanemare poruku i ne propuste „Uplatio/la sam”) */
       . "\n\nVeć ste platili? Nemojte plaćati ponovno. " . $claimTxt
@@ -516,7 +519,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       /* D72-3: potvrdu već imamo — ne tražiti je ponovno; v72.1 (odluka vlasnice, 8. krug): „Ako do tada uplata ne stigne” */
       $cond = $pf ? 'uplata ne stigne' : 'ne dobijemo ni uplatu ni potvrdu';
       $stornoP = $auto > 0 ? ' Ako do ' . sj_fmt_deadline(sj_iso(sj_cancel_due($o + ['expiredAt' => sj_iso($exp)], $auto))) . ' ' . $cond . ', narudžbu storniramo.' : '';
-      sj_send_mail((string)$o['email'], $c['shop'] . " — uplatu još ne vidimo, narudžba $no",
+      $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — uplatu još ne vidimo, narudžba $no",
         /* D72-4: inačica „primili smo potvrdu” kad god je potvrda zabilježena */
         $hi . ($pf ? "primili smo vašu potvrdu o uplati za narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, provjerite sa svojom bankom je li uplata izvršena i odgovorite na ovaj e-mail."
           : "javili ste nam da ste platili narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, odgovorite na ovaj e-mail i pošaljite potvrdu o uplati (snimku ili potvrdu iz banke).")
@@ -528,7 +531,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
         . $bye, null, (string)$c['owner_email']);
     } else {
       /* v70: klik nakon isteka više ne čuva torbu (v69.1) — javlja vlasnici, koja provjeri izvod i javi se */
-      sj_send_mail((string)$o['email'], $c['shop'] . " — rok za uplatu je prošao, narudžba $no",
+      $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — rok za uplatu je prošao, narudžba $no",
         $hi . "rok za uplatu narudžbe br. $no prošao je u $untilAcc, a uplatu još ne vidimo" . (($hsN = sj_held_sentence(sj_held_info($o))) !== '' ? '. ' . rtrim($hsN, '.') . ', jer obična uplata poslana do roka može stići sljedeći radni dan' : ($back !== '' ? ", pa $back" : '')) . '.' /* v81 (p2) */
         . "\n\nVeć ste platili? " . ($claim !== '' ? "Kliknite „Uplatio/la sam”:\n$claim\n(ili odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke)." : 'Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.')
         . ' Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam cijeli iznos što prije, a najkasnije u roku od sedam dana.' : '.')
@@ -545,10 +548,12 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       . "\n\nAko vidite uplatu, u adminu → Narudžbe → „Rok istekao” kliknite „Označi plaćenom”; ako ne, „Storniraj narudžbu…”." . ($auto > 0 ? " Ako ne kliknete ništa, narudžba se automatski stornira u " . sj_fmt_deadline(sj_iso(sj_cancel_due($o + ['expiredAt' => sj_iso(time())], $auto)), 'acc') . ' i kupac dobiva e-mail.' : '')
       . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
   } else {
-    sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
+    $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
       $hi . "narudžba br. $no je stornirana jer uplata nije stigla ni nakon roka." . ($uq ? ' ' . ($many ? 'Torbe su ponovno' : 'Torba je ponovno') . ' u prodaji.' : '')
       . "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.') . $bye, null, (string)$c['owner_email']);
   }
+  /* v90 (vijeće): neuspjeh slanja kupcu bilježi se uz narudžbu (admin → Narudžbe) */
+  if (!$okC) { try { sj_order_edit(['no' => $no], function (array &$x) use ($kind) { $x['mailFail'][$kind] = sj_iso(time()); }); } catch (Throwable $e) {} }
 }
 /* v69: podaci za uplatu u tekstu e-maila (podsjetnik, rok prošao) — bez barkoda */
 function sj_pay_lines(array $o, array $c): string {
@@ -649,7 +654,8 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
-      $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400;
+      /* v90 (recenzija): dnevna granica po primatelju ('sve|dan|') čuva se 24 h, ostale 'sve|' 1 h */
+      $keep = str_starts_with($k, 'sve|dan|') ? 86400 : ((str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400);
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
@@ -702,6 +708,24 @@ function sj_products_by_id_all(): array {
 
 /* Nova narudžba na vrh popisa; zadnjih $keep ostaje u narudzbe.json, starije idu u godišnju arhivu
    data/narudzbe-arhiva-GGGG.json (ne brišu se, pa lažne narudžbe ne mogu istisnuti prave) */
+/* v90 (vijeće): najveći broj narudžbe koji već postoji (narudzbe.json i arhive) — brojač nikad ne ide unatrag,
+   ni kad se config.json vrati iz sigurnosne kopije ili postavi iznova (ponovljen poziv na broj = zabuna pri uplati) */
+function sj_order_seq_floor(): int {
+  $max = 0;
+  foreach (array_merge([SJ_DATA . '/narudzbe.json'], glob(SJ_DATA . '/narudzbe-arhiva-*.json') ?: []) as $f) {
+    foreach ((array)sj_read_json($f, []) as $o) if (is_array($o) && preg_match('/^SJ-\d{4}-(\d+)$/', (string)($o['no'] ?? ''), $m)) $max = max($max, (int)$m[1]);
+  }
+  return $max;
+}
+function sj_next_order_seq(): int {
+  $floor = sj_order_seq_floor(); $seq = 0;
+  sj_config_update(function (array &$cfg) use (&$seq, $floor) {
+    $cfg['order_seq'] = max((int)($cfg['order_seq'] ?? 0), $floor) + 1;
+    $seq = (int)$cfg['order_seq'];
+  });
+  return $seq;
+}
+
 function sj_orders_prepend(array $entry, int $keep = 300): void {
   sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($entry, $keep) {
     array_unshift($list, $entry);
@@ -938,6 +962,57 @@ function sj_write_json(string $path, $data): void {
 }
 
 /* Zaključani rad nad JSON datotekom: $fn(array &$data) smije mijenjati $data; vraća što god želi. */
+function sj_is_critical_data(string $base): bool {
+  /* narudzbe-na-cekanju.json nije ovdje: drži samo nepotvrđene narudžbe (link vrijedi 1 h), pa se oštećena odlaže i počinje prazna */
+  return in_array($base, ['rezervacije.json', 'narudzbe.json'], true) || (bool)preg_match('/^narudzbe-arhiva-\d{4}\.json$/', $base);
+}
+/* oštećena važna datoteka: zapis za admin (crvena traka) i jedan e-mail vlasnici dnevno */
+function sj_corrupt_note(string $base): void {
+  $f = SJ_DATA . '/ostecene-datoteke.json';
+  $d = (array)sj_read_json($f, []); $first = !isset($d[$base]) || substr((string)$d[$base], 0, 10) !== date('Y-m-d');
+  if ($first) { $d[$base] = date('c'); @file_put_contents($f, json_encode($d), LOCK_EX); } /* upis samo prvi put u danu */
+  if ($first) { try { $c = sj_config(); if (!empty($c['owner_email'])) sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — HITNO: oštećena datoteka ' . $base,
+    "Datoteka data/$base nije čitljiva. Stranica je zaustavila narudžbe da se ništa ne izgubi.\n\nVratite datoteku iz dnevne kopije (data/kopije/GGGG-MM-DD/$base) u mapu data/ (upute za objavu, odjeljak D). Oštećena kopija spremljena je kao data/$base.osteceno-datum.\n"); } catch (Throwable $e) {} }
+}
+
+/* v90 (vijeće): jednom dnevno kopija data/*.json u data/kopije/GGGG-MM-DD/ (čuva se 14 dana; data/ je zaštićen,
+   pa i kopije). Pokreće je cron api/status ili otvaranje admina. Oštećena datoteka se ne kopira (ostaje jučerašnja). */
+function sj_daily_backup(int $keepDays = 14): ?string {
+  $root = SJ_DATA . '/kopije'; $day = date('Y-m-d'); $dir = $root . '/' . $day;
+  if (is_dir($dir)) return null;
+  if (!is_dir($root) && !@mkdir($root, 0755, true)) return null;
+  $fp = @fopen($root . '/.lock', 'c'); if (!$fp) return null;
+  try {
+    if (!flock($fp, LOCK_EX | LOCK_NB) || is_dir($dir)) return null;
+    if (!@mkdir($dir, 0755)) return null;
+    foreach (glob(SJ_DATA . '/*.json') ?: [] as $f) {
+      if (filesize($f) > 0 && sj_read_json($f, null) === null) continue;
+      @copy($f, $dir . '/' . basename($f));
+    }
+    foreach (glob($root . '/????-??-??', GLOB_ONLYDIR) ?: [] as $old) {
+      if (strtotime(basename($old)) < strtotime($day) - $keepDays * 86400) { foreach (glob($old . '/*') ?: [] as $x) @unlink($x); @rmdir($old); }
+    }
+    return $dir;
+  } finally { flock($fp, LOCK_UN); fclose($fp); }
+}
+/* v90: HTTP status adrese (provjera zaštite); 0 = nema odgovora */
+function sj_http_code(string $url): int {
+  if (function_exists('curl_init')) {
+    $ch = curl_init($url);
+    /* v90 (recenzija): bez Range (206 bi sakrio otvorenu datoteku); preusmjerenje http→https se slijedi */
+    curl_setopt_array($ch, [CURLOPT_NOBODY => false, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_MAXFILESIZE => 2097152]);
+    curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch); return $code;
+  }
+  $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 6, 'ignore_errors' => true, 'follow_location' => 1, 'max_redirects' => 3]]);
+  @file_get_contents($url, false, $ctx, 0, 1);
+  $code = 0; /* nakon preusmjerenja vrijedi zadnji status */
+  foreach ((array)($http_response_header ?? []) as $hl) if (preg_match('#^HTTP/\S+\s+(\d{3})#', $hl, $m)) $code = (int)$m[1];
+  return $code;
+}
+function sj_last_backup(): string { $d = glob(SJ_DATA . '/kopije/????-??-??', GLOB_ONLYDIR) ?: []; sort($d); return $d ? basename(end($d)) : ''; }
+/* v90 (vijeće): greske.log najviše ~1 MB (stariji dio u greske.log.1) */
+function sj_log_rotate(): void { $f = SJ_DATA . '/greske.log'; if (is_file($f) && filesize($f) > 1048576) @rename($f, $f . '.1'); }
+
 function sj_with_lock(string $path, callable $fn, $default = []) {
   $dir = dirname($path);
   if (!is_dir($dir)) mkdir($dir, 0755, true);
@@ -951,6 +1026,8 @@ function sj_with_lock(string $path, callable $fn, $default = []) {
       $bak = $path . '.osteceno-' . date('Ymd');
       if (!is_file($bak)) @copy($path, $bak);
       if (basename($path) === 'config.json') throw new RuntimeException('data/config.json nije čitljiv; vratite ga iz sigurnosne kopije.');
+      /* v90 (vijeće): ni narudžbe ni rezervacije (oznake „plaćeno”) ne smiju se prepisati praznima — plaćena torba bi se mogla prodati dvaput */
+      if (sj_is_critical_data(basename($path))) { sj_corrupt_note(basename($path)); throw new RuntimeException('data/' . basename($path) . ' nije čitljiv; ništa nije prepisano. Vratite ga iz sigurnosne kopije (data/kopije/).'); }
     }
     $before = json_encode($data);
     $result = $fn($data);
@@ -1327,7 +1404,15 @@ function sj_fmt_deadline(?string $iso, string $case = 'gen'): string {
   $n = (int)$dt->format('N');
   $gen = [1 => 'ponedjeljka', 'utorka', 'srijede', 'četvrtka', 'petka', 'subote', 'nedjelje'];
   $acc = [1 => 'ponedjeljak', 'utorak', 'srijedu', 'četvrtak', 'petak', 'subotu', 'nedjelju'];
-  return ($case === 'acc' ? $acc[$n] : $gen[$n]) . ', ' . $dt->format('j. n. Y.') . ' u ' . $dt->format('H:i');
+  return ($case === 'acc' ? $acc[$n] : $gen[$n]) . ', ' . $dt->format('j. n. Y.') . ' u ' . $dt->format('H:i') . sj_night_note($dt);
+}
+/* v90 (vijeće, kupci): rok u 00:01 čitao se kao „imam cijeli četvrtak” — u noćnim satima dodaje se „(u noći sa srijede na četvrtak)” */
+function sj_night_note(DateTime $dt): string {
+  if ((int)$dt->format('G') >= 6) return '';
+  $n = (int)$dt->format('N'); $p = $n === 1 ? 7 : $n - 1;
+  $gen = [1 => 'ponedjeljka', 'utorka', 'srijede', 'četvrtka', 'petka', 'subote', 'nedjelje'];
+  $acc = [1 => 'ponedjeljak', 'utorak', 'srijedu', 'četvrtak', 'petak', 'subotu', 'nedjelju'];
+  return ' (u noći ' . (in_array($p, [3, 6], true) ? 'sa' : 's') . ' ' . $gen[$p] . ' na ' . $acc[$n] . ')';
 }
 function sj_fmt_hr(?string $iso): string {
   if (!$iso) return '—';

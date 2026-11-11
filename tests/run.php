@@ -255,6 +255,32 @@ $tt84 = sj_terms_text();
 $ok(!str_contains($tt84, 'Klikom') && str_contains($tt84, 'Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici'), 'v84: e-mail Uvjeta — umjesto slike EU obavijesti uputa na stranicu');
 $ok(str_contains($tt84, 'telefon: 099 886 6877') && str_contains($tt84, 'tel. 099 886 6877'), 'v85: e-mail Uvjeta nosi telefon obrta (t. 1 i obrazac za raskid)');
 $ok(json_decode($mC[1] ?? 'null', true) === SJ_STRAP_COLORS && json_decode($mL[1] ?? 'null', true) === SJ_STRAP_LENGTHS, 'v77: popis boja i duljina remena isti na stranici i u PHP-u');
+/* v90 (vijeće): brojač narudžbi nikad unatrag (config vraćen iz kopije) */
+$nb = (string)@file_get_contents(SJ_DATA . '/narudzbe.json'); $cb = (string)@file_get_contents(SJ_DATA . '/config.json');
+file_put_contents(SJ_DATA . '/narudzbe.json', json_encode([['no' => 'SJ-2026-0007', 'at' => '2026-11-01T10:00:00Z', 'email' => 'x@p.hr']]));
+sj_config_update(function (array &$c90) { $c90['order_seq'] = 0; });
+$ok(sj_order_seq_floor() === 7 && sj_next_order_seq() === 8 && sj_next_order_seq() === 9, 'v90: brojač ide od najvećeg postojećeg broja (0007 → 0008), ne od 1');
+/* v90: oštećene rezervacije i narudžbe se ne prepisuju */
+$rp = sj_res_path(); $rb = (string)@file_get_contents($rp);
+file_put_contents($rp, '{"res":{"luna":'); $thr = false;
+try { sj_with_lock($rp, function (array &$d) { $d = ['res' => [], 'sold' => []]; return true; }, sj_res_default()); } catch (RuntimeException $e) { $thr = str_contains($e->getMessage(), 'nije čitljiv'); }
+$ok($thr && file_get_contents($rp) === '{"res":{"luna":' && is_file($rp . '.osteceno-' . date('Ymd')) && isset(json_decode((string)file_get_contents(SJ_DATA . '/ostecene-datoteke.json'), true)['rezervacije.json']), 'v90: oštećena rezervacije.json — greška, datoteka netaknuta, kopija i zapis za admin');
+file_put_contents(SJ_DATA . '/narudzbe.json', '[{"no":'); $thr2 = false;
+try { sj_orders_prepend(['no' => 'SJ-2026-0100']); } catch (RuntimeException $e) { $thr2 = true; }
+$ok($thr2 && file_get_contents(SJ_DATA . '/narudzbe.json') === '[{"no":', 'v90: oštećena narudzbe.json — nova narudžba je ne prepisuje praznom');
+file_put_contents($rp, $rb); file_put_contents(SJ_DATA . '/narudzbe.json', $nb); file_put_contents(SJ_DATA . '/config.json', $cb); @unlink(SJ_DATA . '/ostecene-datoteke.json'); sj_config(true);
+/* v90: dnevna kopija, jednom dnevno, čuva se 14 dana */
+@mkdir(SJ_DATA . '/kopije/2000-01-01', 0755, true); file_put_contents(SJ_DATA . '/kopije/2000-01-01/x.json', '{}');
+$b1 = sj_daily_backup(); $b2 = sj_daily_backup();
+$ok($b1 !== null && is_file($b1 . '/config.json') && $b2 === null && !is_dir(SJ_DATA . '/kopije/2000-01-01') && sj_last_backup() === date('Y-m-d'), 'v90: dnevna kopija data/*.json — jednom dnevno, starije od 14 dana brišu se');
+/* v90 (recenzija): dnevna granica po primatelju ostaje 24 h i nakon čišćenja drugih ključeva */
+$zq = SJ_DATA . '/zahtjevi.json'; $zb = (string)@file_get_contents($zq); $tn = time();
+file_put_contents($zq, json_encode(['sve|dan|abc' => [$tn - 7200, $tn - 5400, $tn - 4000], 'sve|kratko' => [$tn - 7200]]));
+sj_rate_limit('visit', 30, 3600, true);
+$zd = json_decode((string)file_get_contents($zq), true);
+$ok(count($zd['sve|dan|abc'] ?? []) === 3 && !isset($zd['sve|kratko']) && !sj_global_limit('dan|abc', 3, 86400, false), 'v90: ključ „sve|dan|” čuva se 24 h (granica 3 e-maila dnevno ne istječe nakon sat vremena)');
+file_put_contents($zq, $zb);
+$ok(!sj_is_critical_data('narudzbe-na-cekanju.json') && sj_is_critical_data('narudzbe-arhiva-2026.json'), 'v90: nepotvrđene narudžbe nisu „kritične” (oštećena se odlaže, stranica radi)');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";
