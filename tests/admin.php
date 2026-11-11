@@ -492,14 +492,14 @@ $c68['deadline_tick'] = false; file_put_contents($D . '/config.json', json_encod
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('nova-lozinka-456', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));
 $ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'name="password"'), 'v20: nakon promjene lozinke stara sesija više ne vrijedi');
-/* v20: prva lozinka traži kod iz PRVA-PRIJAVA.txt */
+/* v20: prva lozinka traži kod iz PRVA-PRIJAVA.php */
 $c['password_hash'] = ''; file_put_contents($D . '/config.json', json_encode($c));
-file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\n");
+file_put_contents($D . '/PRVA-PRIJAVA.php', "tekst\n");
 $ok(str_contains($curl(["http://127.0.0.1:$port/admin/"]), 'nema koda za prvu prijavu'), 'v20: bez koda u datoteci admin ne nudi postavljanje lozinke');
-file_put_contents($D . '/PRVA-PRIJAVA.txt', "tekst\nkod: tajni-kod-1234567\n");
+file_put_contents($D . '/PRVA-PRIJAVA.php', "tekst\nkod: tajni-kod-1234567\n");
 $bad = $curl(['--data-urlencode', 'setup_code=krivi-kod-0000', '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
 $c2 = json_decode(file_get_contents($D . '/config.json'), true);
-$ok(str_contains($bad, 'Kod nije točan') && ($c2['password_hash'] ?? '') === '' && is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: krivi kod — lozinka se ne postavlja');
+$ok(str_contains($bad, 'Kod nije točan') && ($c2['password_hash'] ?? '') === '' && is_file($D . '/PRVA-PRIJAVA.php'), 'v20: krivi kod — lozinka se ne postavlja');
 /* v22: ograničen broj promašaja koda */
 for ($k = 0; $k < 9; $k++) $curl(['--data-urlencode', 'setup_code=krivi-kod-0000' . $k, '--data-urlencode', 'setup_password=napadac-1234567', '--data-urlencode', 'setup_password2=napadac-1234567', "http://127.0.0.1:$port/admin/"]);
 $lim = $curl(['--data-urlencode', 'setup_code=tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
@@ -510,10 +510,10 @@ $ok(str_contains($setupPg, 'autocapitalize="none"') && str_contains($setupPg, 'K
 /* v25: kod s velikim prvim slovom (mobilna tipkovnica) vrijedi jednako */
 $good = $curl(['--data-urlencode', 'setup_code=Tajni-kod-1234567', '--data-urlencode', 'setup_password=vlasnica-123456', '--data-urlencode', 'setup_password2=vlasnica-123456', "http://127.0.0.1:$port/admin/"]);
 $c2 = json_decode(file_get_contents($D . '/config.json'), true);
-$ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.txt'), 'v20/v25: točan kod (i s velikim prvim slovom) — lozinka postavljena, datoteka obrisana');
-file_put_contents($D . '/PRVA-PRIJAVA.txt', "kod: zaostali-kod-99999\n");
+$ok(($c2['password_hash'] ?? '') !== '' && password_verify('vlasnica-123456', $c2['password_hash']) && !is_file($D . '/PRVA-PRIJAVA.php'), 'v20/v25: točan kod (i s velikim prvim slovom) — lozinka postavljena, datoteka obrisana');
+file_put_contents($D . '/PRVA-PRIJAVA.php', "kod: zaostali-kod-99999\n");
 $curl(["http://127.0.0.1:$port/admin/"]);
-$ok(!is_file($D . '/PRVA-PRIJAVA.txt'), 'v20: zaostala PRVA-PRIJAVA.txt se briše kad lozinka postoji');
+$ok(!is_file($D . '/PRVA-PRIJAVA.php'), 'v20: zaostala PRVA-PRIJAVA.php se briše kad lozinka postoji');
 
 /* v25: upozorenje dok adresa stranice / pošiljatelja nisu upisani (probni config: obje prazne) */
 $ok(str_contains($curl(["http://127.0.0.1:$port/admin/?s=narudzbe"]), 'Nije upisano: adresa stranice i adresa pošiljatelja'), 'v25: upozorenje za praznu adresu stranice i pošiljatelja');
@@ -590,6 +590,27 @@ $ok(str_contains($o3, 'Poslano je previše odjednom') && !str_contains($o3, 'Ses
 @unlink($big); proc_terminate($srv2);
 $ok(sj_ini_bytes('20M') === 20971520 && sj_ini_bytes('512K') === 524288 && sj_ini_bytes('1G') === 1073741824 && sj_ini_bytes('-1') === 0, 'v89: sj_ini_bytes čita php.ini vrijednosti');
 
+/* v91 (recenzija): storno zbog neuplate se poništava uplatom; živa tuđa rezervacija ostaje; raskid blokira „uplata je stigla” */
+$now91 = gmdate('Y-m-d\TH:i:s\Z'); $past91 = gmdate('Y-m-d\TH:i:s\Z', time() - 5 * 86400);
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0700', 'at' => $past91, 'payUntil' => $past91, 'name' => 'Iva I', 'email' => 'i@p.hr', 'cancelledAt' => $now91, 'cancelReason' => 'nije uplaćeno u roku', 'cancelBy' => 'vlasnica', 'reservation' => ['token' => 't700'], 'order' => ['items' => [['id' => 'luna', 'made' => false]], 'unheld' => []]],
+  ['no' => 'SJ-2026-0701', 'at' => $past91, 'payUntil' => $past91, 'expiredAt' => $past91, 'name' => 'Jura J', 'email' => 'j@p.hr', 'reservation' => ['token' => 't701'], 'order' => ['items' => [['id' => 'nera', 'made' => false]], 'unheld' => []]],
+  ['no' => 'SJ-2026-0702', 'at' => $now91, 'payUntil' => gmdate('Y-m-d\TH:i:s\Z', time() + 86400), 'name' => 'Kata K', 'email' => 'k@p.hr', 'claimedAt' => $now91, 'withdrawals' => [['at' => $now91, 'id' => 'w1']], 'reservation' => ['token' => 't702'], 'order' => ['items' => [['id' => 'tara', 'made' => false]], 'unheld' => []]],
+  ['no' => 'SJ-2026-0703', 'at' => $now91, 'payUntil' => gmdate('Y-m-d\TH:i:s\Z', time() + 86400), 'name' => 'Lea L', 'email' => 'l@p.hr', 'reservation' => ['token' => 't703'], 'order' => ['items' => [['id' => 'nera', 'made' => false]], 'unheld' => []]],
+]));
+file_put_contents($D . '/rezervacije.json', json_encode(['res' => [
+  'nera' => ['id' => 'nera', 'token' => 't703', 'name' => 'Lea L', 'email' => 'l@p.hr', 'ordered' => true, 'until' => '2099-01-01T00:00:00Z'],
+  'tara' => ['id' => 'tara', 'token' => 't702', 'name' => 'Kata K', 'email' => 'k@p.hr', 'ordered' => true, 'until' => '2099-01-01T00:00:00Z']], 'sold' => []]));
+$v91 = $req('GET', ['s' => 'narudzbe']);
+$ok(preg_match('#SJ-2026-0700.*?Uplata ipak stigla.*?order_paid#s', $v91) === 1 && str_contains($v91, 'RASKID UGOVORA'), 'v91: stornirana zbog neuplate ima „Označi plaćenom”; narudžba s izjavom o raskidu ima oznaku RASKID UGOVORA');
+$o700 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0700', 'back' => '?s=narudzbe']);
+$n91 = json_decode(file_get_contents($D . '/narudzbe.json'), true); $f91 = fn($no) => array_values(array_filter($n91, fn($x) => $x['no'] === $no))[0] ?? [];
+$ok(($rd()['sold']['luna']['no'] ?? '') === 'SJ-2026-0700' && empty($f91('SJ-2026-0700')['cancelledAt']) && !empty($f91('SJ-2026-0700')['paidAt']), 'v91 (M1): ručni storno „nije uplaćeno u roku” poništava se uplatom, torba ostaje kupcu');
+$o701 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0701', 'back' => '?s=narudzbe']);
+$ok(!isset($rd()['sold']['nera']) && ($rd()['res']['nera']['token'] ?? '') === 't703' && str_contains($o701, 'NIJE prodana'), 'v91 (M2): kasna uplata ne uzima torbu iz žive tuđe narudžbe; vlasnica upozorena');
+@file_put_contents($D . '/mail-log.txt', '');
+$o702 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0702', 'mail' => '1', 'back' => '?s=narudzbe']);
+$ok(str_contains($o702, 'raskinuo ugovor') && str_contains($o702, 'torbu ne šaljite') && !str_contains((string)@file_get_contents($D . '/mail-log.txt'), 'k@p.hr'), 'v91 (M3): nakon izjave o raskidu „Označi plaćenom” ne šalje „uplata je stigla” i upozorava vlasnicu');
 /* v90 (recenzija): oštećena rezervacije.json — admin pokazuje okvir s trakom HITNO, ne praznu stranicu */
 $rb90 = file_get_contents($D . '/rezervacije.json'); file_put_contents($D . '/rezervacije.json', '{"res":{"x":');
 $pg90 = $req('GET', ['s' => 'torbe']); $pn90 = $req('GET', ['s' => 'narudzbe']);

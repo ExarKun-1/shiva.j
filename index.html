@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v90 (2026-11-11)
+     SHIVA.J WEBSHOP — v91 (2026-11-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -954,7 +954,7 @@
   .cart-item .qty button{border:1px solid #8F8D84;background:none;width:44px;height:44px;line-height:1;border-radius:var(--radius);color:var(--ink);font-size:1rem}
   .cart-item .qty button:hover{border-color:var(--ink)}
   .cart-note{
-    flex:1 1 100%;margin-top:4px;padding:7px 9px;border:1px solid #8F8D84;border-radius:var(--radius);
+    flex:1 1 100%;margin-top:4px;padding:7px 9px;min-height:44px;border:1px solid #8F8D84;border-radius:var(--radius); /* v91: dodir */
     background:#fff;font-family:inherit;font-size:16px;color:var(--ink);
   }
   .pend-p{display:block;margin-top:8px}
@@ -1133,6 +1133,7 @@
   .pay-barcode figcaption{font-size:.8rem;color:var(--ink-soft);margin-top:10px}
   .pay-barcode a{border-bottom:1.5px dashed var(--thread)}
   .pay-barcode a.bc-save{border-bottom:1px solid #8F8D84}
+  @media (min-width:900px) and (hover:hover){ .bc-mob{display:none} } /* v91: na računalu bez rečenice o mobitelu */
   .pay-note{font-size:.82rem;color:var(--ink-soft)}
 
   .toast{
@@ -1431,7 +1432,7 @@
       </details>
 
       <details><summary><h3>5. Koliko dugo čuvamo podatke</h3></summary>
-      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) i poruke s kupcem čuvamo tri godine od uplate, a izjave o raskidu tri godine od dana izjave. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo 30 dana nakon storna; ako je kupac javio da je platio ili poslao potvrdu o uplati, čuvamo ih tri godine od storna, zbog mogućeg povrata novca. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo.</p>
+      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) i poruke s kupcem čuvamo tri godine od uplate, a izjave o raskidu tri godine od dana izjave. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo 30 dana nakon storna; ako je kupac javio da je platio ili poslao potvrdu o uplati, čuvamo ih tri godine od storna, zbog mogućeg povrata novca. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, e-mail i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo. Dnevne sigurnosne kopije podataka (za slučaj kvara) čuvamo najviše 14 dana, pa obrisani podaci iz njih nestaju najkasnije 14 dana nakon brisanja.</p>
       </details>
 
       <details><summary><h3>6. Vaša prava</h3></summary>
@@ -1523,7 +1524,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v90</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v91</p>
 </footer>
 
 <!-- Košarica -->
@@ -1841,6 +1842,7 @@ function restoreCart(){
 /* ---------- popis torbi iz torbe.json ---------- */
 /* v89: neuspjelo učitavanje (mreža, poslužitelj) razlikuje se od prazne ponude */
 let PRODUCTS_FAILED = false;
+const SMOOTH = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? "auto" : "smooth"; /* v91: smanjeno kretanje */
 async function loadProducts(){
   if(!PRODUCTS_URL || location.protocol === "file:") return false;
   try {
@@ -1901,7 +1903,7 @@ window.addEventListener("hashchange", () => {
 
 const grid = document.getElementById("productGrid");
 /* v69: veze na podrubrike Ostalog skrolaju bez promjene adrese (adresa ostaje #ostalo) */
-grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t){ t.tabIndex = -1; t.scrollIntoView({ behavior: "smooth" }); t.focus({ preventScroll: true }); } });
+grid.addEventListener("click", e => { const a = e.target.closest("a[data-sub]"); if(!a) return; e.preventDefault(); const t = document.getElementById("sub-" + a.dataset.sub); if(t){ t.tabIndex = -1; t.scrollIntoView({ behavior: SMOOTH }); t.focus({ preventScroll: true }); } });
 function renderGrid(){
   renderHero(); /* v83 (recenzija): i kad je kategorija prazna — inače rezervirano mjesto na naslovnici ostaje prazan krug */
   grid.innerHTML = "";
@@ -2244,7 +2246,7 @@ document.getElementById("lbMore").addEventListener("click", () => {
   lbReturnFocus = null; /* v51: fokus ne skače natrag na prodanu karticu */
   closeLightbox();
   if(currentCat !== "torbe"){ location.hash = "#torbe"; return; }
-  document.getElementById("torbe").scrollIntoView({ behavior: "smooth" });
+  document.getElementById("torbe").scrollIntoView({ behavior: SMOOTH });
   const free = [...grid.querySelectorAll(".card:not(.sold):not(.made) .photo")][0];
   if(free) free.focus({ preventScroll: true });
 });
@@ -2270,6 +2272,11 @@ menuBtn.addEventListener("click", () => {
 });
 document.getElementById("mobileMenu").addEventListener("click", e => {
   if(e.target.tagName === "A"){ document.body.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded","false"); }
+});
+/* v91 (recenzija): fokus tipkovnicom izvan izbornika ga zatvara (ne ostaje otvoren preko sadržaja) */
+document.getElementById("mobileMenu").addEventListener("focusout", e => {
+  const to = e.relatedTarget; if(!to || document.getElementById("mobileMenu").contains(to) || to === menuBtn) return;
+  document.body.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded","false");
 });
 /* v83 (vijeće): Escape zatvara mobilni izbornik i vraća fokus na gumb */
 document.addEventListener("keydown", e => {
@@ -2387,7 +2394,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">Boja i duljina iz opisa artikla (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, 100 cm" maxlength="120" aria-describedby="cartWish">` : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana.</span>` : ""}` : ""}`;
+      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">Boja i duljina iz opisa artikla (neobavezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="npr. crna, 100 cm" maxlength="120" aria-describedby="cartWish">` : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">${catOf(p) === "kolekcija" ? "Odaberite boju i duljinu remena iz ponude – i za takvu torbu imate pravo na raskid ugovora u 14 dana." : "Boju (i duljinu, ako je ima) birate iz opisa artikla – i za takav artikl imate pravo na raskid ugovora u 14 dana."}</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2763,7 +2770,7 @@ function showOrderError(html, info = false){
   orderError.innerHTML = html;
   orderError.hidden = false;
   orderError.focus({ preventScroll: true });
-  orderError.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  orderError.scrollIntoView({ block: "nearest", behavior: SMOOTH });
 }
 const nextStepEl = document.querySelector(".next-step"), NEXT_STEP = nextStepEl ? nextStepEl.innerHTML : "";
 function unblockOrderBtn(){ const ob = document.getElementById("orderBtn"); const was = ob.classList.contains("is-blocked"); ob.classList.remove("is-blocked"); ob.removeAttribute("aria-disabled"); ob.removeAttribute("title"); if(was && typeof renderCart === "function") renderCart(); }
@@ -2776,8 +2783,8 @@ function clearOrderError(){
 /* servis nije zaprimio narudžbu: kupac ne vidi „zaprimljeno” ni IBAN, nego što treba napraviti */
 function showMailFallback(o, rez){
   lastMailOrder = o;
-  const until = rez && rez.until ? ` Torba je rezervirana za vas do ${escHtml(fmtDateTime(rez.until))}.` : "";
-  showOrderError(`<b>Narudžba nije poslana automatski.</b>${until}
+  /* v91 (recenzija): prethodno držanje iz košarice ne blokira druge kupce — ne obećavamo rezervaciju */
+  showOrderError(`<b>Narudžba nije poslana automatski.</b> Torba još nije rezervirana: rezervirana je tek kad vam pošaljemo potvrdu narudžbe.
     <ol>
       <li>U e-mail programu koji se otvorio pošaljite poruku s narudžbom. Ako se nije otvorio, pišite nam na ${escHtml(OWNER_EMAIL)}.</li>
       <li>Pričekajte našu potvrdu s podacima za uplatu.</li>
@@ -2788,9 +2795,10 @@ function showMailFallback(o, rez){
 }
 function showSendRetry(o, rez){
   lastMailOrder = o;
-  const until = rez && rez.until ? ` Torba je rezervirana za vas do ${escHtml(fmtDateTime(rez.until))}.` : "";
-  showOrderError(`<b>Veza je prekinuta, pa ne znamo je li narudžba stigla.</b>${until}
-    Pošaljite je ponovno: ako je prvi pokušaj ipak stigao, dobit ćete isti broj narudžbe, a ne dvije narudžbe.
+  /* v91 (recenzija): bez obećanja rezervacije; bez veze narudžba sigurno nije stigla */
+  const off = navigator.onLine === false;
+  showOrderError(`<b>${off ? "Niste spojeni na internet, pa narudžba nije poslana." : "Veza je prekinuta, pa ne znamo je li narudžba stigla."}</b> Torba još nije rezervirana.
+    ${off ? "Kad se veza vrati, pošaljite je ponovno." : "Pošaljite je ponovno: ako je prvi pokušaj ipak stigao, nećete dobiti dvije narudžbe."}
     <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button>
     <button type="button" class="copy-btn" id="retryMail">Pošalji e-mailom</button></div>`);
 }
@@ -3247,7 +3255,7 @@ function paymentPanel(last){
   const barcode = (PAYMENT.barcode || pendingHub3) ? `
       <figure class="pay-barcode" id="payBarcode"${PAYMENT.barcode ? "" : " hidden"}>
         <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">
-        <figcaption><span class="bc-text">${genericCap}</span> Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.<br><a class="bc-save" download="barkod-za-uplatu.png" href="${escHtml(PAYMENT.barcode || "")}"${PAYMENT.barcode ? "" : " hidden"}>Spremi barkod</a>${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
+        <figcaption><span class="bc-text">${genericCap}</span> <span class="bc-mob">Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.</span><br><a class="bc-save" download="barkod-za-uplatu.png" href="${escHtml(PAYMENT.barcode || "")}"${PAYMENT.barcode ? "" : " hidden"}>Spremi barkod</a>${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
       </figure>` : "";
   /* v42: na računalu (širok zaslon, miš) barkod je odmah ispod naslova — najbrže ga je skenirati mobitelom; na mobitelu na dnu */
   const barcodeFirst = !!(window.matchMedia && matchMedia("(min-width:768px) and (pointer:fine)").matches);
@@ -3420,6 +3428,7 @@ loadProducts().then(() => {
   renderGrid();
   const bagId = bagFromHash();
   if(bagId && PRODUCTS.some(p => p.id === bagId)){ const c = catOf(PRODUCTS.find(p => p.id === bagId)); if(c !== currentCat){ currentCat = c; renderShopHead(); renderGrid(); } setTimeout(() => { openLightbox(bagId); lbReturnFocus = null; }, 150); }
+  else if(bagId && !PRODUCTS_FAILED){ document.getElementById("torbe").scrollIntoView(); showToast("Ta torba više nije u ponudi — pogledajte slobodne."); } /* v91 (recenzija): stara poveznica s Instagrama */
   /* link na kategoriju (#ostalo) nema vlastiti element, pa na učitavanju sami skrolamo do trgovine */
   if(catFromHash() && location.hash !== "#torbe") {
     const toShop = () => document.getElementById("torbe").scrollIntoView();

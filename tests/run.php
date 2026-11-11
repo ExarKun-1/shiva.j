@@ -281,6 +281,8 @@ $zd = json_decode((string)file_get_contents($zq), true);
 $ok(count($zd['sve|dan|abc'] ?? []) === 3 && !isset($zd['sve|kratko']) && !sj_global_limit('dan|abc', 3, 86400, false), 'v90: ključ „sve|dan|” čuva se 24 h (granica 3 e-maila dnevno ne istječe nakon sat vremena)');
 file_put_contents($zq, $zb);
 $ok(!sj_is_critical_data('narudzbe-na-cekanju.json') && sj_is_critical_data('narudzbe-arhiva-2026.json'), 'v90: nepotvrđene narudžbe nisu „kritične” (oštećena se odlaže, stranica radi)');
+$ok(sj_has_link('prijavite se na secure-pay.shop') && sj_has_link('moj-hpb.SHOP') && sj_has_link('evil．com') && sj_has_link('povrat-novca.de/hr') && !sj_has_link('dr. sc. Ana') && !sj_has_link('ul. Matije Gupca 33') && sj_unlink('idi na secure-pay.shop/x sad') === 'idi na [uklonjeno] sad', 'v91 (recenzija): filtar poveznica prepoznaje bilo koju domenu (.shop, .de, velikim slovima, puna točka)');
+$ok(sj_hi('Ivana Kovač') === 'Dobar dan, Ivana Kovač,' && sj_hi('Uplatite na secure-pay.shop') === 'Dobar dan,' && sj_hi('Hitno racun blokiran prijavite se') === 'Dobar dan,', 'v91 (recenzija): ime u pozdravu bez točke i najviše 4 riječi');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

@@ -385,6 +385,16 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-maila/.test(own2),
           'v90 (recenzija): dnevna granica e-mailova ne odbija izjavu o raskidu (ZZP čl. 81.a) — izjava primljena, potvrda kupcu preskočena, vlasnica upozorena');
         fs.writeFileSync(D + 'config.json', JSON.stringify(cL0, null, 2)); clearLimits(); }
+      { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw = fs.readFileSync(D + 'proizvodi.json', 'utf8'); setProd('luna', { sold: false, reserved: false, hidden: false });
+        const k1 = await post('order', order('api-key-v91-replay', 'replay@primjer.hr', [{ id: 'luna' }], prods().find(x => x.id === 'luna').price));
+        if (!k1.data.orderNo) console.log('K1', JSON.stringify(k1)); { const n = read('narudzbe.json'); const o = n.find(x => x.no === k1.data.orderNo) || {}; o.cancelledAt = new Date().toISOString(); o.cancelReason = 'kupac odustao'; fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); clearRes(); }
+        clearLimits(); const k2 = await post('order', order('api-key-v91-replay', 'replay@primjer.hr', [{ id: 'luna' }], prods().find(x => x.id === 'luna').price));
+        ok(k1.data.ok && !k2.data.repeated && k2.data.orderNo !== k1.data.orderNo,
+          'v91 (recenzija H1): isti ključ nakon storna ne vraća staru narudžbu kao rezerviranu ' + JSON.stringify([k1.data.orderNo, k2.status, k2.data.orderNo, k2.data.repeated, k2.data.error]));
+        fs.writeFileSync(D + 'proizvodi.json', oRaw); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); }
+      { const base = U.replace(/api\/$/, ''); const st = [];
+        for (const pth of ['%64ata/config.json', '/data/config.json', './data/config.json', 'img/../data/config.json', 'DATA/config.json']) st.push((await fetch(base + pth)).status);
+        ok(st.every(x => x === 403 || x === 400 || x === 404), 'v91 (recenzija): lokalni poslužitelj ne otvara data/ ni preko %64ata, //, ./ ili ../ ' + JSON.stringify(st)); }
       clearLimits();
       const ordL = await post('order', { _order: { customer: { name: 'Dobili ste 500 EUR na www.prevara.example', email: 'z@primjer.hr', phone: '091 111 1111' }, items: [{ id: 'luna' }], shipping: { id: 'pickup' } } });
       ok(ordL.status === 400 && /poveznice/.test(ordL.data.error || ''), 'v77 (recenzija R76-S3): narudžba s poveznicom u imenu odbijena (e-mail ne nosi lažnu poruku)');

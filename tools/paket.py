@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist')
 CODE = ['index.html', '.htaccess', 'favicon.ico', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg', 'img/ikona.svg', 'img/ikona-180.png', 'img/.htaccess']  # uvijek (v84: EU obavijest o jamstvu; v86: logo; v87: ikona)
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
-FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.txt']
+FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.php']
 NEVER = re.compile(r'(^|/)(\.git|docs|tests|proba|dist|tools)(/|$)|\.md$|torbe\.primjer\.json$|torbe\.json\.example$|router\.php$'
                    r'|\.(log|bak|swp|tmp|orig)$|~$|(^|/)\.DS_Store$|(^|/)Thumbs\.db$')
 
@@ -84,7 +84,7 @@ def build(kind, v, code=''):
     names = list(files(CODE + (FIRST if kind == 'prvi' else [])))
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         for n in names:
-            if n == 'data/PRVA-PRIJAVA.txt':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
+            if n == 'data/PRVA-PRIJAVA.php':  # v51: nasumičan kod za prvu prijavu (bez njega admin ne prima lozinku)
                 txt = open(os.path.join(ROOT, n), encoding='utf-8').read().rstrip('\n') + f'\nkod: {code}\n'
                 put(z, n, txt)
                 continue

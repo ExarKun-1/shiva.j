@@ -65,10 +65,15 @@ uključujući e-mail s podacima za uplatu. Zato:
   Zatim obrišite zip i datoteku `PROCITAJ.txt`. Zadanu Pleskovu `index.html`/`index.php` iz `httpdocs` paket zamjenjuje.
   - Bez File Managera: raspakirajte zip na računalu i u FileZilli prenesite sadržaj u `httpdocs`.
 - [ ] **Provjera zaštite** — svaka od ovih adresa mora vratiti grešku 403 ili 404, nikako sadržaj:
-  `https://shivaj.hr/data/config.json`, `…/data/PRVA-PRIJAVA.txt`, `…/data/narudzbe.json`, `…/admin/lib.php`,
+  `https://shivaj.hr/data/config.json`, `…/data/PRVA-PRIJAVA.php`, `…/data/narudzbe.json`, `…/admin/lib.php`,
   `…/docs/`, `…/img/.htaccess`, `…/data/mail-log.txt`, `…/data/greske.log`, `…/data/zahtjevi.json`, `…/data/kopije/`.
   Najlakše: Admin → Postavke → **Provjeri zaštitu podataka** (v90) radi to sam i crveno upozorava. Ako se bilo što otvori: Plesk → Apache & nginx Settings → isključiti „Serve static files
   directly by nginx” (ili mu maknuti `json`/`txt`), pa provjeriti ponovno.
+- [ ] **Dodatna zaštita za nginx (v91, preporučeno):** Plesk → Websites & Domains → shivaj.hr → **Apache & nginx Settings** →
+  polje **Additional nginx directives** → upišite redak `location ^~ /data/ { deny all; }` → **OK**.
+  Tada je mapa `data/` zatvorena bez obzira na to poslužuje li nginx statične datoteke. Ponovite provjeru gore.
+- [ ] Prije prve prijave u admin adresa `https://shivaj.hr/data/PRVA-PRIJAVA.php` mora vratiti 403 ili 404 (prazna stranica bez teksta).
+  Datoteka je od v91 `.php`, pa je poslužitelj nikad ne šalje kao tekst; kod u njoj čitate samo u File Manageru.
 
 ### 6. Admin
 - [ ] Tek kad je korak 3 gotov: otvorite `https://shivaj.hr/admin`, upišite **kod za prvu prijavu** i postavite lozinku (barem 10 znakova).
@@ -160,7 +165,7 @@ Datoteke na hostingu pritom se ne diraju.
 | E-mailovi završavaju u spamu | pošiljatelj nije na domeni ili nema DKIM/SPF | korak 4 |
 | Nakon nadogradnje i dalje stara verzija | preglednik pamti staru stranicu | Ctrl+F5; na mobitelu zatvorite i ponovno otvorite karticu |
 | Admin piše „Previše pogrešnih pokušaja” | 8 pogrešnih lozinki s iste veze | pričekajte 15 minuta, pa upišite lozinku pažljivo |
-| Admin ne prima lozinku | zaboravljena lozinka | File Manager → `data/config.json` → Edit: vrijednost `"password_hash"` promijenite u `""` i spremite. Zatim u `data/` stvorite datoteku `PRVA-PRIJAVA.txt` s retkom `kod: ` i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki, ne riječi koje se mogu pogoditi), otvorite admin, upišite taj kod i novu lozinku. Ostale postavke ostaju, a svi preglednici se odjavljuju. |
+| Admin ne prima lozinku | zaboravljena lozinka | File Manager → `data/config.json` → Edit: vrijednost `"password_hash"` promijenite u `""` i spremite. Zatim u `data/` stvorite datoteku `PRVA-PRIJAVA.php` s retkom `kod: ` i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki, ne riječi koje se mogu pogoditi), otvorite admin, upišite taj kod i novu lozinku. Ostale postavke ostaju, a svi preglednici se odjavljuju. |
 | Ponuda je prazna | `torbe.json` je prepisana | vratite `torbe.json` i `data/` iz sigurnosne kopije |
 | Fotografija torbe se ne vidi ili se ne sprema | (1) na hostingu nema PHP proširenja **GD** — PHP 8.4.27 testiran 6. 11. 2026. bez GD-a, sve ostalo radi, ali spremanje fotografije bez GD-a javlja grešku; (2) fotografija nije JPG, PNG ili WEBP (npr. HEIC s iPhonea); (3) mapa `img/` nema dozvolu pisanja | Admin → Postavke → Provjera: mora pisati „GD da”; ako piše „NE”, Plesk → PHP → uključiti proširenje gd (ili zamoliti podršku). Fotografiju s iPhonea spremiti kao JPG. U File Manageru provjeriti da `img/` postoji i da je zapisiva (755). |
 
