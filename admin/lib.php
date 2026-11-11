@@ -654,7 +654,8 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
-      $keep = (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400;
+      /* v90 (recenzija): dnevna granica po primatelju ('sve|dan|') čuva se 24 h, ostale 'sve|' 1 h */
+      $keep = str_starts_with($k, 'sve|dan|') ? 86400 : ((str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400);
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
@@ -962,13 +963,14 @@ function sj_write_json(string $path, $data): void {
 
 /* Zaključani rad nad JSON datotekom: $fn(array &$data) smije mijenjati $data; vraća što god želi. */
 function sj_is_critical_data(string $base): bool {
-  return in_array($base, ['rezervacije.json', 'narudzbe.json', 'narudzbe-na-cekanju.json'], true) || (bool)preg_match('/^narudzbe-arhiva-\d{4}\.json$/', $base);
+  /* narudzbe-na-cekanju.json nije ovdje: drži samo nepotvrđene narudžbe (link vrijedi 1 h), pa se oštećena odlaže i počinje prazna */
+  return in_array($base, ['rezervacije.json', 'narudzbe.json'], true) || (bool)preg_match('/^narudzbe-arhiva-\d{4}\.json$/', $base);
 }
 /* oštećena važna datoteka: zapis za admin (crvena traka) i jedan e-mail vlasnici dnevno */
 function sj_corrupt_note(string $base): void {
   $f = SJ_DATA . '/ostecene-datoteke.json';
   $d = (array)sj_read_json($f, []); $first = !isset($d[$base]) || substr((string)$d[$base], 0, 10) !== date('Y-m-d');
-  $d[$base] = date('c'); @file_put_contents($f, json_encode($d), LOCK_EX);
+  if ($first) { $d[$base] = date('c'); @file_put_contents($f, json_encode($d), LOCK_EX); } /* upis samo prvi put u danu */
   if ($first) { try { $c = sj_config(); if (!empty($c['owner_email'])) sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — HITNO: oštećena datoteka ' . $base,
     "Datoteka data/$base nije čitljiva. Stranica je zaustavila narudžbe da se ništa ne izgubi.\n\nVratite datoteku iz dnevne kopije (data/kopije/GGGG-MM-DD/$base) u mapu data/ (upute za objavu, odjeljak D). Oštećena kopija spremljena je kao data/$base.osteceno-datum.\n"); } catch (Throwable $e) {} }
 }
@@ -997,13 +999,15 @@ function sj_daily_backup(int $keepDays = 14): ?string {
 function sj_http_code(string $url): int {
   if (function_exists('curl_init')) {
     $ch = curl_init($url);
-    curl_setopt_array($ch, [CURLOPT_NOBODY => false, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_FOLLOWLOCATION => false, CURLOPT_RANGE => '0-0']);
+    /* v90 (recenzija): bez Range (206 bi sakrio otvorenu datoteku); preusmjerenje http→https se slijedi */
+    curl_setopt_array($ch, [CURLOPT_NOBODY => false, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_MAXFILESIZE => 2097152]);
     curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch); return $code;
   }
-  $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 6, 'ignore_errors' => true, 'follow_location' => 0]]);
+  $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 6, 'ignore_errors' => true, 'follow_location' => 1, 'max_redirects' => 3]]);
   @file_get_contents($url, false, $ctx, 0, 1);
-  foreach ((array)($http_response_header ?? []) as $hl) if (preg_match('#^HTTP/\S+\s+(\d{3})#', $hl, $m)) return (int)$m[1];
-  return 0;
+  $code = 0; /* nakon preusmjerenja vrijedi zadnji status */
+  foreach ((array)($http_response_header ?? []) as $hl) if (preg_match('#^HTTP/\S+\s+(\d{3})#', $hl, $m)) $code = (int)$m[1];
+  return $code;
 }
 function sj_last_backup(): string { $d = glob(SJ_DATA . '/kopije/????-??-??', GLOB_ONLYDIR) ?: []; sort($d); return $d ? basename(end($d)) : ''; }
 /* v90 (vijeće): greske.log najviše ~1 MB (stariji dio u greske.log.1) */

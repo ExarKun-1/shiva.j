@@ -273,6 +273,14 @@ file_put_contents($rp, $rb); file_put_contents(SJ_DATA . '/narudzbe.json', $nb);
 @mkdir(SJ_DATA . '/kopije/2000-01-01', 0755, true); file_put_contents(SJ_DATA . '/kopije/2000-01-01/x.json', '{}');
 $b1 = sj_daily_backup(); $b2 = sj_daily_backup();
 $ok($b1 !== null && is_file($b1 . '/config.json') && $b2 === null && !is_dir(SJ_DATA . '/kopije/2000-01-01') && sj_last_backup() === date('Y-m-d'), 'v90: dnevna kopija data/*.json — jednom dnevno, starije od 14 dana brišu se');
+/* v90 (recenzija): dnevna granica po primatelju ostaje 24 h i nakon čišćenja drugih ključeva */
+$zq = SJ_DATA . '/zahtjevi.json'; $zb = (string)@file_get_contents($zq); $tn = time();
+file_put_contents($zq, json_encode(['sve|dan|abc' => [$tn - 7200, $tn - 5400, $tn - 4000], 'sve|kratko' => [$tn - 7200]]));
+sj_rate_limit('visit', 30, 3600, true);
+$zd = json_decode((string)file_get_contents($zq), true);
+$ok(count($zd['sve|dan|abc'] ?? []) === 3 && !isset($zd['sve|kratko']) && !sj_global_limit('dan|abc', 3, 86400, false), 'v90: ključ „sve|dan|” čuva se 24 h (granica 3 e-maila dnevno ne istječe nakon sat vremena)');
+file_put_contents($zq, $zb);
+$ok(!sj_is_critical_data('narudzbe-na-cekanju.json') && sj_is_critical_data('narudzbe-arhiva-2026.json'), 'v90: nepotvrđene narudžbe nisu „kritične” (oštećena se odlaže, stranica radi)');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

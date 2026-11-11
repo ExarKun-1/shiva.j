@@ -125,13 +125,19 @@ if ($err !== '' && ($_POST['act'] ?? '') === 'save_settings') $s = 'postavke'; /
 switch ($s) {
   case 'nova':
   case 'uredi':    sj_layout($s === 'nova' ? 'Nova torba / artikl' : 'Uredi', sj_view_form($c, $s === 'uredi' ? (string)($_GET['id'] ?? '') : ''), $c, $msg, $err); break;
-  case 'rez':      sj_layout('Rezervacije', sj_view_reservations($c), $c, $msg, $err); break;
-  case 'narudzbe': sj_layout('Narudžbe', sj_view_orders(), $c, $msg, $err); break;
+  case 'rez':      sj_layout('Rezervacije', sj_safe_view(fn() => sj_view_reservations($c)), $c, $msg, $err); break;
+  case 'narudzbe': sj_layout('Narudžbe', sj_safe_view(fn() => sj_view_orders()), $c, $msg, $err); break;
   case 'postavke': sj_layout('Postavke', sj_view_settings($c), $c, $msg, $err); break;
   case 'mjerenje': sj_layout('Mjerenje', sj_view_stats(), $c, $msg, $err); break;
-  default:         sj_layout('Torbe i artikli', sj_view_products(), $c, $msg, $err);
+  default:         sj_layout('Torbe i artikli', sj_safe_view(fn() => sj_view_products()), $c, $msg, $err);
 }
 exit;
+
+/* v90 (recenzija): oštećena datoteka ne smije dati praznu stranicu — okvir s crvenom trakom HITNO ostaje vidljiv */
+function sj_safe_view(callable $fn): string {
+  try { return (string)$fn(); }
+  catch (Throwable $ex) { return '<div class="err"><b>Ovaj prikaz se ne može otvoriti:</b> ' . e($ex->getMessage()) . '</div>'; }
+}
 
 /* =========================================================
    RADNJE
@@ -643,10 +649,12 @@ function sj_handle_action(string $act, array &$c): string {
       $base = sj_site_url_trusted();
       if ($base === '') return 'Prvo upišite adresu stranice (https://…) u Postavke, pa provjerite ponovno.';
       $out = []; $bad = [];
-      foreach (['data/config.json', 'data/PRVA-PRIJAVA.txt', 'data/narudzbe.json', 'admin/lib.php', 'data/greske.log'] as $u) {
+      $paths = ['data/config.json', 'data/PRVA-PRIJAVA.txt', 'data/narudzbe.json', 'data/greske.log'];
+      if (($lb = sj_last_backup()) !== '') $paths[] = 'data/kopije/' . $lb . '/config.json'; /* v90 (recenzija): i dnevna kopija */
+      foreach ($paths as $u) {
         $code = sj_http_code($base . '/' . $u);
         $out[] = $u . ': ' . ($code ?: 'nema odgovora');
-        if ($code === 200) $bad[] = $u;
+        if ($code >= 200 && $code < 300) $bad[] = $u; /* svaki 2xx (i 206) znači da se datoteka može pročitati */
       }
       return $bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
         : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').';
@@ -1137,7 +1145,7 @@ function sj_view_settings(array $c): string {
   $rip = (string)($_SERVER['REMOTE_ADDR'] ?? ''); $sip = (string)($_SERVER['SERVER_ADDR'] ?? '');
   $ipWarn = ($rip !== '' && ($rip === $sip || !filter_var($rip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))) && !in_array($rip, ['127.0.0.1', '::1'], true);
   $h .= sj_btn('check_exposure', [], 'Provjeri zaštitu podataka', '?s=postavke', true)
-    . '<p class="muted">Otvara data/config.json i druge zaštićene datoteke preko adrese stranice: svaka mora vratiti 403 ili 404.</p>'
+    . '<p class="muted">Otvara data/config.json i druge zaštićene datoteke (i zadnju dnevnu kopiju) preko adrese stranice: svaka mora vratiti 403 ili 404.</p>'
     . '<p class="muted">Vaša adresa kako je vidi poslužitelj: <span class="mono">' . e($rip) . '</span>' . ($ipWarn ? ' — <b style="color:#9B2C1F">izgleda kao adresa poslužitelja ili unutarnja adresa; ograničenja pokušaja tada vrijede za sve posjetitelje zajedno. Zamolite podršku hostinga da uključi stvarnu adresu posjetitelja (nginx real_ip / mod_remoteip).</b>' : ' (ako je to vaša javna adresa, ograničenja pokušaja rade ispravno)') . '</p>'
     . '<p class="muted">Zadnja dnevna kopija podataka: ' . (($lb = sj_last_backup()) !== '' ? '<span class="mono">data/kopije/' . e($lb) . '/</span>' : 'još nema (radi se jednom dnevno, pri otvaranju admina ili preko crona)') . '</p>';
   $lg = SJ_DATA . '/greske.log';

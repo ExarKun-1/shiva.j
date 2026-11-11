@@ -378,6 +378,13 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       await post('raskid', { name: 'Nazovite 060 123 456', no: '2026-0001', email: 'c@primjer.hr' });
       const cN = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /potvrda primitka izjave o raskidu/.test(x)) || '';
       ok(/\nDobar dan,\n/.test(cN) && !/Dobar dan, Nazovite/.test(cN), 'v77 (vijeće V77-3): ime koje nije samo slovima ne ide u pozdrav potvrde raskida');
+      { clearLimits(); const cL0 = read('config.json'); setLimits({ mail_per_day: 1 });
+        const r1 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
+        const r2 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
+        const own2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /RASKID UGOVORA:/.test(x)).pop() || '';
+        ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-maila/.test(own2),
+          'v90 (recenzija): dnevna granica e-mailova ne odbija izjavu o raskidu (ZZP čl. 81.a) — izjava primljena, potvrda kupcu preskočena, vlasnica upozorena');
+        fs.writeFileSync(D + 'config.json', JSON.stringify(cL0, null, 2)); clearLimits(); }
       clearLimits();
       const ordL = await post('order', { _order: { customer: { name: 'Dobili ste 500 EUR na www.prevara.example', email: 'z@primjer.hr', phone: '091 111 1111' }, items: [{ id: 'luna' }], shipping: { id: 'pickup' } } });
       ok(ordL.status === 400 && /poveznice/.test(ordL.data.error || ''), 'v77 (recenzija R76-S3): narudžba s poveznicom u imenu odbijena (e-mail ne nosi lažnu poruku)');
