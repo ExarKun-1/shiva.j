@@ -18,18 +18,18 @@ $err = '';
 if ($c['password_hash'] === '') {
   /* oštećen config.json ne smije otvoriti novo postavljanje lozinke (preuzimanje admina) */
   if (sj_config_corrupt()) {
-    sj_layout('Greška', '<p>Datoteka <code>data/config.json</code> postoji, ali nije čitljiva. Vratite je iz sigurnosne kopije ili je (ako ste sigurni) obrišite uz novu datoteku <code>data/PRVA-PRIJAVA.txt</code>, pa ponovno otvorite admin.</p>', $c, '', '', false);
+    sj_layout('Greška', '<p>Datoteka <code>data/config.json</code> postoji, ali nije čitljiva. Vratite je iz sigurnosne kopije ili je (ako ste sigurni) obrišite uz novu datoteku <code>data/PRVA-PRIJAVA.php</code>, pa ponovno otvorite admin.</p>', $c, '', '', false);
     exit;
   }
-  /* lozinka se smije postaviti samo dok postoji data/PRVA-PRIJAVA.txt (u paketu za prijenos);
+  /* lozinka se smije postaviti samo dok postoji data/PRVA-PRIJAVA.php (u paketu za prijenos);
      briše se čim je lozinka postavljena */
   if (!is_file(sj_setup_path())) {
-    sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.txt</code> ne postoji. Prenesite je iz paketa „prvi” ili je napravite sami u mapi <code>data/</code>: upišite redak <code>kod: </code> i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
+    sj_layout('Admin nije postavljen', '<p>Lozinka još nije postavljena, a datoteka <code>data/PRVA-PRIJAVA.php</code> ne postoji. Prenesite je iz paketa „prvi” ili je napravite sami u mapi <code>data/</code>: upišite redak <code>kod: </code> i iza njega barem 16 nasumičnih slova i brojki (npr. iz generatora lozinki), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
     exit;
   }
   $code = sj_setup_code();
   if ($code === '') {
-    sj_layout('Admin nije postavljen', '<p>U datoteci <code>data/PRVA-PRIJAVA.txt</code> nema koda za prvu prijavu. Otvorite je u File Manageru i dodajte redak <code>kod: </code> i iza njega barem 16 nasumičnih znakova (slova i brojke, ne riječi koje se mogu pogoditi), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
+    sj_layout('Admin nije postavljen', '<p>U datoteci <code>data/PRVA-PRIJAVA.php</code> nema koda za prvu prijavu. Otvorite je u File Manageru i dodajte redak <code>kod: </code> i iza njega barem 16 nasumičnih znakova (slova i brojke, ne riječi koje se mogu pogoditi), spremite i osvježite ovu stranicu.</p>', $c, '', '', false);
     exit;
   }
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['setup_password'])) {
@@ -41,7 +41,7 @@ if ($c['password_hash'] === '') {
     /* v23: ukupna granica samo usporava (napadač s mnogo adresa ne smije zaključati i vlasnicu), po adresi blokira */
     if (!sj_global_limit('setup', 50, 3600, false)) sleep(3);
     if (!sj_rate_limit('setup', 10, 3600, false, false)) $err = 'Previše pogrešnih pokušaja koda s ove veze. Pričekajte sat vremena i pokušajte ponovno.';
-    elseif (!$codeOk) { sj_rate_limit('setup', 10, 3600); sj_global_limit('setup', 50, 3600); $err = 'Kod nije točan. Prepišite ga iz datoteke data/PRVA-PRIJAVA.txt.'; }
+    elseif (!$codeOk) { sj_rate_limit('setup', 10, 3600); sj_global_limit('setup', 50, 3600); $err = 'Kod nije točan. Prepišite ga iz datoteke data/PRVA-PRIJAVA.php.'; }
     elseif (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
     elseif ($p1 !== $p2) $err = 'Lozinke se ne podudaraju.';
     else {
@@ -54,9 +54,9 @@ if ($c['password_hash'] === '') {
     }
   }
   sj_layout('Prva prijava', '
-    <p>Ovo je prvo otvaranje admina. Upišite kod za prvu prijavu: isti je u datoteci <code>…-KOD-PRVE-PRIJAVE.txt</code> koja je stigla uz paket i u <code>data/PRVA-PRIJAVA.txt</code> (redak „kod: …”). Zatim odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.txt</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
+    <p>Ovo je prvo otvaranje admina. Upišite kod za prvu prijavu: isti je u datoteci <code>…-KOD-PRVE-PRIJAVE.txt</code> koja je stigla uz paket i u <code>data/PRVA-PRIJAVA.php</code> (redak „kod: …”). Zatim odaberite lozinku (barem 10 znakova) i zapišite je na sigurno. Nakon toga se datoteka <code>data/PRVA-PRIJAVA.php</code> briše i ovaj se korak više ne može ponoviti bez nje.</p>
     <form method="post" class="card form">
-      <label>Kod iz datoteke data/PRVA-PRIJAVA.txt <input name="setup_code" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+      <label>Kod iz datoteke data/PRVA-PRIJAVA.php <input name="setup_code" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
       <label>Nova lozinka <input type="password" name="setup_password" required minlength="10" autocomplete="new-password"></label>
       <label>Ponovite lozinku <input type="password" name="setup_password2" required minlength="10" autocomplete="new-password"></label>
       <button>Spremi lozinku</button>
@@ -64,8 +64,9 @@ if ($c['password_hash'] === '') {
   exit;
 }
 
-/* v20: lozinka postoji — zaostala PRVA-PRIJAVA.txt (npr. paket „prvi” raspakiran preko žive stranice) se briše */
+/* v20: lozinka postoji — zaostala PRVA-PRIJAVA.php (npr. paket „prvi” raspakiran preko žive stranice) se briše */
 if (is_file(sj_setup_path())) @unlink(sj_setup_path());
+if (is_file(SJ_DATA . '/PRVA-PRIJAVA.txt')) @unlink(SJ_DATA . '/PRVA-PRIJAVA.txt'); /* stari naziv (do v90) */
 
 /* ---------- prijava / odjava ---------- */
 /* v90 (vijeće): odjava samo POST-om s CSRF tokenom (tuđa stranica ne može odjaviti vlasnicu) */
@@ -82,7 +83,7 @@ if (!sj_logged_in()) {
       <label>Lozinka <input type="password" name="password" required autocomplete="current-password" autofocus></label>
       <button>Prijava</button>
     </form>
-    <p class="muted">Zaboravljena lozinka: u File Manageru otvorite <code>data/config.json</code>, vrijednost <code>"password_hash"</code> promijenite u <code>""</code>, zatim u mapi <code>data/</code> napravite <code>PRVA-PRIJAVA.txt</code> s retkom <code>kod: </code> i barem 16 nasumičnih slova i brojki, pa ponovno otvorite admin. Ako vas je admin odjavio dok ste nešto upisivali, prijavite se i upišite ponovno (sesija istječe nakon oko pola sata bez rada).</p>', $c, '', $err, false);
+    <p class="muted">Zaboravljena lozinka: u File Manageru otvorite <code>data/config.json</code>, vrijednost <code>"password_hash"</code> promijenite u <code>""</code>, zatim u mapi <code>data/</code> napravite <code>PRVA-PRIJAVA.php</code> s retkom <code>kod: </code> i barem 16 nasumičnih slova i brojki, pa ponovno otvorite admin. Ako vas je admin odjavio dok ste nešto upisivali, prijavite se i upišite ponovno (sesija istječe nakon oko pola sata bez rada).</p>', $c, '', $err, false);
   exit;
 }
 
@@ -460,8 +461,10 @@ function sj_handle_action(string $act, array &$c): string {
       if (!empty($ord['anonymizedAt'])) throw new RuntimeException('Podaci ove narudžbe obrisani su (rok čuvanja je istekao). Kupca potražite u e-mailovima; uplatu riješite ručno (povrat ili nova narudžba).'); /* R81-3 */
       /* v69 (vijeće na v68, N68-3): automatski storno nije vlasničina odluka — „Označi plaćenom” ga poništava; komad koji
          je u međuvremenu otišao drugome navodi se u upozorenju (kao i nakon isteka roka) */
-      if ($act === 'order_paid' && !empty($ord['cancelledAt']) && ($ord['cancelBy'] ?? '') === 'automatski') {
-        sj_order_edit(['no' => $no], function (array &$o) { if (($o['cancelBy'] ?? '') === 'automatski') { unset($o['cancelledAt'], $o['cancelReason'], $o['cancelBy']); $o['uncancelledAt'] = sj_iso(time()); } });
+      /* v91 (recenzija M1): i ručni storno „nije uplaćeno u roku” — kupcu je e-mail obećao „ako je torba još slobodna, šaljemo vam je” */
+      $undoable = fn(array $o) => ($o['cancelBy'] ?? '') === 'automatski' || ($o['cancelReason'] ?? '') === 'nije uplaćeno u roku';
+      if ($act === 'order_paid' && !empty($ord['cancelledAt']) && $undoable($ord)) {
+        sj_order_edit(['no' => $no], function (array &$o) use ($undoable) { if ($undoable($o)) { unset($o['cancelledAt'], $o['cancelReason'], $o['cancelBy']); $o['uncancelledAt'] = sj_iso(time()); } });
         $ord = sj_order_find(['no' => $no]) ?? $ord;
         sj_made_counts(true);
       }
@@ -482,7 +485,7 @@ function sj_handle_action(string $act, array &$c): string {
         foreach (sj_products() as $p) if (!empty($p['id'])) $cat[(string)$p['id']] = $p;
         $out = sj_with_lock(sj_res_path(), function (array &$d) use ($ids, $tok, $ord, $no, $cat, $isOurs) {
           $d = array_replace(sj_res_default(), $d);
-          $taken = []; $other = []; $offsale = [];
+          $taken = []; $other = []; $offsale = []; $live = [];
           foreach ($ids as $id) {
             if (isset($d['sold'][$id])) {
               $sd = $d['sold'][$id];
@@ -494,11 +497,13 @@ function sj_handle_action(string $act, array &$c): string {
             if ($r && $tok !== '' && ($r['token'] ?? '') === $tok) { sj_mark_paid($d, $id); continue; }
             $p = $cat[$id] ?? null;
             if (!$p || !empty($p['hidden']) || !empty($p['sold']) || !empty($p['reserved'])) { $offsale[] = $id; continue; }
+            /* v91 (recenzija M2): živa rezervacija druge zaprimljene narudžbe ostaje njoj (Uvjeti t. 5: „rezervirana samo za vas”) */
+            if ($r && !empty($r['ordered']) && (int)strtotime((string)($r['until'] ?? '')) > time() && !in_array($id, (array)($ord['order']['unheld'] ?? []), true)) { /* stare narudžbe bez rezervacije (unheld, do v67): prvi uplatitelj */ $live[] = sj_product_names([$id]) . ' (' . ($r['name'] ?? '') . ', ' . ($r['email'] ?? '') . ')'; continue; }
             if ($r && !empty($r['ordered'])) $other[] = sj_product_names([$id]) . ' (' . ($r['name'] ?? '') . ', ' . ($r['email'] ?? '') . ')';
             unset($d['res'][$id]);
             $d['sold'][$id] = ['id' => $id, 'token' => $tok, 'no' => $no, 'name' => (string)($ord['name'] ?? ''), 'email' => (string)($ord['email'] ?? ''), 'since' => (string)($ord['at'] ?? ''), 'paidAt' => sj_iso(time())];
           }
-          return ['taken' => $taken, 'other' => $other, 'offsale' => $offsale];
+          return ['taken' => $taken, 'other' => $other, 'offsale' => $offsale, 'live' => $live];
         }, sj_res_default());
         if (sj_order_paid_once(['no' => $no])) sj_count('paid');
         /* v69 (vijeće, N68-3 C): narudžbu su rokovi mogli stornirati između čitanja i upisa — tada se oznake vraćaju */
@@ -510,16 +515,21 @@ function sj_handle_action(string $act, array &$c): string {
         /* v71 (odluka vlasnice, 6. krug): kupac dobiva e-mail „uplata je stigla” ako je kvačica uključena */
         $warn = [];
         /* v69 (vijeće, N69-2): nakon poništenog automatskog storna model iz kolekcije može imati više narudžbi nego mjesta */
-        if (!empty($fresh['uncancelledAt'])) { sj_made_counts(true); $byIdW = []; foreach (sj_products() as $p) $byIdW[(string)($p['id'] ?? '')] = $p;
+        { sj_made_counts(true); /* v91 (recenzija M5): provjera mjesta pri svakoj oznaci „plaćeno” */ $byIdW = []; foreach (sj_products() as $p) $byIdW[(string)($p['id'] ?? '')] = $p;
           foreach ((array)($fresh['order']['items'] ?? []) as $it) { $pw = $byIdW[(string)($it['id'] ?? '')] ?? null;
             if ($pw && sj_is_collection($pw) && sj_made_used((string)$pw['id']) > sj_made_limit($pw)) $warn[] = 'model „' . (string)$pw['name'] . '” sada ima više narudžbi (' . sj_made_used((string)$pw['id']) . ') nego mjesta (' . sj_made_limit($pw) . ') — dogovorite rok izrade s kupcem'; } }
         $nmOf = function (array $ids) { $n = []; foreach (sj_products() as $p) $n[(string)($p['id'] ?? '')] = (string)($p['name'] ?? ''); return implode(', ', array_map(fn($i) => '„' . (($n[$i] ?? '') !== '' ? $n[$i] : $i) . '”', $ids)); };
         if ($out['taken']) $warn[] = $nmOf($out['taken']) . ' je već plaćena za drugog kupca — javite se kupcu iz ove narudžbe';
         if ($out['offsale']) $warn[] = 'u katalogu nisu na prodaji (prodane, rezervirane, skrivene ili obrisane) pa nisu označene: ' . $nmOf($out['offsale']) . ' — provjerite i javite se kupcu';
+        if ($out['live']) $warn[] = 'torba je rezervirana u drugoj zaprimljenoj narudžbi kojoj rok još traje, pa NIJE prodana ovom kupcu: ' . implode('; ', $out['live']) . ' — vratite ovom kupcu uplatu ili dogovorite drugu torbu';
+        /* v91 (recenzija M3): kupac je poslao izjavu o raskidu — ne šalje se „uplata je stigla”, torba se ne šalje */
+        $wd = !empty($fresh['withdrawals']);
+        if ($wd) $warn[] = 'kupac je poslao izjavu o raskidu ugovora (vidi „Izjave o raskidu”) — torbu ne šaljite, novac vratite najkasnije 14 dana od izjave na račun s kojeg je uplaćeno';
         if ($out['other']) $warn[] = 'uklonjena je neplaćena rezervacija drugog kupca: ' . implode('; ', $out['other']) . ' — javite mu se da je torba prodana';
         /* v71 (odluka vlasnice, 6. krug): „uplata je stigla” — vijeće N71-1: ne kad je torba plaćena za drugog kupca ili nije
            na prodaji (tada se vlasnica javlja kupcu sama) */
-        if ($out['taken'] || $out['offsale']) $paidMsg = ' Kupac nije dobio e-mail „uplata je stigla” jer dio narudžbe nije njegov — javite mu se.';
+        if ($wd) $paidMsg = ' Kupac nije dobio e-mail „uplata je stigla” jer je raskinuo ugovor.';
+        elseif ($out['taken'] || $out['offsale'] || $out['live']) $paidMsg = ' Kupac nije dobio e-mail „uplata je stigla” jer dio narudžbe nije njegov — javite mu se.';
         elseif (empty($_POST['mail'])) $paidMsg = !empty($fresh['paidMailAt']) ? '' : ' Kupac nije dobio e-mail.';
         else $paidMsg = ['sent' => ' Kupac je dobio e-mail da je uplata stigla.', 'already' => ' Kupac je već ranije dobio e-mail da je uplata stigla.', 'failed' => ' PAŽNJA: e-mail „uplata je stigla” nije poslan (provjerite postavke e-maila); kvačica je ponovno dostupna.', 'skip' => ''][sj_paid_mail($fresh)] ?? '';
         if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.' . $paidMsg;
@@ -649,7 +659,7 @@ function sj_handle_action(string $act, array &$c): string {
       $base = sj_site_url_trusted();
       if ($base === '') return 'Prvo upišite adresu stranice (https://…) u Postavke, pa provjerite ponovno.';
       $out = []; $bad = [];
-      $paths = ['data/config.json', 'data/PRVA-PRIJAVA.txt', 'data/narudzbe.json', 'data/greske.log'];
+      $paths = ['data/config.json', 'data/PRVA-PRIJAVA.php', 'data/narudzbe.json', 'data/greske.log'];
       if (($lb = sj_last_backup()) !== '') $paths[] = 'data/kopije/' . $lb . '/config.json'; /* v90 (recenzija): i dnevna kopija */
       foreach ($paths as $u) {
         $code = sj_http_code($base . '/' . $u);
@@ -937,6 +947,9 @@ function sj_view_orders(): string {
     $clashHtml = $clash ? '<br><span class="badge ink">SUKOB</span> <span style="color:#9B2C1F">„' . e(implode('”, „', $clash)) . '” nije zapisana kao plaćena za ovu narudžbu (prodana drugom kupcu ili vraćena u prodaju). Provjerite i po potrebi vratite novac kupcu.</span>' : '';
     if (!empty($o['paidAt'])) $paid = '<b>plaćeno</b> ' . e(sj_fmt_hr($o['paidAt'])) . $clashHtml . '<br>' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true, 'Ukloniti oznaku plaćeno za narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ')? ' . ($clash ? 'Torbe zapisane kao plaćene za ovu narudžbu vraćaju se u prodaju; one prodane drugom kupcu ostaju njegove.' : 'Njezine torbe vraćaju se u prodaju.'));
     else $paid = (!empty($o['unconfirmed']) ? '<span class="muted">bez potvrde e-mailom</span><br>' : '') . (!empty($o['cancelledAt']) ? '<b>stornirano</b> ' . e(sj_fmt_hr($o['cancelledAt'])) . (($o['cancelBy'] ?? '') === 'automatski' ? ' <span class="muted">(automatski)</span>' : '') . (trim((string)($o['cancelReason'] ?? '')) !== '' ? '<br><span class="muted">razlog: ' . e((string)$o['cancelReason']) . '</span>' : '') . '<br>' : ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">' . (strtotime((string)($o['reservation']['until'] ?? '')) > time() ? 'rezervacija uklonjena (torba prodana ili oznaka uklonjena)' : 'rezervacija istekla') . '</span><br>' : '')) . (!empty($o['cancelledAt']) ? '' : '<b>nije plaćeno</b><br>' . sj_paid_form($o, 'Označiti narudžbu ' . $no . ' plaćenom?')); /* v64: stornirana se ne označuje plaćenom */
+    /* v91 (recenzija M1): storno zbog neuplate (automatski ili ručni) — uplata koja ipak stigne poništava storno, kako je kupcu obećano */
+    if (empty($o['paidAt']) && !empty($o['cancelledAt']) && empty($o['anonymizedAt']) && (($o['cancelBy'] ?? '') === 'automatski' || ($o['cancelReason'] ?? '') === 'nije uplaćeno u roku'))
+      $paid .= '<span class="muted">Uplata ipak stigla?</span> ' . sj_paid_form($o, 'Uplata za narudžbu ' . $no . ' je stigla nakon storna? Storno se poništava; torba ostaje kupcu ako je još slobodna (inače dobivate upozorenje).');
     /* v69 (D68-9): istekla narudžba ima gumbe samo na kartici „Rok istekao” (ne dvaput, pod dva naziva) */
     if (sj_order_expired($o)) $paid = '<span class="badge ink">rok istekao</span> <b>nije plaćeno</b><br><a href="#rok">odluka na kartici „Rok istekao” gore ↑</a>';
     /* v63: neplaćenu, nestorniranu narudžbu vlasnica može stornirati (i onu samo iz Stalne kolekcije) */
@@ -966,6 +979,7 @@ function sj_view_orders(): string {
     if (empty($o['paidAt']) && !$canc && !sj_order_expired($o) && sj_proof_block($o) === '') $paid .= sj_proof_form($o);
     if (!empty($o['claimedAt']) && empty($o['paidAt']) && !$canc) $paid = '<span class="badge ink">kupac javio uplatu</span> <span class="muted">' . e(sj_fmt_hr((string)$o['claimedAt'])) . ' — provjerite izvod</span><br>' . $paid;
     /* v90 (vijeće): e-mail o roku kupcu nije otišao */
+    if (!empty($o['withdrawals'])) $paid = '<span class="badge ink">RASKID UGOVORA</span> <span class="muted">kupac je poslao izjavu ' . e(sj_fmt_hr((string)(end($o['withdrawals'])['at'] ?? ''))) . ' — ne šaljite; povrat najkasnije 14 dana od izjave</span><br>' . $paid; /* v91 (recenzija M3) */
     if (!empty($o['mailFail']) && is_array($o['mailFail'])) { $mfN = ['remind' => 'podsjetnik', 'expired' => 'rok prošao', 'cancel' => 'storno'];
       $paid = '<span class="badge ink">e-mail kupcu nije poslan</span> <span class="muted">' . e(implode(', ', array_map(fn($k, $t) => ($mfN[$k] ?? $k) . ' (' . sj_fmt_hr((string)$t) . ')', array_keys($o['mailFail']), $o['mailFail']))) . ' — javite se kupcu telefonom ili e-mailom</span><br>' . $paid; }
     /* v67: poveznice samo za običnu adresu i pravi broj (bez podmetnutih ?subject=/cc= ili spojenih brojeva) */
@@ -986,11 +1000,11 @@ function sj_view_withdrawals(): string {
   $now = time();
   $l = array_reverse(array_filter(sj_read_json(SJ_DATA . '/raskidi.json', []), fn($x) => (int)strtotime((string)($x['at'] ?? '')) > $now - 30 * 86400));
   if (!$l) return '';
-  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave (smijete pričekati torbu ili dokaz o slanju), na račun s kojeg je uplaćeno.</p><div class="rokl">';
+  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
   foreach (array_slice($l, 0, 50) as $x) {
     /* v82 (pregled prije objave): neplaćena narudžba — nema novca za vratiti */
     $ox = !empty($x['order']) ? sj_order_find(['no' => (string)$x['order']]) : null;
-    $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? ' <span class="badge">nije plaćeno — ništa za vratiti</span>' : '';
+    $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
     $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
   }
   return $h . '</div>';
@@ -1089,7 +1103,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Automatski storno nakon isteka roka (sati; 0 = nikad) <input name="auto_cancel_hours" type="number" min="0" max="336" value="' . e((string)($c['auto_cancel_hours'] ?? 48)) . '"><small class="muted">Do tada narudžba čeka vaš klik pod Narudžbe → „Rok istekao”; kupac tada dobiva e-mail.</small></label>';
   $h .= '<label>Potpis e-mailova kupcima <input name="signature" maxlength="60" value="' . e((string)($c['signature'] ?? '')) . '" placeholder="npr. Jasmina · Shiva.J"></label>';
   $h .= '</div><div class="stack">';
-  $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila (zaštita od robota i lažnih narudžbi)</label>';
+  $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila (zaštita od robota i lažnih narudžbi)</label><p class="muted">Preporučeno uključeno. Bez potvrde svatko može tuđu e-adresu upisati u narudžbu, pa trgovina toj adresi šalje e-mail s vašim IBAN-om, a lažne narudžbe odmah drže torbe.</p>';
   $h .= '<label class="check"><input type="checkbox" name="confirm_customer" value="1"' . (!empty($c['confirm_customer']) ? ' checked' : '') . '> Automatski pošalji kupcu potvrdu narudžbe s podacima za uplatu i barkodom</label>';
   $h .= '<label class="check"><input type="checkbox" name="show_ostalo" value="1"' . (!empty($c['show_ostalo']) ? ' checked' : '') . '> Prikaži rubriku „Ostalo” (remeni, torbice, platnene torbe po narudžbi) na stranici</label>';
   $h .= '</div>';

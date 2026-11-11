@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v54');
+define('SJ_VERSION', 'admin v55');
 
 /* ---------- postavke ---------- */
 
@@ -98,8 +98,9 @@ function sj_kind(array $p): array {
   $art = (($p['cat'] ?? 'torbe') === 'ostalo');
   return $art ? ['Artikl', false] : ['Torba', true];
 }
-function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.txt'; }
-/* v20: kod za prvu lozinku — redak „kod: …” (barem 16 znakova) u data/PRVA-PRIJAVA.txt. Bez koda prvi posjetitelj
+/* v91: .php (poslužitelj je ne šalje kao tekst); stari naziv .txt vrijedi dok ga nadogradnja ne zamijeni */
+function sj_setup_path(): string { $p = SJ_DATA . '/PRVA-PRIJAVA.php'; $old = SJ_DATA . '/PRVA-PRIJAVA.txt'; return (!is_file($p) && is_file($old)) ? $old : $p; }
+/* v20: kod za prvu lozinku — redak „kod: …” (barem 16 znakova) u data/PRVA-PRIJAVA.php. Bez koda prvi posjetitelj
    admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
 function sj_setup_code(): string {
   $t = (string)@file_get_contents(sj_setup_path());
@@ -132,7 +133,8 @@ function sj_ship_price(array $ship, float $goods): float {
    (npr. „Uplatite na secure-pay.shop”) stiglo na tuđu adresu s adrese trgovine; tada samo „Dobar dan,” */
 function sj_hi(string $name): string {
   $name = trim($name);
-  return preg_match("/^\p{L}[\p{L} .'’\-]{0,79}$/u", $name) ? 'Dobar dan, ' . $name . ',' : 'Dobar dan,';
+  /* v91 (recenzija): bez točke (domena „secure-pay.shop”) i najviše 4 riječi */
+  return (preg_match("/^\p{L}[\p{L} '’\-]{0,59}$/u", $name) && count(preg_split('/\s+/', $name)) <= 4) ? 'Dobar dan, ' . $name . ',' : 'Dobar dan,';
 }
 function sj_signature(): string { $s = trim((string)(sj_config()['signature'] ?? '')); return $s !== '' ? $s : (string)sj_config()['shop']; }
 /* v68: rok za uplatu narudžbe; ISO ili ''. v69: rok je zapisan uz narudžbu (payUntil) i ne mijenja se kad vlasnica
@@ -445,7 +447,7 @@ function sj_deadline_tick(bool $force = false): array {
   sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($now, $rem, $auto, &$todo) {
     foreach ($list as &$o) {
       if (count($todo) >= SJ_TICK_MAX_MAILS) break;
-      if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || !empty($o['unpaidAt']) || empty($o['email']) || empty($o['payUntil'])) continue;
+      if (!empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['unconfirmed']) || !empty($o['unpaidAt']) || !empty($o['withdrawals']) || empty($o['email']) || empty($o['payUntil'])) continue; /* v91: nakon izjave o raskidu bez podsjetnika i storna — odlučuje vlasnica */
       $at = (int)strtotime((string)($o['at'] ?? '')); $until = (int)strtotime((string)$o['payUntil']);
       if ($at <= 0 || $until <= 0) continue;
       if ($now >= $until) {
@@ -1309,9 +1311,11 @@ function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_
 
 /* v77 (recenzija R76-S3, R76-P9): poveznice i e-adrese u tekstu koji kupac upiše, a mi ga ponavljamo u e-mailu */
 /* vijeće V77-2: nastavak domene samo malim slovima (ne „Ilica 1.Online”, „Pozdrav.Eu”), „@” samo u obliku e-adrese (ne „@ana”) */
-const SJ_LINK_RE = '~(https?:|www\.|[a-z0-9-]+\.(?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b|\S+@\S+\.\S+)~iu';
+/* v91 (recenzija): za odbijanje narudžbe popis vršnih domena (malim ili VELIKIM slovima, i s punom točkom „．”) — ne svaki
+   izostavljeni razmak iza točke („12.kat”, „Hvala.lp”); široki uzorak samo u sj_unlink (zamjena u e-mailu) */
+define('SJ_LINK_RE', '~(https?:|www\s*[.．。]|[\p{L}\p{N}-]{2,}[.．。](?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|HR|COM|NET|ORG|EU|IO|LY|ME|INFO|XYZ|RU|TOP|SITE|ONLINE|LINK|SHOP|STORE|DE|AT|SI|BA|RS|IT|CO|UK|US|BIZ|APP|CLUB|LIVE|PRO|TK|CC|WS|CZ|PL|FR|ES|NL|CH|BE|CLICK|PAY|BANK|WIN|VIP)(?![\p{L}\p{N}])|\S+@\S+\.\S+)~iu');
 function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s); }
-function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\.\S+|\S+@\S+\.\S+|[a-z0-9-]+\.(?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link)\b\S*)~iu', '[uklonjeno]', $s) ?? ''; }
+function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\s*[.．。]\S+|\S+@\S+\.\S+|[\p{L}\p{N}-]{2,}[.．。](?-i:[a-z]{2,24}|[A-Z]{2,24}|[ａ-ｚ]{2,24})(?![\p{L}])\S*)~iu', '[uklonjeno]', $s) ?? ''; }
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
 const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];
 const SJ_STRAP_LENGTHS = ['140 cm', '100 cm'];

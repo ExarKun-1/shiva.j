@@ -194,6 +194,9 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await pt.click('#menuBtn').catch(() => {}); await pt.waitForTimeout(200);
     const mh = await pt.evaluate(() => Math.min(...[...document.querySelectorAll('.mobile-menu a')].map(a => a.getBoundingClientRect().height).filter(x => x > 0)));
     ok(t1[0] >= 44 && !t1[1] && t1[2] === 'https://shivaj.hr/' && t1[3] === 'https://shivaj.hr/img/og.jpg' && t1[4] && mh >= 44, 'v89: gumbi „Kopiraj” i izbornik 44 px, og/canonical na shivaj.hr, noscript ' + JSON.stringify([t1, mh])); await pt.close(); }
+  { const pn = await d.newPage(); await pn.goto(URL + '#torba-nepostoji', { waitUntil: 'load' }); await pn.waitForTimeout(1200);
+    const tn = await pn.evaluate(() => [document.getElementById('toast').textContent, Math.round(document.getElementById('torbe').getBoundingClientRect().top)]);
+    ok(/više nije u ponudi/.test(tn[0]) && Math.abs(tn[1]) < 200, 'v91 (recenzija): poveznica na nepostojeću torbu — poruka i skok na ponudu ' + JSON.stringify(tn)); await pn.close(); }
   { const pu = await d.newPage(); await pu.goto(URL + '#uvjeti', { waitUntil: 'load' }); await pu.waitForTimeout(1200);
     const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
@@ -480,7 +483,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p10.evaluate(() => document.getElementById('lightbox').classList.contains('open')), 'v48: klik na ime torbe otvara prikaz');
   await p10.keyboard.press('Escape');
   await p10.click('#openCart'); await p10.waitForTimeout(300);
-  ok(/1 kom · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.strap-sel') && (await p10.locator('.strap-wish, .cart-note').count()) === 0 && /Odaberite boju i duljinu remena iz ponude – za takvu torbu imate pravo na povrat u 14 dana\./.test(await p10.textContent('#cartItems')) && !/želj/.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
+  ok(/1 kom · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.strap-sel') && (await p10.locator('.strap-wish, .cart-note').count()) === 0 && /Odaberite boju i duljinu remena iz ponude – i za takvu torbu imate pravo na raskid ugovora u 14 dana\./.test(await p10.textContent('#cartItems')) && !/želj/.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
   await p10.fill('#fEmail', 'ana.probic@primjer');
   await pickStrap(p10); await p10.click('#orderBtn'); await p10.waitForTimeout(300);
   const fix = await p10.textContent('#orderFix');
@@ -676,7 +679,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     if (await rem.count() > 0) {
       await rem.first().click(); await p23.click('#openCart'); await p23.waitForTimeout(300);
       const c23 = await p23.textContent('.drawer-body');
-      ok(!/Stalne kolekcije|torbu bez te želje/i.test(c23) && /pravo na povrat u 14 dana/.test(c23), 'v66/v73: Ostalo u košarici — bez teksta za torbe iz kolekcije, napomena o boji iz ponude i povratu');
+      ok(!/Stalne kolekcije|torbu bez te želje/i.test(c23) && /za takav artikl imate pravo na raskid ugovora u 14 dana/.test(c23), 'v66/v73: Ostalo u košarici — bez teksta za torbe iz kolekcije, napomena o boji iz ponude i povratu');
       ok(/Boja i duljina iz opisa artikla \(neobavezno\)/.test(c23) && !/želj/i.test(c23) && (await p23.getAttribute('.cart-note', 'placeholder')) === 'npr. crna, 100 cm', 'v78: Ostalo u košarici — polje „Boja i duljina iz opisa artikla”, bez riječi „želja”');
       const ut = await p23.textContent('#uvjeti');
       ok(await p23.locator('[data-terms-auto-wrap]').evaluate(el => el.hidden) && /Zasebnu isporuku prihvatljivu za okoliš ne nudimo\./.test(ut) && /ništa nam ne dugujete/.test(ut),

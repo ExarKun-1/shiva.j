@@ -207,7 +207,11 @@ function sj_limits_text(): string { return 'U jednoj narudžbi može biti najvi�
 function sj_unique_words(int $n): string { return $n === 1 ? 'može biti najviše jedna unikatna torba' : ($n <= 4 ? 'mogu biti najviše ' . [2 => 'dvije', 3 => 'tri', 4 => 'četiri'][$n] . ' unikatne torbe' : 'može biti najviše ' . $n . ' unikatnih torbi'); }
 
 /* odgovor za ponovljeni zahtjev s istim ključem narudžbe (ista narudžba, bez nove) */
+/* v91 (recenzija H1): ključ narudžbe vraća samo živu narudžbu — stornirana ili obrisana se ne prikazuje kao rezervirana */
+function sj_key_live(array $prev, string $key): bool { return $key !== '' && ($prev['key'] ?? '') === $key && empty($prev['cancelledAt']) && empty($prev['anonymizedAt']); }
 function sj_order_repeat_out(array $prev): void {
+  if (!empty($prev['cancelledAt']) || !empty($prev['anonymizedAt']))
+    sj_json_out(['ok' => false, 'error' => 'Ta narudžba je stornirana i više ne vrijedi; ne uplaćujte je. Ako i dalje želite torbu, pošaljite novu narudžbu.'], 409);
   $m = is_array($prev['mail'] ?? null) ? $prev['mail'] : [];
   sj_json_out(['ok' => true, 'orderNo' => $prev['no'], 'reference' => sj_payment_ref((string)$prev['no']), 'total' => (float)($prev['order']['total'] ?? 0),
                'until' => $prev['reservation']['until'] ?? null, 'payUntil' => sj_pay_until($prev), 'reserved' => true, 'mailOwner' => $m['owner'] ?? true, 'mailCustomer' => $m['customer'] ?? true, 'repeated' => true] + sj_pay_out() + sj_order_view((array)($prev['order'] ?? [])));
@@ -362,7 +366,7 @@ if ($a === 'order') {
   if (!empty($b['_gotcha']) || !empty($b['website'])) sj_json_out(['ok' => true]); /* bot je ispunio skriveno polje: tiho ignoriraj */
   /* ponovljeni zahtjev (prekid veze, osvježena stranica) uvijek dobiva svoju narudžbu, prije svih granica */
   $earlyKey = is_array($b['_order'] ?? null) ? sj_str($b['_order']['key'] ?? '', 64) : '';
-  if (preg_match('/^[A-Za-z0-9-]{8,64}$/', $earlyKey)) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (($prev['key'] ?? '') === $earlyKey) sj_order_repeat_out($prev);
+  if (preg_match('/^[A-Za-z0-9-]{8,64}$/', $earlyKey)) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (sj_key_live($prev, $earlyKey)) sj_order_repeat_out($prev);
   if (!sj_rate_limit('order', 10, 3600, false, false)) sj_json_out(['ok' => false, 'error' => 'Previše narudžbi s ove adrese. Pokušajte ponovno za sat vremena.'], 429);
 
   $in = is_array($b['_order'] ?? null) ? $b['_order'] : [];
@@ -551,15 +555,16 @@ if ($a === 'raskid') {
   if (!sj_rate_limit('raskid', 5, 3600, false, false) || !sj_global_limit($toKey, 3, 3600, false) || !sj_global_limit('raskid', 120, 3600, false))
     sj_json_out(['ok' => false, 'error' => 'Previše izjava u kratkom vremenu. ' . $byMail], 429);
   sj_rate_limit('raskid', 5, 3600); sj_global_limit($toKey, 3, 3600); sj_global_limit('raskid', 120, 3600);
-  /* v90 (recenzija): dnevna granica e-mailova po adresi nikad ne odbija izjavu (ZZP čl. 81.a) — preskače se samo potvrda kupcu */
-  $mailDayOk = sj_global_limit(sj_day_key($r['email']), SJ_MAIL_PER_DAY, 86400);
   $now = time(); $at = sj_iso($now);
   /* broj narudžbe: „2026-0007”, „SJ-2026-0007” ili slobodan opis */
   $match = null;
   if (preg_match('/(\d{4})\s*-\s*(\d{4,6})/', $r['no'], $mm)) {
     $o = sj_order_find(['no' => 'SJ-' . $mm[1] . '-' . $mm[2]]);
-    if ($o) $match = ['no' => (string)$o['no'], 'email' => strcasecmp((string)($o['order']['customer']['email'] ?? $o['email'] ?? ''), $r['email']) === 0, 'gone' => !empty($o['anonymizedAt'])]; /* v82 (R82-4): obrisana narudžba — e-mail se ne može usporediti */
+    if ($o) $match = ['no' => (string)$o['no'], 'email' => sj_email_key((string)($o['order']['customer']['email'] ?? $o['email'] ?? '')) === sj_email_key($r['email']), 'gone' => !empty($o['anonymizedAt'])]; /* v82 (R82-4): obrisana narudžba — e-mail se ne može usporediti */
   }
+  /* v90 (recenzija): dnevna granica e-mailova po adresi nikad ne odbija izjavu (ZZP čl. 81.a) — preskače se samo potvrda kupcu;
+     v91 (recenzija M4): potvrda na adresu iz narudžbe uvijek ide (čl. 81.a st. 6: „bez odgađanja”), granica vrijedi samo za ostale */
+  $mailDayOk = ($match && $match['email'] && empty($match['gone'])) ? true : sj_global_limit(sj_day_key($r['email']), SJ_MAIL_PER_DAY, 86400);
   $id = sj_token();
   sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use ($r, $at, $id, $match) {
     $list[] = $r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?')), 'order' => $match['no'] ?? null, 'emailMatch' => $match['email'] ?? null] + (!empty($match['gone']) ? ['orderGone' => true] : []);
@@ -893,7 +898,7 @@ function sj_place_order(array $P): array {
   flock($fp, LOCK_EX);
   try {
     $key = (string)($P['key'] ?? '');
-    if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (($prev['key'] ?? '') === $key) return ['prev' => $prev];
+    if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (sj_key_live($prev, $key)) return ['prev' => $prev];
     sj_made_counts(true); /* svježe brojanje pod bravom */
     /* v63: jedna neplaćena narudžba iz Stalne kolekcije po e-mailu (lažna narudžba ne može popuniti sve modele) */
     $allColl = array_keys(array_filter($byId, fn($x) => sj_is_collection($x)));
@@ -904,7 +909,7 @@ function sj_place_order(array $P): array {
 }
 function sj_place_order_locked(array $P): array {
   extract($P, EXTR_SKIP);
-  if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (($prev['key'] ?? '') === $key) return ['prev' => $prev];
+  if ($key !== '') foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $prev) if (sj_key_live($prev, $key)) return ['prev' => $prev];
   /* v69: blaga granica po vezi, pod istom bravom kao upis (istodobne narudžbe ne mogu je zaobići) */
   if (sj_ip_open_orders([(string)($ip ?? ''), (string)($ipPrev ?? '')]) >= SJ_ORDERS_PER_IP) return ['limit' => sj_ip_limit_text(), 'status' => 429, 'code' => 'ip_limit', 'kind' => 'ip', 'notify' => 'ip'];
   /* v78 (t1): i pod bravom (potvrda e-mailom može stići nakon storna) */

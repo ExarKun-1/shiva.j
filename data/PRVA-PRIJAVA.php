@@ -1,3 +1,4 @@
+<?php http_response_code(404); exit; /* v91: .php — poslužitelj je nikad ne šalje kao tekst (ni nginx bez .htaccess) */ ?>
 Ova datoteka dopušta prvo postavljanje lozinke admina. Briše se sama čim je lozinka postavljena.
 Admin traži i kod iz retka „kod: …” (barem 16 nasumičnih znakova). Paket „prvi” (tools/paket.py) ga upisuje sam;
 inače dopišite svoj redak: kod: i iza njega 16 ili više nasumičnih slova i brojki (ne riječi koje se mogu pogoditi).
