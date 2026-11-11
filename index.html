@@ -662,7 +662,8 @@
   .lb-close:hover{color:var(--ink)}
   .lb-info .add-btn{margin-top:auto}
   /* v90 (vijeće, mobitel): „Dodaj u košaricu” uvijek vidljiv na dnu povećanog prikaza */
-  @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)} }
+  @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)}
+    .lb-info .add-btn:not(.in-cart):not(:hover):not(:focus-visible){background:var(--paper)} /* v90 (recenzija): tekst ne prolazi kroz prilijepljeni gumb */ }
   .lb-info .lb-ship{font-size:.85rem;color:var(--ink-soft)}
   .lb-gone{font-size:.92rem;color:var(--ink);border-left:2px dashed var(--thread);padding:2px 0 2px 12px}
   .lb-more{display:block;margin-top:10px;min-height:44px;padding:0 16px;background:var(--thread);color:var(--paper);border:none;border-radius:var(--radius);font:inherit;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
@@ -1131,6 +1132,7 @@
   .pay-barcode img{display:block;width:100%;height:auto}
   .pay-barcode figcaption{font-size:.8rem;color:var(--ink-soft);margin-top:10px}
   .pay-barcode a{border-bottom:1.5px dashed var(--thread)}
+  .pay-barcode a.bc-save{border-bottom:1px solid #8F8D84}
   .pay-note{font-size:.82rem;color:var(--ink-soft)}
 
   .toast{
@@ -1145,7 +1147,7 @@
   body.cart-open .toast{top:76px;bottom:auto;left:auto;right:20px;max-width:min(400px,calc(100vw - 40px));transform:translateY(-12px)}
   body.cart-open .toast.show{transform:none}
   /* v90 (vijeće, mobitel): na mobitelu obavijest gore, da ne prekrije gumb ispod palca */
-  @media (max-width:680px){ .toast{top:12px;bottom:auto;transform:translate(-50%,-20px)} .toast.show{transform:translate(-50%,0)} body.cart-open .toast{top:64px} }
+  @media (max-width:680px){ .toast{top:68px;bottom:auto;width:max-content;max-width:calc(100vw - 32px);transform:translate(-50%,-20px)} .toast.show{transform:translate(-50%,0)} body.cart-open .toast{top:64px} }
   .field-hint{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:4px}
 
   /* v63: „Stalna kolekcija” je dulja — izbornik u jednom retku, hamburger već ispod 960 px */
@@ -3109,7 +3111,7 @@ async function drawHub3(){
     const img = fig.querySelector("img");
     img.dataset.hub3 = "1";
     img.src = canvas.toDataURL("image/png");
-    const sv = fig.querySelector(".bc-save"); if(sv){ sv.href = img.src; sv.download = "barkod-" + (String(text).match(/HR00\n([^\n]*)/) || [, "uplata"])[1].replace(/[^0-9A-Za-z-]/g, "") + ".png"; sv.hidden = false; } /* v90 (vijeće): gumb „Spremi barkod” */
+    const sv = fig.querySelector(".bc-save"); if(sv){ sv.href = img.src; sv.download = "barkod-" + ((String(text).split("\n")[11] || "").replace(/[^0-9A-Za-z-]/g, "") || "uplata") + ".png"; /* poziv na broj (12. redak HUB-3) */ sv.hidden = false; } /* v90 (vijeće): gumb „Spremi barkod” */
     img.alt = "Barkod za plaćanje ove narudžbe u aplikaciji banke";
     const cap = fig.querySelector(".bc-text");
     if(cap) cap.textContent = "Skenirajte barkod u aplikaciji svoje banke: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami, a vi samo potvrdite plaćanje.";
@@ -3161,7 +3163,7 @@ function fmtDeadline(iso){
     if(hh < 6){ const order = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], i = order.indexOf(wd), p = order[(i + 6) % 7];
       const acc = { Mon: "ponedjeljak", Tue: "utorak", Wed: "srijedu", Thu: "četvrtak", Fri: "petak", Sat: "subotu", Sun: "nedjelju" }[wd];
       const pg = { Mon: "ponedjeljka", Tue: "utorka", Wed: "srijede", Thu: "četvrtka", Fri: "petka", Sat: "subote", Sun: "nedjelje" }[p];
-      if(acc && pg) night = " (u noći " + (p === "Wed" || p === "Sat" ? "sa" : "s") + " " + pg + " na " + acc + ")"; }
+      if(acc && pg) night = " (u\u00a0noći " + (p === "Wed" || p === "Sat" ? "sa" : "s") + "\u00a0" + pg + " na\u00a0" + acc + ")"; }
     return (gen ? gen + ", " : "") + dm.replace(/ /g, "\u00a0") + " u\u00a0" + hm + night;
   } catch(e){ return fmtDateTime(iso); }
 }
@@ -3271,7 +3273,7 @@ function paymentPanel(last){
       ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}
       <h3 class="pay-title pay-title-next">Što slijedi</h3>
       <ol class="pay-steps" aria-label="Što slijedi">
-        <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
+        <li><b>${payIso ? "Do roka" : "Sada"}</b>Uplatite prema podacima ${payOk ? "za uplatu" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
           <span class="pay-late">${claimLine}</span></li>
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
