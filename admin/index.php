@@ -68,7 +68,8 @@ if ($c['password_hash'] === '') {
 if (is_file(sj_setup_path())) @unlink(sj_setup_path());
 
 /* ---------- prijava / odjava ---------- */
-if (isset($_GET['odjava'])) { sj_logout(); header('Location: ./'); exit; }
+/* v90 (vijeće): odjava samo POST-om s CSRF tokenom (tuđa stranica ne može odjaviti vlasnicu) */
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['odjava']) && sj_check_csrf()) { sj_logout(); header('Location: ./'); exit; }
 if (!sj_logged_in()) {
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['password'])) {
     if (sj_login((string)$_POST['password'])) { header('Location: ?s=torbe'); exit; }
@@ -91,6 +92,7 @@ if (!sj_logged_in()) {
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
   try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
+  try { sj_daily_backup(); sj_log_rotate(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' kopija: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v90 (vijeće) */
   try { sj_sync_public_products(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' torbe.json: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v83 */
 }
 
@@ -637,6 +639,19 @@ function sj_handle_action(string $act, array &$c): string {
       return 'Lozinka promijenjena (ostali preglednici su odjavljeni)';
     }
 
+    case 'check_exposure': { /* v90 (vijeće): smije li se data/ otvoriti s interneta (nginx bez .htaccess) */
+      $base = sj_site_url_trusted();
+      if ($base === '') return 'Prvo upišite adresu stranice (https://…) u Postavke, pa provjerite ponovno.';
+      $out = []; $bad = [];
+      foreach (['data/config.json', 'data/PRVA-PRIJAVA.txt', 'data/narudzbe.json', 'admin/lib.php', 'data/greske.log'] as $u) {
+        $code = sj_http_code($base . '/' . $u);
+        $out[] = $u . ': ' . ($code ?: 'nema odgovora');
+        if ($code === 200) $bad[] = $u;
+      }
+      return $bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
+        : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').';
+    }
+
     case 'test_mail': {
       @unlink(sj_smtp_status_path()); /* probni e-mail uvijek pokušava (bez pauze nakon pada veze) */
       $ok = sj_send_mail($c['owner_email'], $c['shop'] . ' — probna poruka iz admina', "Ovo je probna poruka. Ako je stigla, slanje e-maila s hostinga radi.\n\n" . sj_site_url() . '/admin/');
@@ -942,6 +957,9 @@ function sj_view_orders(): string {
     if (empty($o['paidAt']) && !$canc && ($pf = (array)($o['proofAt'] ?? []))) $paid = '<span class="badge green">potvrda primljena</span> <span class="muted">' . e(sj_fmt_hr((string)end($pf))) . ' · rok do ' . e(sj_fmt_hr(sj_pay_until($o))) . ' — provjerite izvod</span><br>' . $paid;
     if (empty($o['paidAt']) && !$canc && !sj_order_expired($o) && sj_proof_block($o) === '') $paid .= sj_proof_form($o);
     if (!empty($o['claimedAt']) && empty($o['paidAt']) && !$canc) $paid = '<span class="badge ink">kupac javio uplatu</span> <span class="muted">' . e(sj_fmt_hr((string)$o['claimedAt'])) . ' — provjerite izvod</span><br>' . $paid;
+    /* v90 (vijeće): e-mail o roku kupcu nije otišao */
+    if (!empty($o['mailFail']) && is_array($o['mailFail'])) { $mfN = ['remind' => 'podsjetnik', 'expired' => 'rok prošao', 'cancel' => 'storno'];
+      $paid = '<span class="badge ink">e-mail kupcu nije poslan</span> <span class="muted">' . e(implode(', ', array_map(fn($k, $t) => ($mfN[$k] ?? $k) . ' (' . sj_fmt_hr((string)$t) . ')', array_keys($o['mailFail']), $o['mailFail']))) . ' — javite se kupcu telefonom ili e-mailom</span><br>' . $paid; }
     /* v67: poveznice samo za običnu adresu i pravi broj (bez podmetnutih ?subject=/cc= ili spojenih brojeva) */
     $em = (string)($o['email'] ?? ''); $ph = (string)($o['phone'] ?? ''); $phD = preg_replace('/[^0-9+]/', '', $ph);
     $emH = preg_match('/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/', $em) ? '<a class="muted" href="mailto:' . e($em) . '">' . e($em) . '</a>' : '<span class="muted">' . e($em) . '</span>';
@@ -1114,7 +1132,18 @@ function sj_view_settings(array $c): string {
   $h .= '</div><div class="row"><button class="alt">Promijeni lozinku</button></div></form>';
 
   $h .= '<div class="card"><h3>Provjera</h3><p class="muted">Pošalje probnu poruku na e-mail vlasnice. Stranica: <a href="' . e(sj_site_url()) . '/">' . e(sj_site_url()) . '</a> · API: <a href="' . e(sj_site_url()) . '/api/status">status</a> · ' . e(SJ_VERSION) . ' · PHP ' . e(PHP_VERSION) . ' · GD ' . (function_exists('imagecreatefromjpeg') ? 'da' : 'NE') . '</p>';
-  $h .= sj_btn('test_mail', [], 'Pošalji probni e-mail', '?s=postavke', true) . '<p class="muted">Probni e-mail koristi spremljene postavke: nakon izmjena prvo kliknite „Spremi postavke”.</p></div>';
+  $h .= sj_btn('test_mail', [], 'Pošalji probni e-mail', '?s=postavke', true) . '<p class="muted">Probni e-mail koristi spremljene postavke: nakon izmjena prvo kliknite „Spremi postavke”.</p>';
+  /* v90 (vijeće): zaštita data/, adresa posjetitelja (iza nginxa), zadnja kopija, zadnje greške */
+  $rip = (string)($_SERVER['REMOTE_ADDR'] ?? ''); $sip = (string)($_SERVER['SERVER_ADDR'] ?? '');
+  $ipWarn = ($rip !== '' && ($rip === $sip || !filter_var($rip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))) && !in_array($rip, ['127.0.0.1', '::1'], true);
+  $h .= sj_btn('check_exposure', [], 'Provjeri zaštitu podataka', '?s=postavke', true)
+    . '<p class="muted">Otvara data/config.json i druge zaštićene datoteke preko adrese stranice: svaka mora vratiti 403 ili 404.</p>'
+    . '<p class="muted">Vaša adresa kako je vidi poslužitelj: <span class="mono">' . e($rip) . '</span>' . ($ipWarn ? ' — <b style="color:#9B2C1F">izgleda kao adresa poslužitelja ili unutarnja adresa; ograničenja pokušaja tada vrijede za sve posjetitelje zajedno. Zamolite podršku hostinga da uključi stvarnu adresu posjetitelja (nginx real_ip / mod_remoteip).</b>' : ' (ako je to vaša javna adresa, ograničenja pokušaja rade ispravno)') . '</p>'
+    . '<p class="muted">Zadnja dnevna kopija podataka: ' . (($lb = sj_last_backup()) !== '' ? '<span class="mono">data/kopije/' . e($lb) . '/</span>' : 'još nema (radi se jednom dnevno, pri otvaranju admina ili preko crona)') . '</p>';
+  $lg = SJ_DATA . '/greske.log';
+  if (is_file($lg) && filesize($lg) > 0) { $ll = array_slice(file($lg, FILE_IGNORE_NEW_LINES) ?: [], -20);
+    $h .= '<details><summary class="muted">Zadnje zabilježene greške (' . count($ll) . ')</summary><pre class="mono" style="white-space:pre-wrap;font-size:.75rem">' . e(implode("\n", $ll)) . '</pre></details>'; }
+  $h .= '</div>';
   return $h;
 }
 
@@ -1133,7 +1162,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
     $nEx = count(sj_expired_orders()); /* v68: broj narudžbi s isteklim rokom uz „Narudžbe” */
     $items = ['torbe' => 'Torbe', 'rez' => 'Rezervacije', 'narudzbe' => 'Narudžbe' . ($nEx ? ' (' . $nEx . ')' : ''), 'mjerenje' => 'Mjerenje', 'postavke' => 'Postavke'];
     foreach ($items as $k => $v) $navHtml .= '<a href="?s=' . $k . '"' . (($s === $k || ($k === 'torbe' && in_array($s, ['nova', 'uredi'], true))) ? ' class="on"' : '') . '>' . $v . '</a>';
-    $navHtml .= '<a href="../" target="_blank" rel="noopener">Stranica ↗</a><a href="?odjava=1">Odjava</a>';
+    $navHtml .= '<a href="../" target="_blank" rel="noopener">Stranica ↗</a><form method="post" class="inline" style="display:inline"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><button type="submit" name="odjava" value="1" class="linkbtn">Odjava</button></form>';
   }
   echo '<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/img/ikona.svg" type="image/svg+xml"><title>' . e($title) . ' — ' . e($c['shop']) . ' admin</title>
 <style>
@@ -1141,7 +1170,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
   header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;border-bottom:1.5px dashed var(--thread);flex-wrap:wrap}
   .brand{font-size:1.1rem;letter-spacing:.14em}.brand span{color:var(--thread)}
-  nav{display:flex;gap:14px;flex-wrap:wrap}nav a{color:var(--soft);text-decoration:none;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;padding-bottom:2px;border-bottom:1.5px dashed transparent}nav a.on,nav a:hover{color:var(--thread);border-bottom-color:var(--thread)}
+  nav{display:flex;gap:14px;flex-wrap:wrap}nav .linkbtn{background:none;border:0;border-bottom:1.5px dashed transparent;padding:0 0 2px;font:inherit;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);cursor:pointer}nav a{color:var(--soft);text-decoration:none;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;padding-bottom:2px;border-bottom:1.5px dashed transparent}nav a.on,nav a:hover{color:var(--thread);border-bottom-color:var(--thread)}
   main{max-width:1100px;margin:0 auto;padding:24px 20px 60px}h1{font-weight:400;font-size:1.5rem;margin:0 0 14px}h3{font-weight:400;font-size:1.05rem;margin:22px 0 8px;letter-spacing:.03em}
   .msg{background:#E4EAE5;border:1.5px dashed var(--thread);padding:10px 14px;border-radius:2px;margin:0 0 16px}.err{background:#F3E1DC;border:1.5px dashed #8A3B2E;padding:10px 14px;border-radius:2px;margin:0 0 16px}
   .card{background:#fff;border:1px solid var(--line);border-radius:2px;padding:18px;margin:0 0 18px}
@@ -1198,6 +1227,12 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
 <main><h1>' . e($title) . '</h1>';
   if ($msg !== '') echo '<div class="msg">' . e($msg) . '</div>';
   if ($err !== '') echo '<div class="err">' . e($err) . '</div>';
+  /* v90 (vijeće): oštećena važna datoteka — narudžbe su zaustavljene dok se ne vrati iz kopije */
+  foreach ((array)sj_read_json(SJ_DATA . '/ostecene-datoteke.json', []) as $bf => $bt) {
+    $bp = SJ_DATA . '/' . basename((string)$bf);
+    if (is_file($bp) && filesize($bp) > 0 && sj_read_json($bp, null) === null)
+      echo '<div class="err"><b>HITNO:</b> datoteka data/' . e(basename((string)$bf)) . ' je oštećena (otkriveno ' . e(sj_fmt_hr((string)$bt)) . '). Narudžbe su zaustavljene da se ništa ne izgubi. Vratite je iz dnevne kopije <span class="mono">data/kopije/GGGG-MM-DD/</span> (upute za objavu, odjeljak D).</div>';
+  }
   /* v79: SMTP odabran, a zadnje slanje palo — kupci ne dobivaju potvrde */
   if ($nav && ($c['mail_mode'] ?? '') === 'smtp' && ($st = sj_smtp_status()) && isset($st['ok']) && !$st['ok'])
     echo '<div class="err">E-mail se ne šalje: zadnji pokušaj preko SMTP-a (' . e(sj_fmt_hr((string)($st['at'] ?? ''))) . ') nije uspio — ' . e((string)($st['msg'] ?? '')) . '. Provjerite <a href="?s=postavke#slanje">Postavke → Slanje e-maila</a>.</div>';

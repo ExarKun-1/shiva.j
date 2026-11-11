@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v89 (2026-11-10)
+     SHIVA.J WEBSHOP — v90 (2026-11-11)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,9 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v90 — vijeće (5 recenzenata): rok uplate s „u noći sa … na …”, iznos i podaci za uplatu prije objašnjenja, „Spremi barkod”,
+           „Dodaj u košaricu” prilijepljen u povećanom prikazu (mobitel), kvačica 24 px, obavijest gore na mobitelu, cijela fotografija
+           u povećanom prikazu, veći naslovi odjeljaka, „Pogledaj torbe” u praznoj košarici, izravne poveznice na odjeljke.
      v89 — pregled prije objave: poruka i „Pokušaj ponovno” kad se ponuda ne učita (košarica ostaje sačuvana), noscript, dodirne površine 44 px,
            mreža na 320 px, og:url/og:image i canonical na shivaj.hr, nova og.jpg (Jasminina torba i logo).
      v88 — košarica: umjesto sličice EU obavijesti kratka poveznica „Zakonsko jamstvo 2 godine” u traci (otvara Uvjete t. 8); puna obavijest u Uvjetima i impresumu.
@@ -616,7 +619,7 @@
     aspect-ratio:4/5;min-height:0;
     display:flex;align-items:center;justify-content:center;
   }
-  .lb-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .lb-photo img{width:100%;height:100%;object-fit:contain;display:block} /* v90 (vijeće, dizajn): u povećanom prikazu cijela torba, bez rezanja naramenica */
   .lb-nav{
     position:absolute;top:50%;transform:translateY(-50%);
     background:rgba(246,246,243,.85);border:none;border-radius:50%;
@@ -658,6 +661,8 @@
   }
   .lb-close:hover{color:var(--ink)}
   .lb-info .add-btn{margin-top:auto}
+  /* v90 (vijeće, mobitel): „Dodaj u košaricu” uvijek vidljiv na dnu povećanog prikaza */
+  @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)} }
   .lb-info .lb-ship{font-size:.85rem;color:var(--ink-soft)}
   .lb-gone{font-size:.92rem;color:var(--ink);border-left:2px dashed var(--thread);padding:2px 0 2px 12px}
   .lb-more{display:block;margin-top:10px;min-height:44px;padding:0 16px;background:var(--thread);color:var(--paper);border:none;border-radius:var(--radius);font:inherit;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
@@ -679,7 +684,7 @@
   /* ---------- Pravni dio: privatnost + impressum ---------- */
   .legal{border-top:1px solid var(--line);background:#FBFBF9}
   .legal-inner{max-width:860px;margin:0 auto;padding:64px 24px}
-  .legal h2{font-family:'Marcellus',serif;font-weight:400;font-size:1.5rem;margin-bottom:8px}
+  .legal h2{font-family:'Marcellus',serif;font-weight:400;font-size:clamp(1.7rem,2.8vw,2.2rem);margin-bottom:8px}
   .legal h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.05rem;margin:26px 0 6px}
   .legal p{color:var(--ink-soft);font-size:.9rem;margin-bottom:10px;max-width:72ch}
   .legal .seam{max-width:120px;margin:14px 0 8px}
@@ -764,7 +769,7 @@
   /* ---------- Grid ---------- */
   .shop{max-width:1180px;margin:0 auto;padding:24px 24px 96px}
   .shop-head{display:flex;align-items:baseline;justify-content:space-between;margin:40px 0 28px;gap:16px;flex-wrap:wrap}
-  .shop-head h2{font-family:'Marcellus',serif;font-weight:400;font-size:1.6rem;letter-spacing:.02em}
+  .shop-head h2{font-family:'Marcellus',serif;font-weight:400;font-size:clamp(1.9rem,3.2vw,2.5rem);letter-spacing:.02em} /* v90 (vijeće, dizajn): naslovi odjeljaka */
   .shop-head .mono{color:var(--ink-soft)}
 
   .grid{
@@ -867,7 +872,7 @@
   /* ---------- Kako naručiti ---------- */
   .how{max-width:1180px;margin:0 auto;padding:0 24px 88px}
   .how-inner{border-top:1.5px dashed var(--thread);padding-top:40px}
-  .how h2{font-family:'Marcellus',serif;font-weight:400;font-size:1.6rem;letter-spacing:.02em;margin-bottom:28px}
+  .how h2{font-family:'Marcellus',serif;font-weight:400;font-size:clamp(1.9rem,3.2vw,2.5rem);letter-spacing:.02em;margin-bottom:28px}
   .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}
   .step .num{
     font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.12em;color:var(--thread);
@@ -1005,6 +1010,7 @@
   .order-terms{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .order-terms a{border-bottom:1.5px dashed var(--thread)}
   /* v73: funkcija za raskid (ZZP čl. 81.a) — istaknuta poveznica i obrazac */
+  .empty-go{display:inline-flex;align-items:center;min-height:44px;margin-top:16px;padding:0 18px;border:1.5px dashed var(--thread);border-radius:var(--radius);color:var(--thread);font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
   .foot-raskid{font-weight:600;color:var(--thread)!important;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;align-self:flex-start}
   .raskid-fn{max-width:520px}
   .raskid-step{display:flex;flex-direction:column;gap:12px}
@@ -1025,6 +1031,11 @@
   .order-form.is-pending > :not(#orderError):not(.next-step){display:none}
   .edit-order{background:none;border:none;padding:0;min-height:44px;color:var(--thread);font:inherit;text-decoration:underline dashed;text-underline-offset:4px}
   .pay-steps{list-style:none;margin:0 0 20px;padding:0;border-left:1.5px dashed var(--thread)}
+  /* v90 (vijeće, kupci): iznos i rok odmah ispod zahvale, podaci za uplatu prije objašnjenja */
+  .pay-sum{font-size:1.05rem;margin:-8px 0 18px;padding:10px 12px;border:1.5px dashed var(--thread);border-radius:var(--radius);background:#fff}
+  .pay-sum b{font-family:'Space Mono',monospace}
+  .pay-title-next{margin-top:26px}
+  .bc-save{display:inline-flex;align-items:center;min-height:44px;margin:8px 0 0;padding:0 12px;border:1px solid #8F8D84;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none}
   .pay-steps li{position:relative;padding:0 0 12px 18px;font-size:.88rem;line-height:1.5}
   .pay-steps li::before{content:"";position:absolute;left:-5px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--thread)}
   .pay-steps b{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);display:block}
@@ -1062,7 +1073,8 @@
   #boxnowmap:not(:empty){margin-top:10px}
   #boxnowmap iframe{width:100%;min-height:480px;border:1px solid var(--line);border-radius:var(--radius)}
   .order-form .consent{display:flex;gap:10px;align-items:flex-start;margin-top:2px}
-  .order-form .consent input{width:auto;padding:0;margin-top:3px;flex:none;accent-color:var(--thread)}
+  .order-form .consent input{width:24px;height:24px;padding:0;margin:0;flex:none;accent-color:var(--thread)} /* v90 (vijeće, mobitel): 24 px umjesto 13 px */
+  .order-form .consent{min-height:44px}
   .order-form .consent input:focus{outline-offset:2px}
   .order-form .consent label{text-transform:none;letter-spacing:0;font-size:.82rem;line-height:1.5}
   .order-form .consent a{border-bottom:1.5px dashed var(--thread)}
@@ -1132,6 +1144,8 @@
   /* v42: unutar ladice, ispod njezina zaglavlja (ne preko naslova „Vaša košarica”) */
   body.cart-open .toast{top:76px;bottom:auto;left:auto;right:20px;max-width:min(400px,calc(100vw - 40px));transform:translateY(-12px)}
   body.cart-open .toast.show{transform:none}
+  /* v90 (vijeće, mobitel): na mobitelu obavijest gore, da ne prekrije gumb ispod palca */
+  @media (max-width:680px){ .toast{top:12px;bottom:auto;transform:translate(-50%,-20px)} .toast.show{transform:translate(-50%,0)} body.cart-open .toast{top:64px} }
   .field-hint{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:4px}
 
   /* v63: „Stalna kolekcija” je dulja — izbornik u jednom retku, hamburger već ispod 960 px */
@@ -1507,7 +1521,7 @@
       <a href="#impressum">Impressum</a>
     </div>
   </div>
-  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v89</p>
+  <p class="copyright">© 2026 Shiva.J · Sva prava pridržana · v90</p>
 </footer>
 
 <!-- Košarica -->
@@ -1532,7 +1546,7 @@
       </div>
       <div>
         <label for="fName">Ime i prezime</label>
-        <input id="fName" required autocomplete="name" maxlength="80">
+        <input id="fName" required autocomplete="name" autocapitalize="words" maxlength="80">
       </div>
       <div>
         <label for="fEmail">E-mail</label>
@@ -1554,7 +1568,7 @@
         </div>
         <div>
           <label for="fCity">Poštanski broj i mjesto</label>
-          <input id="fCity" required placeholder="npr. 10000 Zagreb" maxlength="80" pattern="\s*\d{5}\s+\S.*" title="Poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb">
+          <input id="fCity" required autocapitalize="words" placeholder="npr. 10000 Zagreb" maxlength="80" pattern="\s*\d{5}\s+\S.*" title="Poštanski broj (5 znamenki) i mjesto, npr. 10000 Zagreb">
         </div>
       </div>
       <div id="lockerFields" hidden>
@@ -1584,7 +1598,7 @@
       <button type="submit" class="order-btn" id="orderBtn">Naruči s obvezom plaćanja</button>
       <p class="next-step">Sljedeći korak: <span data-if-confirm><span class="nw">e-mail</span> s linkom za potvrdu, zatim </span>podaci za uplatu (IBAN, iznos, poziv na broj, barkod).</p>
     </form>
-    <div class="empty-cart" id="emptyCart">Košarica je prazna.<br>Unikat postoji samo jednom — kad je vaš, samo je vaš.</div>
+    <div class="empty-cart" id="emptyCart">Košarica je prazna.<br>Unikat postoji samo jednom — kad je vaš, samo je vaš.<br><a href="#torbe" class="drawer-link empty-go">Pogledaj torbe</a></div>
   </div>
 </aside>
 
@@ -1866,6 +1880,8 @@ function renderShopHead(){
 /* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */
 function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
 document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
+/* v90 (vijeće): izravna poveznica (npr. iz e-maila) na odjeljak — visina stranice se mijenja dok se učitava, pa skok i nakon učitavanja */
+if(/^#(uvjeti|privatnost|raskid|kako|radionica|impressum|kontakt)$/.test(location.hash)){ const goSec = () => { const el = document.getElementById(location.hash.slice(1)); if(el) el.scrollIntoView(); }; setTimeout(goSec, 0); addEventListener("load", () => { goSec(); setTimeout(goSec, 600); }); }
 if(location.hash === "#jamstvo"){ setTimeout(openJamstvo, 0); addEventListener("load", () => { openJamstvo(); setTimeout(openJamstvo, 600); }); } /* kao #raskid: visina se mijenja dok se stranica učitava */
 window.addEventListener("hashchange", () => {
   const bagId = bagFromHash();
@@ -3093,6 +3109,7 @@ async function drawHub3(){
     const img = fig.querySelector("img");
     img.dataset.hub3 = "1";
     img.src = canvas.toDataURL("image/png");
+    const sv = fig.querySelector(".bc-save"); if(sv){ sv.href = img.src; sv.download = "barkod-" + (String(text).match(/HR00\n([^\n]*)/) || [, "uplata"])[1].replace(/[^0-9A-Za-z-]/g, "") + ".png"; sv.hidden = false; } /* v90 (vijeće): gumb „Spremi barkod” */
     img.alt = "Barkod za plaćanje ove narudžbe u aplikaciji banke";
     const cap = fig.querySelector(".bc-text");
     if(cap) cap.textContent = "Skenirajte barkod u aplikaciji svoje banke: primatelj, IBAN, iznos, model, poziv na broj i opis popune se sami, a vi samo potvrdite plaćanje.";
@@ -3138,7 +3155,14 @@ function fmtDeadline(iso){
     const pt = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { ...z, day: "numeric", month: "numeric" }).formatToParts(d).map(x => [x.type, x.value]));
     const dm = parseInt(pt.day, 10) + ". " + parseInt(pt.month, 10) + ".";
     const hm = new Intl.DateTimeFormat("hr-HR", { ...z, hour: "2-digit", minute: "2-digit" }).format(d);
-    return (gen ? gen + ", " : "") + dm.replace(/ /g, "\u00a0") + " u\u00a0" + hm;
+    /* v90 (vijeće, kupci): noćni rok („u 00:01”) s pojašnjenjem „u noći sa srijede na četvrtak” */
+    const hh = parseInt(new Intl.DateTimeFormat("en-GB", { ...z, hour: "2-digit", hourCycle: "h23" }).format(d), 10);
+    let night = "";
+    if(hh < 6){ const order = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], i = order.indexOf(wd), p = order[(i + 6) % 7];
+      const acc = { Mon: "ponedjeljak", Tue: "utorak", Wed: "srijedu", Thu: "četvrtak", Fri: "petak", Sat: "subotu", Sun: "nedjelju" }[wd];
+      const pg = { Mon: "ponedjeljka", Tue: "utorka", Wed: "srijede", Thu: "četvrtka", Fri: "petka", Sat: "subote", Sun: "nedjelje" }[p];
+      if(acc && pg) night = " (u noći " + (p === "Wed" || p === "Sat" ? "sa" : "s") + " " + pg + " na " + acc + ")"; }
+    return (gen ? gen + ", " : "") + dm.replace(/ /g, "\u00a0") + " u\u00a0" + hm + night;
   } catch(e){ return fmtDateTime(iso); }
 }
 const copyBtn = (value, label) => `<button type="button" class="copy-btn" data-copy="${escHtml(value)}" data-label="${escHtml(label)}" aria-label="Kopiraj: ${escHtml(label)}">Kopiraj</button>`;
@@ -3221,7 +3245,7 @@ function paymentPanel(last){
   const barcode = (PAYMENT.barcode || pendingHub3) ? `
       <figure class="pay-barcode" id="payBarcode"${PAYMENT.barcode ? "" : " hidden"}>
         <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">
-        <figcaption><span class="bc-text">${genericCap}</span> Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
+        <figcaption><span class="bc-text">${genericCap}</span> Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.<br><a class="bc-save" download="barkod-za-uplatu.png" href="${escHtml(PAYMENT.barcode || "")}"${PAYMENT.barcode ? "" : " hidden"}>Spremi barkod</a>${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
       </figure>` : "";
   /* v42: na računalu (širok zaslon, miš) barkod je odmah ispod naslova — najbrže ga je skenirati mobitelom; na mobitelu na dnu */
   const barcodeFirst = !!(window.matchMedia && matchMedia("(min-width:768px) and (pointer:fine)").matches);
@@ -3231,14 +3255,7 @@ function paymentPanel(last){
   return `
     <div class="pay">
       <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p></div>
-      <ol class="pay-steps" aria-label="Što slijedi">
-        <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
-          <span class="pay-late">${claimLine}</span></li>
-        <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
-          : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
-          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
-      </ol>
+      ${payIso || so ? `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso ? " do " + fmtDeadline(payIso) : ""}.</p>` : ""}
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
@@ -3252,6 +3269,15 @@ function paymentPanel(last){
         ${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}
       </dl>` : orderNo ? `<dl class="pay-data">${orderNo}${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}</dl>` : ""}
       ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}
+      <h3 class="pay-title pay-title-next">Što slijedi</h3>
+      <ol class="pay-steps" aria-label="Što slijedi">
+        <li><b>${payIso ? "Do " + fmtDeadline(payIso) : "Sada"}</b>Uplatite prema podacima ${payOk ? "ispod" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
+          <span class="pay-late">${claimLine}</span></li>
+        <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
+          : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
+          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
+        <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07).</li>
+      </ol>
       <p class="pay-note">${mailSent}</p>
     </div>`;
 }
@@ -3383,7 +3409,7 @@ function showToast(msg, ms){
   t.classList.add("show");
   clearTimeout(toastTimer);
   /* v44: dok je košarica otvorena obavijest traje kraće (prekriva dio obrasca); v68: duža poruka (granice) traje dulje */
-  toastTimer = setTimeout(() => t.classList.remove("show"), ms || (document.body.classList.contains("cart-open") ? 2500 : 4000));
+  toastTimer = setTimeout(() => t.classList.remove("show"), ms || (document.body.classList.contains("cart-open") ? 1800 : 3000)); /* v90: kraće */
 }
 
 renderShopHead(); renderShipping();

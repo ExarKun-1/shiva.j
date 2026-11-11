@@ -194,6 +194,14 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await pt.click('#menuBtn').catch(() => {}); await pt.waitForTimeout(200);
     const mh = await pt.evaluate(() => Math.min(...[...document.querySelectorAll('.mobile-menu a')].map(a => a.getBoundingClientRect().height).filter(x => x > 0)));
     ok(t1[0] >= 44 && !t1[1] && t1[2] === 'https://shivaj.hr/' && t1[3] === 'https://shivaj.hr/img/og.jpg' && t1[4] && mh >= 44, 'v89: gumbi „Kopiraj” i izbornik 44 px, og/canonical na shivaj.hr, noscript ' + JSON.stringify([t1, mh])); await pt.close(); }
+  { const pu = await d.newPage(); await pu.goto(URL + '#uvjeti', { waitUntil: 'load' }); await pu.waitForTimeout(1200);
+    const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
+    const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
+    ok(uv >= 0 && uv < 160 && /12\.\u00a011\. u\u00a000:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
+  { const pq = await m.newPage(); await pq.goto(URL + '#torba-luna', { waitUntil: 'networkidle' }); await pq.waitForTimeout(700);
+    const lb = await pq.evaluate(() => { const a = document.getElementById('lbAdd').getBoundingClientRect(); return [Math.round(a.bottom), innerHeight, getComputedStyle(document.querySelector('.lb-photo img')).objectFit]; });
+    const cs = await pq.evaluate(() => { const c = document.getElementById('fConsent'); const r = c.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), document.getElementById('fName').getAttribute('autocapitalize')]; });
+    ok(lb[0] <= lb[1] && lb[2] === 'contain' && cs[0] >= 24 && cs[2] === 'words', 'v90: mobitel — „Dodaj u košaricu” vidljiv u povećanom prikazu, cijela fotografija, kvačica 24 px, ime velikim slovom ' + JSON.stringify([lb, cs])); await pq.close(); }
   { const pe = await m.newPage(); await pe.route('**/torbe.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
     await pe.goto(URL, { waitUntil: 'networkidle' }); await pe.waitForTimeout(300);
     const he = await pe.evaluate(() => [document.getElementById('hero').classList.contains('has-bag'), document.getElementById('heroBag').hidden]);
@@ -211,7 +219,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const overflow = await pm.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   ok(!overflow, 'mobitel: bez vodoravnog pomicanja');
   const H = await pm.evaluate(() => document.documentElement.scrollHeight);
-  ok(H < 12000, 'mobitel: visina stranice ' + H + ' px (v21: 9 173)');
+  ok(H < 12500, 'mobitel: visina stranice ' + H + ' px (v21: 9 173; v90: veći naslovi odjeljaka)');
   const pb = await pm.locator('.press-inner').boundingBox();
   ok(pb && pb.height < 120, 'mobitel: traka kompaktna (' + Math.round(pb.height) + ' px)');
   const cta = await pm.locator('.hero-cta').boundingBox();
@@ -792,7 +800,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const day = Object.values(cnt)[0] || {};
   ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 19 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena): ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
-  ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
+  ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');
   const zj = JSON.parse(fs.readFileSync(SITE + 'data/zahtjevi.json', 'utf8'));
   ok(Object.keys(zj).every(k => !/visit\|127\.|count\|127\./.test(k)), 'ograničenje zahtjeva brojača bez prave adrese: ' + Object.keys(zj).join(','));
