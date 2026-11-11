@@ -14,7 +14,7 @@ Ovaj dokument je polazna točka za svaku sljedeću sesiju.
 | Kod | GitHub repozitorij `ExarKun-1/shiva.j`, grana `main`, verzija **v47** stranice + **api v21 / admin v19**, probni poslužitelj `proba/apps-script/Code.gs` v42 (13. 10. 2026.; povijest u tablici odluka niže i u komentaru na vrhu `index.html`) |
 | Stranica | `index.html` (HTML + CSS + JS u jednoj datoteci), `torbe.json` (ponuda; piše je admin na hostingu, nije u gitu; predložak `torbe.json.example`), `torbe.primjer.json` (primjeri za probu, ne objavljuje se) |
 | Admin i servis | `admin/index.php`, `admin/lib.php`, `api/index.php`, `router.php` (lokalni test), `.htaccess` (preusmjeravanja, zaštita mape `data/`) |
-| Podaci admina | mapa `data/` na hostingu (lozinka, postavke, rezervacije, narudžbe, brojač zahtjeva); u `.gitignore`, ne ide u git. `data/PRVA-PRIJAVA.txt` dopušta prvo postavljanje lozinke i briše se sama. |
+| Podaci admina | mapa `data/` na hostingu (lozinka, postavke, rezervacije, narudžbe, brojač zahtjeva); u `.gitignore`, ne ide u git. `data/PRVA-PRIJAVA.php (do v90 .txt)` dopušta prvo postavljanje lozinke i briše se sama. |
 | Fotografije | `img/` (barkod-uplata.png, luna-1.jpg, tara-1.jpg); originali iz v09 uklonjeni iz repozitorija u v47 (u povijesti gita i u `WEB STRANCA.1`) |
 | Upute | `docs/`: **postavljanje i održavanje na Croadriji `UPUTE-OBJAVA-CROADRIA-v04.md`** (paket za prijenos: `python3 tools/paket.py`), upute za probnu stranicu `UPUTE-PROBA-APPS-SCRIPT.md`, provjera prije objave `node tests/objava.js`, popis za objavu v02, šablona potvrde narudžbe v04, upute admin v02, upute objava Croadria v02, upute rezervacije v03 |
 | Objava | planirano: hosting Croadria (PHP). OG oznake još pokazuju na `exarkun-1.github.io/shivaj-webshop/` |
@@ -130,7 +130,7 @@ Stanja torbe: `sold: true` = „Prodano” (ostaje vidljiva), `reserved: true` =
 
 Riješeno od v09: Formspree (zamijenjen PHP servisom), primjeri proizvoda (uklonjeni iz stranice), višak fotografija u korijenu (uklonjen).
 
-1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md` (dopuna 22. 9.), prva prijava u admin (lozinka se postavlja pri prvom otvaranju, uz `data/PRVA-PRIJAVA.txt`).
+1. **Hosting i domena:** zakup kod Croadrije, prijenos po `docs/shivaj_upute_objava_croadria_v02.md` (dopuna 22. 9.), prva prijava u admin (lozinka se postavlja pri prvom otvaranju, uz `data/PRVA-PRIJAVA.php (do v90 .txt)`).
 1a. **Preostali popravci iz pregleda koda** (funkcionalne greške, mrtvi kod, dokumentacija): `docs/PREGLED-KODA-v18.md`, odjeljci 2–4; sigurnosni odjeljak 1 je riješen u v19 / api v02.
 1b. **Pregled dizajna, otvoreno** (`docs/PREGLED-DIZAJNA-v19.md`): barkod s iznosom i pozivom na broj (treba vanjsku biblioteku, odluka vlasnice); rečenica u privatnosti o pamćenju košarice na uređaju kupca; Uvjeti točka 4 („potvrda u roku 24 sata”, a stiže odmah); fotografija torbe u heroju; kraći checkout; Uvjeti i privatnost na sklapanje.
 2. **E-mail na domeni** umjesto shivaj.handmade@gmail.com (u stranici 11 mjesta; u adminu postavka e-maila).

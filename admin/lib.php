@@ -98,7 +98,8 @@ function sj_kind(array $p): array {
   $art = (($p['cat'] ?? 'torbe') === 'ostalo');
   return $art ? ['Artikl', false] : ['Torba', true];
 }
-function sj_setup_path(): string { return SJ_DATA . '/PRVA-PRIJAVA.php'; }
+/* v91: .php (poslužitelj je ne šalje kao tekst); stari naziv .txt vrijedi dok ga nadogradnja ne zamijeni */
+function sj_setup_path(): string { $p = SJ_DATA . '/PRVA-PRIJAVA.php'; $old = SJ_DATA . '/PRVA-PRIJAVA.txt'; return (!is_file($p) && is_file($old)) ? $old : $p; }
 /* v20: kod za prvu lozinku — redak „kod: …” (barem 16 znakova) u data/PRVA-PRIJAVA.php. Bez koda prvi posjetitelj
    admina ne može postaviti lozinku (zaštita dok datoteka čeka na hostingu). */
 function sj_setup_code(): string {
@@ -1310,8 +1311,9 @@ function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_
 
 /* v77 (recenzija R76-S3, R76-P9): poveznice i e-adrese u tekstu koji kupac upiše, a mi ga ponavljamo u e-mailu */
 /* vijeće V77-2: nastavak domene samo malim slovima (ne „Ilica 1.Online”, „Pozdrav.Eu”), „@” samo u obliku e-adrese (ne „@ana”) */
-/* v91 (recenzija): bilo koja domena (i velikim slovima ili s punom točkom „．”), ne samo popis vršnih domena */
-const SJ_LINK_RE = '~(https?:|www\s*[.．。]|[\p{L}\p{N}-]{2,}[.．。](?-i:[a-z]{2,24}|[A-Z]{2,24}|[ａ-ｚ]{2,24})(?![\p{L}])|\S+@\S+\.\S+)~iu';
+/* v91 (recenzija): za odbijanje narudžbe popis vršnih domena (malim ili VELIKIM slovima, i s punom točkom „．”) — ne svaki
+   izostavljeni razmak iza točke („12.kat”, „Hvala.lp”); široki uzorak samo u sj_unlink (zamjena u e-mailu) */
+define('SJ_LINK_RE', '~(https?:|www\s*[.．。]|[\p{L}\p{N}-]{2,}[.．。](?-i:hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|HR|COM|NET|ORG|EU|IO|LY|ME|INFO|XYZ|RU|TOP|SITE|ONLINE|LINK|SHOP|STORE|DE|AT|SI|BA|RS|IT|CO|UK|US|BIZ|APP|CLUB|LIVE|PRO|TK|CC|WS|CZ|PL|FR|ES|NL|CH|BE|CLICK|PAY|BANK|WIN|VIP)(?![\p{L}\p{N}])|\S+@\S+\.\S+)~iu');
 function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s); }
 function sj_unlink(string $s): string { return preg_replace('~(https?://\S+|www\s*[.．。]\S+|\S+@\S+\.\S+|[\p{L}\p{N}-]{2,}[.．。](?-i:[a-z]{2,24}|[A-Z]{2,24}|[ａ-ｚ]{2,24})(?![\p{L}])\S*)~iu', '[uklonjeno]', $s) ?? ''; }
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */

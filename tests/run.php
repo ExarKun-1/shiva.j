@@ -282,6 +282,8 @@ $ok(count($zd['sve|dan|abc'] ?? []) === 3 && !isset($zd['sve|kratko']) && !sj_gl
 file_put_contents($zq, $zb);
 $ok(!sj_is_critical_data('narudzbe-na-cekanju.json') && sj_is_critical_data('narudzbe-arhiva-2026.json'), 'v90: nepotvrđene narudžbe nisu „kritične” (oštećena se odlaže, stranica radi)');
 $ok(sj_has_link('prijavite se na secure-pay.shop') && sj_has_link('moj-hpb.SHOP') && sj_has_link('evil．com') && sj_has_link('povrat-novca.de/hr') && !sj_has_link('dr. sc. Ana') && !sj_has_link('ul. Matije Gupca 33') && sj_unlink('idi na secure-pay.shop/x sad') === 'idi na [uklonjeno] sad', 'v91 (recenzija): filtar poveznica prepoznaje bilo koju domenu (.shop, .de, velikim slovima, puna točka)');
+$fp91 = array_filter(['Molim brzo.hvala', 'Hvala.lp', 'do 17h.ok', 'npr.crna', '12.kat', 'ILICA 12.KAT', 'SV.ROKA', '140.cm', 'crna/140.cm', '140cm.lp', 'crna.duljina 140', 'dr.sc. Ana', 'LP.IVANA', 'tj.smeđa'], 'sj_has_link');
+$ok(!$fp91, 'v91 (recenzija): bez lažnih pogodaka za izostavljeni razmak iza točke (napomene, mjere, imena) ' . json_encode(array_values($fp91), JSON_UNESCAPED_UNICODE));
 $ok(sj_hi('Ivana Kovač') === 'Dobar dan, Ivana Kovač,' && sj_hi('Uplatite na secure-pay.shop') === 'Dobar dan,' && sj_hi('Hitno racun blokiran prijavite se') === 'Dobar dan,', 'v91 (recenzija): ime u pozdravu bez točke i najviše 4 riječi');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
