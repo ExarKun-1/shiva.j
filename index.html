@@ -2203,7 +2203,7 @@ function trapTab(e, box){
 }
 function renderLbPhoto(){
   const box = document.getElementById("lbPhoto");
-  box.querySelectorAll("img,.ph,.lb-full").forEach(el => el.remove());
+  box.querySelectorAll("img,.ph,.lb-full,.img-off").forEach(el => el.remove());
   const imgs = lbCurrent.imgs || [];
   if(imgs.length){
     const img = document.createElement("img");
@@ -2939,7 +2939,8 @@ function showOrderPending(srv, email, note = ""){
 /* v53: natrag/osvježavanje nakon slanja — obrazac je prazan, ali narudžba čeka potvrdu iz e-maila */
 function showPendingAfterReload(){
   const pd = storeGet("pend");
-  if(!pd || !cart.length || /potvrda=/.test(location.search)) return;
+  if(!pd){ pendFormClear(); return; } /* v92 (recenzija): narudžba potvrđena u drugoj kartici */
+  if(!cart.length || /potvrda=/.test(location.search)) return;
   const until = pd.until ? Date.parse(pd.until) : 0;
   if(!until || until < Date.now() || pd.sig !== cartSig()){ storeSet("pend", null); pendFormClear(); return; }
   pendFormRestore();

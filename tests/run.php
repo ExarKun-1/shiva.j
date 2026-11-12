@@ -287,6 +287,8 @@ $ok(!$fp91, 'v91 (recenzija): bez lažnih pogodaka za izostavljeni razmak iza to
 $ok(sj_hi('Ivana Kovač') === 'Dobar dan, Ivana Kovač,' && sj_hi('Uplatite na secure-pay.shop') === 'Dobar dan,' && sj_hi('Hitno racun blokiran prijavite se') === 'Dobar dan,', 'v91 (recenzija): ime u pozdravu bez točke i najviše 4 riječi');
 $cd92 = sj_cancel_due(['expiredAt' => '2026-11-02T10:00:00Z', 'payUntil' => '2026-11-01T10:00:00Z', 'cancelDue' => '2026-11-09T10:00:00Z'], 1);
 $ok($cd92 === strtotime('2026-11-09T10:00:00Z'), 'v92 (recenzija): rok automatskog storna zapisan pri isteku ne skraćuje se kad se postavka kasnije smanji');
+$cd92b = sj_cancel_due(['expiredAt' => '2026-11-05T23:00:00Z', 'payUntil' => '2026-11-05T22:59:00Z', 'cancelDue' => '2026-11-01T10:00:00Z', 'claimedAt' => '2026-11-04T10:00:00Z'], 48);
+$ok($cd92b > strtotime('2026-11-05T23:00:00Z'), 'v92 (recenzija): stari zapisani rok storna nikad ne skraćuje novi (nakon produženja roka)');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

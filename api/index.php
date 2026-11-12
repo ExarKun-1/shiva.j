@@ -271,7 +271,6 @@ if ($a === 'status') {
     $so = sj_order_find(['no' => $sNo]);
     $st = 'none';
     if ($so && hash_equals(sj_state_token($so), $sTok)) $st = !empty($so['cancelledAt']) ? 'cancelled' : (!empty($so['paidAt']) ? 'paid' : 'open');
-    elseif ($so && !empty($so['anonymizedAt'])) $st = 'closed';
     $stateOut = ['orderState' => $st];
   }
   sj_json_out($stateOut + [

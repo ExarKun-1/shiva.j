@@ -326,7 +326,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
     if (!empty($x['cancelledAt']) || !empty($x['paidAt'])) return; /* u međuvremenu stornirana ili plaćena */
     if (isset($mark['claimedAt']) && !empty($x['claimedAt'])) return; /* „Uplatio/la sam” samo jednom */
     $okEdit = true;
-    $x['payUntil'] = $new; unset($x['expiredAt']);
+    $x['payUntil'] = $new; unset($x['expiredAt'], $x['cancelDue']); /* v92 (recenzija): novi rok — novi rok storna pri sljedećem isteku */
     foreach ($mark as $k => $v) { if ($v === null) { unset($x[$k]); continue; } if ($k === 'proofAt') { $x['proofAt'] = array_merge((array)($x['proofAt'] ?? []), [$v]); } else $x[$k] = $v; }
     if ($uIds && empty($x['reservation']['token'])) $x['reservation'] = ['until' => $resNew, 'token' => $tok];
     elseif ($uIds) $x['reservation']['until'] = $resNew;
@@ -349,7 +349,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
 function sj_cancel_due(array $o, int $auto): int {
   $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
   $due = sj_auto_cancel_at($exp, $auto); /* v78 (t3) */
-  if (!empty($o['cancelDue']) && ($cd = (int)strtotime((string)$o['cancelDue'])) > 0) $due = $cd; /* v92 (recenzija): zapisan pri isteku — kasnija promjena postavke ga ne skraćuje */
+  if (!empty($o['cancelDue']) && ($cd = (int)strtotime((string)$o['cancelDue'])) > 0) $due = max($due, $cd); /* v92 (recenzija): zapisan pri isteku — kasnija promjena postavke ga ne skraćuje */
   /* v81 (recenzija R81-2): bez klika storno nikad prije obećanog držanja (23:59 radnog dana nakon roka, Uvjeti t. 5) */
   if (empty($o['claimedAt']) && empty($o['proofAt']) && ($pu = (int)strtotime(sj_pay_until($o))) > 0) $due = max($due, sj_hold_after_deadline($pu));
   $hu = (!empty($o['claimedAt']) || !empty($o['proofAt'])) ? (int)strtotime((string)($o['reservation']['until'] ?? '')) : 0;
