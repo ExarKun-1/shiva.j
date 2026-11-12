@@ -194,6 +194,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await pt.click('#menuBtn').catch(() => {}); await pt.waitForTimeout(200);
     const mh = await pt.evaluate(() => Math.min(...[...document.querySelectorAll('.mobile-menu a')].map(a => a.getBoundingClientRect().height).filter(x => x > 0)));
     ok(t1[0] >= 44 && !t1[1] && t1[2] === 'https://shivaj.hr/' && t1[3] === 'https://shivaj.hr/img/og.jpg' && t1[4] && mh >= 44, 'v89: gumbi „Kopiraj” i izbornik 44 px, og/canonical na shivaj.hr, noscript ' + JSON.stringify([t1, mh])); await pt.close(); }
+  { const ps = await d.newPage(); await ps.route(/\/img\/(?!logo|ikona).*\.(jpg|png)$/, r => r.abort()); await ps.goto(URL, { waitUntil: 'load' }); await ps.waitForTimeout(1200);
+    await ps.keyboard.press('Tab'); const sk = await ps.evaluate(() => [document.activeElement.className, document.activeElement.getAttribute('href'), Math.round(document.activeElement.getBoundingClientRect().top)]);
+    const off = await ps.evaluate(() => [document.querySelectorAll('.img-off').length, [...document.querySelectorAll('#productGrid img:not([hidden])')].filter(i => i.complete && i.naturalWidth === 0).length]);
+    ok(sk[0] === 'skip' && sk[1] === '#torbe' && sk[2] >= 0 && off[0] > 0 && off[1] === 0, 'v92 (recenzija): prvi Tab je „Preskoči na ponudu”; slike koje se ne učitaju dobivaju okvir bez slomljene ikone ' + JSON.stringify([sk, off])); await ps.close(); }
   { const pn = await d.newPage(); await pn.goto(URL + '#torba-nepostoji', { waitUntil: 'load' }); await pn.waitForTimeout(1200);
     const tn = await pn.evaluate(() => [document.getElementById('toast').textContent, Math.round(document.getElementById('torbe').getBoundingClientRect().top)]);
     ok(/više nije u ponudi/.test(tn[0]) && Math.abs(tn[1]) < 200, 'v91 (recenzija): poveznica na nepostojeću torbu — poruka i skok na ponudu ' + JSON.stringify(tn)); await pn.close(); }
@@ -441,8 +445,14 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await p7b.goto(URL, { waitUntil: 'networkidle' }); await p7b.waitForTimeout(400); await p7b.click('#openCart'); await p7b.waitForTimeout(300);
   ok(/Ovu narudžbu ste već poslali/.test(await p7b.textContent('#orderError').catch(() => '')) && /poništava prethodni link/.test(await p7b.textContent('#orderError').catch(() => '')), 'v53/v54 H: nakon ponovnog učitavanja — „Ovu narudžbu ste već poslali”, novi e-mail poništava link');
   await p7b.close();
+  const strap0 = await p7.inputValue('.strap-sel[data-k="sc"]');
   await p7.selectOption('.strap-sel[data-k="sc"]', 'smeđa'); await p7.waitForTimeout(200); /* v78: kolekcija nema slobodnu napomenu — mijenja se boja remena */
   ok(await p7.isVisible('#orderBtn') && !(await p7.isVisible('#editOrder')), 'v51: promjena napomene dok narudžba čeka potvrdu vraća obrazac');
+  ok(/Promijenili ste košaricu\. Link iz e-maila potvrđuje prethodnu narudžbu/.test(await p7.textContent('#orderError').catch(() => '')), 'v92 (recenzija): promjena košarice dok narudžba čeka potvrdu — objašnjenje da link vrijedi za prethodnu narudžbu');
+  { await p7.selectOption('.strap-sel[data-k="sc"]', strap0); await p7.waitForTimeout(200); /* ista košarica kao poslana narudžba */
+    const nm0 = await p7.inputValue('#fName'); await p7.reload({ waitUntil: 'networkidle' }); await p7.waitForTimeout(400); await p7.click('#openCart'); await p7.waitForTimeout(300);
+    const nm1 = await p7.inputValue('#fName').catch(() => '');
+    ok(nm0 !== '' && nm1 === nm0 && /Ovu narudžbu ste već poslali/.test(await p7.textContent('#orderError').catch(() => '')), 'v92 (recenzija): nakon osvježavanja dok narudžba čeka potvrdu podaci kupca ostaju u obrascu (samo ova kartica) ' + JSON.stringify([nm0, nm1])); }
   const links = [...fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8').matchAll(/\?potvrda=([a-f0-9]{32}\.[a-f0-9]{32})/g)];
   const link = links.length ? links[links.length - 1][1] : '';
   const m8 = await browser.newContext({ viewport: { width: 390, height: 844 } });

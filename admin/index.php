@@ -34,13 +34,15 @@ if ($c['password_hash'] === '') {
   }
   if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['setup_password'])) {
     $p1 = (string)$_POST['setup_password']; $p2 = (string)($_POST['setup_password2'] ?? '');
-    usleep(300000);
+    /* v92 (recenzija): blokirana adresa odmah dobiva odgovor (bez čekanja koje zauzima poslužitelj) */
+    $ipOk = sj_rate_limit('setup', 10, 3600, false, false);
+    if ($ipOk) usleep(300000);
     /* v22: ograničen broj promašaja koda (po adresi i ukupno); broje se samo promašaji */
     /* v25: bez obzira na velika i mala slova (mobilna tipkovnica prvo slovo sama pretvori u veliko) */
     $codeOk = hash_equals(strtolower($code), strtolower(trim((string)($_POST['setup_code'] ?? ''))));
     /* v23: ukupna granica samo usporava (napadač s mnogo adresa ne smije zaključati i vlasnicu), po adresi blokira */
-    if (!sj_global_limit('setup', 50, 3600, false)) sleep(3);
-    if (!sj_rate_limit('setup', 10, 3600, false, false)) $err = 'Previše pogrešnih pokušaja koda s ove veze. Pričekajte sat vremena i pokušajte ponovno.';
+    if ($ipOk && !sj_global_limit('setup', 50, 3600, false)) sleep(3);
+    if (!$ipOk) $err = 'Previše pogrešnih pokušaja koda s ove veze. Pričekajte sat vremena i pokušajte ponovno.';
     elseif (!$codeOk) { sj_rate_limit('setup', 10, 3600); sj_global_limit('setup', 50, 3600); $err = 'Kod nije točan. Prepišite ga iz datoteke data/PRVA-PRIJAVA.php.'; }
     elseif (strlen($p1) < 10) $err = 'Lozinka mora imati barem 10 znakova.';
     elseif ($p1 !== $p2) $err = 'Lozinke se ne podudaraju.';
@@ -546,7 +548,7 @@ function sj_handle_action(string $act, array &$c): string {
         /* v69 (N68-3): uklonjena oznaka ne vodi u automatski storno — narudžba dobiva novi rok, a rokovi je ne diraju
            (unpaidAt); nakon roka je pod „Rok istekao” za ručnu odluku */
         $ttlU = max(1, (int)sj_config()['ttl_hours']);
-        sj_order_edit(['no' => $no], function (array &$o) use ($ttlU) { unset($o['paidAt'], $o['expiredAt']); $o['unpaidAt'] = sj_iso(time()); $o['payUntil'] = sj_iso(time() + $ttlU * 3600); });
+        sj_order_edit(['no' => $no], function (array &$o) use ($ttlU) { unset($o['paidAt'], $o['expiredAt'], $o['cancelDue']); $o['unpaidAt'] = sj_iso(time()); $o['payUntil'] = sj_iso(sj_pay_deadline(time(), $ttlU)); }); /* v92: vikend i blagdani kao kod narudžbe */
         if ($back) return 'Oznaka uklonjena: ' . $no . '. ' . (count($back) > 1 ? 'Torbe ' . sj_product_names($back) . ' vraćene su' : 'Torba ' . sj_product_names($back) . ' vraćena je') . ' u prodaju bez rezervacije.' . implode('', array_map(fn($b) => sj_other_paid((string)$b, $no), $back));
       }
       return ($act === 'order_paid' ? 'Označeno kao plaćeno: ' : 'Oznaka uklonjena: ') . $no;

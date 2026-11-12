@@ -209,12 +209,14 @@ function sj_unique_words(int $n): string { return $n === 1 ? 'može biti najviš
 /* odgovor za ponovljeni zahtjev s istim ključem narudžbe (ista narudžba, bez nove) */
 /* v91 (recenzija H1): ključ narudžbe vraća samo živu narudžbu — stornirana ili obrisana se ne prikazuje kao rezervirana */
 function sj_key_live(array $prev, string $key): bool { return $key !== '' && ($prev['key'] ?? '') === $key && empty($prev['cancelledAt']) && empty($prev['anonymizedAt']); }
+/* v92: oznaka za provjeru stanja narudžbe (spremljena ploča za uplatu u pregledniku): izvedena iz tajne narudžbe, bez osobnih podataka */
+function sj_state_token(array $o): string { $cl = (string)($o['claim'] ?? ''); return $cl === '' ? '' : substr(hash('sha256', 'stanje|' . $cl), 0, 24); }
 function sj_order_repeat_out(array $prev): void {
   if (!empty($prev['cancelledAt']) || !empty($prev['anonymizedAt']))
     sj_json_out(['ok' => false, 'error' => 'Ta narudžba je stornirana i više ne vrijedi; ne uplaćujte je. Ako i dalje želite torbu, pošaljite novu narudžbu.'], 409);
   $m = is_array($prev['mail'] ?? null) ? $prev['mail'] : [];
   sj_json_out(['ok' => true, 'orderNo' => $prev['no'], 'reference' => sj_payment_ref((string)$prev['no']), 'total' => (float)($prev['order']['total'] ?? 0),
-               'until' => $prev['reservation']['until'] ?? null, 'payUntil' => sj_pay_until($prev), 'reserved' => true, 'mailOwner' => $m['owner'] ?? true, 'mailCustomer' => $m['customer'] ?? true, 'repeated' => true] + sj_pay_out() + sj_order_view((array)($prev['order'] ?? [])));
+               'until' => $prev['reservation']['until'] ?? null, 'payUntil' => sj_pay_until($prev), 'reserved' => true, 'mailOwner' => $m['owner'] ?? true, 'mailCustomer' => $m['customer'] ?? true, 'repeated' => true, 'check' => sj_state_token($prev)] + sj_pay_out() + sj_order_view((array)($prev['order'] ?? [])));
 }
 /* v62: podaci za uplatu iz Postavki uz odgovor narudžbe / potvrde */
 function sj_pay_out(): array {
@@ -262,7 +264,16 @@ if ($a === 'status') {
   });
   $d = sj_res_read();
   $pay = $c['payment'];
-  sj_json_out([
+  /* v92 (recenzija): stanje narudžbe za spremljenu ploču za uplatu — samo uz oznaku iz odgovora narudžbe */
+  $stateOut = [];
+  $sNo = (string)($_GET['stanje'] ?? ''); $sTok = (string)($_GET['t'] ?? '');
+  if (preg_match('/^SJ-\d{4}-\d{4,6}$/', $sNo) && preg_match('/^[0-9a-f]{24}$/', $sTok) && sj_rate_limit('stanje', 60, 3600, false)) {
+    $so = sj_order_find(['no' => $sNo]);
+    $st = 'none';
+    if ($so && hash_equals(sj_state_token($so), $sTok)) $st = !empty($so['cancelledAt']) ? 'cancelled' : (!empty($so['paidAt']) ? 'paid' : 'open');
+    $stateOut = ['orderState' => $st];
+  }
+  sj_json_out($stateOut + [
     'ok' => true,
     'ttlHours' => (int)$c['ttl_hours'],
     /* kao „Rezervirano” na stranici samo torbe iz zaprimljenih narudžbi; tuđa košarica ne zatvara torbu drugima */
@@ -1145,7 +1156,7 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
     foreach ($list as &$e) if (($e['no'] ?? '') === $no) { $e['mail'] = ['owner' => $sentOwner, 'customer' => $sentCust]; break; }
     return true;
   }, []);
-  sj_json_out(['ok' => true, 'orderNo' => $no, 'reference' => $ref, 'total' => $total, 'until' => $res ? $res['until'] : null, 'payUntil' => sj_pay_until((array)($done['entry'] ?? ['at' => sj_iso(time())])), 'claimUntil' => sj_claim_url((array)($done['entry'] ?? [])) !== '' ? sj_iso(sj_claim_until((array)$done['entry'])) : null, 'claimAtLeast' => !empty($done['entry']['payUntil']) && sj_claim_until((array)$done['entry']) < sj_next_workday_end((int)strtotime((string)$done['entry']['payUntil'])), 'reserved' => true, 'mailOwner' => $sentOwner, 'mailCustomer' => $sentCust]
+  sj_json_out(['ok' => true, 'orderNo' => $no, 'reference' => $ref, 'total' => $total, 'until' => $res ? $res['until'] : null, 'payUntil' => sj_pay_until((array)($done['entry'] ?? ['at' => sj_iso(time())])), 'claimUntil' => sj_claim_url((array)($done['entry'] ?? [])) !== '' ? sj_iso(sj_claim_until((array)$done['entry'])) : null, 'claimAtLeast' => !empty($done['entry']['payUntil']) && sj_claim_until((array)$done['entry']) < sj_next_workday_end((int)strtotime((string)$done['entry']['payUntil'])), 'reserved' => true, 'mailOwner' => $sentOwner, 'mailCustomer' => $sentCust, 'check' => sj_state_token((array)($done['entry'] ?? []))]
     + sj_pay_out() /* v62: ploča za uplatu ne ovisi o tome je li api/status stigao */ + sj_order_view($o));
 }
 
