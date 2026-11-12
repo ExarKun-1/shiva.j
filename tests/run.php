@@ -285,6 +285,8 @@ $ok(sj_has_link('prijavite se na secure-pay.shop') && sj_has_link('moj-hpb.SHOP'
 $fp91 = array_filter(['Molim brzo.hvala', 'Hvala.lp', 'do 17h.ok', 'npr.crna', '12.kat', 'ILICA 12.KAT', 'SV.ROKA', '140.cm', 'crna/140.cm', '140cm.lp', 'crna.duljina 140', 'dr.sc. Ana', 'LP.IVANA', 'tj.smeđa'], 'sj_has_link');
 $ok(!$fp91, 'v91 (recenzija): bez lažnih pogodaka za izostavljeni razmak iza točke (napomene, mjere, imena) ' . json_encode(array_values($fp91), JSON_UNESCAPED_UNICODE));
 $ok(sj_hi('Ivana Kovač') === 'Dobar dan, Ivana Kovač,' && sj_hi('Uplatite na secure-pay.shop') === 'Dobar dan,' && sj_hi('Hitno racun blokiran prijavite se') === 'Dobar dan,', 'v91 (recenzija): ime u pozdravu bez točke i najviše 4 riječi');
+$cd92 = sj_cancel_due(['expiredAt' => '2026-11-02T10:00:00Z', 'payUntil' => '2026-11-01T10:00:00Z', 'cancelDue' => '2026-11-09T10:00:00Z'], 1);
+$ok($cd92 === strtotime('2026-11-09T10:00:00Z'), 'v92 (recenzija): rok automatskog storna zapisan pri isteku ne skraćuje se kad se postavka kasnije smanji');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

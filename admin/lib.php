@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v55');
+define('SJ_VERSION', 'admin v56');
 
 /* ---------- postavke ---------- */
 
@@ -349,6 +349,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
 function sj_cancel_due(array $o, int $auto): int {
   $exp = (int)strtotime((string)($o['expiredAt'] ?? '')) ?: (int)strtotime(sj_pay_until($o));
   $due = sj_auto_cancel_at($exp, $auto); /* v78 (t3) */
+  if (!empty($o['cancelDue']) && ($cd = (int)strtotime((string)$o['cancelDue'])) > 0) $due = $cd; /* v92 (recenzija): zapisan pri isteku — kasnija promjena postavke ga ne skraćuje */
   /* v81 (recenzija R81-2): bez klika storno nikad prije obećanog držanja (23:59 radnog dana nakon roka, Uvjeti t. 5) */
   if (empty($o['claimedAt']) && empty($o['proofAt']) && ($pu = (int)strtotime(sj_pay_until($o))) > 0) $due = max($due, sj_hold_after_deadline($pu));
   $hu = (!empty($o['claimedAt']) || !empty($o['proofAt'])) ? (int)strtotime((string)($o['reservation']['until'] ?? '')) : 0;
@@ -451,7 +452,7 @@ function sj_deadline_tick(bool $force = false): array {
       $at = (int)strtotime((string)($o['at'] ?? '')); $until = (int)strtotime((string)$o['payUntil']);
       if ($at <= 0 || $until <= 0) continue;
       if ($now >= $until) {
-        if (empty($o['expiredAt'])) { $o['expiredAt'] = sj_iso($now); $todo[] = ['expired', $o]; continue; }
+        if (empty($o['expiredAt'])) { $o['expiredAt'] = sj_iso($now); $o['cancelDue'] = sj_iso(sj_cancel_due($o, $auto)); $todo[] = ['expired', $o]; continue; } /* v92: rok storna prema postavci u trenutku isteka (isti kao u e-mailu) */
         /* v69.1: kupac je nakon isteka javio uplatu — bez automatskog storna; vlasnica provjeri izvod i odluči */
         if (!empty($o['claimLate'])) continue;
         $exp = (int)strtotime((string)$o['expiredAt']);

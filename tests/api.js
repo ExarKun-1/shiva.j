@@ -392,6 +392,15 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         ok(k1.data.ok && !k2.data.repeated && k2.data.orderNo !== k1.data.orderNo,
           'v91 (recenzija H1): isti ključ nakon storna ne vraća staru narudžbu kao rezerviranu ' + JSON.stringify([k1.data.orderNo, k2.status, k2.data.orderNo, k2.data.repeated, k2.data.error]));
         fs.writeFileSync(D + 'proizvodi.json', oRaw); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); }
+      { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw2 = fs.readFileSync(D + 'proizvodi.json', 'utf8'); setProd('luna', { sold: false, reserved: false, hidden: false });
+        const s1 = await post('order', order('api-key-v92-state', 'state@primjer.hr', [{ id: 'luna' }], prods().find(x => x.id === 'luna').price));
+        const q = t => fetch(U + 'status?stanje=' + encodeURIComponent(s1.data.orderNo || '') + '&t=' + t).then(r => r.json());
+        const a1 = await q(s1.data.check || ''), bad = await q('0'.repeat(24));
+        { const n = read('narudzbe.json'); n[0].cancelledAt = new Date().toISOString(); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(n)); }
+        const a2 = await q(s1.data.check || '');
+        ok(/^[0-9a-f]{24}$/.test(s1.data.check || '') && a1.orderState === 'open' && bad.orderState === 'none' && a2.orderState === 'cancelled' && !('name' in a2),
+          'v92 (recenzija): api/status sa stanje= i oznakom iz odgovora narudžbe kaže je li narudžba stornirana (kriva oznaka: ništa) ' + JSON.stringify([a1.orderState, bad.orderState, a2.orderState]));
+        fs.writeFileSync(D + 'proizvodi.json', oRaw2); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); }
       { const base = U.replace(/api\/$/, ''); const st = [];
         for (const pth of ['%64ata/config.json', '/data/config.json', './data/config.json', 'img/../data/config.json', 'DATA/config.json']) st.push((await fetch(base + pth)).status);
         ok(st.every(x => x === 403 || x === 400 || x === 404), 'v91 (recenzija): lokalni poslužitelj ne otvara data/ ni preko %64ata, //, ./ ili ../ ' + JSON.stringify(st)); }
