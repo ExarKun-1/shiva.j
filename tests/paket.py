@@ -6,7 +6,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 R = []
 def ok(c, m): R.append(('PASS ' if c else 'FAIL ') + m)
 
-v = re.search(r'Sva prava pridržana · (v\d+)', open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()).group(1)
+v = re.search(r'SHIVA\.J WEBSHOP — (v\d+)', open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()).group(1)
 subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'paket.py')], check=True, capture_output=True)
 first = zipfile.ZipFile(os.path.join(ROOT, 'dist', f'shivaj-{v}-prvi.zip'))
 upd = zipfile.ZipFile(os.path.join(ROOT, 'dist', f'shivaj-{v}-nadogradnja.zip'))

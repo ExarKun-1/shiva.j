@@ -292,6 +292,30 @@ $ok($cd92b > strtotime('2026-11-05T23:00:00Z'), 'v92 (recenzija): stari zapisani
 $tt93 = sj_terms_text();
 $ok(str_contains($tt93, 'uvećan za zakonske zatezne kamate od dana uplate do dana povrata') && str_contains($tt93, 'Kliknite „Uplatio/la sam” u e-mailu o narudžbi: više vam ne šaljemo podsjetnike.'), 'v93 (odluka vlasnice): Uvjeti u e-mailu — zatezne kamate (ZZP čl. 14) i „Uplatio/la sam” bez podsjetnika');
 $ok(sj_pow_zero_bits('000fff', 12) && !sj_pow_zero_bits('001fff', 12) && sj_pow_zero_bits('07ff', 5) && !sj_pow_zero_bits('08ff', 5), 'v93: provjera nultih bitova (sj_pow_zero_bits)');
+/* v94 (recenzija vijeća, H1): poplava ključeva koje napadač može stvarati ne briše granice po adresi */
+$zq = SJ_DATA . '/zahtjevi.json'; $zb94 = (string)@file_get_contents($zq); $tn = time(); $ip94 = sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'));
+$flood = []; for ($i = 0; $i < 5100; $i++) $flood['sve|mailto-' . $i] = [$tn - 10];
+$flood['raskid|' . $ip94] = [$tn - 50, $tn - 40, $tn - 30, $tn - 20, $tn - 10]; $flood['sve|confirm'] = [$tn - 5];
+file_put_contents($zq, json_encode($flood));
+sj_rate_limit('visit', 30, 3600, true);
+$zd94 = json_decode((string)file_get_contents($zq), true);
+$ok(count($zd94['raskid|' . $ip94] ?? []) === 5 && isset($zd94['sve|confirm']) && count($zd94) < 5001 && !sj_rate_limit('raskid', 5, 3600, false, false), 'v94 (recenzija vijeća): poplava ključeva po primatelju ne istiskuje granice po adresi ni ukupne brojače');
+file_put_contents($zq, $zb94);
+/* v94: provjera izračunom više ne piše u bilježnicu ograničenja */
+$okW = !str_contains((string)@file_get_contents($zq), 'sve|pow|');
+$ok($okW && function_exists('sj_pow_spend'), 'v94: zadatak „niste robot” se troši tek kad je narudžba primljena (zasebna datoteka)');
+/* v94 (recenzija vijeća, M1): oštećeni popis torbi se ne prepisuje javnom kopijom */
+$pp = sj_products_path(); $pb94 = (string)@file_get_contents($pp);
+file_put_contents($pp, $pb94 . '{pokvareno'); $lst = sj_products();
+$ok(file_get_contents($pp) === $pb94 . '{pokvareno' && is_file($pp . '.osteceno-' . date('Ymd')) && is_array($lst) && isset(json_decode((string)file_get_contents(SJ_DATA . '/ostecene-datoteke.json'), true)['proizvodi.json']), 'v94 (recenzija vijeća): oštećena proizvodi.json — netaknuta, kopija, zapis za admin; trgovina prikazuje javni popis');
+file_put_contents($pp, $pb94); @unlink($pp . '.osteceno-' . date('Ymd')); @unlink(SJ_DATA . '/ostecene-datoteke.json');
+$ok(sj_has_link('platite na secure-pay (.) hr') && sj_has_link('povrat tocka com') && sj_has_link('secure-pay.icu') && !sj_has_link('BOX NOW Zagreb 1, Ilica 5'), 'v94: filtar poveznica i za „(.)”, „tocka” i nove vršne domene; paketomat bez lažnih pogodaka');
+/* v94 (recenzija): prazna proizvodi.json (prekinut prijenos) obnavlja se iz javnog popisa, a sinkronizacija ne prazni trgovinu */
+$pp = sj_products_path(); $pb94b = (string)@file_get_contents($pp); $pub94 = (string)@file_get_contents(SJ_PUBLIC_JSON);
+file_put_contents($pp, ''); clearstatcache(); sj_sync_public_products(); clearstatcache();
+$ok(filesize($pp) > 2 && count((array)json_decode((string)file_get_contents(SJ_PUBLIC_JSON), true)) === count((array)json_decode($pub94, true)), 'v94 (recenzija): prazna proizvodi.json se obnavlja iz javnog popisa; trgovina ne ostaje prazna');
+file_put_contents($pp, $pb94b); file_put_contents(SJ_PUBLIC_JSON, $pub94);
+$ok(sj_unlink('Razlog: točka 2 Uvjeta') === 'Razlog: točka 2 Uvjeta' && sj_has_link('pay.ai/login'), 'v94 (recenzija): „točka” u običnom tekstu ostaje; nove vršne domene u filtru');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";
