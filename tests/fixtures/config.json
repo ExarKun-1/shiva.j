@@ -65,5 +65,6 @@
     "ids": [
       "boxnow"
     ]
-  }
+  },
+  "pow_bits": 0
 }

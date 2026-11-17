@@ -17,7 +17,7 @@ define('SJ_ROOT', dirname(__DIR__));
 define('SJ_DATA', SJ_ROOT . '/data');
 define('SJ_IMG', SJ_ROOT . '/img');
 define('SJ_PUBLIC_JSON', SJ_ROOT . '/torbe.json');
-define('SJ_VERSION', 'admin v56');
+define('SJ_VERSION', 'admin v57');
 
 /* ---------- postavke ---------- */
 
@@ -26,6 +26,8 @@ function sj_defaults(): array {
     'shop'             => 'Shiva.J',
     'owner_email'      => 'shivaj.handmade@gmail.com', // kamo stižu narudžbe
     'from_email'       => '',                          // npr. info@shivaj.hr; prazno = owner_email
+    'pow_bits'         => 16,                          // v93: provjera „niste robot” izračunom (0 = isključeno)
+    'pow_secret'       => '',                          // v93: tajna za potpis zadatka; stvara se sama
     'site_url'         => '',                          // npr. https://shivaj.hr; prazno = automatski
     'oib'              => '',                          // v25: OIB obrta za potpis u e-mailu kupcu; prazno = ne prikazuje se
     'ttl_hours'        => 24,                          // koliko sati traje rezervacija = rok za uplatu (v68)
@@ -203,7 +205,7 @@ function sj_unique_count(array $o): int { $n = 0; foreach ((array)($o['order']['
 function sj_late_text(array $o, string $lead): string {
   $n = sj_unique_count($o);
   return $lead . ($n === 0 ? ', pa ga više ne možemo automatski produžiti' : ', pa ' . ($n > 1 ? 'torbe' : 'torbu') . ' više ne možemo automatski čuvati')
-    . '. Javili smo vlasnici: provjerit će uplatu i javiti vam se.' . ($n === 0 ? '' : ($n > 1 ? ' Ako je neka od torbi u međuvremenu otišla drugom kupcu, za nju vam vraćamo uplaćeni iznos što prije, a najkasnije u roku od sedam dana.' : ' Ako je torba u međuvremenu otišla drugom kupcu, vraćamo vam cijeli iznos što prije, a najkasnije u roku od sedam dana.'));
+    . '. Javili smo vlasnici: provjerit će uplatu i javiti vam se.' . ($n === 0 ? '' : ($n > 1 ? ' Ako je neka od torbi u međuvremenu otišla drugom kupcu, za nju vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : ' Ako je torba u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.'));
 }
 function sj_already_text(array $o): string {
   /* v72 (vijeće, D72-1/2): istekao rok, a torba se i dalje drži do storna — isti tekst kao e-mail „uplatu još ne vidimo” */
@@ -528,8 +530,8 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
           : "javili ste nam da ste platili narudžbu br. $no, ali uplatu još ne vidimo na računu. Molimo vas, odgovorite na ovaj e-mail i pošaljite potvrdu o uplati (snimku ili potvrdu iz banke).")
         . ($hs !== '' ? "\n\n" . $hs : '')
         /* D72-5: po torbi */
-        . ($taken ? ($hs !== '' ? ' ' : "\n\n") . 'Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos što prije, a najkasnije u roku od sedam dana.' : '')
-        . ($free ? ($hs !== '' ? ' ' : "\n\n") . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi; ako ' . (count($free) > 1 ? 'neku od njih' : 'je') . ' netko kupi prije nego što vaša uplata stigne, za ' . (count($free) > 1 ? 'nju' : 'nju') . ' vam vraćamo uplaćeni iznos što prije, a najkasnije u roku od sedam dana.' : '')
+        . ($taken ? ($hs !== '' ? ' ' : "\n\n") . 'Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '')
+        . ($free ? ($hs !== '' ? ' ' : "\n\n") . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi; ako ' . (count($free) > 1 ? 'neku od njih' : 'je') . ' netko kupi prije nego što vaša uplata stigne, za ' . (count($free) > 1 ? 'nju' : 'nju') . ' vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '')
         . ($hs !== '' ? ' Ako do tada ' . $cond . ', narudžbu storniramo i ' . (count($hI['held']) > 1 ? 'torbe se vraćaju' : 'torba se vraća') . ' u prodaju.' : $stornoP)
         . $bye, null, (string)$c['owner_email']);
     } else {
@@ -537,7 +539,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — rok za uplatu je prošao, narudžba $no",
         $hi . "rok za uplatu narudžbe br. $no prošao je u $untilAcc, a uplatu još ne vidimo" . (($hsN = sj_held_sentence(sj_held_info($o))) !== '' ? '. ' . rtrim($hsN, '.') . ', jer obična uplata poslana do roka može stići sljedeći radni dan' : ($back !== '' ? ", pa $back" : '')) . '.' /* v81 (p2) */
         . "\n\nVeć ste platili? " . ($claim !== '' ? "Kliknite „Uplatio/la sam”:\n$claim\n(ili odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke)." : 'Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.')
-        . ' Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam cijeli iznos što prije, a najkasnije u roku od sedam dana.' : '.')
+        . ' Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '.')
         . "\n\nAko ste još uvijek zainteresirani za narudžbu, molimo vas da izvršite uplatu i pošaljete potvrdu o plaćanju" . ($uq ? '; ako ' . ($many ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . ($many ? 'one su vaše' : 'ona je vaša') . '.' : '.')
         . $storno
         . "\n\n" . sj_pay_lines($o, $c) . $bye, null, (string)$c['owner_email']);
@@ -553,7 +555,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
   } else {
     $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
       $hi . "narudžba br. $no je stornirana jer uplata nije stigla ni nakon roka." . ($uq ? ' ' . ($many ? 'Torbe su ponovno' : 'Torba je ponovno') . ' u prodaji.' : '')
-      . "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.') . $bye, null, (string)$c['owner_email']);
+      . "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.') . $bye, null, (string)$c['owner_email']);
   }
   /* v90 (vijeće): neuspjeh slanja kupcu bilježi se uz narudžbu (admin → Narudžbe) */
   if (!$okC) { try { sj_order_edit(['no' => $no], function (array &$x) use ($kind) { $x['mailFail'][$kind] = sj_iso(time()); }); } catch (Throwable $e) {} }
@@ -615,8 +617,10 @@ function sj_cancel_mail(array $o, string $reason): bool {
     sj_hi((string)($o['name'] ?? '')) . "\n\nnarudžba br. $no je stornirana$why."
     /* v69 (D69-13): za „nije uplaćeno u roku” isto obećanje kao kod automatskog storna */
     . ($reason === 'nije uplaćeno u roku'
-      ? "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo cijeli iznos što prije, a najkasnije u roku od sedam dana.')
-      : "\n\nAko ste je već platili, javite nam se odgovorom na ovaj e-mail i vratit ćemo vam cijeli iznos što prije, a najkasnije u roku od sedam dana.")
+      ? "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.')
+      : ($reason === 'kupac odustao' /* v93 (recenzija): raskid kupca — povrat u 14 dana, bez kamata (ZZP čl. 83) */
+        ? "\n\nAko ste je već platili, cijeli iznos vraćamo najkasnije 14 dana od primitka vaše izjave, na račun s kojeg ste platili (Uvjeti, t. 7)."
+        : "\n\nAko ste je već platili, javite nam se odgovorom na ovaj e-mail i vratit ćemo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana."))
     . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
 }
 
@@ -896,6 +900,33 @@ function sj_order_unpaid_if_empty(array $sold, string $tok, string $no): void {
 
 /* Sve promjene postavki idu kroz bravu, jer i API (brojač narudžbi) i admin pišu istu datoteku.
    Nakon zapisa osvježava se i predmemorija sj_config(). */
+/* v93 (odluka vlasnice 12. 11.): provjera „niste robot” izračunom — preglednik kupca traži broj (nonce) uz koji
+   sha256(zadatak:nonce) počinje s pow_bits nultih bitova; zadatak je potpisan tajnom, vrijedi 30 min, najviše 5 narudžbi */
+function sj_pow_bits(): int { return max(0, min(24, (int)(sj_config()['pow_bits'] ?? 16))); }
+function sj_pow_secret(): string {
+  $sec = (string)(sj_config()['pow_secret'] ?? '');
+  if (strlen($sec) < 32) { sj_config_update(function (array &$c) { if (strlen((string)($c['pow_secret'] ?? '')) < 32) $c['pow_secret'] = bin2hex(random_bytes(32)); }); $sec = (string)(sj_config(true)['pow_secret'] ?? ''); }
+  return $sec;
+}
+function sj_pow_issue(): ?array {
+  $bits = sj_pow_bits(); if ($bits <= 0) return null;
+  $s = time() . '.' . bin2hex(random_bytes(8));
+  return ['salt' => $s . '.' . substr(hash_hmac('sha256', $s, sj_pow_secret()), 0, 20), 'bits' => $bits];
+}
+function sj_pow_zero_bits(string $hex, int $bits): bool {
+  $full = intdiv($bits, 4); if (strncmp($hex, str_repeat('0', $full), $full) !== 0) return false;
+  $rem = $bits % 4; return $rem === 0 || hexdec($hex[$full]) < (1 << (4 - $rem));
+}
+function sj_pow_check($pow): bool {
+  $bits = sj_pow_bits(); if ($bits <= 0) return true;
+  if (!is_array($pow)) return false;
+  $salt = (string)($pow['salt'] ?? ''); $nonce = (string)($pow['nonce'] ?? '');
+  if (!preg_match('/^(\d{9,11})\.([0-9a-f]{16})\.([0-9a-f]{20})$/', $salt, $m) || !preg_match('/^\d{1,12}$/', $nonce)) return false;
+  if (!hash_equals(substr(hash_hmac('sha256', $m[1] . '.' . $m[2], sj_pow_secret()), 0, 20), $m[3])) return false;
+  $age = time() - (int)$m[1]; if ($age < -60 || $age > 1800) return false;
+  if (!sj_pow_zero_bits(hash('sha256', $salt . ':' . $nonce), $bits)) return false;
+  return sj_global_limit('pow|' . $m[2], 5, 3600); /* isti zadatak najviše za 5 narudžbi */
+}
 function sj_config_update(callable $fn): array {
   $new = sj_with_lock(SJ_DATA . '/config.json', function (array &$d) use ($fn) {
     $saved = $d;
@@ -1336,7 +1367,7 @@ function sj_strap_split(string $note, ?array $p = null): array {
 function sj_care_applies(array $p): bool {
   if ((string)($p['cat'] ?? 'torbe') !== 'torbe') return false;
   $m = trim((string)($p['material'] ?? ''));
-  if ($m === '' || str_contains($m, '{')) $m = 'umjetna koža';
+  if ($m === '' || str_contains($m, '{')) $m = 'kvalitetna umjetna koža';
   return (bool)preg_match('/umjetn/iu', $m);
 }
 /* v82 (recenzija): bez oznaka u index.html e-mail kupcu ide bez Uvjeta ili Njege — to se ne smije dogoditi tiho */

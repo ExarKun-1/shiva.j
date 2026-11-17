@@ -606,6 +606,7 @@ $ok(preg_match('#SJ-2026-0700.*?Uplata ipak stigla.*?order_paid#s', $v91) === 1 
 $o700 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0700', 'back' => '?s=narudzbe']);
 $n91 = json_decode(file_get_contents($D . '/narudzbe.json'), true); $f91 = fn($no) => array_values(array_filter($n91, fn($x) => $x['no'] === $no))[0] ?? [];
 $ok(($rd()['sold']['luna']['no'] ?? '') === 'SJ-2026-0700' && empty($f91('SJ-2026-0700')['cancelledAt']) && !empty($f91('SJ-2026-0700')['paidAt']), 'v91 (M1): ručni storno „nije uplaćeno u roku” poništava se uplatom, torba ostaje kupcu');
+$ok(str_contains($o700, 'Izdajte račun iz Neosalona.'), 'v93 (odluka vlasnice): nakon „Označi plaćenom” podsjetnik za račun iz Neosalona');
 $o701 = $req('POST', ['act' => 'order_paid', 'no' => 'SJ-2026-0701', 'back' => '?s=narudzbe']);
 $ok(!isset($rd()['sold']['nera']) && ($rd()['res']['nera']['token'] ?? '') === 't703' && str_contains($o701, 'NIJE prodana'), 'v91 (M2): kasna uplata ne uzima torbu iz žive tuđe narudžbe; vlasnica upozorena');
 @file_put_contents($D . '/mail-log.txt', '');
