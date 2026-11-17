@@ -387,7 +387,7 @@ function sj_handle_action(string $act, array &$c): string {
       if ($act === 'res_sold_manual') sj_products_update(function (array &$list) use ($id) {
         foreach ($list as $i => $p) if (($p['id'] ?? '') === $id) { $list[$i]['sold'] = true; break; } return true; });
       $nm = $id; foreach (sj_products() as $p) if (($p['id'] ?? '') === $id) $nm = (string)($p['name'] ?? $id);
-      return ['res_release' => "Rezervacija za „{$nm}”{$relTxt} je stornirana; torba je ponovno u prodaji." . $collFree . $callTxt, 'res_sold' => "„{$nm}” je označena kao plaćena" . (($soldNo = (string)(sj_res_read()['sold'][$id]['no'] ?? '')) !== '' ? " (narudžba {$soldNo})" : '') . '.',
+      return ['res_release' => "Rezervacija za „{$nm}”{$relTxt} je stornirana; torba je ponovno u prodaji." . $collFree . $callTxt, 'res_sold' => "„{$nm}” je označena kao plaćena" . (($soldNo = (string)(sj_res_read()['sold'][$id]['no'] ?? '')) !== '' ? " (narudžba {$soldNo})" : '') . '. Izdajte račun iz Neosalona.',
         'res_unsold' => "Oznaka plaćeno za „{$nm}”{$relTxt} je uklonjena (i na narudžbi); torba je ponovno u prodaji. Ako je kupac platio, vratite mu novac." . $callTxt . sj_other_paid($id, $relNo), 'res_sold_manual' => "„{$nm}” je označena kao prodana izvan stranice i više se ne nudi kupcima."][$act];
     }
 
@@ -788,7 +788,7 @@ function sj_view_products(): string {
 }
 
 function sj_view_form(array $c, string $id): string {
-  $p = ['id' => '', 'cat' => 'torbe', 'name' => '', 'desc' => '', 'price' => '', 'dims' => '', 'material' => 'umjetna koža', 'tagline' => '', 'story' => '', 'imgs' => [], 'sold' => false, 'lead' => ''];
+  $p = ['id' => '', 'cat' => 'torbe', 'name' => '', 'desc' => '', 'price' => '', 'dims' => '', 'material' => 'kvalitetna umjetna koža', 'tagline' => '', 'story' => '', 'imgs' => [], 'sold' => false, 'lead' => ''];
   if ($id !== '') {
     foreach (sj_products() as $x) if (($x['id'] ?? '') === $id) $p = array_replace($p, $x);
     if ($p['id'] === '') return '<p>Torba nije nađena.</p>';
