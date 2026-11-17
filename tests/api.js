@@ -14,6 +14,7 @@ const order = (key, email, items, total, hold) => ({ _gotcha: '', Napomena: '', 
 const hrs = iso => (Date.parse(iso) - Date.now()) / 3600000;
 const read = f => JSON.parse(fs.readFileSync(D + f, 'utf8'));
 const prods = () => read('proizvodi.json');
+const rTok = no => { const o = read('narudzbe.json').find(x => x.no === no) || {}; return o.claim ? require('crypto').createHash('sha256').update('raskid|' + o.claim).digest('hex').slice(0, 24) : ''; }; /* v93: oznaka iz poveznice u e-mailu */
 const setProd = (id, patch) => { const p = prods(); Object.assign(p.find(x => x.id === id), patch); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(p, null, 2)); };
 const clearLimits = () => { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} };
 const setLimits = l => { const c = read('config.json'); c.limits = Object.assign({}, c.limits, l); fs.writeFileSync(D + 'config.json', JSON.stringify(c, null, 2)); };
@@ -324,7 +325,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /kliknite „Uplatio\/la sam”: torbu tada čuvamo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
+    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produžujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x)).map(x => x.split('UVJETI KUPNJE (vrijede')[0]); /* v73: Uvjeti na kraju e-maila provjerava zaseban test */
       const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4,} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4,}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
@@ -401,6 +402,24 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         ok(/^[0-9a-f]{24}$/.test(s1.data.check || '') && a1.orderState === 'open' && bad.orderState === 'none' && a2.orderState === 'cancelled' && !('name' in a2),
           'v92 (recenzija): api/status sa stanje= i oznakom iz odgovora narudžbe kaže je li narudžba stornirana (kriva oznaka: ništa) ' + JSON.stringify([a1.orderState, bad.orderState, a2.orderState]));
         fs.writeFileSync(D + 'proizvodi.json', oRaw2); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); }
+      { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw3 = fs.readFileSync(D + 'proizvodi.json', 'utf8'); const cRaw3 = fs.readFileSync(D + 'config.json', 'utf8');
+        setProd('luna', { sold: false, reserved: false, hidden: false }); setProd('tara', { sold: false, reserved: false, hidden: false });
+        { const c3 = read('config.json'); c3.pow_bits = 12; fs.writeFileSync(D + 'config.json', JSON.stringify(c3, null, 2)); }
+        const crypto = require('crypto'); const price = id => prods().find(x => x.id === id).price;
+        const solve = (salt, bits) => { for (let n = 0; ; n++) { const h = crypto.createHash('sha256').update(salt + ':' + n).digest(); if (h.readUInt32BE(0) < 2 ** (32 - bits)) return String(n); } };
+        const st3 = await (await fetch(U + 'status')).json();
+        const o0 = await post('order', order('api-key-v93-pow0', 'pow0@primjer.hr', [{ id: 'luna' }], price('luna')));
+        const bodyP = (key, email, id, pow) => { const b = order(key, email, [{ id }], price(id)); b._order.pow = pow; return b; };
+        const okPow = st3.pow ? { salt: st3.pow.salt, nonce: solve(st3.pow.salt, st3.pow.bits) } : null;
+        const bad = st3.pow ? { salt: st3.pow.salt.replace(/.$/, c => c === '0' ? '1' : '0'), nonce: okPow.nonce } : null;
+        const o1 = await post('order', bodyP('api-key-v93-pow1', 'pow1@primjer.hr', 'luna', okPow));
+        clearLimits(); const o2 = await post('order', bodyP('api-key-v93-pow2', 'pow2@primjer.hr', 'tara', bad));
+        ok(st3.pow && st3.pow.bits === 12 && o0.status === 400 && o0.data.code === 'pow' && o1.data.ok && o2.status === 400 && o2.data.code === 'pow',
+          'v93 (odluka vlasnice): provjera „niste robot” izračunom — bez nje 400, s ispravnim brojem narudžba prolazi, krivotvoren zadatak 400 ' + JSON.stringify([!!st3.pow, o0.status, o1.status, o2.status]));
+        { const c3 = read('config.json'); c3.pow_bits = 0; fs.writeFileSync(D + 'config.json', JSON.stringify(c3, null, 2)); }
+        const st4 = await (await fetch(U + 'status')).json();
+        ok(!st4.pow, 'v93: pow_bits 0 isključuje provjeru (api/status ne šalje zadatak)');
+        fs.writeFileSync(D + 'proizvodi.json', oRaw3); fs.writeFileSync(D + 'config.json', cRaw3); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); clearLimits(); }
       { const base = U.replace(/api\/$/, ''); const st = [];
         for (const pth of ['%64ata/config.json', '/data/config.json', './data/config.json', 'img/../data/config.json', 'DATA/config.json']) st.push((await fetch(base + pth)).status);
         ok(st.every(x => x === 403 || x === 400 || x === 404), 'v91 (recenzija): lokalni poslužitelj ne otvara data/ ni preko %64ata, //, ./ ili ../ ' + JSON.stringify(st)); }
@@ -415,7 +434,11 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
       { const pl = prods(); const l = pl.find(x => x.id === 'luna'); pl.push(Object.assign({}, l, { id: 't78a', name: 'Proba 78A', sold: false, reserved: false }), Object.assign({}, l, { id: 't78b', name: 'Proba 78B', sold: false, reserved: false }), Object.assign({}, l, { id: 't78c', name: 'Proba 78C', sold: false, reserved: false })); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(pl, null, 2)); }
       const a1 = await post('order', order('api-key-v78a-aaaa', 'v78a@primjer.hr', [{ id: 't78a' }], 65));
-      const rk = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr' });
+      const rk0 = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr' }); /* v93: bez oznake — zapisano, bez storna */
+      const oA0 = read('narudzbe.json').find(x => x.no === a1.data.orderNo) || {}; const mlR0 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      ok(rk0.data.ok && !oA0.cancelledAt && (oA0.withdrawals || []).length === 1 && /Izjava nije poslana preko poveznice iz e-maila, pa narudžba nije automatski stornirana/.test(mlR0), 'v93 (odluka vlasnice): izjava bez oznake iz e-maila se prima, ali neplaćenu narudžbu ne stornira; vlasnica upozorena');
+      clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
+      const rk = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr', tok: rTok(a1.data.orderNo) });
       const oA = read('narudzbe.json').find(x => x.no === a1.data.orderNo) || {};
       const mlR = fs.readFileSync(D + 'mail-log.txt', 'utf8');
       const cR = mlR.split(/^=== /m).find(x => /potvrda primitka izjave o raskidu/.test(x)) || '';

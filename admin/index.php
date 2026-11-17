@@ -534,8 +534,9 @@ function sj_handle_action(string $act, array &$c): string {
         elseif ($out['taken'] || $out['offsale'] || $out['live']) $paidMsg = ' Kupac nije dobio e-mail „uplata je stigla” jer dio narudžbe nije njegov — javite mu se.';
         elseif (empty($_POST['mail'])) $paidMsg = !empty($fresh['paidMailAt']) ? '' : ' Kupac nije dobio e-mail.';
         else $paidMsg = ['sent' => ' Kupac je dobio e-mail da je uplata stigla.', 'already' => ' Kupac je već ranije dobio e-mail da je uplata stigla.', 'failed' => ' PAŽNJA: e-mail „uplata je stigla” nije poslan (provjerite postavke e-maila); kvačica je ponovno dostupna.', 'skip' => ''][sj_paid_mail($fresh)] ?? '';
-        if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.' . $paidMsg;
-        return 'Označeno kao plaćeno: ' . $no . '.' . $paidMsg;
+        $fisk = ' Izdajte račun iz Neosalona.'; /* v93 (odluka vlasnice 12. 11.): račun za svaku narudžbu iz fiskalne blagajne */
+        if ($warn) return 'Označeno kao plaćeno: ' . $no . '. PAŽNJA: ' . implode('. ', $warn) . '.' . $paidMsg . $fisk;
+        return 'Označeno kao plaćeno: ' . $no . '.' . $paidMsg . $fisk;
       } else {
         /* „Ukloni oznaku”: narudžba više nije plaćena, a njezine torbe s oznakom „plaćeno” vraćaju se u prodaju
            (bez rezervacije). paidCounted ostaje: brojač se ne umanjuje ni ne udvostručuje. */
@@ -574,6 +575,7 @@ function sj_handle_action(string $act, array &$c): string {
       if ($oib !== '' && !sj_oib_ok($oib)) throw new RuntimeException('OIB nije ispravan (11 znamenki, zadnja je kontrolna) — provjerite ga ili ostavite prazno.');
       $c['oib'] = $oib;
       $c['ttl_hours'] = $ttl;
+      if (isset($_POST['pow_bits'])) $c['pow_bits'] = max(0, min(20, (int)$_POST['pow_bits'])); /* v93: provjera „niste robot” */
       $c['confirm_customer'] = !empty($_POST['confirm_customer']);
       $c['show_ostalo'] = !empty($_POST['show_ostalo']);
       $c['mail_mode'] = in_array($_POST['mail_mode'] ?? 'mail', ['log', 'smtp'], true) ? (string)$_POST['mail_mode'] : 'mail';
@@ -947,7 +949,7 @@ function sj_view_orders(): string {
       if (!$sd || !(($tok !== '' && ($sd['token'] ?? '') === $tok) || ($sd['no'] ?? '') === $no)) $clash[] = (string)($it['name'] ?? $it['id']);
     }
     $clashHtml = $clash ? '<br><span class="badge ink">SUKOB</span> <span style="color:#9B2C1F">„' . e(implode('”, „', $clash)) . '” nije zapisana kao plaćena za ovu narudžbu (prodana drugom kupcu ili vraćena u prodaju). Provjerite i po potrebi vratite novac kupcu.</span>' : '';
-    if (!empty($o['paidAt'])) $paid = '<b>plaćeno</b> ' . e(sj_fmt_hr($o['paidAt'])) . $clashHtml . '<br>' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true, 'Ukloniti oznaku plaćeno za narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ')? ' . ($clash ? 'Torbe zapisane kao plaćene za ovu narudžbu vraćaju se u prodaju; one prodane drugom kupcu ostaju njegove.' : 'Njezine torbe vraćaju se u prodaju.'));
+    if (!empty($o['paidAt'])) $paid = '<b>plaćeno</b> ' . e(sj_fmt_hr($o['paidAt'])) . $clashHtml . '<br><span class="muted">račun iz Neosalona</span><br>' . sj_btn('order_unpaid', ['no' => $no], 'Ukloni oznaku', '?s=narudzbe', true, 'Ukloniti oznaku plaćeno za narudžbu ' . $no . ' (kupac: ' . ($o['name'] ?? '') . ')? ' . ($clash ? 'Torbe zapisane kao plaćene za ovu narudžbu vraćaju se u prodaju; one prodane drugom kupcu ostaju njegove.' : 'Njezine torbe vraćaju se u prodaju.'));
     else $paid = (!empty($o['unconfirmed']) ? '<span class="muted">bez potvrde e-mailom</span><br>' : '') . (!empty($o['cancelledAt']) ? '<b>stornirano</b> ' . e(sj_fmt_hr($o['cancelledAt'])) . (($o['cancelBy'] ?? '') === 'automatski' ? ' <span class="muted">(automatski)</span>' : '') . (trim((string)($o['cancelReason'] ?? '')) !== '' ? '<br><span class="muted">razlog: ' . e((string)$o['cancelReason']) . '</span>' : '') . '<br>' : ($tok !== '' && !isset($active[$tok]) ? '<span class="muted">' . (strtotime((string)($o['reservation']['until'] ?? '')) > time() ? 'rezervacija uklonjena (torba prodana ili oznaka uklonjena)' : 'rezervacija istekla') . '</span><br>' : '')) . (!empty($o['cancelledAt']) ? '' : '<b>nije plaćeno</b><br>' . sj_paid_form($o, 'Označiti narudžbu ' . $no . ' plaćenom?')); /* v64: stornirana se ne označuje plaćenom */
     /* v91 (recenzija M1): storno zbog neuplate (automatski ili ručni) — uplata koja ipak stigne poništava storno, kako je kupcu obećano */
     if (empty($o['paidAt']) && !empty($o['cancelledAt']) && empty($o['anonymizedAt']) && (($o['cancelBy'] ?? '') === 'automatski' || ($o['cancelReason'] ?? '') === 'nije uplaćeno u roku'))
@@ -1068,6 +1070,7 @@ function sj_view_stats(): string {
 
 function sj_settings_draft(array $c, array $in): array {
   foreach (['owner_email', 'from_email', 'site_url', 'ttl_hours', 'oib', 'ship_lead', 'pickup_info'] as $k) if (isset($in[$k])) $c[$k] = sj_clean((string)$in[$k], 200);
+  if (isset($in['pow_bits'])) $c['pow_bits'] = max(0, min(20, (int)$in['pow_bits']));
   foreach (['recipient', 'address', 'iban', 'model'] as $k) if (isset($in[$k])) $c['payment'][$k] = sj_clean((string)$in[$k], 120);
   $c['confirm_customer'] = !empty($in['confirm_customer']);
   $c['show_ostalo'] = !empty($in['show_ostalo']);
@@ -1105,6 +1108,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Automatski storno nakon isteka roka (sati; 0 = nikad) <input name="auto_cancel_hours" type="number" min="0" max="336" value="' . e((string)($c['auto_cancel_hours'] ?? 48)) . '"><small class="muted">Do tada narudžba čeka vaš klik pod Narudžbe → „Rok istekao”; kupac tada dobiva e-mail.</small></label>';
   $h .= '<label>Potpis e-mailova kupcima <input name="signature" maxlength="60" value="' . e((string)($c['signature'] ?? '')) . '" placeholder="npr. Jasmina · Shiva.J"></label>';
   $h .= '</div><div class="stack">';
+  $h .= '<label>Provjera „niste robot” pri narudžbi (jačina, 0 = isključeno) <input name="pow_bits" type="number" min="0" max="20" value="' . e((string)(int)($c['pow_bits'] ?? 16)) . '"></label><p class="muted">Preglednik kupca prije slanja narudžbe sam nešto izračuna (obično ispod sekunde, kupac ništa ne klika). Tko šalje stotine lažnih narudžbi, troši puno vremena. Preporučeno 16; više od 18 usporava starije mobitele.</p>';
   $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila (zaštita od robota i lažnih narudžbi)</label><p class="muted">Preporučeno uključeno. Bez potvrde svatko može tuđu e-adresu upisati u narudžbu, pa trgovina toj adresi šalje e-mail s vašim IBAN-om, a lažne narudžbe odmah drže torbe.</p>';
   $h .= '<label class="check"><input type="checkbox" name="confirm_customer" value="1"' . (!empty($c['confirm_customer']) ? ' checked' : '') . '> Automatski pošalji kupcu potvrdu narudžbe s podacima za uplatu i barkodom</label>';
   $h .= '<label class="check"><input type="checkbox" name="show_ostalo" value="1"' . (!empty($c['show_ostalo']) ? ' checked' : '') . '> Prikaži rubriku „Ostalo” (remeni, torbice, platnene torbe po narudžbi) na stranici</label>';

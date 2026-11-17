@@ -14,6 +14,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
+  /* v93: cijeli e2e radi s pravom provjerom „niste robot” (14 bitova, brzo) — izračun u Workeru */
+  { const cf = SITE + 'data/config.json'; const c0 = JSON.parse(fs.readFileSync(cf, 'utf8')); c0.pow_bits = 14; fs.writeFileSync(cf, JSON.stringify(c0, null, 2)); }
   let browser;
   try { browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}); } catch (e) { browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); }
   const errors = [];
@@ -264,7 +266,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pickStrap(pm); await pm.click('#orderBtn');
   await pm.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
   const stepsOnly = await pm.textContent('.pay-steps').catch(() => '');
-  const steps = (await pm.textContent('.pay-sum').catch(() => '')) + ' ' + stepsOnly; /* v90: točan rok u sažetku na vrhu, korak kaže „Do roka” */
+  const steps = (await pm.textContent('.pay-sum').catch(() => '')) + ' ' + stepsOnly;
+  ok(await pm.evaluate(() => !!(powDone && /^\d+$/.test(powDone.nonce) && powOffer && powOffer.bits === 14)), 'v93: narudžba je poslana uz provjeru „niste robot” izračunatu u pregledniku (14 bitova)'); /* v90: točan rok u sažetku na vrhu, korak kaže „Do roka” */
   ok(/^Do roka/.test(stepsOnly.trim()) && !/\d{2}:\d{2}/.test(stepsOnly.split('Uplatite')[0]), 'v90 (recenzija): rok samo jednom — u sažetku „Uplatite … do …”, korak 1 „Do roka”');
   ok(/1–2 radna dana/.test(steps) && /[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(steps), 'vremenska crta s rokom slanja (v68: „Do” + točan rok za uplatu)');
   ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(steps) && /pripremamo za preuzimanje u radionici/.test(steps) && /javit ćemo vam se kad bude spremna i dogovoriti termin/.test(steps), 'novi tekst koraka (preuzimanje)');
@@ -279,7 +282,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
   const stepsU = (await pm.textContent('.pay-sum')) + ' ' + await pm.textContent('.pay-steps');
-  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: torbu tada čuvamo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
+  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produžujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
     ok(!(await pm.locator('#toast.show').count()), 'nakon narudžbe nema obavijesti preko ploče');
   const prim = await pm.locator('.pay-data div:has(dt:text-is("Primatelj")) dd').innerHTML();
   ok(prim.indexOf('Matije Gupca') < prim.indexOf('copy-btn'), 'Kopiraj primatelja ispod adrese');
@@ -516,7 +519,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p11.isVisible('#lbGone') && !(await p11.isVisible('#lbAdd')) && !/na upit/.test(await p11.textContent('#lightbox')), 'v51: prodana torba — jedan gumb, bez „na upit”');
   ok(/Rezervirane i prodane/.test(await p11.textContent('#productGrid')), 'v51: podnaslov „Rezervirane i prodane”');
   await p11.goto(URL + '#torba-tara', { waitUntil: 'networkidle' }); await p11.waitForTimeout(500);
-  ok((await p11.textContent('#lbMaterial')).trim() === 'umjetna koža' && await p11.isVisible('#lbMaterialRow'), 'v52/v64: torba bez upisanog materijala — „umjetna koža” (odluka vlasnika), ne „na upit”');
+  ok((await p11.textContent('#lbMaterial')).trim() === 'kvalitetna umjetna koža' && await p11.isVisible('#lbMaterialRow'), 'v52/v64: torba bez upisanog materijala — „umjetna koža” (odluka vlasnika), ne „na upit”');
   await p11.goto(URL + '#torba-remen', { waitUntil: 'networkidle' }); await p11.waitForTimeout(500);
   ok(await p11.isVisible('#lbLeadRow') && /^5 radnih dana od uplate$/.test((await p11.textContent('#lbLead')).trim()), 'v52/v83: artikl po narudžbi — rok izrade: ' + (await p11.textContent('#lbLead')));
   await p11.keyboard.press('Escape');
