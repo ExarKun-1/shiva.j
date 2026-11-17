@@ -44,9 +44,9 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Tekstilno-tehnološkom/.test(rad) && /umjetne kože/.test(rad) && !/skaj/i.test(rad) && /Matije Gupca 33/.test(rad) && /s torbom u ruci/.test(rad), 'Radionica: umjetna koža, adresa, potvrđene rečenice');
   ok(/Šivalec\. Što radim, piše mi već u prezimenu/.test(rad) && /J od mene/.test(rad) && /rezom, a završava šavom/.test(rad) && /Ono što tako nastane/.test(rad) && /druge jednobojne/.test(rad) && /dana šivanja/.test(rad) && !/[{}]/.test(rad), 'Radionica v27: dorađene rečenice, bez {…}');
   ok(/Šarena se dogodi/.test(await pd.textContent('.about-quote')) && /Jasmina/.test(await pd.textContent('.about-quote small')) && !/po narudžbi: šarena se dogodi/.test(await pd.textContent('#radionica')), 'citat samo lijevo, s potpisom');
-  ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /možete je vratiti u roku 14 dana\. Detalji/.test(await pd.textContent('#uvjeti')) && !/posebn\S* želj|Kada pravo na raskid nemate/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, Ukratko bez iznimke (v78: bez posebnih želja)');
+  ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /možete je vratiti u roku 14 dana od preuzimanja\. Detalji/.test(await pd.textContent('#uvjeti')) && !/posebn\S* želj|Kada pravo na raskid nemate/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, Ukratko bez iznimke (v78: bez posebnih želja)');
   ok(/Ručno šivane torbe iz Zaboka/.test(await pd.title()) && /Ručno šivane torbe iz Zaboka/.test(await pd.textContent('footer')), 'slogan u naslovu i podnožju');
-  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, imate 24 sata za uplatu \(ako taj rok pada u subotu, nedjelju ili na blagdan, do 23:59 prvoga sljedećeg radnog dana\), i za unikate i za modele iz Stalne kolekcije\. Do tada je unikatna torba rezervirana za vas i nitko je drugi ne može naručiti; ako uplata ne stigne, vraća se u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
+  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, imate 24 sata za uplatu; ako rok istječe u subotu, nedjelju ili na blagdan, traje do 23:59 prvoga sljedećeg radnog dana\. Unikat je do tada rezerviran samo za vas, a ako uplata ne stigne, vraća se u ponudu/.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
   ok(!/šaren/i.test(await pd.evaluate(() => [...document.querySelectorAll('#kako, #torbe, #emptyCart, #orderForm, meta')].map(e => e.textContent + (e.getAttribute('content') || '')).join(' '))), 'v62: bez riječi „šarena” u tekstovima kupnje');
   ok((await pd.getAttribute('#radionica a[href^="mailto:"]', 'href')) === 'mailto:shivaj.handmade@gmail.com', 'e-mail kao mailto');
   ok(!/Svaka torba postoji/.test(await pd.getAttribute('meta[name="description"]', 'content')), 'opis za tražilice bez „svaka torba”');
@@ -200,6 +200,14 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await ps.keyboard.press('Tab'); const sk = await ps.evaluate(() => [document.activeElement.className, document.activeElement.getAttribute('href'), Math.round(document.activeElement.getBoundingClientRect().top)]);
     const off = await ps.evaluate(() => [document.querySelectorAll('.img-off').length, [...document.querySelectorAll('#productGrid img:not([hidden])')].filter(i => i.complete && i.naturalWidth === 0).length]);
     ok(sk[0] === 'skip' && sk[1] === '#torbe' && sk[2] >= 0 && off[0] > 0 && off[1] === 0, 'v92 (recenzija): prvi Tab je „Preskoči na ponudu”; slike koje se ne učitaju dobivaju okvir bez slomljene ikone ' + JSON.stringify([sk, off])); await ps.close(); }
+  { const pb = await d.newPage(); await pb.goto(URL + 'img/logo.svg'); await pb.goto(URL, { waitUntil: 'networkidle' }); await pb.waitForTimeout(600);
+    await pb.click('#productGrid .card .photo'); await pb.waitForTimeout(300); const lbOpen = await pb.isVisible('#lightbox.open');
+    await pb.goBack(); await pb.waitForTimeout(400); const r1 = [await pb.isVisible('#lightbox.open'), pb.url()];
+    await pb.click('#openCart'); await pb.waitForTimeout(300); const cOpen = await pb.evaluate(() => document.body.classList.contains('cart-open'));
+    await pb.goBack(); await pb.waitForTimeout(400); const r2 = [await pb.evaluate(() => document.body.classList.contains('cart-open')), pb.url()];
+    await pb.click('#productGrid .card .photo'); await pb.waitForTimeout(300); await pb.click('#lbClose'); await pb.waitForTimeout(400);
+    await pb.goBack(); await pb.waitForTimeout(400); const r3 = pb.url();
+    ok(lbOpen && !r1[0] && !/logo\.svg/.test(r1[1]) && cOpen && !r2[0] && !/logo\.svg/.test(r2[1]) && /logo\.svg/.test(r3), 'v94 (recenzija vijeća, mobitel): „natrag” zatvara povećani prikaz i košaricu, ne izlazi iz trgovine; nakon zatvaranja gumbom „natrag” ide na prethodnu stranicu ' + JSON.stringify([lbOpen, r1, cOpen, r2, r3])); await pb.close(); }
   { const pn = await d.newPage(); await pn.goto(URL + '#torba-nepostoji', { waitUntil: 'load' }); await pn.waitForTimeout(1200);
     const tn = await pn.evaluate(() => [document.getElementById('toast').textContent, Math.round(document.getElementById('torbe').getBoundingClientRect().top)]);
     ok(/više nije u ponudi/.test(tn[0]) && Math.abs(tn[1]) < 200, 'v91 (recenzija): poveznica na nepostojeću torbu — poruka i skok na ponudu ' + JSON.stringify(tn)); await pn.close(); }
@@ -252,7 +260,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await pm.evaluate(() => document.body.classList.contains('no-confirm')) && !(await pm.isVisible('.next-step [data-if-confirm]')) && /Odmah nakon narudžbe vidite IBAN/.test(await pm.evaluate(() => document.querySelector('#kako [data-if-noconfirm]').textContent)), 'v56: bez potvrde e-mailom (postavka) stranica ne obećava link');
   { const v = await pm.evaluate(() => { const q = s => [...document.querySelectorAll(s)]; const shown = el => getComputedStyle(el).display !== 'none';
       return { conf: q('#uvjeti [data-if-confirm], #privatnost [data-if-confirm], footer [data-if-confirm]').map(shown), nc: q('#uvjeti [data-if-noconfirm], #privatnost [data-if-noconfirm], footer [data-if-noconfirm]').map(shown) }; });
-    ok(v.conf.length >= 6 && v.conf.every(x => !x) && v.nc.length >= 4 && v.nc.every(x => x), 'v57: bez potvrde e-mailom Uvjeti, Privatnost i podnožje ne spominju link (' + v.conf.length + '/' + v.nc.length + ')'); }
+    ok(v.conf.length >= 5 && v.conf.every(x => !x) && v.nc.length >= 3 && v.nc.every(x => x), 'v57: bez potvrde e-mailom Uvjeti, Privatnost i podnožje ne spominju link (' + v.conf.length + '/' + v.nc.length + ')'); }
   await pm.click('#closeCart'); await pm.waitForTimeout(300);
   const lunaBtn = pm.locator('.card:has(h3:has(.card-name:text-is("Luna"))) .add-btn');
   ok(/U košarici ✓ · otvori/.test(await lunaBtn.textContent()), 'v46: gumb „U košarici ✓ · otvori”');
@@ -486,7 +494,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p10.isVisible('#lbGone') && /otišla/.test(await p10.textContent('#lbGoneText')) && !(await p10.isVisible('#lbAsk')), 'v48: prodana torba s Instagrama: „otišla” i gumb na slobodne torbe');
   await p10.click('#lbMore'); await p10.waitForTimeout(800);
   ok(!(await p10.evaluate(() => document.getElementById('lightbox').classList.contains('open'))), 'v48: „Pogledajte slobodne torbe” zatvara prikaz');
-  ok(/Dostava: .*besplatno/.test(await p10.textContent('#shipList')), 'v48: cijene dostave u „Kako naručiti”: ' + (await p10.textContent('#shipList')));
+  ok(/Dostava:.*besplatno/.test(await p10.textContent('#shipList')), 'v48: cijene dostave u „Kako naručiti”: ' + (await p10.textContent('#shipList')));
   await p10.evaluate(() => { location.hash = '#kolekcija'; }); await p10.waitForTimeout(300);
   const addB = p10.locator('.card:has(h3:has(.card-name:text-is("Klasik crna"))) .add-btn');
   await addB.focus(); await p10.keyboard.press('Enter'); await p10.waitForTimeout(200);

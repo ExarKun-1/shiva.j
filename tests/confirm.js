@@ -130,6 +130,13 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const nOwner2 = (newMails.match(/PAŽNJA: previše narudžbi/g) || []).length;
     ok(o1.status === 503 && /previše narudžbi odjednom/.test(o1.data.error || '') && !o1.data.orderNo && !((read('rezervacije.json', {}).res || {})[free1]) && !ent.no, 'v68: preopterećenje — narudžba se ne prima (503 s porukom), ništa se ne rezervira ni ne zapisuje');
     ok(o2.status === 503 && !/To: preopt1@primjer\.hr/.test(newMails) && nOwner2 === 1, 'v68: preopterećenje — kupcima nema e-maila, vlasnica dobiva jedno upozorenje (' + nOwner2 + ')');
+    // 7h) v94: ispravljena narudžba (novi ključ, isti e-mail, iste stavke, ista veza) zamjenjuje stari link
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
+      const a1 = await post('order', order('zamjena-key-0001', 'ispravak@primjer.hr', [{ id: 'luna' }], 65)); const LA = lastLink();
+      const a2 = await post('order', order('zamjena-key-0002', 'ispravak@primjer.hr', [{ id: 'luna' }], 65)); const LB = lastLink();
+      const ca = await post('confirm', { id: LA.id, t: LA.t }); const cb = await post('confirm', { id: LB.id, t: LB.t });
+      ok(a1.data.pending && a2.data.pending && LA.id !== LB.id && ca.status === 410 && ca.data.replaced && /zamijenjen novijim/.test(ca.data.error || '') && cb.data.ok && cb.data.orderNo,
+        'v94 (recenzija vijeća): ispravljena narudžba poništava raniji link (410 „zamijenjen novijim”), novi link potvrđuje ' + JSON.stringify([ca.status, cb.status])); }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
