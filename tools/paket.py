@@ -41,7 +41,7 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v04.md u repozitoriju.
 
 def version():
     html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
-    m = re.search(r'Sva prava pridržana · (v\d+)', html)
+    m = re.search(r'SHIVA\.J WEBSHOP — (v\d+)', html)
     if not m:
         sys.exit('verzija nije pronađena u podnožju index.html')
     return m.group(1)
