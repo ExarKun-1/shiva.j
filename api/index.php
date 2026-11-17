@@ -622,7 +622,7 @@ if ($a === 'raskid') {
   $rC = ['name' => sj_unlink($r['name']), 'no' => sj_unlink($r['no']), 'note' => sj_unlink($r['note'])] + $r;
   /* v94 (recenzija vijeća, M2): kad se izjava ne podudara s narudžbom, potvrda ne ponavlja slobodan tekst (lažne poruke s adrese
      trgovine); sadržaj ostaje prepoznatljiv: ime samo ako je slovima, broj samo u obliku GGGG-NNNN, napomena samo kao „primljena” */
-  if (!$matched) $rC = ['name' => preg_match("/^\p{L}[\p{L} '’\-]{0,59}$/u", $r['name']) ? $r['name'] : '[navedeno u izjavi]', 'no' => preg_match('/^(SJ-)?\d{4}-\d{4,6}$/', $r['no']) ? $r['no'] : '[navedeno u izjavi]', 'note' => $r['note'] !== '' ? '[primljena, proslijeđena trgovini]' : ''] + $r;
+  if (!$matched) $rC = ['name' => (preg_match("/^\p{L}[\p{L} '’\-]{0,59}$/u", $r['name']) && count(preg_split('/\s+/', trim($r['name']))) <= 4) ? $r['name'] : '[navedeno u izjavi]', 'no' => preg_match('/^(SJ-)?\d{4}-\d{4,6}$/', $r['no']) ? $r['no'] : '[navedeno u izjavi]', 'note' => $r['note'] !== '' ? '[primljena, proslijeđena trgovini]' : ''] + $r;
   $bodyC = sj_terms_withdraw_lines($r['iban'] !== '' ? ['iban' => substr($r['iban'], 0, 4) . ' … ' . substr($r['iban'], -4)] + $rC : $rC);
   /* vijeće V77-3: ime koje nije samo slova ne ide u pozdrav (lažna poruka s adrese trgovine) */
   $t = [sj_hi($r['name']), '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];

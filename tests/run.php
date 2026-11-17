@@ -310,6 +310,12 @@ file_put_contents($pp, $pb94 . '{pokvareno'); $lst = sj_products();
 $ok(file_get_contents($pp) === $pb94 . '{pokvareno' && is_file($pp . '.osteceno-' . date('Ymd')) && is_array($lst) && isset(json_decode((string)file_get_contents(SJ_DATA . '/ostecene-datoteke.json'), true)['proizvodi.json']), 'v94 (recenzija vijeća): oštećena proizvodi.json — netaknuta, kopija, zapis za admin; trgovina prikazuje javni popis');
 file_put_contents($pp, $pb94); @unlink($pp . '.osteceno-' . date('Ymd')); @unlink(SJ_DATA . '/ostecene-datoteke.json');
 $ok(sj_has_link('platite na secure-pay (.) hr') && sj_has_link('povrat tocka com') && sj_has_link('secure-pay.icu') && !sj_has_link('BOX NOW Zagreb 1, Ilica 5'), 'v94: filtar poveznica i za „(.)”, „tocka” i nove vršne domene; paketomat bez lažnih pogodaka');
+/* v94 (recenzija): prazna proizvodi.json (prekinut prijenos) obnavlja se iz javnog popisa, a sinkronizacija ne prazni trgovinu */
+$pp = sj_products_path(); $pb94b = (string)@file_get_contents($pp); $pub94 = (string)@file_get_contents(SJ_PUBLIC_JSON);
+file_put_contents($pp, ''); clearstatcache(); sj_sync_public_products(); clearstatcache();
+$ok(filesize($pp) > 2 && count((array)json_decode((string)file_get_contents(SJ_PUBLIC_JSON), true)) === count((array)json_decode($pub94, true)), 'v94 (recenzija): prazna proizvodi.json se obnavlja iz javnog popisa; trgovina ne ostaje prazna');
+file_put_contents($pp, $pb94b); file_put_contents(SJ_PUBLIC_JSON, $pub94);
+$ok(sj_unlink('Razlog: točka 2 Uvjeta') === 'Razlog: točka 2 Uvjeta' && sj_has_link('pay.ai/login'), 'v94 (recenzija): „točka” u običnom tekstu ostaje; nove vršne domene u filtru');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

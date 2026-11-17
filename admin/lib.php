@@ -1105,7 +1105,8 @@ function sj_products(): array {
   $path = sj_products_path();
   /* v94 (recenzija vijeća, M1): uvoz iz javnog torbe.json samo kad glavnog popisa nema; oštećeni popis se ne prepisuje —
      kopija .osteceno, traka HITNO u adminu i e-mail vlasnici, a trgovina dotle prikazuje zadnji javni popis (bez skrivenih) */
-  if (!is_file($path)) {
+  if (!is_file($path) || filesize($path) === 0) { /* v94 (recenzija): prazna datoteka (prekinut prijenos) kao da je nema — uvoz javnog popisa */
+    clearstatcache(true, $path);
     $p = sj_read_json(SJ_PUBLIC_JSON, []);
     if ($p) sj_write_json($path, $p);
     return is_array($p) ? array_values($p) : [];
@@ -1155,7 +1156,8 @@ function sj_product_orderable(array $p): bool { return !empty($p['sold']) || !sj
 /* v83 (recenzija): nakon nadogradnje javni torbe.json uskladi se s pravilom o potpunim podacima i bez izmjene popisa
    (poziva se pri otvaranju admina; piše samo kad se sadržaj razlikuje) */
 function sj_sync_public_products(): void {
-  if (!is_file(sj_products_path())) return;
+  sj_products(); /* v94 (recenzija): prazan glavni popis se najprije obnovi iz javnog, da ga sinkronizacija ne isprazni */
+  if (!is_file(sj_products_path()) || filesize(sj_products_path()) === 0) return;
   sj_with_lock(sj_products_path(), function (array &$list) {
     $list = array_values($list); $cur = sj_read_json(SJ_PUBLIC_JSON, null);
     $want = []; foreach ($list as $p) { if (!empty($p['hidden']) || !sj_product_orderable($p)) continue; unset($p['hidden']); $want[] = $p; }
@@ -1378,8 +1380,13 @@ function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_
 /* vijeće V77-2: nastavak domene samo malim slovima (ne „Ilica 1.Online”, „Pozdrav.Eu”), „@” samo u obliku e-adrese (ne „@ana”) */
 /* v91 (recenzija): za odbijanje narudžbe popis vršnih domena (malim ili VELIKIM slovima, i s punom točkom „．”) — ne svaki
    izostavljeni razmak iza točke („12.kat”, „Hvala.lp”); široki uzorak samo u sj_unlink (zamjena u e-mailu) */
-define('SJ_LINK_RE', '~(https?:|www\s*[.．。]|[\p{L}\p{N}-]{2,}[.．。](?-i:icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|ICU|LOL|SBS|CFD|GQ|CYOU|MONSTER|BUZZ|REST|BOND|HR|COM|NET|ORG|EU|IO|LY|ME|INFO|XYZ|RU|TOP|SITE|ONLINE|LINK|SHOP|STORE|DE|AT|SI|BA|RS|IT|CO|UK|US|BIZ|APP|CLUB|LIVE|PRO|TK|CC|WS|CZ|PL|FR|ES|NL|CH|BE|CLICK|PAY|BANK|WIN|VIP)(?![\p{L}\p{N}])|\S+@\S+\.\S+)~iu');
-function sj_link_norm(string $s): string { return preg_replace('~\s*(?:\(\s*(?:\.|dot|tocka|točka)\s*\)|\[\s*(?:\.|dot|tocka|točka)\s*\]|\s(?:dot|tocka|točka)\s)\s*~iu', '.', $s) ?? $s; }
+define('SJ_LINK_RE', '~(https?:|www\s*[.．。]|[\p{L}\p{N}-]{2,}[.．。](?-i:ai|gg|sh|to|tv|cn|su|ml|ga|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|AI|GG|SH|TO|TV|CN|SU|ML|GA|CF|DEV|PAGE|ZIP|MOV|ICU|LOL|SBS|CFD|GQ|CYOU|MONSTER|BUZZ|REST|BOND|HR|COM|NET|ORG|EU|IO|LY|ME|INFO|XYZ|RU|TOP|SITE|ONLINE|LINK|SHOP|STORE|DE|AT|SI|BA|RS|IT|CO|UK|US|BIZ|APP|CLUB|LIVE|PRO|TK|CC|WS|CZ|PL|FR|ES|NL|CH|BE|CLICK|PAY|BANK|WIN|VIP)(?![\p{L}\p{N}])|\S+@\S+\.\S+)~iu');
+function sj_link_norm(string $s): string {
+  /* v94 (recenzija): „(.)”, „[.]”, „ dot ”, „ točka ” postaju točka samo kad iza njih stoji vršna domena („primjer točka hr”),
+     da obična „točka 2 Uvjeta” ostane netaknuta */
+  $tld = 'hr|com|net|org|eu|io|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|me|ly|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|ai|gg|sh|to|tv|cn|su|ml|ga|cf|dev|page|zip|mov';
+  return preg_replace('~\s*(?:\(\s*(?:\.|dot|tocka|točka)\s*\)|\[\s*(?:\.|dot|tocka|točka)\s*\]|\s(?:dot|tocka|točka)\s)\s*(?=(?:' . $tld . ')(?![\p{L}\p{N}]))~iu', '.', $s) ?? $s;
+}
 function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s) || (bool)preg_match(SJ_LINK_RE, sj_link_norm($s)); }
 function sj_unlink(string $s): string {
   /* v94 (recenzija vijeća): „primjer (.) hr”, „primjer [dot] com”, „primjer tocka com” — prvo u običan oblik, pa filtar */
