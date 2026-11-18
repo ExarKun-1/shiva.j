@@ -181,6 +181,8 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       const m0 = mailLog().length;
       const other = await post('order', order('open-key-0003', 'openo@primjer.hr', [{ id: 'vela' }], 70, 'serija-druga-00000000003'));
       const mm = mailLog().slice(m0);
+      const stO = await (await fetch(U + 'status?pt=' + (other.data.pt || ''))).json();
+      ok(/^[0-9a-f]{24}$/.test(other.data.pt || '') && stO.pendState === 'waiting', 'recenzija v98: odgovor za otvorenu narudžbu iz drugog preglednika i api/status?pt= kao za pravu nepotvrđenu (čeka) ' + JSON.stringify(stO.pendState));
       ok(co.data.ok && same.status === 409 && same.data.code === 'open_order' && other.status === 200 && other.data.pending && /nova narudžba nije zaprimljena/.test(mm) && /Prethodna narudžba s unikatnom torbom čeka vašu uplatu/.test(mm) && !/potvrda=/.test(mm),
         'v98: otvorena narudžba — isti preglednik 409, drugi preglednik 200 (bez otkrivanja), vlasnik adrese dobiva objašnjenje e-mailom ' + JSON.stringify([same.status, other.status])); }
     // 7j) v95 (recenzija vijeća v94, sigurnost 3): e-mail „potvrdite narudžbu” bez teksta koji je kupac upisao (paketomat, boja i duljina);

@@ -514,8 +514,13 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const ownN = (mlu.match(/RASKID UGOVORA: SJ-/g) || []).length;
       const ou2 = read('narudzbe.json').find(x => x.no === ou.no) || {};
       const pgu = await (await fetch(U + 'paidclaim?no=' + ou.no + '&t=' + ou.claim)).json();
-      ok(ownN === 2 && read('raskidi.json').length - rr0 === 3 && (ou2.withdrawals || []).length === 2 && (ou2.withdrawals || []).every(w => w.tok === false) && !ou2.cancelledAt && pgu.state !== 'withdrawn',
-        'v98 (sigurnost M1): izjava bez poveznice — narudžba nije „povučena”, vlasnici najviše 2 e-maila, glavni popis 3, uz narudžbu 2 zapisa ' + JSON.stringify([ownN, read('raskidi.json').length - rr0, (ou2.withdrawals || []).length, pgu.state]));
+      ok(ownN === 3 /* 2 po narudžbi + 1 jer kupac (4. izjava, iznad 3 potvrde dnevno) nije dobio potvrdu — vlasnica je šalje sama */ && read('raskidi.json').length - rr0 === 3 && (ou2.withdrawals || []).length === 2 && (ou2.withdrawals || []).every(w => w.tok === false) && !ou2.cancelledAt && pgu.state !== 'withdrawn',
+        'v98 (sigurnost M1): izjava bez poveznice — narudžba nije „povučena”, vlasnici 2 e-maila (+1 kad kupac nije dobio potvrdu), glavni popis 3, uz narudžbu 2 zapisa ' + JSON.stringify([ownN, read('raskidi.json').length - rr0, (ou2.withdrawals || []).length, pgu.state]));
+      fs.writeFileSync(D + 'mail-log.txt', ''); const rr1 = read('raskidi.json').length;
+      await post('raskid', { name: 'Uma Kupac', no: ou.no, email: 'v98u@primjer.hr', tok: rTok(ou.no) });
+      const mlv = fs.readFileSync(D + 'mail-log.txt', 'utf8'); const ou3 = read('narudzbe.json').find(x => x.no === ou.no) || {};
+      ok(/RASKID UGOVORA: SJ-/.test(mlv) && read('raskidi.json').length === rr1 + 1 && ou3.cancelledAt && (ou3.withdrawals || []).some(w => w.tok === true),
+        'recenzija v98: izjava preko poveznice iz e-maila — i nakon granica po narudžbi u glavnom popisu, vlasnica dobiva e-mail, narudžba stornirana');
       const rk0 = read('rokovi.json').cron || 0;
       await fetch(U + 'status?cron=1'); await fetch(U + 'status?cron=0'); /* lažni ključ: ne bilježi se, a stvara tajnu ako je još nema */ const rk1 = read('rokovi.json').cron || 0;
       const key = require('crypto').createHash('sha256').update('cron|' + (read('config.json').pow_secret || '')).digest('hex').slice(0, 16);
@@ -527,7 +532,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const a1 = await post('order', order('api-key-v78a-aaaa', 'v78a@primjer.hr', [{ id: 't78a' }], 65));
       const rk0 = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr' }); /* v93: bez oznake — zapisano, bez storna */
       const oA0 = read('narudzbe.json').find(x => x.no === a1.data.orderNo) || {}; const mlR0 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-      ok(rk0.data.ok && !oA0.cancelledAt && (oA0.withdrawals || []).length === 1 && /Izjava nije poslana preko poveznice iz e-maila, pa narudžba nije automatski stornirana/.test(mlR0), 'v93 (odluka vlasnice): izjava bez oznake iz e-maila se prima, ali neplaćenu narudžbu ne stornira; vlasnica upozorena');
+      ok(rk0.data.ok && !oA0.cancelledAt && (oA0.withdrawals || []).length === 1 && /Izjava nije poslana preko poveznice iz e-maila, pa narudžba nije odmah stornirana/.test(mlR0), 'v93 (odluka vlasnice): izjava bez oznake iz e-maila se prima, ali neplaćenu narudžbu ne stornira; vlasnica upozorena');
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
       const rk = await post('raskid', { name: 'Ana Proba', no: (a1.data.orderNo || '').replace(/^SJ-/, ''), email: 'v78a@primjer.hr', tok: rTok(a1.data.orderNo) });
       const oA = read('narudzbe.json').find(x => x.no === a1.data.orderNo) || {};
