@@ -609,7 +609,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
         $hi . "rok za uplatu narudžbe br. $no prošao je u $untilAcc, a uplatu još ne vidimo" . (($hsN = sj_held_sentence(sj_held_info($o))) !== '' ? '. ' . rtrim($hsN, '.') . ', jer obična uplata poslana do roka može stići sljedeći radni dan' : ($back !== '' ? ", pa $back" : '')) . '.' /* v81 (p2) */
         . "\n\nVeć ste platili? " . ($claim !== '' ? "Kliknite „Uplatio/la sam”:\n$claim\n(ili odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke)." : 'Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.')
         . ' Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '.')
-        . "\n\nAko ste još uvijek zainteresirani za narudžbu, molimo vas da izvršite uplatu i pošaljete potvrdu o plaćanju" . ($uq ? '; ako ' . ($many ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . ($many ? 'one su vaše' : 'ona je vaša') . '.' : '.')
+        . "\n\nAko ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati" . ($uq ? '; ako ' . ($many ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . ($many ? 'one su vaše' : 'ona je vaša') . '.' : '.')
         . $storno
         . "\n\n" . sj_pay_lines($o, $c) . $bye, null, (string)$c['owner_email']);
     }
@@ -688,7 +688,7 @@ function sj_cancel_mail(array $o, string $reason): bool {
     . ($reason === 'nije uplaćeno u roku'
       ? "\n\nAko ste ipak platili, javite nam se odgovorom na ovaj e-mail i riješit ćemo to: " . ($uq ? 'ako je torba još slobodna, šaljemo vam je, a inače vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : 'narudžbu obnavljamo ili vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.')
       : ($reason === 'kupac odustao' /* v93 (recenzija): raskid kupca — povrat u 14 dana, bez kamata (ZZP čl. 83) */
-        ? "\n\nAko ste je već platili, cijeli iznos vraćamo najkasnije 14 dana od primitka vaše izjave, na račun s kojeg ste platili (Uvjeti, t. 7)."
+        ? "\n\nAko ste je već platili, cijeli iznos vraćamo najkasnije 14 dana od primitka vaše izjave, na račun s kojeg ste platili (Uvjeti kupnje, točka 7.)."
         : "\n\nAko ste je već platili, javite nam se odgovorom na ovaj e-mail i vratit ćemo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana."))
     . "\n\nSrdačan pozdrav,\n" . sj_signature(), null, (string)$c['owner_email']);
 }
@@ -1596,7 +1596,8 @@ function sj_terms_text(?array $c = null): string {
   if ($html === false || !preg_match('/<!-- UVJETI-START -->(.*?)<!-- UVJETI-END -->/s', $html, $m)) { sj_marker_missing('UVJETI'); return $cache[$key] = ''; }
   $h = $m[1];
   $drop = !empty($c['require_confirm']) ? 'data-if-noconfirm' : 'data-if-confirm';
-  $h = preg_replace('#<span ' . $drop . '>.*?</span>#s', '', $h) ?? '';
+  /* v98: grana se briše s ugniježđenim oznakama (npr. <span class="nw">e-maila</span>) — lijeni uzorak stao bi na prvom </span> */
+  $h = preg_replace('#<span ' . $drop . '>((?:[^<]++|<(?!/?span\b)|<span\b[^>]*+>(?1)</span>)*+)</span>#s', '', $h) ?? '';
   $h = preg_replace('#<span data-ttl-text>.*?</span>#s', sj_hours_text(max(1, (int)$c['ttl_hours'])), $h) ?? '';
   /* v75: rok slanja iz Postavki; prazno = rečenica bez roka (kao stranica) */
   $sl = trim((string)($c['ship_lead'] ?? ''));
@@ -1608,7 +1609,7 @@ function sj_terms_text(?array $c = null): string {
   $h = preg_replace('#<span data-terms-cheap-wrap>(.*?)<span data-terms-cheapest>.*?</span></span>#s', $cheap !== '' ? '${1}SJCHEAPEST' : '', $h) ?? '';
   $h = preg_replace('#<span data-terms-auto-wrap>(.*?)<span data-terms-auto>.*?</span>(.*?)</span>#s', $autoH > 0 ? '${1}SJAUTOH${2}' : '', $h) ?? '';
   /* v84 (recenzija): slika EU obavijesti nema smisla u e-mailu — umjesto nje kratka uputa na stranicu */
-  $h = preg_replace('#<figure class="lg-notice">.*?</figure>#s', '<p>Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici, u Uvjetima kupnje (točka 8).</p>', $h) ?? '';
+  $h = preg_replace('#<figure class="lg-notice">.*?</figure>#s', '<p>Usklađenu obavijest EU o zakonskom jamstvu možete pogledati na našoj stranici, u Uvjetima kupnje (točka 8.).</p>', $h) ?? '';
   $h = preg_replace('#<h3>(.*?)</h3>#s', "\n\n$1\n", $h) ?? '';
   $h = preg_replace('#<h4>(.*?)</h4>#s', "\n$1\n", $h) ?? '';
   $h = preg_replace('#</p>|</pre>|</li>#', "\n", $h) ?? '';
@@ -1655,7 +1656,7 @@ function sj_fmt_hr(?string $iso): string {
   if (!$t) return $iso;
   $dt = new DateTime('@' . $t);
   $dt->setTimezone(new DateTimeZone('Europe/Zagreb'));
-  return $dt->format('d. m. Y. H:i');
+  return $dt->format('j. n. Y. \\u H:i'); /* v98 (recenzija vijeća v97, dizajn): isti oblik kao rok i potvrda raskida („8. 1. 2026. u 08:05”) */
 }
 
 /* v98 (recenzija vijeća v97, sigurnost H1): odgovor odmah, a skripta nastavlja (e-mailovi nakon odgovora). U ugrađenom

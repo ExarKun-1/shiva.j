@@ -18,6 +18,11 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v53 (stranica v98; vijeće na v97): izjava o raskidu — odgovor odmah, izmjena narudžbe i e-mailovi nakon njega (brzina ne otkriva
+        narudžbu), koraci nakon spremanja bez pada, uz istu narudžbu najviše 3 izjave dnevno u glavnom popisu i 2 e-maila vlasnici,
+        izjava bez poveznice iz e-maila ne „povlači” narudžbu (sj_withdrawn); broj narudžbe kako je upisan; otvorena neplaćena
+        narudžba javlja se odmah samo istom pregledniku (drugima e-mailom); nepotvrđene iz drugih preglednika se ne istiskuju;
+        cron se bilježi samo s ključem; IPv6 mreža /40; provjera X-Forwarded-For; poruka greške prema radnji.
    v52 (stranica v96; vijeće na v95): oznaka pt (status: potvrđena na drugom uređaju), zamjena linka po oznaci preglednika
         (series); raskid nakon „Uplatio/la sam” ili uplate („paket ne šaljemo”), stanje withdrawn; odgovor raskida bez „mailed”;
         potvrde istoj adresi iz narudžbe 3 dnevno; ime iz narudžbe u potvrdi; dnevna granica raskida 24 h; dodatni popis do 20 MB
