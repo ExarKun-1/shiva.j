@@ -165,6 +165,24 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       const pnd = read('narudzbe-na-cekanju.json', []).find(x => x.id === LV.id) || {};
       const st = await (await fetch(U + 'status?pt=' + (pnd.pt || ''))).json();
       ok(/^[0-9a-f]{24}$/.test(pnd.pt || '') && st.pendState === 'confirmed' && st.pendNo === cv.data.orderNo, 'v96: api/status?pt= javlja da je narudžba potvrđena (drugi uređaj) ' + JSON.stringify([st.pendState, st.pendNo])); }
+    // 7l) v98 (recenzija vijeća v97, sigurnost M3/M4): tri narudžbe s tuđim e-mailom iz drugog preglednika ne istiskuju pravi link;
+    //     otvorena neplaćena narudžba javlja se odmah samo istom pregledniku, drugom odgovor je kao za svaku narudžbu, a vlasniku adrese e-mail
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
+      try { fs.unlinkSync(D + 'narudzbe-na-cekanju.json'); } catch (e) {}
+      await post('order', order('evict-key-0001', 'evict@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, 'serija-zrtve-00000000002')); const LV = lastLink();
+      for (let i = 2; i <= 4; i++) { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} await post('order', order('evict-key-000' + i, 'evict@primjer.hr', [{ id: 'kozmeticka', qty: i }], 20 * i, 'serija-napadaca-0000000' + i)); }
+      const cv = await post('confirm', { id: LV.id, t: LV.t });
+      ok(cv.data.ok && /^SJ-/.test(cv.data.orderNo || ''), 'v98: tri tuđe nepotvrđene narudžbe ne istiskuju pravi link ' + cv.status);
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      await post('order', order('open-key-0001', 'openo@primjer.hr', [{ id: 'luna' }], 65, 'serija-kupca-0000000003')); const LO = lastLink(); const co = await post('confirm', { id: LO.id, t: LO.t });
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      const same = await post('order', order('open-key-0002', 'openo@primjer.hr', [{ id: 'vela' }], 70, 'serija-kupca-0000000003'));
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      const m0 = mailLog().length;
+      const other = await post('order', order('open-key-0003', 'openo@primjer.hr', [{ id: 'vela' }], 70, 'serija-druga-00000000003'));
+      const mm = mailLog().slice(m0);
+      ok(co.data.ok && same.status === 409 && same.data.code === 'open_order' && other.status === 200 && other.data.pending && /nova narudžba nije zaprimljena/.test(mm) && /Prethodna narudžba s unikatnom torbom čeka vašu uplatu/.test(mm) && !/potvrda=/.test(mm),
+        'v98: otvorena narudžba — isti preglednik 409, drugi preglednik 200 (bez otkrivanja), vlasnik adrese dobiva objašnjenje e-mailom ' + JSON.stringify([same.status, other.status])); }
     // 7j) v95 (recenzija vijeća v94, sigurnost 3): e-mail „potvrdite narudžbu” bez teksta koji je kupac upisao (paketomat, boja i duljina);
     //     nakon potvrde ploča dobiva adresu za dostavu (kupac 3)
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);

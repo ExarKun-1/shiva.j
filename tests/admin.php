@@ -617,6 +617,20 @@ $rb90 = file_get_contents($D . '/rezervacije.json'); file_put_contents($D . '/re
 $pg90 = $req('GET', ['s' => 'torbe']); $pn90 = $req('GET', ['s' => 'narudzbe']);
 $ok(str_contains($pg90, '200 OK') && str_contains($pg90, 'HITNO') && str_contains($pg90, 'Ovaj prikaz se ne može otvoriti') && str_contains($pn90, 'HITNO'), 'v90: oštećene rezervacije — Torbe i Narudžbe prikazuju traku HITNO umjesto prazne stranice');
 file_put_contents($D . '/rezervacije.json', $rb90); @unlink($D . '/ostecene-datoteke.json');
+/* v98 (recenzija vijeća v97, N2): prazna (0 B) narudzbe.json — traka HITNO „je prazna (0 B)”, ne prazan popis bez upozorenja */
+$nb98 = file_get_contents($D . '/narudzbe.json'); file_put_contents($D . '/narudzbe.json', '');
+file_put_contents($D . '/ostecene-datoteke.json', json_encode(['narudzbe.json' => gmdate('c')]));
+$pn98 = $req('GET', ['s' => 'narudzbe']);
+$ok(str_contains($pn98, 'HITNO') && str_contains($pn98, 'narudzbe.json je prazna (0 B)'), 'v98 (N2): prazna narudzbe.json — traka HITNO u adminu');
+file_put_contents($D . '/narudzbe.json', $nb98); @unlink($D . '/ostecene-datoteke.json');
+/* v98 (N4, sigurnost L2): .htaccess bez otiska ili s krivim otiskom — upozorenje na svakoj stranici admina */
+$site98 = dirname($D);
+file_put_contents($site98 . '/.htaccess', "Header setifempty Content-Security-Policy \"script-src 'self' 'sha256-AAAA' 'unsafe-inline'\"\n");
+$pc98 = $req('GET', ['s' => 'narudzbe']);
+file_put_contents($site98 . '/.htaccess', "Header setifempty Content-Security-Policy \"script-src 'self' 'unsafe-inline'\"\n");
+$pc98b = $req('GET', ['s' => 'torbe']);
+@unlink($site98 . '/.htaccess');
+$ok(str_contains($pc98, 'nisu iz istog paketa') && str_contains($pc98b, 'nema otiska skripte'), 'v98 (N4/L2): krivi ili nepostojeći otisak skripte u .htaccess — upozorenje na svakoj stranici admina');
 proc_terminate($srv); @unlink($jar);
 echo implode("\n", $R), "\n";
 $f = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));

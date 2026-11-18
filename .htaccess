@@ -24,7 +24,8 @@ Options -Indexes
   # dodataka (object), bez tuđe osnovne adrese (base) i tuđih obrazaca; izračun „niste robot” radi u Workeru (blob:)
   # v96 (recenzija vijeća v95, sigurnost N7): paket (tools/paket.py) ovdje upisuje 'sha256-…' ugrađene skripte — tada preglednici
   # ignoriraju 'unsafe-inline' (ostaje samo za stare preglednike); slike, veze i okviri samo s ove stranice i BOX NOW
-  Header setifempty Content-Security-Policy "script-src 'self' 'unsafe-inline' https://widget-cdn.boxnow.hr; worker-src 'self' blob:; connect-src 'self' https://*.boxnow.hr; img-src 'self' data: blob: https://*.boxnow.hr; frame-src 'self' https://*.boxnow.hr; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  # v98 (recenzija vijeća v97, sigurnost L2): default-src 'self' — stilovi i pisma samo s ove stranice, fonts.bunny.net i BOX NOW
+  Header setifempty Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://*.boxnow.hr; font-src 'self' data: https://fonts.bunny.net https://*.boxnow.hr; script-src 'self' 'unsafe-inline' https://widget-cdn.boxnow.hr; worker-src 'self' blob:; connect-src 'self' https://*.boxnow.hr; img-src 'self' data: blob: https://*.boxnow.hr; frame-src 'self' https://*.boxnow.hr; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
