@@ -552,7 +552,7 @@ if ($a === 'confirm') {
     return ['done' => $done, 'P' => $P];
   }, []);
   if (($out['err'] ?? 0) === 403) sj_json_out(['ok' => false, 'error' => 'Neispravan link za potvrdu. Otvorite najnoviji e-mail „Potvrdite narudžbu”.'], 403);
-  if (($out['err'] ?? 0) === 'replaced') sj_json_out(['ok' => false, 'expired' => true, 'replaced' => true, 'error' => 'Ovaj link je zamijenjen novijim: otvorite najnoviji e-mail „Shiva.J — potvrdite narudžbu”.'], 410);
+  if (($out['err'] ?? 0) === 'replaced') sj_json_out(['ok' => false, 'expired' => true, 'replaced' => true, 'error' => 'Ovaj link je zamijenjen novijim: otvorite najnoviji e-mail „Shiva.J — potvrdite narudžbu (novi link)”.'], 410);
   if (($out['err'] ?? 0) === 410) sj_json_out(['ok' => false, 'expired' => true, 'error' => 'Link za potvrdu je istekao, pa narudžba nije zaprimljena i torba nije rezervirana. Pošaljite narudžbu ponovno.'], 410);
   if (isset($out['taken'])) sj_json_out(['ok' => false, 'taken' => $out['taken']], 409);
   if (isset($out['changed'])) sj_json_out(['ok' => false, 'error' => $out['changed']], 409);
@@ -1465,7 +1465,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
       { [$strap, $wish] = sj_strap_split((string)$it['note'], $byIdC[(string)($it['id'] ?? '')] ?? []); /* v77 (recenzija R76-D4, K2): remen iz izbornika ≠ želja */
         if ($strap !== '') $t[] = 'Remen za „' . $it['name'] . '”: ' . $strap . ' (iz ponude).'; /* vijeće V78-P5: pravo na raskid ne ovisi o izboru */
         /* v78 (odluka vlasnika, 12. krug): posebnih želja nema — pravo na raskid u 14 dana vrijedi za sve artikle */
-        elseif ($wish !== '') $t[] = 'Boja i duljina za „' . $it['name'] . '”: ' . $wish . '.'; }
+        elseif ($wish !== '') $t[] = 'Boja i duljina za artikl „' . $it['name'] . '”: ' . $wish . '.'; } /* v96: nominativ uz „artikl” */
   }
   $t[] = '';
   $what = (!$anyMade || $allColl) ? (count($items) > 1 ? 'Torbe' : 'Torbu') : (count($items) > 1 ? 'Artikle' : 'Artikl');
