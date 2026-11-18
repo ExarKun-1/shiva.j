@@ -93,9 +93,16 @@ if (!sj_logged_in()) {
    v69 (vijeće na v68, N68-3): samo pri prikazu stranice (GET), nikad prije vlasničine radnje — klik „Označi plaćenom”
    ne smije izgubiti od automatskog storna u istom zahtjevu */
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-  try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
-  try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
-  try { sj_daily_backup(); sj_log_rotate(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' kopija: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v90 (vijeće) */
+  /* v95 (recenzija vijeća v94, M2): rokovi, brisanje, kopija i sažetak raskida NAKON prikaza stranice (kao u api/) — spor ili
+     nedostupan poslužitelj pošte ne smije ostaviti admin praznim ni prekinuti slanje e-mailova istekom vremena */
+  register_shutdown_function(function () {
+    if (function_exists('ignore_user_abort')) ignore_user_abort(true); if (function_exists('set_time_limit')) @set_time_limit(0);
+    if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
+    try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
+    try { sj_raskid_digest(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' sažetak raskida: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
+    try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
+    try { sj_daily_backup(); sj_log_rotate(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' kopija: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v90 (vijeće) */
+  });
   try { sj_sync_public_products(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' torbe.json: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v83 */
 }
 
@@ -1003,15 +1010,27 @@ function sj_view_orders(): string {
 function sj_view_withdrawals(): string {
   $now = time();
   $l = array_reverse(array_filter(sj_read_json(SJ_DATA . '/raskidi.json', []), fn($x) => (int)strtotime((string)($x['at'] ?? '')) > $now - 30 * 86400));
-  if (!$l) return '';
-  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom. Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
-  foreach (array_slice($l, 0, 50) as $x) {
+  $ov = sj_raskid_overflow_read(2, 100); /* v95 (recenzija vijeća v94, sigurnost 4): dodatni popis (iznad granica) */
+  if (!$l && !$ov['n']) return '';
+  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom (kad se izjava ne podudara s narudžbom, samo uz provjeru „niste robot”; inače mu je pošaljite sami). Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
+  /* v95 (sigurnost 4): sve izjave iz 30 dana (ne samo zadnjih 50) — prvo one koje se podudaraju s narudžbom */
+  usort($l, fn($a, $b) => [!empty($b['order']) && !empty($b['emailMatch']), (string)($b['at'] ?? '')] <=> [!empty($a['order']) && !empty($a['emailMatch']), (string)($a['at'] ?? '')]);
+  $card = function (array $x): string {
     /* v82 (pregled prije objave): neplaćena narudžba — nema novca za vratiti */
     $ox = !empty($x['order']) ? sj_order_find(['no' => (string)$x['order']]) : null;
     $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
-    $h .= '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . '</div>';
+    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
+  };
+  $shown = 0;
+  foreach ($l as $x) { if (++$shown > 300) break; $h .= $card($x); }
+  if (count($l) > 300) $h .= '<p class="muted">… i još ' . (count($l) - 300) . ' starijih izjava bez podudaranja s narudžbom (vjerojatno zlouporaba; cijeli popis je u data/raskidi.json).</p>';
+  $h .= '</div>';
+  if ($ov['n']) {
+    $h .= '<details class="card"><summary>Ostale izjave (' . $ov['n'] . ') — stigle bez provjere „niste robot” ili u neuobičajeno velikom broju</summary><p class="muted">Većina je vjerojatno zlouporaba obrasca, ali i prava izjava može biti ovdje (npr. ako kupčev preglednik nije izračunao provjeru). Prikazano je zadnjih ' . count($ov['list']) . '; sve su u data/raskidi-visak-GGGG-MM.jsonl.</p><div class="rokl">';
+    foreach ($ov['list'] as $x) $h .= $card($x);
+    $h .= '</div></details>';
   }
-  return $h . '</div>';
+  return $h;
 }
 
 /* v68: „Rok istekao” — kartice na vrhu Narudžbi: poziv na broj (usporedba s izvodom), je li komad još slobodan,

@@ -1565,7 +1565,7 @@
       </div>
       <div>
         <label for="fEmail">E-mail</label>
-        <input id="fEmail" type="email" required pattern="[^@\s]+@[^@\s]+\.[^@\s]{2,}" autocomplete="email" maxlength="120" inputmode="email">
+        <input id="fEmail" type="email" required pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,24}" autocomplete="email" maxlength="120" inputmode="email">
       </div>
       <div>
         <label for="fPhone">Telefon</label>
@@ -2414,7 +2414,10 @@ function renderCart(){
   document.getElementById("orderNoteMade").hidden = !anyMade || hold.dataset.made === "1";
   /* v66: kratak natpis; uputa o želji ispod polja, samo kad je u košarici nešto po narudžbi */
   document.getElementById("fNoteLabel").textContent = anyMade ? "Napomena uz dostavu (neobavezno)" : "Napomena uz dostavu ili narudžbu (neobavezno)";
-  document.getElementById("fNoteHint").hidden = !anyMade;
+  /* v95 (recenzija vijeća v94, kupac 8): uputa o remenu samo kad je u košarici model s remenom (Stalna kolekcija) */
+  { const hasColl = cart.some(p => p.made && catOf(p) === "kolekcija"), hint = document.getElementById("fNoteHint");
+    hint.textContent = hasColl ? "Boju i duljinu remena odaberite gore, uz model." : "Boju i duljinu upišite gore, uz artikl.";
+    hint.hidden = !anyMade; }
   document.getElementById("orderNote").hidden = document.getElementById("orderNoteHold").hidden && !anyMade;
   /* v46: promijenjena košarica → obrazac se vraća (stari link vrijedi za staru košaricu) */
   if(form.classList.contains("is-pending") && cartSig() !== pendingSig) pendingCartChanged();
@@ -2507,7 +2510,9 @@ document.getElementById("cartItems").addEventListener("input", e => {
 });
 
 /* ---------- v93: provjera „niste robot” izračunom (zadatak stiže uz api/status; bez vanjske usluge) ---------- */
-var POW_SRC = `
+/* v95 (recenzija vijeća v94, sigurnost 7): izračun je obična funkcija stranice (bez new Function, pa stranica može imati
+   strožu zaštitu CSP); Worker dobiva njezin izvorni tekst */
+function powCore(){
 const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
 const W=new Int32Array(64);
 function h0(str){ /* prva 32-bitna riječ SHA-256 (ASCII ulaz) */
@@ -2529,8 +2534,9 @@ function h0(str){ /* prva 32-bitna riječ SHA-256 (ASCII ulaz) */
   return a0>>>0;
 }
 function solve(salt,bits,from,to){ const lim=bits>=32?0:(2**(32-bits)); for(let n=from;n<to;n++){ if(h0(salt+":"+n)<lim) return n; } return -1; }
-self.onmessage=e=>{ const {salt,bits}=e.data; let n=0; for(;;){ const r=solve(salt,bits,n,n+50000); if(r>=0){ self.postMessage({nonce:String(r)}); return; } n+=50000; } };
-`;
+return solve;
+}
+var POW_SRC = "const solve=(" + powCore.toString() + ")();\n" + `self.onmessage=e=>{ const {salt,bits}=e.data; let n=0; for(;;){ const r=solve(salt,bits,n,n+50000); if(r>=0){ self.postMessage({nonce:String(r)}); return; } n+=50000; } };`;
 var powOffer = null, powDone = null, powJob = null; /* var: renderCart je može pozvati prije ovog retka */
 async function powRefresh(){ try { const r = await fetch(apiUrl("status"), { cache: "no-store" }); const d = await r.json(); powSet(d.pow || null); } catch(e){} }
 function powSet(p){ if(p && typeof p.salt === "string" && p.bits > 0) powOffer = { salt: p.salt, bits: +p.bits, at: Date.now() }; else if(p === null) powOffer = null; }
@@ -2548,7 +2554,7 @@ function powSolve(){
       w.postMessage({ salt, bits });
     } catch(e){ mainThread(); }
     function mainThread(){ /* bez Workera: u dijelovima, da stranica ne zastane */
-      const f = new Function(POW_SRC.replace(/self\.onmessage[\s\S]*$/, "") + "return solve;")();
+      const f = powCore();
       let n = 0; const step = () => { const r = f(salt, bits, n, n + 20000); if(r >= 0) done(String(r)); else { n += 20000; setTimeout(step, 0); } }; step();
     }
   });
@@ -2867,7 +2873,8 @@ function pendingCartChanged(){
 }
 /* v92 (recenzija): podaci kupca dok narudžba čeka potvrdu ostaju samo u ovoj kartici preglednika (sessionStorage), da nakon
    osvježavanja ne treba sve upisivati ponovno; brišu se potvrdom narudžbe ili kad oznaka čekanja istekne */
-const PEND_FIELDS = ["fName", "fEmail", "fPhone", "fAddr", "fCity"];
+const PEND_FIELDS = ["fName", "fEmail", "fPhone", "fAddr", "fCity", "fLocker", "fNote"]; /* v95 (recenzija vijeća v94, mobitel): i paketomat i napomena */
+function pendFormFp(){ return JSON.stringify(PEND_FIELDS.map(id => { const el = document.getElementById(id); return el ? el.value.trim() : ""; }).concat([shipId])); }
 function pendFormSave(){ try { const o = {}; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el) o[id] = el.value; }); sessionStorage.setItem("sj-pend-form", JSON.stringify(o)); } catch(e){} }
 function pendFormClear(){ try { sessionStorage.removeItem("sj-pend-form"); } catch(e){} }
 function pendFormRestore(){ try { const o = JSON.parse(sessionStorage.getItem("sj-pend-form") || "null"); if(!o) return; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el && !el.value && typeof o[id] === "string") el.value = o[id]; }); } catch(e){} }
@@ -2995,7 +3002,7 @@ function sendMailto(o){
    e-mailom tako nikad ne rezerviraju torbe). Košarica ostaje dok narudžba ne bude potvrđena. */
 let lastPending = null;
 function showOrderPending(srv, email, note = ""){
-  lastPending = { srv, email };
+  lastPending = { srv, email, fp: note && lastPending ? lastPending.fp : pendFormFp() }; /* v95: otisak poslanih podataka (bez slanja ikamo) */
   /* v53: oznaka čekanja na ovom uređaju — samo rok linka i potpis košarice, bez osobnih podataka */
   if(srv.mailCustomer !== false){ storeSet("pend", { until: srv.confirmUntil || null, sig: cartSig() }); pendFormSave(); }
   const until = srv.confirmUntil ? fmtDateTime(srv.confirmUntil) : "";
@@ -3006,8 +3013,8 @@ function showOrderPending(srv, email, note = ""){
   showOrderError(srv.mailCustomer === false
     ? `<b>E-mail za potvrdu nismo uspjeli poslati.</b> Provjerite adresu ${escHtml(email)} i pošaljite narudžbu ponovno ili nam pišite na ${escHtml(OWNER_EMAIL)}.
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button></div>`
-    : note + `<b>Još jedan korak: potvrdite narudžbu.</b>
-       <span class="pend-p">Poslali smo <span class="nw">e-mail</span> na <b class="inline">${escHtml(email)}</b> s naslovom „Shiva.J — potvrdite narudžbu”. Otvorite link iz njega${linkFor ? "; vrijedi " + escHtml(linkFor) + (until ? " (do " + escHtml(until) + ")" : "") : until ? "; vrijedi do " + escHtml(until) : ""}.</span>
+    : (srv.replaced && !note ? `<p class="pend-note"><b>Poslali smo novi <span class="nw">e-mail</span>.</b> Link iz ranijeg <span class="nw">e-maila</span> više ne vrijedi; vrijedi samo novi.</p>` : "") + note + `<b>Još jedan korak: potvrdite narudžbu.</b>
+       <span class="pend-p">Poslali smo <span class="nw">e-mail</span> na <b class="inline">${escHtml(email)}</b> s naslovom „Shiva.J — potvrdite narudžbu${srv.replaced ? " (novi link)" : ""}”. Otvorite link iz njega${linkFor ? "; vrijedi " + escHtml(linkFor) + (until ? " (do " + escHtml(until) + ")" : "") : until ? "; vrijedi do " + escHtml(until) : ""}.</span>
        <span class="pend-p">Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu. Link radi i na mobitelu ili drugom računalu, pa ovu stranicu možete zatvoriti.</span>
        <span class="pend-p">E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:</span>
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji e-mail ponovno</button></div>
@@ -3016,6 +3023,8 @@ function showOrderPending(srv, email, note = ""){
   if(srv.mailCustomer !== false){
     orderFormEl.classList.add("is-pending"); pendingSig = cartSig();
     if(nextStepEl) nextStepEl.textContent = "Narudžba je poslana i čeka vašu potvrdu iz e-maila.";
+    /* v95 (recenzija vijeća v94, mobitel): obrazac se tek sad sakrio — ponovno pomakni, da naslov ne ostane ispod zaglavlja košarice (iPhone SE) */
+    requestAnimationFrame(() => orderError.scrollIntoView({ block: "nearest", behavior: SMOOTH }));
   }
 }
 /* v53: natrag/osvježavanje nakon slanja — obrazac je prazan, ali narudžba čeka potvrdu iz e-maila */
@@ -3116,6 +3125,8 @@ function claimFromLink(){
 
 /* v73: funkcija za jednostrani raskid (ZZP čl. 81.a, NN 59/26): 1. podaci, 2. pregled izjave i „Potvrditi raskid
    ugovora”; potvrdu sa sadržajem, datumom i vremenom šalje api/raskid e-poštom (st. 6.) */
+/* v95: isti oblik e-adrese kao na poslužitelju (sj_valid_email) */
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;
 (function raskidInit(){
   const f = document.getElementById("raskidForm"); if(!f) return;
   const $ = id => document.getElementById(id);
@@ -3132,10 +3143,10 @@ function claimFromLink(){
     const v = val(), miss = [];
     if(!v.name) miss.push("ime i prezime");
     if(!v.no) miss.push("broj narudžbe (ili datum narudžbe i naziv torbe)");
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v.email)) miss.push("ispravan e-mail za potvrdu");
+    if(!EMAIL_RE.test(v.email)) miss.push("ispravan e-mail za potvrdu");
     if(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban)) miss.push("IBAN u obliku HR12 3456 … (ili ga ostavite prazno)");
     /* v83 (vijeće): neispravna polja označena za čitač zaslona */
-    [["rName", !v.name], ["rNo", !v.no], ["rEmail", !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v.email)], ["rIban", !!(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban))]].forEach(([id, bad]) => { const el = $(id); if(!el) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " raskidError").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
+    [["rName", !v.name], ["rNo", !v.no], ["rEmail", !EMAIL_RE.test(v.email)], ["rIban", !!(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban))]].forEach(([id, bad]) => { const el = $(id); if(!el) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " raskidError").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
     if(miss.length) return err($("raskidError"), "Molimo upišite: " + miss.join(", ") + ".");
     err($("raskidError"), "");
     $("raskidPreview").textContent = "Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.\n"
@@ -3147,7 +3158,9 @@ function claimFromLink(){
   $("raskidConfirm").addEventListener("click", async e => {
     const btn = e.currentTarget; btn.disabled = true; err($("raskidError2"), "");
     try {
-      const pw = await Promise.race([powSolve(), new Promise(r => setTimeout(() => r(null), 8000))]); /* v94: provjera „niste robot” i uz izjavu (bez nje izjava ipak stiže) */
+      /* v95 (recenzija vijeća v94): svjež zadatak (težina se mogla promijeniti) i dulje čekanje; bez provjere izjava ipak stiže */
+      await Promise.race([powRefresh(), new Promise(r => setTimeout(r, 3000))]);
+      const pw = await Promise.race([powSolve(), new Promise(r => setTimeout(() => r(null), 15000))]); /* v94: provjera „niste robot” i uz izjavu */
       const res = await fetch(apiUrl("raskid"), { method: "POST", headers: POST_JSON, body: JSON.stringify(Object.assign(val(), pw ? { pow: { salt: pw.salt, nonce: pw.nonce } } : {})) });
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
@@ -3156,14 +3169,19 @@ function claimFromLink(){
         done.focus({ preventScroll: true }); done.scrollIntoView({ block: "center" }); return;
       }
       btn.disabled = false;
-      err($("raskidError2"), (data && data.error ? data.error + " " : "Slanje nije uspjelo. ") + "Izjavu nam možete poslati i e-mailom na " + OWNER_EMAIL + " — rok je poštovan ako je pošaljete prije isteka 14 dana.");
+      /* v95 (recenzija vijeća v94, mobitel): poruka poslužitelja koja već navodi e-adresu ne ponavlja se */
+      const se = data && data.error ? String(data.error) : "";
+      err($("raskidError2"), se.includes(OWNER_EMAIL) ? se + " Rok je poštovan ako je pošaljete prije isteka 14 dana." : (se ? se + " " : "Slanje nije uspjelo. ") + "Izjavu nam možete poslati i e-mailom na " + OWNER_EMAIL + " — rok je poštovan ako je pošaljete prije isteka 14 dana.");
+      btn.scrollIntoView({ block: "nearest" }); /* v95: gumb za ponovni pokušaj ostaje vidljiv (iPhone SE) */
     } catch(x){
       btn.disabled = false;
       err($("raskidError2"), "Veza trenutno ne radi. Pokušajte ponovno ili izjavu pošaljite e-mailom na " + OWNER_EMAIL + " — rok je poštovan ako je pošaljete prije isteka 14 dana.");
+      btn.scrollIntoView({ block: "nearest" });
     }
   });
 })();
 
+let paneAddr = ""; /* v95: adresa za dostavu samo dok je ploča otvorena */
 function showOrderSuccess(srv){
   /* v62: podaci za uplatu iz odgovora servisa (Postavke) imaju prednost pred ugrađenima */
   if(srv && (srv.payment || srv.ownerEmail)) applyServerSettings({ payment: srv.payment, ownerEmail: srv.ownerEmail });
@@ -3171,7 +3189,10 @@ function showOrderSuccess(srv){
   const fromSrv = Array.isArray(srv.items) && srv.items.length;
   const items = fromSrv ? srv.items.map(it => { const p = PRODUCTS.find(x => x.id === String(it.id)); return { ...it, id: String(it.id), cat: p ? p.cat : "torbe" }; }) : cart.slice();
   const so = shipSel();
-  const ship = fromSrv ? (srv.ship || null) : so ? { id: so.id, label: so.label, price: shipPrice(), locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
+  const ship0 = fromSrv ? (srv.ship || null) : so ? { id: so.id, label: so.label, price: shipPrice(), locker: so.locker ? document.getElementById("fLocker").value.trim() : "" } : null;
+  /* v95 (recenzija vijeća v94, kupac 3): adresa za dostavu vidi se na ploči za uplatu, ali se ne sprema u preglednik (osobni podatak) */
+  paneAddr = fromSrv ? String((srv.ship && srv.ship.address) || "") : (so && so.address ? [document.getElementById("fAddr").value.trim(), document.getElementById("fCity").value.trim()].filter(Boolean).join(", ") : "");
+  const ship = ship0 ? { id: ship0.id, label: ship0.label, price: ship0.price, locker: ship0.locker || "" } : null;
   /* naručene torbe odmah postaju "Rezervirano" — blokira ponovnu narudžbu (v68: svaka narudžba rezervira svoje torbe) */
   items.forEach(item => {
     const p = PRODUCTS.find(x => x.id === item.id);
@@ -3189,7 +3210,7 @@ function showOrderSuccess(srv){
     items: items.map(p => ({ id: p.id, name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", note: String(p.note || "").slice(0, 120), cat: p.cat || "torbe" })),
     ship,
     pay: PAY_FROM_SERVER ? { payment: { ...PAYMENT }, ownerEmail: OWNER_EMAIL } : null,
-    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, claimUntil: srv.claimUntil || null, claimAtLeast: !!srv.claimAtLeast, mailCustomer: srv.mailCustomer, check: /^[0-9a-f]{24}$/.test(srv.check || "") ? srv.check : "" } };
+    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, claimUntil: srv.claimUntil || null, claimAtLeast: !!srv.claimAtLeast, claimLink: /^\?uplata=[A-Za-z0-9%-]{4,40}&t=[0-9a-f]{32}$/.test(srv.claimLink || "") ? srv.claimLink : "", mailCustomer: srv.mailCustomer, check: /^[0-9a-f]{24}$/.test(srv.check || "") ? srv.check : "" } };
   storeSet("last", last);
   renderGrid(); renderCart();
   renderPaymentPanel(last);
@@ -3312,7 +3333,7 @@ function paymentPanel(last){
   const claimIso = srv.claimUntil || null;
   const mailTo = (PAY_FROM_SERVER || !RESERVATION_ENDPOINT) ? "na " + escHtml(OWNER_EMAIL) : "odgovorom na <span class='nw'>e-mail</span> s potvrdom narudžbe";
   const claimLine = claimIso
-    ? `Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan. Kad uplatite, u <span class="nw">e-mailu</span> s potvrdom narudžbe kliknite „Uplatio/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produžujemo ${srv.claimAtLeast ? "najmanje " : ""}do ${fmtDeadline(claimIso)}, da obična uplata stigne na vrijeme. Link ne radi? Pošaljite nam snimku potvrde o uplati ili proslijedite potvrdu iz banke ${mailTo}.`
+    ? `Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan. Kad uplatite, ${srv.claimLink ? `kliknite <a class="claim-link" href="${escHtml(srv.claimLink)}">„Uplatio/la sam”</a> (isti gumb je i u <span class="nw">e-mailu</span> s potvrdom narudžbe)` : `u <span class="nw">e-mailu</span> s potvrdom narudžbe kliknite „Uplatio/la sam”`}: više vam ne šaljemo podsjetnike, a rok za uplatu produžujemo ${srv.claimAtLeast ? "najmanje " : ""}do ${fmtDeadline(claimIso)}, da obična uplata stigne na vrijeme. Link ne radi? Pošaljite nam snimku potvrde o uplati ili proslijedite potvrdu iz banke ${mailTo}.`
     : `Obična uplata poslana navečer ili vikendom može stići tek sljedeći radni dan. Ako ste već platili, pošaljite nam snimku potvrde o uplati ili proslijedite potvrdu iz banke ${mailTo}.`;
   /* ime torbe uvijek uz riječ „torba”, da rod glagola ne ovisi o imenu (Luna, Mozaik…) */
   /* v64: mješovita narudžba poimence (kupac s dvije torbe ne čita „vašu torbu” i „unikatnu torbu i ostalo”) */
@@ -3321,7 +3342,7 @@ function paymentPanel(last){
   const allNamesQ = andJoin(items.map(qn));
   const madeSubject = madeIt.every(p => catOf(p) === "kolekcija")
     ? (madeIt.length === 1 ? (anyUnique ? "Torbu " + qn(madeIt[0]) : "Vašu torbu") : "Torbe " + andJoin(madeIt.map(qn))) + " šijemo"
-    : andJoin(madeIt.map(qn)) + " izrađujemo"; /* v67: nazivi, ne „ono što ste naručili po narudžbi” */
+    : (madeIt.length === 1 ? "Artikl " : "Artikle ") + andJoin(madeIt.map(qn)) + " izrađujemo"; /* v67: nazivi; v95 (recenzija vijeća v94): nominativ uz „artikl” */
   /* v64: ukupno čekanje — uz rok izrade i rok slanja iz Postavki (ništa se ne izmišlja) */
   const shipAfter = SHIP_LEAD ? " (slanje u roku " + escHtml(SHIP_LEAD) + " nakon izrade)" : "";
   const thanks = anyUnique && untilIso
@@ -3344,7 +3365,7 @@ function paymentPanel(last){
     ? `<span class="val-row"><span class="mono-val amount">${amountTxt}</span>${copyBtn(amountPlain, "Iznos")}</span>`
     : `${fmt(goods)} + dostava<br><small>točan iznos s dostavom javljamo e-mailom prije uplate</small>`;
   const shipRow = so
-    ? `<div><dt>Dostava</dt><dd>${escHtml(so.label)}${so.price ? " · " + fmt(so.price) : " · besplatno"}${so.locker ? `<br><small>paketomat: ${escHtml(so.locker)}</small>` : ""}</dd></div>`
+    ? `<div><dt>Dostava</dt><dd>${escHtml(so.label)}${so.price ? " · " + fmt(so.price) : " · besplatno"}${so.locker ? `<br><small>paketomat: ${escHtml(so.locker)}</small>` : ""}${paneAddr ? `<br><small>adresa: ${escHtml(paneAddr)}</small>` : ""}</dd></div>`
     : "";
   const ref = srv.reference || "";
   const refRow = ref
@@ -3499,7 +3520,11 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
       else if (data.code === "ip_limit") { showOrderError(`<b>Narudžba trenutno nije primljena.</b> ${escHtml(data.error || "")}`, true); }
       else if (wasPending && status === 429 && lastPending) {
         /* v53: već poslana dva e-maila — narudžba i dalje čeka, zadnji link vrijedi; ne „Narudžba nije prihvaćena” */
-        showOrderPending(lastPending.srv, lastPending.email, `<p class="pend-note"><b>E-mail za potvrdu već smo poslali više puta u zadnjih sat vremena.</b> Zadnji link iz e-maila vrijedi; pogledajte i neželjenu poštu (spam).</p>`);
+        /* v95 (recenzija vijeća v94, kupac 2): ako je narudžba u međuvremenu promijenjena, zadnji link vrijedi samo za staru */
+        const changed = cartSig() !== pendingSig || (lastPending.fp && lastPending.fp !== pendFormFp());
+        showOrderPending(lastPending.srv, lastPending.email, changed
+          ? `<p class="pend-note"><b>Promjenu ne možemo poslati jer smo na tu adresu u zadnjih sat vremena već poslali nekoliko <span class="nw">e-mailova</span>.</b> Link iz zadnjeg <span class="nw">e-maila</span> vrijedi za narudžbu kakvu ste tada poslali. Promjenu pošaljite za sat vremena ili nam je napišite na ${escHtml(OWNER_EMAIL)}.</p>`
+          : `<p class="pend-note"><b>E-mail za potvrdu već smo poslali više puta u zadnjih sat vremena.</b> Zadnji link iz e-maila vrijedi; pogledajte i neželjenu poštu (spam).</p>`);
       }
       else if (data.code === "open_order") {
         /* v64: kupac već ima neplaćenu narudžbu — nije greška u e-mail adresi */
