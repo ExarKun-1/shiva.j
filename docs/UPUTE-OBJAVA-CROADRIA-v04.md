@@ -77,9 +77,12 @@ uključujući e-mail s podacima za uplatu. Zato:
   „Stvarna adresa posjetitelja: vidljiva”. Ako piše „POZOR — poslužitelj ne vidi stvarnu adresu”, sve granice po vezi
   (broj narudžbi, izjava, e-mailova) dijele svi kupci: zamolite Croadriju da za Apache iza nginxa uključi prosljeđivanje
   stvarne adrese (mod_remoteip, zaglavlje X-Forwarded-For, i to samo od vlastitog nginxa: `RemoteIPInternalProxy 127.0.0.1`,
-  inače bi posjetitelj mogao sam upisati lažnu adresu), pa provjerite ponovno.
-- [ ] **Karta paketomata (v96):** nakon objave otvorite košaricu → BOX NOW → „Odaberite paketomat na karti”. Ako se karta ne
-  otvori (stroža zaštita CSP iz `.htaccess`), javite; paketomat se do tada može upisati ručno.
+  inače bi posjetitelj mogao sam upisati lažnu adresu; na Pleksu nginx se često spaja s vlastite adrese poslužitelja, pa
+  tada umjesto `127.0.0.1` stoji ta adresa), pa provjerite ponovno. Od v98 ista provjera šalje i zahtjev s lažnim
+  X-Forwarded-For: ako javi „poslužitelj vjeruje zaglavlju X-Forwarded-For od bilo koga”, RemoteIPInternalProxy je preširok.
+- [ ] **Karta paketomata (v96, v98):** nakon objave otvorite košaricu → BOX NOW → „Odaberi paketomat na karti”. Ako se karta ne
+  otvori ili izgleda bez stilova (stroža zaštita CSP iz `.htaccess`, od v98 i `default-src`), javite; paketomat se do tada
+  može upisati ručno.
 - [ ] **Prihvaćen ostatak rizika (v96):** iznad 300 e-mailova za potvrdu na sat (kvota pošte) nove narudžbe privremeno se ne
   primaju. Napadač za to treba stotine adresa iz različitih mreža; vlasnica tada dobiva upozorenje. Provjerite s Croadrijom
   kolika je dnevna kvota pošte.
@@ -103,9 +106,11 @@ uključujući e-mail s podacima za uplatu. Zato:
   bez fotografije ne može se naručiti.
 
 ### 7. Automatski rokovi (cron)
-- [ ] Plesk → **Scheduled Tasks → Add Task → Fetch a URL**: `https://shivaj.hr/api/status?cron=1` (bez `v=1`), svakih
-  **15 minuta**. Bez toga se podsjetnici i automatsko storniranje neplaćenih narudžbi pokreću tek kad netko otvori
-  stranicu. Od v96 admin na dnu piše „cron zadnji put: …”; ako piše da se cron još nije javio, provjerite zadatak.
+- [ ] Plesk → **Scheduled Tasks → Add Task → Fetch a URL**: adresu s ključem koju admin ispisuje na dnu stranice
+  (`https://shivaj.hr/api/status?cron=…`, od v98 s ključem umjesto `cron=1`), svakih **15 minuta**. Bez toga se
+  podsjetnici i automatsko storniranje neplaćenih narudžbi pokreću tek kad netko otvori stranicu. Admin na dnu piše
+  „cron zadnji put: …”; ako piše da se cron još nije javio, provjerite zadatak. Poziv bez ključa (stari `cron=1`) i dalje
+  pokreće rokove, ali se ne bilježi, pa nitko izvana ne može lažno prikazati da cron radi.
 
 ### 8. Provjera prije objave
 - [ ] `node tests/objava.js` mora javiti „SPREMNO ZA OBJAVU”. Dok u Uvjetima stoji `{NAPOMENA O PDV-u}`, provjera

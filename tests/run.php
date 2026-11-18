@@ -273,6 +273,15 @@ file_put_contents($rp, $rb); file_put_contents(SJ_DATA . '/narudzbe.json', $nb);
 @mkdir(SJ_DATA . '/kopije/2000-01-01', 0755, true); file_put_contents(SJ_DATA . '/kopije/2000-01-01/x.json', '{}');
 $b1 = sj_daily_backup(); $b2 = sj_daily_backup();
 $ok($b1 !== null && is_file($b1 . '/config.json') && $b2 === null && !is_dir(SJ_DATA . '/kopije/2000-01-01') && sj_last_backup() === date('Y-m-d'), 'v90: dnevna kopija data/*.json — jednom dnevno, starije od 14 dana brišu se');
+/* v98 (recenzija vijeća v97, N5): napola kopiran dan (bez oznake .gotovo) dovršava se; prazan config.json ne ide u kopiju */
+$bd98 = SJ_DATA . '/kopije/' . date('Y-m-d'); @unlink($bd98 . '/.gotovo'); @unlink($bd98 . '/config.json');
+$cb98 = file_get_contents(SJ_DATA . '/config.json'); file_put_contents(SJ_DATA . '/config.json', '');
+$b3 = sj_daily_backup();
+$ok($b3 !== null && is_file($bd98 . '/.gotovo') && !is_file($bd98 . '/config.json'), 'v98: dnevna kopija dovršava napola kopiran dan; prazan config.json se ne kopira');
+$thr98 = false; try { sj_config_update(function (array &$c) { $c['shop'] = 'X'; }); } catch (RuntimeException $e) { $thr98 = true; }
+$sec98 = sj_pow_secret();
+$ok($thr98 && file_get_contents(SJ_DATA . '/config.json') === '' && strlen($sec98) === 64, 'v98 (N1): prazan config.json — izmjena se odbija, tajna za „niste robot” privremena, ništa se ne prepisuje');
+file_put_contents(SJ_DATA . '/config.json', $cb98); @unlink(SJ_DATA . '/ostecene-datoteke.json'); sj_config(true);
 /* v90 (recenzija): dnevna granica po primatelju ostaje 24 h i nakon čišćenja drugih ključeva */
 $zq = SJ_DATA . '/zahtjevi.json'; $zb = (string)@file_get_contents($zq); $tn = time();
 file_put_contents($zq, json_encode(['sve|dan|abc' => [$tn - 7200, $tn - 5400, $tn - 4000], 'sve|kratko' => [$tn - 7200]]));
@@ -339,6 +348,10 @@ $ok(str_starts_with($e95, 'RuntimeException: brava se ne može otvoriti'), 'v95 
 $ovf95 = sj_raskid_overflow_path(time()); @unlink($ovf95); file_put_contents($ovf95, json_encode(['name' => 'Ov95', 'at' => sj_iso(time())]) . "\n");
 $ovr95 = sj_raskid_overflow_read(2, 100); @unlink($ovf95);
 $ok($ovr95['n'] === 1 && ($ovr95['list'][0]['name'] ?? '') === 'Ov95', 'v95 (recenzija): dodatni popis izjava vidljiv u adminu (isti mjesec)');
+$ok(sj_mask_numbers('hr12  2360  0001 1012 3456 7') === '[IBAN skriven]' && sj_mask_numbers("HR12\u{00A0}2360\u{00A0}0001\u{00A0}1012\u{00A0}3456\u{00A0}7") === '[IBAN skriven]' && sj_mask_numbers('HR12_2360_0001_1012_3456_7') === '[IBAN skriven]' && sj_mask_numbers('091  234  5678') === '[broj skriven]' && sj_mask_numbers('+385 (91) 234-5678') === '[broj skriven]' && sj_mask_numbers('01.23.45.67.89') === '[broj skriven]' && sj_mask_numbers('12. 11. 2026., Luna') === '12. 11. 2026., Luna', 'v98 (recenzija vijeća v97, sigurnost M2): maska — mala slova, neprelomivi razmaci, podvlake, zagrade; datum ostaje');
+$ok(sj_mask_numbers('091 2345-6789') === '[broj skriven]' && sj_mask_numbers('0912-345678') === '[broj skriven]' && sj_mask_numbers('09:12 345 678') === '[broj skriven]' && sj_mask_numbers('Nazovite 1. 1. 0912 345 678') === 'Nazovite [broj skriven]' && sj_mask_numbers('HR12 1001 0051-863000 160') === '[IBAN skriven]' && sj_mask_numbers('gb29 nwbk 6016 1331 9268 19') === '[IBAN skriven]' && sj_mask_numbers('Poslano 18. 11. 2026. u 14:30') === 'Poslano 18. 11. 2026. u 14:30' && sj_mask_numbers('2026-0007 i 2026-0008') === '2026-0007 i 2026-0008', 'recenzija v98: zaštićeni datum, vrijeme ili broj narudžbe ne skrivaju telefon ni IBAN');
+$ok(!sj_has_link('Tel.br. 091 234') && !sj_has_link('kuć.br. 33') && sj_has_link('x.br/abc'), 'recenzija v98: „br” je poveznica samo s putanjom („Tel.br.”, „kuć.br. 33” prolaze)');
+$ok(sj_has_link('evil .hr') && sj_has_link('a.co/x') && sj_has_link('nesto.games') && !sj_has_link('torbu br 12') && !sj_has_link('Lijepa torba. Hr kraj'), 'v98 (sigurnost 7): filtar poveznica — razmak prije .hr, jednoslovne .co, nove domene');
 $ok(sj_mask_numbers('NA 14 DANA ZBOG BOLESTI') === 'NA 14 DANA ZBOG BOLESTI' && sj_mask_numbers('Poslano 18. 11. 2026. 14:30') === 'Poslano 18. 11. 2026. 14:30' && sj_mask_numbers('2026-0007 2026-0008, SJ-2026-0009') === '2026-0007 2026-0008, SJ-2026-0009' && sj_mask_numbers('tel 091 234 5678') === 'tel [broj skriven]' && sj_mask_numbers('HR12  1001 0051 8630 0016 0') === '[IBAN skriven]', 'v96 (recenzija): maska ne skriva velika slova, datum ni brojeve narudžbi; telefon i IBAN skriva');
 $ok(sj_mask_numbers('Raskidam u roku od 14 dana od primitka.') === 'Raskidam u roku od 14 dana od primitka.' && sj_mask_numbers('torbu br 12 jer mi ne odgovara') === 'torbu br 12 jer mi ne odgovara' && sj_mask_numbers('IBAN HR12 1001 0051 8630 0016 0') === 'IBAN [IBAN skriven]', 'v95 (recenzija): maska skriva samo pravi IBAN');
 $ok(!sj_has_link('Dostava nakon 17h, 1.kat/stan 4') && !sj_has_link('ulaz B, 2.kat/desno') && !sj_has_link('Hvala.do viđenja') && !sj_has_link('boja.red') && sj_has_link('bit.do/x') && sj_has_link('t.co/x'), 'v95 (recenzija): obične napomene prolaze, kratke poveznice s putanjom ne');

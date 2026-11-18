@@ -98,7 +98,8 @@ def csp_hashes(html):
 def htaccess_with_hashes(text, hashes):
     if not hashes:
         return text
-    new, n = re.subn(r"(Content-Security-Policy \"script-src 'self')", r"\1 " + ' '.join(hashes).replace('\\', '\\\\'), text, count=1)
+    # v98: CSP počinje s default-src, pa se otisak upisuje iza „script-src 'self'” bilo gdje u retku Content-Security-Policy
+    new, n = re.subn(r"(Content-Security-Policy \"[^\"\n]*?script-src 'self')", r"\1 " + ' '.join(hashes).replace('\\', '\\\\'), text, count=1)
     if n != 1:
         sys.exit('.htaccess: nije pronađen CSP script-src za upis otiska skripte')
     return new
