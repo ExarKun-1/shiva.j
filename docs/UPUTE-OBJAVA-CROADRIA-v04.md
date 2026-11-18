@@ -76,7 +76,13 @@ uključujući e-mail s podacima za uplatu. Zato:
 - [ ] **Stvarna adresa posjetitelja (v95):** Admin → Postavke → **Provjeri zaštitu podataka**. Na kraju poruke mora pisati
   „Stvarna adresa posjetitelja: vidljiva”. Ako piše „POZOR — poslužitelj ne vidi stvarnu adresu”, sve granice po vezi
   (broj narudžbi, izjava, e-mailova) dijele svi kupci: zamolite Croadriju da za Apache iza nginxa uključi prosljeđivanje
-  stvarne adrese (mod_remoteip, zaglavlje X-Forwarded-For), pa provjerite ponovno.
+  stvarne adrese (mod_remoteip, zaglavlje X-Forwarded-For, i to samo od vlastitog nginxa: `RemoteIPInternalProxy 127.0.0.1`,
+  inače bi posjetitelj mogao sam upisati lažnu adresu), pa provjerite ponovno.
+- [ ] **Karta paketomata (v96):** nakon objave otvorite košaricu → BOX NOW → „Odaberite paketomat na karti”. Ako se karta ne
+  otvori (stroža zaštita CSP iz `.htaccess`), javite; paketomat se do tada može upisati ručno.
+- [ ] **Prihvaćen ostatak rizika (v96):** iznad 300 e-mailova za potvrdu na sat (kvota pošte) nove narudžbe privremeno se ne
+  primaju. Napadač za to treba stotine adresa iz različitih mreža; vlasnica tada dobiva upozorenje. Provjerite s Croadrijom
+  kolika je dnevna kvota pošte.
 - [ ] Prije prve prijave u admin adresa `https://shivaj.hr/data/PRVA-PRIJAVA.php` mora vratiti 403 ili 404 (prazna stranica bez teksta).
   Datoteka je od v91 `.php`, pa je poslužitelj nikad ne šalje kao tekst; kod u njoj čitate samo u File Manageru.
 
@@ -97,9 +103,9 @@ uključujući e-mail s podacima za uplatu. Zato:
   bez fotografije ne može se naručiti.
 
 ### 7. Automatski rokovi (cron)
-- [ ] Plesk → **Scheduled Tasks → Add Task → Fetch a URL**: `https://shivaj.hr/api/status` (bez `?v=1`), svakih
+- [ ] Plesk → **Scheduled Tasks → Add Task → Fetch a URL**: `https://shivaj.hr/api/status?cron=1` (bez `v=1`), svakih
   **15 minuta**. Bez toga se podsjetnici i automatsko storniranje neplaćenih narudžbi pokreću tek kad netko otvori
-  stranicu.
+  stranicu. Od v96 admin na dnu piše „cron zadnji put: …”; ako piše da se cron još nije javio, provjerite zadatak.
 
 ### 8. Provjera prije objave
 - [ ] `node tests/objava.js` mora javiti „SPREMNO ZA OBJAVU”. Dok u Uvjetima stoji `{NAPOMENA O PDV-u}`, provjera
@@ -143,7 +149,7 @@ Datoteke na hostingu pritom se ne diraju.
    `PROCITAJ.txt`.
 4. Otvorite admin (`https://shivaj.hr/admin`): na dnu stranice mora pisati „Verzija stranice: vNN” (v95; prije je verzija bila
    u podnožju trgovine). Ako piše stara verzija, osvježite stranicu (Ctrl+F5) i provjerite je li zip raspakiran u `httpdocs`.
-   U istom retku piše kad su rokovi zadnji put obrađeni; ako piše „PAŽNJA … provjerite cron”, pogledajte odjeljak 7.
+   U istom retku piše kad se cron zadnji put javio (v96); ako piše „PAŽNJA” ili „cron se još nije javio”, pogledajte odjeljak 7.
 
 > **Nikad ne prenosite `data/`, `torbe.json` ni `img/` s računala na hosting.** U njima su prave narudžbe, lozinka,
 > postavke, ponuda i fotografije koje je spremio admin. Paket „nadogradnja” ih zato namjerno nema.

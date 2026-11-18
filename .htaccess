@@ -22,7 +22,9 @@ Options -Indexes
   Header setifempty X-Frame-Options "SAMEORIGIN"
   # v95 (recenzija vijeća v94, sigurnost 7): skripte samo s ove stranice (i ugrađene) i karta BOX NOW; bez eval-a, bez
   # dodataka (object), bez tuđe osnovne adrese (base) i tuđih obrazaca; izračun „niste robot” radi u Workeru (blob:)
-  Header setifempty Content-Security-Policy "script-src 'self' 'unsafe-inline' https://widget-cdn.boxnow.hr; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  # v96 (recenzija vijeća v95, sigurnost N7): paket (tools/paket.py) ovdje upisuje 'sha256-…' ugrađene skripte — tada preglednici
+  # ignoriraju 'unsafe-inline' (ostaje samo za stare preglednike); slike, veze i okviri samo s ove stranice i BOX NOW
+  Header setifempty Content-Security-Policy "script-src 'self' 'unsafe-inline' https://widget-cdn.boxnow.hr; worker-src 'self' blob:; connect-src 'self' https://*.boxnow.hr; img-src 'self' data: blob: https://*.boxnow.hr; frame-src 'self' https://*.boxnow.hr; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 

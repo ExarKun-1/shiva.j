@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v95 (2026-11-18)
+     SHIVA.J WEBSHOP — v96 (2026-11-18)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v96 — vijeće na v95: povećani prikaz na računalu bez preklapanja fotografije i teksta; potvrda u drugoj kartici ili na
+           drugom uređaju (oznaka pt, bez „drugi kupac”); ispravak narudžbe po stalnoj oznaci preglednika (series), ne po vezi;
+           košarica promijenjena nakon osvježavanja; artikli izvan potvrđene narudžbe ostaju u košarici; „Uplatio/la sam” nakon
+           izjave o raskidu; povijest: Uvjeti iz košarice i natrag, „naprijed”, „Pogledaj slobodne torbe”; obrazac čuva upis;
+           bez onload/onerror u HTML-u (CSP s otiskom skripte iz paketa); „e-adresa”/„e-pošta” bez prijeloma; izjava o raskidu
+           kao zakonski obrazac; traka u košarici kao popis; „Kopiraj” ispod vrijednosti; četiri kartice na 1024.
      v95 — vijeće na v94 (5 recenzenata): ispravak narudžbe s drugim artiklima poništava stari link, „(novi link)” u e-mailu i na
            stranici, treći e-mail za potvrdu u satu (drugi ispravak); e-mail za potvrdu bez paketomata i boje (sigurnost), adresa
            za dostavu na ploči za uplatu (ne sprema se), „Uplatio/la sam” i na ploči; strogi oblik e-adrese; paketomat bez
@@ -476,7 +482,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v95"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v96"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -1341,7 +1347,7 @@
       <hr class="seam">
       <p class="about-quote">Šarena se dogodi,<br>crna se dogovori.<small>— Jasmina</small></p>
       <figure class="about-photo" hidden>
-        <img data-later="img/radionica.jpg" alt="Jasmina Šivalec u radionici" decoding="async" onload="if(this.dataset.later === undefined) this.closest('figure').hidden = false" onerror="this.closest('figure').hidden = true">
+        <img data-later="img/radionica.jpg" alt="Jasmina Šivalec u radionici" decoding="async" data-fig-show data-fig-hide>
         <figcaption>Radionica, Zabok</figcaption>
       </figure>
     </div>
@@ -1607,7 +1613,7 @@
       </div>
       <div>
         <label for="fEmail">E-mail</label>
-        <input id="fEmail" type="email" required pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,24}" autocomplete="email" maxlength="120" inputmode="email">
+        <input id="fEmail" type="email" required pattern="[A-Za-z0-9._+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,24}" autocomplete="email" maxlength="120" inputmode="email">
       </div>
       <div>
         <label for="fPhone">Telefon</label>
@@ -2966,6 +2972,10 @@ function loadBoxnowWidget(onReady){
 /* Ključ narudžbe: ista narudžba poslana dvaput (ponovni klik, prekid veze, osvježena stranica) dobiva isti broj,
    bez druge narudžbe i drugog e-maila. Ključ vrijedi dok je sadržaj narudžbe isti (otisak: stavke, dostava,
    paketomat, podaci kupca, napomena); svaka promjena = nova narudžba, novi ključ. */
+/* v96 (recenzija vijeća v95, sigurnost N7): bez ugrađenih onload/onerror u HTML-u (stroži CSP) — slika radionice i barkod
+   prikazuju ili skrivaju svoj okvir preko ovih slušača (događaji slika ne „mjehure”, pa se hvataju u fazi hvatanja) */
+document.addEventListener("load", e => { const t = e.target; if(t && t.tagName === "IMG" && t.hasAttribute("data-fig-show") && t.dataset.later === undefined){ const f = t.closest("figure"); if(f) f.hidden = false; } }, true);
+document.addEventListener("error", e => { const t = e.target; if(t && t.tagName === "IMG" && t.hasAttribute("data-fig-hide") && !t.dataset.hub3){ const f = t.closest("figure"); if(f) f.hidden = true; } }, true);
 /* v96 (recenzija vijeća v95): stalna nasumična oznaka ovog preglednika (bez osobnih podataka) */
 function orderSeries(){ let v = storeGet("series"); if(typeof v !== "string" || !/^[A-Za-z0-9-]{16,64}$/.test(v)){ v = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("")); storeSet("series", v); } return v; }
 function orderKey(orderData, note){
@@ -3256,7 +3266,7 @@ function claimFromLink(){
 /* v73: funkcija za jednostrani raskid (ZZP čl. 81.a, NN 59/26): 1. podaci, 2. pregled izjave i „Potvrditi raskid
    ugovora”; potvrdu sa sadržajem, datumom i vremenom šalje api/raskid e-poštom (st. 6.) */
 /* v95: isti oblik e-adrese kao na poslužitelju (sj_valid_email) */
-const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;
+const EMAIL_RE = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;
 (function raskidInit(){
   const f = document.getElementById("raskidForm"); if(!f) return;
   const $ = id => document.getElementById(id);
@@ -3295,7 +3305,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
         s2.hidden = true; done.hidden = false;
-        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-mailom trenutačno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako narudžba još nije plaćena, nećete je morati platiti; u potvrdi e-mailom piše što slijedi. Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, točka 7.4.).`; /* v78 (t2; vijeće V78-S4: stranica ne otkriva stanje narudžbe) */
+        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> Potvrdu s njezinim sadržajem, datumom i vremenom šaljemo vam na ${escHtml(val().email)}; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu ili nam pišite na ${escHtml(OWNER_EMAIL)}. Ako narudžba još nije plaćena, nećete je morati platiti; u potvrdi e-mailom piše što slijedi. Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, točka 7.4.).`; /* v78 (t2; vijeće V78-S4: stranica ne otkriva stanje narudžbe) */
         done.focus({ preventScroll: true }); done.scrollIntoView({ block: "center" }); return;
       }
       btn.disabled = false;
@@ -3524,7 +3534,7 @@ function paymentPanel(last){
   const genericCap = `Skenirajte barkod u aplikaciji svoje banke: primatelj i IBAN popune se sami. Zatim upišite iznos ${so ? escHtml(amountTxt) : ""}, model ${escHtml(PAYMENT.model)} i poziv na broj ${escHtml(ref || "(datum uplate)")}; iznos i poziv na broj možete kopirati gumbima „Kopiraj”.`;
   const barcode = (PAYMENT.barcode || pendingHub3) ? `
       <figure class="pay-barcode" id="payBarcode"${PAYMENT.barcode ? "" : " hidden"}>
-        <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" onerror="if(!this.dataset.hub3) this.closest('figure').hidden = true">
+        <img src="${escHtml(PAYMENT.barcode || "")}" alt="Barkod za plaćanje u aplikaciji banke" data-fig-hide>
         <figcaption><span class="bc-text">${genericCap}</span> <span class="bc-mob">Plaćate na istom mobitelu? Spremite sliku barkoda i učitajte je u aplikaciji banke, ako to nudi, ili kopirajte podatke.</span><br><a class="bc-save" download="barkod-za-uplatu.png" href="${escHtml(PAYMENT.barcode || "")}"${PAYMENT.barcode ? "" : " hidden"}>Spremi barkod</a>${PAYMENT.barcode ? ` <a class="bc-zoom" href="${escHtml(PAYMENT.barcode)}" target="_blank" rel="noopener">Uvećaj barkod</a>` : ""}</figcaption>
       </figure>` : "";
   /* v42: na računalu (širok zaslon, miš) barkod je odmah ispod naslova — najbrže ga je skenirati mobitelom; na mobitelu na dnu */

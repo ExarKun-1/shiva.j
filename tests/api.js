@@ -13,6 +13,7 @@ const pickup = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0
 const order = (key, email, items, total, hold) => ({ _gotcha: '', Napomena: '', _order: { key, hold: hold || '', customer: cust(email), items, shipping: pickup, goods: total, total } });
 const hrs = iso => (Date.parse(iso) - Date.now()) / 3600000;
 const read = f => JSON.parse(fs.readFileSync(D + f, 'utf8'));
+const Y = String(new Date().getFullYear()); /* v96 (recenzija vijeća v95, N9): brojevi narudžbi nose tekuću godinu */
 const prods = () => read('proizvodi.json');
 const rTok = no => { const o = read('narudzbe.json').find(x => x.no === no) || {}; return o.claim ? require('crypto').createHash('sha256').update('raskid|' + o.claim).digest('hex').slice(0, 24) : ''; }; /* v93: oznaka iz poveznice u e-mailu */
 const setProd = (id, patch) => { const p = prods(); Object.assign(p.find(x => x.id === id), patch); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(p, null, 2)); };
@@ -354,7 +355,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const good = await post('raskid', { name: 'Ana Kupac', no: o.no.replace(/^SJ-/, ''), email: o.email, iban: 'HR12 1001 0051 8630 0016 0', note: 'Ne odgovara boja.' });
       const ml3 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
       const rr = read('raskidi.json'); const oo = read('narudzbe.json').find(x => x.no === o.no);
-      ok(good.status === 200 && good.data.ok && good.data.mailed === true && /\d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(good.data.at || ''),
+      ok(good.status === 200 && good.data.ok && !('mailed' in good.data) && /\d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(good.data.at || ''),
         'v73: api/raskid — 200, potvrda poslana, datum i vrijeme u odgovoru');
       const cm = ml3.split(/^=== /m).find(x => /potvrda primitka izjave o raskidu ugovora/.test(x)) || '';
       const om = ml3.split(/^=== /m).find(x => /RASKID UGOVORA: SJ-/.test(x)) || '';
@@ -366,27 +367,27 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const om2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /RASKID UGOVORA: kupila/.test(x)) || '';
       ok(unk.status === 200 && unk.data.ok && /Broj narudžbe nije pronađen u sustavu — izjava ipak vrijedi/.test(om2),
         'v73: izjava bez pronađene narudžbe vrijedi (st. 7.), kupac ne saznaje postoji li narudžba, vlasnica je upozorena');
-      const miss = await post('raskid', { name: '', no: '2026-0001', email: 'x' });
-      const bIban = await post('raskid', { name: 'A', no: '2026-0001', email: 'a@primjer.hr', iban: '12345' });
-      const hp = await post('raskid', { name: 'A', no: '2026-0001', email: 'a@primjer.hr', website: 'x' });
+      const miss = await post('raskid', { name: '', no: Y + '-0001', email: 'x' });
+      const bIban = await post('raskid', { name: 'A', no: Y + '-0001', email: 'a@primjer.hr', iban: '12345' });
+      const hp = await post('raskid', { name: 'A', no: Y + '-0001', email: 'a@primjer.hr', website: 'x' });
       const getR = await fetch(U + 'raskid');
       ok(miss.status === 400 && /ime i prezime, ispravan e-mail/.test(miss.data.error || '') && bIban.status === 400 && /IBAN/.test(bIban.data.error || '') && hp.status === 400 && getR.status === 405,
         'v73: api/raskid odbija prazna polja, krivi IBAN, mamac za botove i GET');
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
-      const lnk = await post('raskid', { name: 'Hitno platite', no: '2026-0001', email: 'b@primjer.hr', note: 'Uplatite na http://zlo.example' });
+      const lnk = await post('raskid', { name: 'Hitno platite', no: Y + '-0001', email: 'b@primjer.hr', note: 'Uplatite na http://zlo.example' });
       const mlL = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m);
       const cL = mlL.find(x => /potvrda primitka izjave o raskidu/.test(x)) || '', oL = mlL.find(x => /RASKID UGOVORA:/.test(x)) || '';
       ok(lnk.status === 200 && lnk.data.ok && /Napomena: \[primljena, proslijeđena trgovini\]/.test(cL) && !/zlo\.example|Uplatite na/.test(cL) && /http:\/\/zlo\.example/.test(oL),
         'v77/v94 (ZZP čl. 81.a st. 3.): izjava s poveznicom se prima; kad se ne podudara s narudžbom, kupcu bez slobodnog teksta, vlasnici izvorni tekst');
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
-      await post('raskid', { name: 'Nazovite 060 123 456', no: '2026-0001', email: 'c@primjer.hr' });
+      await post('raskid', { name: 'Nazovite 060 123 456', no: Y + '-0001', email: 'c@primjer.hr' });
       const cN = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /potvrda primitka izjave o raskidu/.test(x)) || '';
       ok(/\nDobar dan,\n/.test(cN) && !/Dobar dan, Nazovite/.test(cN), 'v77 (vijeće V77-3): ime koje nije samo slovima ne ide u pozdrav potvrde raskida');
       { clearLimits(); const cL0 = read('config.json'); setLimits({ mail_per_day: 1 });
-        const r1 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
-        const r2 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
+        const r1 = await post('raskid', { name: 'Dana Kupac', no: Y + '-0001', email: 'dan@primjer.hr' });
+        const r2 = await post('raskid', { name: 'Dana Kupac', no: Y + '-0001', email: 'dan@primjer.hr' });
         const own2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /RASKID UGOVORA:/.test(x)).pop() || '';
-        ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-mail sa stranice/.test(own2),
+        ok(r1.status === 200 && r2.status === 200 && !('mailed' in r1.data) && (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: dan@primjer\.hr[^\n]*potvrda primitka/g) || []).length === 1 && /danas već dobila 1 e-mail sa stranice/.test(own2),
           'v90 (recenzija): dnevna granica e-mailova ne odbija izjavu o raskidu (ZZP čl. 81.a) — izjava primljena, potvrda kupcu preskočena, vlasnica upozorena');
         fs.writeFileSync(D + 'config.json', JSON.stringify(cL0, null, 2)); clearLimits(); }
       { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw = fs.readFileSync(D + 'proizvodi.json', 'utf8'); setProd('luna', { sold: false, reserved: false, hidden: false });
@@ -431,7 +432,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       ok(ordL.status === 400 && /poveznice/.test(ordL.data.error || ''), 'v77 (recenzija R76-S3): narudžba s poveznicom u imenu odbijena (e-mail ne nosi lažnu poruku)');
       clearLimits(); const same = [];
       fs.writeFileSync(D + 'mail-log.txt', '');
-      for (let i = 0; i < 6; i++) same.push((await post('raskid', { name: 'Isti', no: '2026-0001', email: 'isti@primjer.hr' })).status);
+      for (let i = 0; i < 6; i++) same.push((await post('raskid', { name: 'Isti', no: Y + '-0001', email: 'isti@primjer.hr' })).status);
       const nIsti = (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: isti@primjer\.hr[^\n]*potvrda primitka izjave/g) || []).length;
       const rrI = read('raskidi.json').filter(x => x.email === 'isti@primjer.hr').length;
       ok(same.join() === '200,200,200,200,200,429' && nIsti === 3 && rrI === 5, 'v73/v95: najviše 3 potvrde istom primatelju na sat (izjava se ipak sprema); s iste veze najviše 5 izjava na sat, zatim uputa za e-mail (429) ' + same.join() + ' mail=' + nIsti + ' spremljeno=' + rrI);

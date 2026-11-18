@@ -7,6 +7,15 @@
    ========================================================= */
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
+/* v96 (recenzija vijeća v95, N1): neočekivana greška (brava, zapis) — zapis u greske.log i čitljiva stranica, ne prazna 500 */
+set_exception_handler(function (Throwable $e): void {
+  @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' admin: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine() . "\n", FILE_APPEND | LOCK_EX);
+  if (!headers_sent()) { http_response_code(500); header('Content-Type: text/html; charset=utf-8'); }
+  echo '<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Greška — admin</title></head>'
+    . '<body style="font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.5"><h1 style="font-size:1.3rem">Admin trenutačno ne može dovršiti radnju</h1>'
+    . '<p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p><p>Najčešći uzrok: datoteka ili brava u mapi <code>data/</code> nije zapisiva (npr. nakon vraćanja preko FTP-a) ili je hosting bez slobodnog prostora. Provjerite prava pristupa u File Manageru i pokušajte ponovno; detalj je zapisan u <code>data/greske.log</code>.</p>'
+    . '<p><a href="./">Natrag u admin</a></p></body></html>';
+});
 sj_session_start();
 $c = sj_config();
 /* v22: poruka nakon radnje dolazi iz sesije (jednokratno), ne iz adrese — link s ?m= ne može podmetnuti lažnu poruku */
@@ -675,6 +684,7 @@ function sj_handle_action(string $act, array &$c): string {
       $out = []; $bad = [];
       $paths = ['data/config.json', 'data/PRVA-PRIJAVA.php', 'data/narudzbe.json', 'data/greske.log'];
       if (($lb = sj_last_backup()) !== '') $paths[] = 'data/kopije/' . $lb . '/config.json'; /* v90 (recenzija): i dnevna kopija */
+      $paths[] = 'data/raskid-sazetak.json'; $paths[] = 'data/' . basename(sj_raskid_overflow_path(time())); /* v96 (N8): i izjave o raskidu */
       foreach ($paths as $u) {
         $code = sj_http_code($base . '/' . $u);
         $out[] = $u . ': ' . ($code ?: 'nema odgovora');
@@ -683,7 +693,7 @@ function sj_handle_action(string $act, array &$c): string {
       /* v95 (recenzija vijeća v94, upute): sve granice po vezi ovise o stvarnoj adresi posjetitelja — ako poslužitelj vidi
          adresu posrednika (nginx, 127.0.0.1, privatna mreža), svi kupci dijele jednu granicu */
       $ra = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-      $proxyIp = $ra === '' || !filter_var($ra, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+      $proxyIp = sj_proxy_ip_suspect();
       $ipTxt = $proxyIp ? ' POZOR — poslužitelj ne vidi stvarnu adresu posjetitelja (vidi ' . ($ra !== '' ? $ra : 'ništa') . '), pa bi svi kupci dijelili iste granice narudžbi. Zamolite Croadriju da uključi prosljeđivanje stvarne adrese (mod_remoteip / X-Forwarded-For) i provjerite ponovno.' : ' Stvarna adresa posjetitelja: vidljiva (u redu).';
       return ($bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
         : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').') . $ipTxt;
@@ -1011,32 +1021,41 @@ function sj_view_orders(): string {
   $h .= '</tbody></table></div>';
   if ($hOld !== '') $h = '<h3 id="starije">Starije neplaćene (Stalna kolekcija) — drže mjesto</h3><p class="muted">Ove narudžbe nisu među zadnjih 100, a još drže mjesto u kolekciji. Ako kupac ne uplati, stornirajte ih.</p><div class="tablewrap"><table class="cards t-nar"><thead><tr><th>Broj</th><th>Vrijeme</th><th>Kupac</th><th>Artikli</th><th>Dostava</th><th>Ukupno</th><th>Uplata</th></tr></thead><tbody>' . $hOld . '</tbody></table></div>'
     . ($olderMore ? '<p class="muted">… i još ' . $olderMore . '.</p>' : '') . '<h3>Narudžbe</h3>' . $h;
-  return $rokHtml . $h . $rejHtml . '<p class="muted">Čuva se zadnjih 300 narudžbi. Puni sadržaj svake narudžbe stiže i e-mailom. „Označi plaćenom” ovdje označuje cijelu narudžbu: rezervirane torbe postaju plaćene, a torba kojoj je rok istekao pripada ovom kupcu ako je u međuvremenu nitko drugi nije platio ili naručio; ako jest, admin to javi.</p>';
+  return $rokHtml . $h . $rejHtml . '<p class="muted">U glavnom popisu su sve otvorene narudžbe i zadnje zatvorene (do 300); starije zatvorene su u godišnjoj arhivi (data/narudzbe-arhiva-GGGG.json). Puni sadržaj svake narudžbe stiže i e-mailom. „Označi plaćenom” ovdje označuje cijelu narudžbu: rezervirane torbe postaju plaćene, a torba kojoj je rok istekao pripada ovom kupcu ako je u međuvremenu nitko drugi nije platio ili naručio; ako jest, admin to javi.</p>';
 }
 
 /* v73 (vijeće N73-4): izjave o raskidu iz funkcije „Raskid ugovora” (api/raskid) zadnjih 30 dana, na vrhu Narudžbi */
 function sj_view_withdrawals(): string {
   $now = time();
   $l = array_reverse(array_filter(sj_read_json(SJ_DATA . '/raskidi.json', []), fn($x) => (int)strtotime((string)($x['at'] ?? '')) > $now - 30 * 86400));
-  $ov = sj_raskid_overflow_read(2, 100); /* v95 (recenzija vijeća v94, sigurnost 4): dodatni popis (iznad granica) */
+  /* v95 (recenzija vijeća v94, sigurnost 4): dodatni popis (iznad granica); v96 (recenzija vijeća v95): sve stranice (?rp=N), po 100 */
+  $rp = max(0, min(1000, (int)($_GET['rp'] ?? 0)));
+  $ov = sj_raskid_overflow_read(2, 100, $rp * 100);
+  $oix = sj_orders_index(); /* v96 (N4): narudžbe pročitane jednom, ne po kartici */
   if (!$l && !$ov['n']) return '';
   $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom (kad se izjava ne podudara s narudžbom, samo uz provjeru „niste robot”; inače mu je pošaljite sami). Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
   /* v95 (sigurnost 4): sve izjave iz 30 dana (ne samo zadnjih 50) — prvo one koje se podudaraju s narudžbom */
   usort($l, fn($a, $b) => [!empty($b['order']) && !empty($b['emailMatch']), (string)($b['at'] ?? '')] <=> [!empty($a['order']) && !empty($a['emailMatch']), (string)($a['at'] ?? '')]);
-  $card = function (array $x): string {
+  $card = function (array $x) use ($oix): string {
     /* v82 (pregled prije objave): neplaćena narudžba — nema novca za vratiti */
-    $ox = !empty($x['order']) ? sj_order_find(['no' => (string)$x['order']]) : null;
+    $ox = !empty($x['order']) ? ($oix['no'][(string)$x['order']] ?? null) : null;
+    /* v96 (recenzija vijeća v95, sigurnost N2): izjava bez broja narudžbe, ali s e-adresom ili imenom kupca iz neke narudžbe — vjerojatno prava */
+    $hint = '';
+    if (empty($x['order'])) { $hn = $oix['ek'][sj_email_key((string)($x['email'] ?? ''))] ?? ($oix['name'][mb_strtolower(trim((string)($x['name'] ?? '')))] ?? '');
+      if ($hn !== '') $hint = ' <span class="badge ink">e-adresa ili ime podudara se s narudžbom ' . e((string)$hn) . ' — vjerojatno prava izjava</span>'; }
     $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
-    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
+    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
   };
   $shown = 0;
   foreach ($l as $x) { if (++$shown > 300) break; $h .= $card($x); }
   if (count($l) > 300) $h .= '<p class="muted">… i još ' . (count($l) - 300) . ' starijih izjava bez podudaranja s narudžbom (vjerojatno zlouporaba; cijeli popis je u data/raskidi.json).</p>';
   $h .= '</div>';
   if ($ov['n']) {
-    $h .= '<details class="card"><summary>Ostale izjave (' . $ov['n'] . ') — stigle bez provjere „niste robot” ili u neuobičajeno velikom broju</summary><p class="muted">Većina je vjerojatno zlouporaba obrasca, ali i prava izjava može biti ovdje (npr. ako kupčev preglednik nije izračunao provjeru). Prikazano je zadnjih ' . count($ov['list']) . '; sve su u data/raskidi-visak-GGGG-MM.jsonl.</p><div class="rokl">';
+    $h .= '<details class="card"' . ($rp > 0 ? ' open' : '') . '><summary>Ostale izjave (' . $ov['n'] . ') — stigle bez provjere „niste robot” ili u neuobičajeno velikom broju</summary><p class="muted">Većina je vjerojatno zlouporaba obrasca, ali i prava izjava može biti ovdje (npr. ako kupčev preglednik nije izračunao provjeru). Prikazano: ' . count($ov['list']) . ' (od najnovije); sve su i u data/raskidi-visak-GGGG-MM.jsonl.</p><div class="rokl">';
     foreach ($ov['list'] as $x) $h .= $card($x);
-    $h .= '</div></details>';
+    $h .= '</div>';
+    if ($ov['n'] > 100) { $pages = (int)ceil($ov['n'] / 100); $h .= '<p class="muted">Stranica ' . ($rp + 1) . ' od ' . $pages . ': '; for ($i = 0; $i < min($pages, 50); $i++) $h .= $i === $rp ? '<b>' . ($i + 1) . '</b> ' : '<a href="?s=narudzbe&amp;rp=' . $i . '#raskidi">' . ($i + 1) . '</a> '; $h .= '</p>'; }
+    $h .= '</details>';
   }
   return $h;
 }
@@ -1190,7 +1209,7 @@ function sj_view_settings(array $c): string {
   $h .= sj_btn('test_mail', [], 'Pošalji probni e-mail', '?s=postavke', true) . '<p class="muted">Probni e-mail koristi spremljene postavke: nakon izmjena prvo kliknite „Spremi postavke”.</p>';
   /* v90 (vijeće): zaštita data/, adresa posjetitelja (iza nginxa), zadnja kopija, zadnje greške */
   $rip = (string)($_SERVER['REMOTE_ADDR'] ?? ''); $sip = (string)($_SERVER['SERVER_ADDR'] ?? '');
-  $ipWarn = ($rip !== '' && ($rip === $sip || !filter_var($rip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))) && !in_array($rip, ['127.0.0.1', '::1'], true);
+  $ipWarn = sj_proxy_ip_suspect(); /* v96 (N8): i 127.0.0.1 / ::1 (nginx ispred Apachea bez stvarne adrese) */
   $h .= sj_btn('check_exposure', [], 'Provjeri zaštitu podataka', '?s=postavke', true)
     . '<p class="muted">Otvara data/config.json i druge zaštićene datoteke (i zadnju dnevnu kopiju) preko adrese stranice: svaka mora vratiti 403 ili 404.</p>'
     . '<p class="muted">Vaša adresa kako je vidi poslužitelj: <span class="mono">' . e($rip) . '</span>' . ($ipWarn ? ' — <b style="color:#9B2C1F">izgleda kao adresa poslužitelja ili unutarnja adresa; ograničenja pokušaja tada vrijede za sve posjetitelje zajedno. Zamolite podršku hostinga da uključi stvarnu adresu posjetitelja (nginx real_ip / mod_remoteip).</b>' : ' (ako je to vaša javna adresa, ograničenja pokušaja rade ispravno)') . '</p>'
@@ -1302,8 +1321,11 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   /* v95 (recenzija vijeća v94, L4 i L9): verzija stranice (provjera nadogradnje) i kad su rokovi zadnji put obrađeni (cron) */
   if ($nav) {
     $ver = preg_match('/<meta name="shivaj-verzija" content="(v\d+)"/', (string)@file_get_contents(dirname(__DIR__) . '/index.html'), $vm) ? $vm[1] : '?';
-    $tickLast = (int)(sj_read_json(SJ_DATA . '/rokovi.json', [])['last'] ?? 0);
-    $tickTxt = empty($c['deadline_tick']) ? 'automatski rokovi su isključeni (Postavke)' : ($tickLast > 0 ? 'rokovi zadnji put obrađeni ' . sj_fmt_hr(sj_iso($tickLast)) . ($tickLast < time() - 3 * 3600 ? ' — PAŽNJA: dulje od 3 sata; provjerite cron (upute za objavu, odjeljak 7)' : '') : 'rokovi još nisu obrađeni — provjerite cron (upute za objavu, odjeljak 7)');
+    $rk = sj_read_json(SJ_DATA . '/rokovi.json', []); $tickLast = (int)($rk['last'] ?? 0); $cronLast = (int)($rk['cron'] ?? 0);
+    /* v96 (recenzija vijeća v95, N7): cron se vidi zasebno (posjeti i admin također pokreću rokove, pa „zadnja obrada” ne dokazuje cron) */
+    $tickTxt = empty($c['deadline_tick']) ? 'automatski rokovi su isključeni (Postavke)'
+      : (($cronLast > 0 ? 'cron zadnji put: ' . sj_fmt_hr(sj_iso($cronLast)) . ($cronLast < time() - 3600 ? ' — PAŽNJA: dulje od sata; provjerite zadatak (upute za objavu, odjeljak 7)' : '') : 'cron se još nije javio — postavite ga (upute za objavu, odjeljak 7)')
+        . ($tickLast > 0 ? ' · rokovi zadnji put obrađeni ' . sj_fmt_hr(sj_iso($tickLast)) : ''));
     $content .= '<p class="muted" style="margin-top:32px;font-size:.8rem">Verzija stranice: ' . e($ver) . ' · ' . e($tickTxt) . '</p>';
   }
   echo $content . '</main><script nonce="' . $nonce . '">document.addEventListener("submit",function(e){var f=e.target,m=f.getAttribute("data-confirm");'

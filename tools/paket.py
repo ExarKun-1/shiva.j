@@ -81,6 +81,27 @@ def strip_comments(html):
     return ''.join(out)
 
 
+def csp_hashes(html):
+    # v96 (recenzija vijeća v95, sigurnost N7): otisak svake ugrađene izvršne skripte (bez src, osim JSON-LD) za CSP
+    import base64, hashlib
+    out = []
+    for m in re.finditer(r'<script\b([^>]*)>(.*?)</script>', html, flags=re.S | re.I):
+        attrs, body = m.group(1), m.group(2)
+        if re.search(r'\bsrc\s*=', attrs, re.I) or re.search(r'type\s*=\s*["\']application/ld\+json', attrs, re.I):
+            continue
+        out.append("'sha256-" + base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode() + "'")
+    return out
+
+
+def htaccess_with_hashes(text, hashes):
+    if not hashes:
+        return text
+    new, n = re.subn(r"(Content-Security-Policy \"script-src 'self')", r"\1 " + ' '.join(hashes).replace('\\', '\\\\'), text, count=1)
+    if n != 1:
+        sys.exit('.htaccess: nije pronađen CSP script-src za upis otiska skripte')
+    return new
+
+
 def build(kind, v, code=''):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'shivaj-{v}-{kind}.zip')
@@ -93,6 +114,10 @@ def build(kind, v, code=''):
                 continue
             if n == 'index.html':  # v82 (pregled prije objave): bez HTML komentara (interne bilješke i povijest verzija) u izvornom kodu za kupce
                 put(z, n, strip_comments(open(os.path.join(ROOT, n), encoding='utf-8').read()))
+                continue
+            if n == '.htaccess':  # v96: otisak ugrađene skripte (iz stranice kakva ide u paket) u CSP
+                page = strip_comments(open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read())
+                put(z, n, htaccess_with_hashes(open(os.path.join(ROOT, n), encoding='utf-8').read(), csp_hashes(page)))
                 continue
             z.write(os.path.join(ROOT, n), n)
         if kind == 'prvi':
