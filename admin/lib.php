@@ -199,7 +199,7 @@ function sj_hold_after_deadline(int $payTs): int { return max($payTs, sj_next_wo
 /* v78 (odluka vlasnice, 12. krug, t3): automatski storno $auto sati nakon isteka roka; ako to pada u subotu, nedjelju
    ili na blagdan, u 23:59 prvoga sljedećeg radnog dana (Uvjeti t. 5) */
 function sj_auto_cancel_at(int $exp, int $auto): int { return sj_workday_shift($exp + $auto * 3600); }
-/* „torbu čuvamo” / „torbe čuvamo” / „rok za uplatu produžujemo” (narudžba bez unikata) — za tekstove kupcu */
+/* „torbu čuvamo” / „torbe čuvamo” / „rok za uplatu produljujemo” (narudžba bez unikata) — za tekstove kupcu */
 function sj_unique_count(array $o): int { $n = 0; foreach ((array)($o['order']['items'] ?? []) as $it) if (empty($it['made'])) $n++; return $n; }
 /* v70 (D70-5, D70-9): rok je prošao — torbu više ne čuvamo automatski; vlasnica provjerava izvod (bez novog obećanja) */
 function sj_late_text(array $o, string $lead): string {
@@ -303,7 +303,7 @@ function sj_hold_extend(string $no, int $newTs, array $mark): array {
     $byId = sj_products_by_id_all(); sj_made_counts(true);
     foreach ((array)($o['order']['items'] ?? []) as $it) { $p = $byId[(string)($it['id'] ?? '')] ?? null;
       if ($p && sj_is_collection($p) && sj_made_left($p) < max(1, (int)($it['qty'] ?? 1))) $lost[] = (string)($p['name'] ?? ''); }
-    /* v70 (vijeće, N70-1): popunjeno mjesto u kolekciji — ne produžujemo (inače bi model bio iznad granice) */
+    /* v70 (vijeće, N70-1): popunjeno mjesto u kolekciji — ne produljujemo (inače bi model bio iznad granice) */
     if ($lost) return ['ok' => false, 'state' => 'full', 'lost' => $lost, 'payUntil' => sj_pay_until($o)];
   }
   if ($uIds) {
@@ -534,7 +534,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
   $claim = empty($o['claimedAt']) ? sj_claim_url($o) : '';
   $alt = 'Link ne radi? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.';
   if ($kind === 'remind') {
-    $hold = $uq ? ($many ? 'torbe' : 'torbu') . ' čuvamo' : 'rok za uplatu produžujemo';
+    $hold = $uq ? ($many ? 'torbe' : 'torbu') . ' čuvamo' : 'rok za uplatu produljujemo';
     /* v70 (D70-2): tekst po tome je li kupac kliknuo, ne po tome postoji li link */
     $claimTxt = !empty($o['claimedAt']) ? 'Javili ste nam da ste uplatili; ' . sj_hold_phrase($o) . ' do ' . $until . '. Ako uplata do tada ne stigne, javit ćemo vam se.'
       : ($claim !== '' ?  'Kliknite „Uplatio/la sam” i ' . $hold . ' ' . sj_claim_preview($o) . ":\n$claim\n($alt)"

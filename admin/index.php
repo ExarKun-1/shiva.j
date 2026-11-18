@@ -299,7 +299,7 @@ function sj_handle_action(string $act, array &$c): string {
             $n = (string)($p['name'] ?? $id); $made = !empty($p['made']);
             [$kn, $f] = sj_kind($p); $a = $f ? 'a' : ''; /* rod slaže imenica: „Torba … skrivena”, „Artikl … skriven” */
             return [
-              'sold' => $on ? ($made ? "{$kn} „{$n}” je privremeno isključen{$a}: kupci " . ($f ? 'je' : 'ga') . " vide s oznakom „Trenutno nedostupno”, ali ga ne mogu naručiti." : "{$kn} „{$n}” je trajno prodan{$a} i više se ne nudi kupcima.")
+              'sold' => $on ? ($made ? "{$kn} „{$n}” je privremeno isključen{$a}: kupci " . ($f ? 'je' : 'ga') . " vide s oznakom „Trenutačno nedostupno”, ali ga ne mogu naručiti." : "{$kn} „{$n}” je trajno prodan{$a} i više se ne nudi kupcima.")
                             : ($made ? "{$kn} „{$n}” je ponovno dostup" . ($f ? 'na' : 'an') . " za narudžbu." : "{$kn} „{$n}” je vraćen{$a} u prodaju."),
               'hidden' => $on ? "{$kn} „{$n}” je skriven{$a} i ne vidi se na stranici." : "{$kn} „{$n}” se ponovno vidi na stranici.",
               'reserved' => $on ? "{$kn} „{$n}” je ručno označen{$a} kao rezerviran{$a}." : "Ručna rezervacija za „{$n}” je uklonjena.",
@@ -727,7 +727,7 @@ function sj_paid_form(array $o, string $confirm): string {
 function sj_proof_form(array $o): string {
   $no = (string)($o['no'] ?? '');
   $until = sj_fmt_deadline(sj_iso(sj_proof_until($o, time())));
-  $n = sj_unique_count($o); $what = $n === 0 ? 'Rok za uplatu produžujemo' : ($n > 1 ? 'Torbe čuvamo' : 'Torbu čuvamo');
+  $n = sj_unique_count($o); $what = $n === 0 ? 'Rok za uplatu produljujemo' : ($n > 1 ? 'Torbe čuvamo' : 'Torbu čuvamo');
   $confirm = 'Kupac je poslao snimku potvrde za ' . $no . ', a uplata još nije na izvodu? ' . $what . ' do ' . $until . '. Kad uplata stigne, kliknite „Označi plaćenom”.';
   return '<form method="post" class="inline prooff" data-confirm="' . e($confirm) . '"><input type="hidden" name="csrf" value="' . e(sj_csrf()) . '"><input type="hidden" name="act" value="order_proof"><input type="hidden" name="back" value="?s=narudzbe"><input type="hidden" name="no" value="' . e($no) . '">'
     . '<label class="check cmail"><input type="checkbox" name="mail" value="1" checked> Pošalji kupcu kratku potvrdu e-mailom</label><button class="alt">Potvrda primljena</button></form>';
@@ -782,7 +782,7 @@ function sj_view_products(): string {
     $h .= sj_btn('toggle', ['id' => $id, 'field' => 'sold', 'to' => $soldP ? '0' : '1'],
       $soldP ? ($madeP ? 'Ponovno uključi' : 'Vrati u prodaju') : ($madeP ? 'Privremeno isključi' : 'Označi trajno prodanom') /* v66: radnja, ne stanje */, $back, true,
       $soldP ? ($madeP ? "„{$nmP}” ponovno dostupan za narudžbu?" : "Vratiti „{$nmP}” u prodaju? Torba će se ponovno nuditi kupcima." . (!empty($res['sold'][$id]['name']) ? ' Plaćena je za kupca ' . $res['sold'][$id]['name'] . ($res['sold'][$id]['no'] ?? '' ? ' (' . $res['sold'][$id]['no'] . ')' : '') . ' — ako mu vraćate novac, uklonite i oznaku u Narudžbama.' : ''))
-             : ($madeP ? "Privremeno isključiti „{$nmP}”? Ostaje na stranici s oznakom „Trenutno nedostupno”." : "Označiti „{$nmP}” trajno prodanom? Više se neće nuditi kupcima."));
+             : ($madeP ? "Privremeno isključiti „{$nmP}”? Ostaje na stranici s oznakom „Trenutačno nedostupno”." : "Označiti „{$nmP}” trajno prodanom? Više se neće nuditi kupcima."));
     if ($collP && $usedP >= sj_made_limit($p)) $h .= sj_btn('made_open', ['id' => $id], 'Otvori nova mjesta', $back, true, 'Otvoriti ' . sj_count_words(sj_made_limit($p), 'novo mjesto', 'nova mjesta', 'novih mjesta') . ' za „' . $nmP . '”? Dosadašnje narudžbe ostaju, brojanje kreće od sada.');
     $h .= sj_btn('toggle', ['id' => $id, 'field' => 'hidden', 'to' => !empty($p['hidden']) ? '0' : '1'], !empty($p['hidden']) ? 'Prikaži' : 'Sakrij', $back, true);
     /* v66: prazno mjesto umjesto izostavljene strelice — gumbi ne „skaču” od retka do retka */
@@ -830,7 +830,7 @@ function sj_view_form(array $c, string $id): string {
   $h .= '<label data-vrsta="kolekcija">Najviše mjesta (1 mjesto = 1 torba; prazno = 3; 0 = ne prima narudžbe; nova mjesta otvarate u popisu Torbe) <input name="made_limit" type="number" min="0" max="99" inputmode="numeric" value="' . e((string)($p['made_limit'] ?? 3)) . '"></label>';
   $h .= '<label>Karakter u jednom retku (na kartici, do 60 znakova) <input name="tagline" maxlength="60" value="' . e($p['tagline'] ?? '') . '" placeholder="npr. Mirna, s jednim zlatnim odsjajem."><small class="muted">Jedna rečenica o karakteru torbe; ne ponavljajte vrstu torbe (okrugla, ruksak…), ona je već u opisu.</small></label>';
   $h .= '<div class="stack">';
-  $h .= '<label class="check"><input type="checkbox" name="sold" value="1"' . (!empty($p['sold']) ? ' checked' : '') . '> Prodano / trenutno nedostupno</label>';
+  $h .= '<label class="check"><input type="checkbox" name="sold" value="1"' . (!empty($p['sold']) ? ' checked' : '') . '> Prodano / trenutačno nedostupno</label>';
   $h .= '<label class="check"><input type="checkbox" name="reserved" value="1"' . (!empty($p['reserved']) ? ' checked' : '') . '> Rezervirano ručno (npr. dogovor porukom)</label>';
   $h .= '<label class="check"><input type="checkbox" name="hidden" value="1"' . (!empty($p['hidden']) ? ' checked' : '') . '> Skriveno (nije na stranici)</label>';
   $h .= '<label class="check"><input type="checkbox" name="hero" value="1"' . (!empty($p['hero']) ? ' checked' : '') . '> Na naslovnici (velika fotografija na vrhu stranice; samo jedna torba)</label>';
@@ -858,7 +858,7 @@ function sj_view_reservations(array $c): string {
   foreach (sj_products() as $p) { $names[$p['id'] ?? ''] = $p['name'] ?? ''; if (!empty($p['sold'])) $soldFlag[(string)($p['id'] ?? '')] = true; }
   $back = '?s=rez';
   $h = '<h3>Aktivne rezervacije — do kada vrijedi koja, piše u stupcu „Vrijedi do” (rok za uplatu, a za unikat još do kraja sljedećeg radnog dana)</h3>';
-  if (!$d['res']) $h .= '<p class="muted">Trenutno nema rezervacija.</p>';
+  if (!$d['res']) $h .= '<p class="muted">Trenutačno nema rezervacija.</p>';
   else {
     $h .= '<div class="tablewrap"><table class="cards t-rez"><thead><tr><th>Torba</th><th>Kupac</th><th>Rezervirano</th><th>Vrijedi do</th><th>Veza (oznaka)</th><th></th></tr></thead><tbody>';
     $perIp = []; $ipList = []; foreach ($d['res'] as $rid => $r) foreach (array_unique(array_filter([$r['ip'] ?? '', $r['ip_prev'] ?? ''])) as $k) { $perIp[$k] = ($perIp[$k] ?? 0) + 1; $ipList[$k][] = [(string)$rid, (string)($r['name'] ?? '')]; }

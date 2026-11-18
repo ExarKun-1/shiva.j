@@ -178,7 +178,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     const body = JSON.stringify(strapFill(order('potvrda-host-0001', 'host@primjer.hr', [{ id: 'klasik', qty: 1 }], 60)));
     const out503 = require('child_process').execFileSync('curl', ['-s', '-w', '\n%{http_code}', '-H', 'Host: zli.primjer.hr', '-X', 'POST', '--data-binary', body, U + 'order']).toString();
-    ok(/\n503$/.test(out503) && /trenutno nedostupne/.test(out503) && /narudžbe ne rade/.test(mailLog()), 'nepoznat Host bez upisane adrese stranice → 503 i upozorenje vlasnici');
+    ok(/\n503$/.test(out503) && /trenutačno nedostupne/.test(out503) && /narudžbe ne rade/.test(mailLog()), 'nepoznat Host bez upisane adrese stranice → 503 i upozorenje vlasnici');
     // 9) prekidač: require_confirm=false vraća staro ponašanje
     write('config.json', Object.assign({}, cfg0, { require_confirm: false }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

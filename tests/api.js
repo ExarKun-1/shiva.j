@@ -196,7 +196,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
     const st1 = await (await fetch(U + 'status')).json();
     const k4 = await post('order', order('api-key-kol4-eeee', 'kol4@primjer.hr', [{ id: 'klasik', qty: 1 }], 60));
     const nK1 = read('narudzbe.json'); const o1 = nK1.find(x => x.no === k1.data.orderNo);
-    ok(st0.madeLeft && st0.madeLeft.klasik === 3 && k1.data.ok && o1 && o1.order.items[0].qty === 1 && k2.data.ok && k3.data.ok && st1.madeLeft.klasik === 0 && k4.status === 409 && /Model „Klasik crna” je trenutno popunjen/.test(k4.data.error || ''),
+    ok(st0.madeLeft && st0.madeLeft.klasik === 3 && k1.data.ok && o1 && o1.order.items[0].qty === 1 && k2.data.ok && k3.data.ok && st1.madeLeft.klasik === 0 && k4.status === 409 && /Model „Klasik crna” je trenutačno popunjen/.test(k4.data.error || ''),
       'v62/v63: limit 3 po modelu, 1 komad po narudžbi (količina 2 → 1), status madeLeft, 4. mjesto odbijeno');
     ok(k1b.status === 409 && /Prethodna narudžba iz Stalne kolekcije čeka vašu uplatu; podatke za uplatu imate u e-mailu/.test(k1b.data.error || ''), 'v63: isti e-mail — druga neplaćena narudžba iz Stalne kolekcije odbijena');
     const mlK = fs.readFileSync(D + 'mail-log.txt', 'utf8');
@@ -269,7 +269,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const i3 = await post('order', order('api-key-ip3-hhhh', 'ip3@primjer.hr', [{ id: 'remen' }], 15));
       const i4 = await post('order', order('api-key-ip4-hhhh', 'ip4@primjer.hr', [{ id: 'nera' }], 85));
       const mlI = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-      ok(i1.data.ok && i2.data.ok && i3.data.ok && i4.status === 429 && i4.data.code === 'ip_limit' && /već čeka uplatu nekoliko narudžbi, pa novu trenutno ne možemo primiti/.test(i4.data.error || '') && /narudžba nije primljena \(ista veza\)/.test(mlI) && /ip4@primjer\.hr/.test(mlI),
+      ok(i1.data.ok && i2.data.ok && i3.data.ok && i4.status === 429 && i4.data.code === 'ip_limit' && /već čeka uplatu nekoliko narudžbi, pa novu trenutačno ne možemo primiti/.test(i4.data.error || '') && /narudžba nije primljena \(ista veza\)/.test(mlI) && /ip4@primjer\.hr/.test(mlI),
         'v69: s iste veze najviše 3 neplaćene narudžbe — 4. dobiva poruku, vlasnica e-mail s podacima kupca');
       const nI = read('narudzbe.json'); const oI1 = nI.find(x => x.no === i1.data.orderNo);
       ok(oI1 && oI1.payUntil === i1.data.payUntil && /^[a-f0-9]{32}$/.test(oI1.claim || ''), 'v69: rok za uplatu i tajna za „Uplatio/la sam” zapisani uz narudžbu');
@@ -328,7 +328,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produžujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
+    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x)).map(x => x.split('UVJETI KUPNJE (vrijede')[0]); /* v73: Uvjeti na kraju e-maila provjerava zaseban test */
       const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4,} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4,}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
@@ -489,7 +489,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       cancelAs(r1.data.orderNo, 'automatski', 'nije uplaćeno u roku'); clearLimits();
       const r2 = await post('order', order('api-key-v78s-aaaa', 'v78a@primjer.hr', [{ id: 't78a' }], 65));
       const r2b = await post('order', order('api-key-v78u-aaaa', 'drugi78@primjer.hr', [{ id: 't78a' }], 65));
-      ok(r2.status === 409 && r2.data.code === 'recent_cancel' && /trenutno ne možemo primiti/.test(r2.data.error || '') && !/stornirana/.test(r2.data.error || '') && r2b.data.ok,
+      ok(r2.status === 409 && r2.data.code === 'recent_cancel' && /trenutačno ne možemo primiti/.test(r2.data.error || '') && !/stornirana/.test(r2.data.error || '') && r2b.data.ok,
         'v81 (p1): nakon automatskog storna ista e-adresa 7 dana ne naručuje istu torbu, a druga e-adresa s iste veze može');
       cancelAs(r2b.data.orderNo, 'vlasnica', 'lažna narudžba'); clearLimits();
       const r2c = await post('order', order('api-key-v78v-aaaa', 'treci78@primjer.hr', [{ id: 't78a' }], 65));
