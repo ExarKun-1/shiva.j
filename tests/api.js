@@ -358,7 +358,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         'v73: api/raskid — 200, potvrda poslana, datum i vrijeme u odgovoru');
       const cm = ml3.split(/^=== /m).find(x => /potvrda primitka izjave o raskidu ugovora/.test(x)) || '';
       const om = ml3.split(/^=== /m).find(x => /RASKID UGOVORA: SJ-/.test(x)) || '';
-      ok(cm.includes(o.email) && /SADRŽAJ IZJAVE\nOvime izjavljujem da jednostrano raskidam ugovor o kupnji\.\nIme i prezime: Ana Kupac\nBroj narudžbe: SJ-\d{4}-\d{4,6}\n/.test(cm) && /IBAN za povrat novca: HR12 … 0160/.test(cm) && !/HR1210010051863000160/.test(cm) && /Napomena: Ne odgovara boja\./.test(cm) && /Datum i vrijeme podnošenja: \d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(cm),
+      ok(cm.includes(o.email) && /SADRŽAJ IZJAVE\nOvim izjavljujem da jednostrano raskidam ugovor o prodaji sljedeće robe:\nIme i prezime: Ana Kupac\nBroj narudžbe: SJ-\d{4}-\d{4,6}\n/.test(cm) && /IBAN za povrat novca: HR12 … 0160/.test(cm) && !/HR1210010051863000160/.test(cm) && /Napomena: Ne odgovara boja\./.test(cm) && /Datum i vrijeme podnošenja: \d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(cm),
         'v73: potvrda kupcu na trajnom mediju — sadržaj izjave, datum i vrijeme (čl. 81.a st. 6.)');
       ok(/\(e-mail se podudara\)/.test(om) && /IBAN za povrat novca: HR1210010051863000160/.test(om) && /Na drugi IBAN samo ako ga kupac potvrdi s e-adrese iz narudžbe\./.test(om) && rr.length === 1 && rr[0].order === o.no && rr[0].emailMatch === true && (oo.withdrawals || []).length === 1,
         'v73: vlasnica dobiva kopiju s narudžbom; izjava spremljena (raskidi.json) i zabilježena uz narudžbu');

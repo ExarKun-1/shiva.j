@@ -136,7 +136,7 @@
            dana nakon roka, povrat u 7 dana; t. 6 pakiranje (plastika za manje artikle), rok slanja bez „obično”
      v80 — uz api v46, admin v49 (završna recenzija: sigurnost 8, pravo 8, kupac 8, dizajn 8,5, admin 6):
            materijal i mjere u košarici (ZZP čl. 74.), Uvjeti t. 5 („Uplatio/la sam”, snimka ručno), t. 7.5 (drugi
-           IBAN uz potvrdu), Izjava (Gmail izvan EGP-a, 7 dana i po e-adresi), poruka nakon raskida, rok izrade po artiklu
+           IBAN uz potvrdu), Izjava (Gmail izvan EGP-a, 7 dana i po <span class="nw">e-adresi</span>), poruka nakon raskida, rok izrade po artiklu
      v79 — uz api v45, admin v48: slanje e-maila preko SMTP-a s prijavom kao izbor u adminu → Postavke
            (Croadria traži autorizaciju i za skripte); stranica bez promjena
      v78 — uz api v45, admin v47 (odgovori vlasnice, 12. krug; odluka vlasnika: „makni svugdje opciju
@@ -210,7 +210,7 @@
            vremena po Zagrebu; zatvaranje povećanog prikaza vraća na karticu
      v64 — uz api v32, admin v32 (vijeće v63): obrazac se više ne zaglavi nakon
            promjene dostave (poruka provjere na skrivenom polju); „Već imate
-           otvorenu narudžbu” po kodu poslužitelja, ne „Provjerite e-adresu”;
+           otvorenu narudžbu” po kodu poslužitelja, ne „Provjerite <span class="nw">e-adresu</span>”;
            košarica: „1 kom · jedan komad ovog modela po narudžbi” i napomena „ako
            želju ne možemo ispuniti…”; mješovita narudžba poimence i s rokom
            slanja nakon izrade; povrat uplate kad unikat bez rezervacije uplati
@@ -557,7 +557,7 @@
   .wordmark.logo{display:inline-flex;align-items:center;min-height:44px;letter-spacing:0}
   .wordmark.logo img{display:block;height:28px;width:auto}
   footer .wordmark.logo img{height:24px}
-  @media (max-width:360px){ .header-inner{padding:0 14px;gap:10px} .wordmark.logo img{height:22px} }
+  @media (max-width:360px){ .header-inner{padding:0 24px;gap:8px} .wordmark.logo img{height:22px} } /* v96 (recenzija vijeća v95): isti rub kao sadržaj */
   nav{display:flex;gap:20px;align-items:center}
   nav a.navlink{
     font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;
@@ -632,6 +632,8 @@
   /* v95 (recenzija vijeća v94, dizajn 8): jednak, namjeran okvir oko fotografije i pozadina do dna ploče (bez praznog pojasa ispod) */
   .lb-photo{align-self:stretch;padding:14px}
   .lb-photo img{max-height:100%}
+  /* v96 (recenzija vijeća v95, dizajn A): na računalu i tabletu fotografija ne smije biti šira od svog stupca (aspect-ratio uz stretch ju je širio preko teksta) */
+  @media (min-width:681px){ .lb-photo{aspect-ratio:auto} .lb-panel{grid-template-rows:minmax(0,1fr)} }
   .lb-nav{
     position:absolute;top:50%;transform:translateY(-50%);
     background:rgba(246,246,243,.85);border:none;border-radius:50%;
@@ -791,6 +793,7 @@
     gap:40px 28px;
   }
   .card{display:flex;flex-direction:column;gap:12px}
+  @media (min-width:900px) and (max-width:1199px){ #productGrid:not(.ostalo){grid-template-columns:repeat(4,minmax(0,1fr))} } /* v96 (recenzija vijeća v95): na 1024 četiri kartice u retku, bez osamljene */
   .grid-empty{
     grid-column:1/-1;text-align:center;padding:56px 24px;
     border:1px dashed var(--thread);color:var(--ink-soft);line-height:1.6;
@@ -842,6 +845,8 @@
   .grid-gone .card .price{font-size:.8rem}
   .grid-gone .card .add-btn{min-height:0;padding:2px 0;border:0;background:none;text-align:left;font-size:.7rem;margin-top:0}
   @media (max-width:560px){ .grid-gone{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 10px} .grid-gone .card h3{font-size:.85rem} }
+  @media (max-width:360px){ .grid-gone{grid-template-columns:repeat(2,minmax(0,1fr))} } /* v96: na 320 px oznake stanja se ne spajaju */
+  @media (max-width:680px){ .lb-close{background:var(--paper);box-shadow:0 1px 6px rgba(0,0,0,.18)} .lb-info h3,.lb-info .lb-tag-row{padding-right:40px} } /* v96: × je jasno gumb iznad teksta; naslov ne ide ispod njega */
 
   .card-info{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
   .card h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.1rem;letter-spacing:.02em}
@@ -932,6 +937,7 @@
   footer .wordmark{font-size:1.1rem}
   .foot-links{display:flex;flex-direction:column;gap:8px;font-size:.9rem;color:var(--ink-soft)}
   .foot-links a:hover{color:var(--thread)}
+  .foot-links a{text-decoration:underline dashed var(--thread);text-decoration-thickness:1px;text-underline-offset:4px} /* v96 (recenzija vijeća v95): poveznice se razlikuju od podatkovnih redaka */
   .copyright{margin-top:48px;font-size:.75rem;color:var(--ink-soft)}
 
   /* ---------- Košarica (drawer) ---------- */
@@ -1030,6 +1036,8 @@
   .order-error b{display:block;margin-bottom:2px}
   .order-note{font-size:.8rem;color:var(--ink-soft)}
   .empty-cart.under-claim{display:none}
+  @media (max-width:420px){ .imp-sep{display:none} .imp-mbo{display:block} } /* v96: OIB i MBO u zasebnim recima na mobitelu */
+  @media (max-width:560px){ .raskid-form{font-size:.7rem;white-space:pre-wrap;overflow-wrap:anywhere} } /* v96: obrazac za raskid na mobitelu (polja ne bježe izvan ruba) */
   .order-sum .sum-split{display:block;font-size:.8em;color:var(--ink-soft);white-space:nowrap}
   /* v73: funkcija za raskid (ZZP čl. 81.a) — istaknuta poveznica i obrazac */
   .empty-go{display:inline-flex;align-items:center;min-height:44px;margin-top:16px;padding:0 18px;border:1.5px dashed var(--thread);border-radius:var(--radius);color:var(--thread);font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
@@ -1040,6 +1048,9 @@
   .legal .raskid-fn .edit-order{align-self:flex-start;border-bottom:none}
   .trust-line{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.02em;color:var(--thread);border:1.5px dashed var(--thread);border-radius:var(--radius);padding:8px 10px;text-align:center}
   .trust-line a{border-bottom:1.5px dashed var(--thread);white-space:nowrap}
+  /* v96 (recenzija vijeća v95, dizajn F): stavke kao popis s razmacima — bez „·” koji visi na kraju retka na mobitelu */
+  ul.trust-line{list-style:none;margin:0;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px}
+  ul.trust-line li{white-space:nowrap}
   .next-step{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:-4px}
   .ship-list{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
   .ship-list ul{margin:4px 0 6px;padding-left:1.1em;display:grid;gap:2px}
@@ -1089,7 +1100,7 @@
   .lg-notice{margin:14px 0 6px;max-width:360px}
   .lg-notice img{width:100%;height:auto;display:block;border:1px solid var(--line,#ddd)}
   .lg-notice figcaption{font-size:.8rem;color:var(--ink-soft);margin-top:6px}
-  .lg-badge{display:flex;gap:12px;align-items:center;margin:10px 0;padding:6px 0;min-height:44px;color:var(--ink);text-decoration:none;font-size:.85rem;line-height:1.35}
+  .lg-badge{display:flex;gap:12px;align-items:center;margin:10px 0;padding:6px 0 14px;min-height:44px;color:var(--ink);text-decoration:none;font-size:.85rem;line-height:1.35}
   .lg-badge img{width:48px;height:auto;border:1px solid var(--line,#ddd);flex:none}
   .locker-btn:hover{background:var(--thread);color:var(--paper);border-style:solid}
   .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread)}
@@ -1123,7 +1134,7 @@
   .pay-data dd br + .copy-btn{margin-left:0;margin-top:6px}
   .pay-data .copy-btn{min-height:44px}
   /* v44: vrijednost i „Kopiraj” u istom redu (gumb ide u novi red samo ako nema mjesta) */
-  .val-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+  .val-row{display:flex;flex-direction:column;align-items:flex-start;gap:6px} /* v96 (recenzija vijeća v95, dizajn F): „Kopiraj” uvijek ispod vrijednosti, kao kod Primatelja */
   .val-row .copy-btn{margin-left:0}
   .val-row + small{display:block;margin-top:4px}
   .pay-data .amount{font-weight:700;font-size:1.1rem}
@@ -1306,7 +1317,7 @@
       <div class="step">
         <span class="num">02</span>
         <h3>Pošaljite narudžbu</h3>
-        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz <span class="nw">e-maila</span></span>, imate <span data-ttl-text>24 sata</span> za uplatu (rok koji istječe vikendom ili blagdanom traje do 23:59 prvoga radnog dana). Do tada je unikat rezerviran samo za vas.</p>
+        <p>Bez registracije i bez kartice. Čim narudžbu pošaljete<span data-if-confirm> i potvrdite linkom iz <span class="nw">e-maila</span></span>, imate <span data-ttl-text>24 sata</span> za uplatu (rok koji istječe vikendom ili blagdanom traje do 23:59 prvoga sljedećeg radnog dana). Do tada je unikat rezerviran samo za vas.</p>
         <div class="ship-list" id="shipList" hidden></div>
       </div>
       <div class="step">
@@ -1379,7 +1390,7 @@
 
       <details><summary><h3><span class="n">4.</span> Narudžba i sklapanje ugovora</h3></summary>
       <p>Narudžbu šaljete klikom na „Naruči s obvezom plaćanja”<span data-if-confirm> i potvrđujete klikom na link iz <span class="nw">e-maila</span> koji vam tada šaljemo; narudžba koju ne potvrdite u roku navedenom u <span class="nw">e-mailu</span> nije zaprimljena</span>. Prije slanja u košarici možete provjeriti i ispraviti svaki podatak. Podatke za uplatu (IBAN, iznos, model i poziv na broj) vidite odmah nakon <span data-if-confirm>potvrde </span>narudžbe, a <span class="nw">e-mailom</span> vam šaljemo i potvrdu narudžbe, s ovim Uvjetima i obrascem za jednostrani raskid ugovora; ugovor je sklopljen kad primite tu potvrdu. Ugovor sklapamo na hrvatskom jeziku. Narudžbu i Uvjete koji su tada vrijedili čuvamo i na zahtjev vam ih šaljemo.</p>
-      <p>Ako je narudžba stornirana jer nije plaćena u roku, isti artikl s iste e-adrese možete ponovno naručiti tek 7 dana nakon storna; nakon storna lažne narudžbe to vrijedi i za istu internetsku vezu (npr. kućni wi-fi ili mobilna mreža). Ako je riječ o pogrešci, pišite nam <span class="nw">e-mailom</span>.</p>
+      <p>Ako je narudžba stornirana jer nije plaćena u roku, isti artikl s iste <span class="nw">e-adrese</span> možete ponovno naručiti tek 7 dana nakon storna; nakon storna lažne narudžbe to vrijedi i za istu internetsku vezu (npr. kućni wi-fi ili mobilna mreža). Ako je riječ o pogrešci, pišite nam <span class="nw">e-mailom</span>.</p>
       <p><span data-if-confirm>Potvrdom narudžbe</span><span data-if-noconfirm>Narudžbom</span> se unikatna torba automatski rezervira i drugi je kupci ne mogu naručiti dok rezervacija traje. Artikli po narudžbi ne rezerviraju se; izrađujemo ih nakon uplate. Ako bi dvije narudžbe za istu torbu ipak stigle gotovo u istom trenutku, prednost ima ranija, a drugog kupca odmah obavještavamo i vraćamo mu eventualnu uplatu uvećanu za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.</p>
       </details>
 
@@ -1403,13 +1414,13 @@
       <p>Pravo na raskid imate za sve artikle: za unikate, za modele iz Stalne kolekcije i za druge artikle izrađene po narudžbi, bez obzira na boju i duljinu koje ste odabrali (artikle izrađujemo samo iz ponude, točka 2.).</p>
       <h4>7.3. Kako raskinuti ugovor</h4>
       <p>Da biste mogli ostvariti pravo na jednostrani raskid ugovora, morate nas obavijestiti o svojoj odluci o jednostranom raskidu ugovora prije isteka roka i to nedvosmislenom izjavom poslanom poštom (Matije Gupca 33, 49210 Zabok) ili elektroničkom poštom (shivaj.handmade@gmail.com), u kojoj ćete navesti svoje ime i prezime, adresu, broj telefona ili adresu elektroničke pošte, a možete koristiti i priloženi primjer obrasca za jednostrani raskid ugovora. Obrazac nije obvezan.</p>
-      <p>Pravo na jednostrani raskid ugovora možete ostvariti i mrežnim putem, poveznicom „Raskid ugovora” na dnu naše web stranice (odjeljak „Raskid ugovora”, poveznica je i u <span class="nw">e-mailu</span> s potvrdom narudžbe). Ako upotrijebite opisanu mrežnu funkciju, poslat ćemo vam bez odgađanja potvrdu o zaprimanju vaše izjave o jednostranom raskidu ugovora na trajnom mediju (e-poštom), uključujući njezin sadržaj te datum i vrijeme podnošenja.</p>
+      <p>Pravo na jednostrani raskid ugovora možete ostvariti i mrežnim putem, poveznicom „Raskid ugovora” na dnu naše web stranice (odjeljak „Raskid ugovora”, poveznica je i u <span class="nw">e-mailu</span> s potvrdom narudžbe). Ako upotrijebite opisanu mrežnu funkciju, poslat ćemo vam bez odgađanja potvrdu o zaprimanju vaše izjave o jednostranom raskidu ugovora na trajnom mediju (e-mailom), uključujući njezin sadržaj te datum i vrijeme podnošenja.</p>
       <p>Rok je poštovan ako izjavu pošaljete prije isteka 14 dana. Ako ugovor raskinete prije nego što ste platili, narudžbu storniramo, a unikatna torba vraća se u prodaju; ništa nam ne dugujete. Ako ste uplatu ipak već poslali, vraćamo vam cijeli iznos kako piše u točki 7.5.</p>
       <h4>7.4. Povrat torbe</h4>
       <p>Torbu vratite ili je predajte nama (SHIVA.&nbsp;J, Matije Gupca 33, 49210 Zabok) bez nepotrebnog odgađanja, a u svakom slučaju najkasnije u roku od 14 dana od dana kada ste nam uputili svoju odluku o jednostranom raskidu ugovora. Smatra se da ste svoju obvezu izvršili na vrijeme ako prije isteka tog roka torbu pošaljete ili predate nama. Izravne troškove povrata robe morate snositi sami. Molimo torbu dobro zapakirajte; preporučujemo slanje s praćenjem.</p>
       <h4>7.5. Povrat novca</h4>
       <p>Ako jednostrano raskinete ugovor, izvršit ćemo povrat novca koji smo od vas primili, uključujući i troškove isporuke, bez odgađanja, a najkasnije u roku od 14 dana od dana kada smo zaprimili vašu odluku o jednostranom raskidu ugovora, osim ako ste odabrali vrstu isporuke koja nije najjeftinija standardna isporuka koju smo ponudili (tada razliku ne vraćamo<span data-terms-cheap-wrap>; od dostava koje nudimo, ne računajući osobno preuzimanje, najjeftinija je <span data-terms-cheapest>BOX NOW paketomat</span></span>).</p>
-      <p>Povrat novca bit će izvršen na isti način na koji ste izvršili uplatu, na račun s kojeg ste platili; na drugi račun (npr. IBAN upisan u izjavu o raskidu) samo na vaš izričit zahtjev, nakon što nam ga potvrdite odgovorom s e-adrese s koje ste naručili. Za povrat novca ne plaćate nikakvu naknadu. Povrat novca možemo izvršiti tek nakon što nam torba bude vraćena ili nakon što nam dostavite dokaz da ste nam je poslali natrag, ovisno o tome što je prije.</p>
+      <p>Povrat novca bit će izvršen na isti način na koji ste izvršili uplatu, na račun s kojeg ste platili; na drugi račun (npr. IBAN upisan u izjavu o raskidu) samo na vaš izričit zahtjev, nakon što nam ga potvrdite odgovorom s <span class="nw">e-adrese</span> s koje ste naručili. Za povrat novca ne plaćate nikakvu naknadu. Povrat novca možemo izvršiti tek nakon što nam torba bude vraćena ili nakon što nam dostavite dokaz da ste nam je poslali natrag, ovisno o tome što je prije.</p>
       <h4>7.6. Stanje vraćene torbe</h4>
       <p>Odgovorni ste za svako umanjenje vrijednosti robe koje je rezultat rukovanja robom, osim onog koje je bilo potrebno za utvrđivanje prirode, obilježja i funkcionalnosti robe. Torbu smijete pregledati i isprobati kao što biste to mogli u trgovini. Iznos umanjenja određujemo prema stvarnoj šteti, na primjer prema trošku čišćenja ili popravka, i pisano vam ga obrazlažemo uz fotografije. Pravo na raskid time ne gubite.</p>
       <h4>Obrazac za jednostrani raskid ugovora</h4>
@@ -1417,7 +1428,8 @@
       <pre class="raskid-form">1. Ime, prezime i adresa potrošača: ______________
 2. Prima: SHIVA. J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, tel. 099 886 6877, shivaj.handmade@gmail.com
 3. Ja ______________ ovim izjavljujem da jednostrano raskidam Ugovor o prodaji sljedeće robe: ______________, naručene/primljene dana ______________.
-   Broj narudžbe (ako ga znate): ______________   IBAN za povrat novca: ______________
+   Broj narudžbe (ako ga znate): ______________
+   IBAN za povrat novca: ______________
    – potpis potrošača (samo ako se ovaj obrazac ispunjava na papiru)
    – datum</pre>
       </details>
@@ -1434,7 +1446,7 @@
       </details>
 
       <details><summary><h3><span class="n">10.</span> Osobni podaci</h3></summary>
-      <p>Osobne podatke iz narudžbe (ime, adresu, e-adresu, telefon) koristimo samo za izvršenje narudžbe, dostavu, povrat i ispunjenje zakonskih obveza. Više u Izjavi o zaštiti osobnih podataka na našoj web stranici (odjeljak „Izjava o zaštiti osobnih podataka”).</p>
+      <p>Osobne podatke iz narudžbe (ime, adresu, <span class="nw">e-adresu</span>, telefon) koristimo samo za izvršenje narudžbe, dostavu, povrat i ispunjenje zakonskih obveza. Više u Izjavi o zaštiti osobnih podataka na našoj web stranici (odjeljak „Izjava o zaštiti osobnih podataka”).</p>
       </details>
 
       <details><summary><h3><span class="n">11.</span> Završne odredbe</h3></summary>
@@ -1457,9 +1469,9 @@
 
       <details><summary><h3><span class="n">2.</span> Koje podatke prikupljamo</h3></summary>
       <ul class="legal-list">
-        <li><b>Narudžba:</b> ime i prezime, e-adresa, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi: nakon storna neplaćene narudžbe s iste e-adrese, a nakon storna lažne narudžbe i s iste veze, 7 dana nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Narudžba:</b> ime i prezime, <span class="nw">e-adresa</span>, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi: nakon storna neplaćene narudžbe s iste <span class="nw">e-adrese</span>, a nakon storna lažne narudžbe i s iste veze, 7 dana nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
         <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
-        <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, e-adresa, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
+        <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, <span class="nw">e-adresa</span>, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
         <li><b>Kontakt <span class="nw">e-mailom</span> ili na Instagramu:</b> podaci koje nam sami navedete.</li>
         <li><b>Posjet stranici:</b> posjete i klikove brojimo samo kao dnevne zbrojeve, bez osobnih podataka; radi zaštite od zlouporabe adresa vašeg uređaja čuva se u skraćenom, neprepoznatljivom obliku najviše sat vremena. Pružatelj hostinga radi sigurnosti u poslužiteljskim zapisima može bilježiti IP adrese posjetitelja.</li>
       </ul>
@@ -1470,11 +1482,11 @@
       </details>
 
       <details><summary><h3><span class="n">4.</span> Kome dajemo podatke</h3></summary>
-      <p>Vaše podatke ne prodajemo i ne dajemo drugima za njihov marketing. Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU). S tog poslužitelja <span data-if-confirm>vama se automatski šalje <span class="nw">e-mail</span> s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka.</span><span data-if-noconfirm>nama se automatski šalje narudžba, a vama potvrda narudžbe.</span> E-mailove s narudžbama i izjavama o raskidu primamo u pretinac kod usluge Gmail (Google); Google pritom podatke može obrađivati i izvan Europskoga gospodarskog prostora, uz zaštitne mjere propisane Općom uredbom o zaštiti podataka. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i <span class="nw">e-mail</span> dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Kod povrata novca podatke o uplati obrađuje naša banka. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka. Podatke dajemo i nadležnim tijelima (npr. Poreznoj upravi, sudu, inspekciji) kada to zakon nalaže.</p>
+      <p>Vaše podatke ne prodajemo i ne dajemo drugima za njihov marketing. Stranica, narudžbe i rezervacije nalaze se na našem poslužitelju kod pružatelja hostinga Croadria (Hrvatski Telekom d.d., Zagreb, EU). S tog poslužitelja <span data-if-confirm>vama se automatski šalje <span class="nw">e-mail</span> s linkom za potvrdu, a nakon potvrde nama narudžba i vama potvrda narudžbe. Narudžba koju ne potvrdite automatski se briše dan nakon isteka linka.</span><span data-if-noconfirm>nama se automatski šalje narudžba, a vama potvrda narudžbe.</span> E-mailove s narudžbama i izjavama o raskidu primamo u pretinac kod usluge Gmail (Google); Google pritom podatke može obrađivati i izvan Europskoga gospodarskog prostora, uz zaštitne mjere propisane Općom uredbom o zaštiti podataka. Adresu za dostavu ili odabrani paketomat, ime, broj telefona i <span class="nw">e-adresu</span> dijelimo s dostavnom službom koju odaberete (BOX NOW ili GLS) isključivo radi isporuke paketa. Kod povrata novca podatke o uplati obrađuje naša banka. Ako otvorite kartu BOX NOW paketomata, karta se učitava s poslužitelja usluge BOX NOW tek nakon vašeg klika; BOX NOW tada obrađuje vašu IP adresu, vašu lokaciju samo ako je dopustite u pregledniku, i unutar karte može koristiti vlastite kolačiće. Fontove na stranici poslužuje Bunny Fonts (BunnyWay d.o.o., Slovenija, EU) bez pohrane osobnih podataka. Podatke dajemo i nadležnim tijelima (npr. Poreznoj upravi, sudu, inspekciji) kada to zakon nalaže.</p>
       </details>
 
       <details><summary><h3><span class="n">5.</span> Koliko dugo čuvamo podatke</h3></summary>
-      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) i poruke s kupcem čuvamo tri godine od uplate, a izjave o raskidu tri godine od dana izjave. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo 30 dana nakon storna; ako je kupac javio da je platio ili poslao potvrdu o uplati, čuvamo ih tri godine od storna, zbog mogućeg povrata novca. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, <span class="nw">e-mail</span> i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo. Dnevne sigurnosne kopije podataka (za slučaj kvara) čuvamo najviše 14 dana, pa obrisani podaci iz njih nestaju najkasnije 14 dana nakon brisanja.</p>
+      <p>Račune i druge knjigovodstvene isprave o izvršenim narudžbama čuvamo deset godina od početka tijeka zastare, kako propisuje Opći porezni zakon (čl. 66.); zastara počinje teći istekom godine u kojoj je nastala porezna obveza. Ostale podatke izvršenih narudžbi (npr. adresu dostave i telefon) i poruke s kupcem čuvamo tri godine od uplate, a izjave o raskidu tri godine od dana izjave. Evidenciju pisanih prigovora čuvamo najmanje godinu dana od primitka (Zakon o zaštiti potrošača, čl. 10.). Podatke iz narudžbi koje nisu realizirane brišemo 30 dana nakon storna; ako je kupac javio da je platio ili poslao potvrdu o uplati, čuvamo ih tri godine od storna, zbog mogućeg povrata novca. Za rezervaciju torbe pohranjuju se oznaka torbe, ime, <span class="nw">e-adresu</span> i vrijeme narudžbe dok rezervacija traje, nakon čega se automatski brišu. Reklamacije i prigovore čuvamo zajedno s narudžbom na koju se odnose. Nakon isteka roka podatke brišemo ili ih trajno anonimiziramo. Dnevne sigurnosne kopije podataka (za slučaj kvara) čuvamo najviše 14 dana, pa obrisani podaci iz njih nestaju najkasnije 14 dana nakon brisanja.</p>
       </details>
 
       <details><summary><h3><span class="n">6.</span> Vaša prava</h3></summary>
@@ -1486,11 +1498,11 @@
       </details>
 
       <details><summary><h3><span class="n">8.</span> Kolačići i pohrana u pregledniku</h3></summary>
-      <p>Stranica ne postavlja kolačiće. Preglednik samo na vašem uređaju (lokalna pohrana) pamti sadržaj košarice (artikle, količinu i napomenu uz artikl), odabranu dostavu, rezervaciju napravljenu s tog uređaja i podatke za uplatu zadnje narudžbe (24 sata). Ime, <span class="nw">e-mail</span>, telefon i adresu ne pamti. To je nužno za rad košarice i ne šalje se nikome. Možete ih obrisati brisanjem podataka stranice u pregledniku. Kolačiće može koristiti samo karta BOX NOW, i to tek kad je otvorite.</p>
+      <p>Stranica ne postavlja kolačiće. Preglednik samo na vašem uređaju (lokalna pohrana) pamti sadržaj košarice (artikle, količinu i napomenu uz artikl), odabranu dostavu, rezervaciju napravljenu s tog uređaja i podatke za uplatu zadnje narudžbe (24 sata). Ime, <span class="nw">e-adresu</span>, telefon i adresu ne pamti. To je nužno za rad košarice i ne šalje se nikome. Možete ih obrisati brisanjem podataka stranice u pregledniku. Kolačiće može koristiti samo karta BOX NOW, i to tek kad je otvorite.</p>
       </details>
 
       <details><summary><h3><span class="n">9.</span> Sigurnost</h3></summary>
-      <p>Podatke štitimo primjerenim tehničkim i organizacijskim mjerama: stranica koristi šifriranu vezu (HTTPS), pristup podacima imamo samo mi i pružatelji usluga iz točke 4., a pristup administraciji stranice i e-pošti zaštićen je lozinkama.</p>
+      <p>Podatke štitimo primjerenim tehničkim i organizacijskim mjerama: stranica koristi šifriranu vezu (HTTPS), pristup podacima imamo samo mi i pružatelji usluga iz točke 4., a pristup administraciji stranice i pretincu za e-mail zaštićen je lozinkama.</p>
       </details>
 
       <details><summary><h3><span class="n">10.</span> Izmjene Izjave</h3></summary>
@@ -1501,7 +1513,7 @@
         <h3>Impressum</h3>
         <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec</p>
         <p>Matije Gupca 33, 49210 Zabok, Hrvatska</p>
-        <p><span class="nw">OIB: 50934176320</span> · <span class="nw">Obrtni registar, MBO: 98020200</span></p>
+        <p><span class="nw">OIB: 50934176320</span><span class="imp-sep"> · </span><span class="nw imp-mbo">Obrtni registar, MBO: 98020200</span></p>
         <p>IBAN: <span class="nowrap">HR98 2360 0001 1027 9044 2</span></p>
         <p>telefon: <a href="tel:+385998866877">099 886 6877</a></p>
         <p><span class="nw">e-mail</span>: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> · Instagram: <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a></p>
@@ -1516,7 +1528,7 @@
     <div class="legal-block" id="raskid">
       <h2>Raskid ugovora</h2>
       <hr class="seam">
-      <p>Ovdje možete jednostrano raskinuti ugovor, već od narudžbe pa sve do isteka 14 dana od preuzimanja torbe, bez navođenja razloga i bez registracije (Uvjeti kupnje, točka 7.). Čim izjavu pošaljete, e-poštom vam šaljemo potvrdu primitka, s njezinim sadržajem te datumom i vremenom podnošenja.</p>
+      <p>Ovdje možete jednostrano raskinuti ugovor, već od narudžbe pa sve do isteka 14 dana od preuzimanja torbe, bez navođenja razloga i bez registracije (Uvjeti kupnje, točka 7.). Čim izjavu pošaljete, e-mailom vam šaljemo potvrdu primitka, s njezinim sadržajem te datumom i vremenom podnošenja.</p>
       <form class="raskid-fn" id="raskidForm" novalidate>
         <div class="hp-field" aria-hidden="true">
           <label for="rWeb">Web stranica (ostavite prazno)</label>
@@ -1524,7 +1536,7 @@
         </div>
         <div class="raskid-step" id="raskidStep1">
           <div><label for="rName">Ime i prezime</label><input id="rName" required autocomplete="name" maxlength="80"></div>
-          <div><label for="rNo">Broj narudžbe</label><input id="rNo" required maxlength="40" placeholder="npr. 2026-0007" aria-describedby="rNoHint"><small class="field-hint" id="rNoHint">piše u potvrdi narudžbe; ako ga nemate, upišite datum narudžbe i naziv torbe</small></div>
+          <div><label for="rNo">Broj narudžbe</label><input id="rNo" required maxlength="40" placeholder="npr. 2026-0007 ili SJ-2026-0007" aria-describedby="rNoHint"><small class="field-hint" id="rNoHint">piše u potvrdi narudžbe; ako ga nemate, upišite datum narudžbe i naziv torbe</small></div>
           <div><label for="rEmail">E-mail za potvrdu raskida</label><input id="rEmail" type="email" required autocomplete="email" maxlength="120" inputmode="email"></div>
           <div><label for="rIban">IBAN za povrat novca (neobavezno)</label><input id="rIban" maxlength="34" autocomplete="off" placeholder="HR…" aria-describedby="rIbanHint"><small class="field-hint" id="rIbanHint">novac vraćamo na račun s kojeg ste platili; drugi IBAN upišite samo ako želite povrat na taj račun</small></div>
           <div><label for="rNote">Napomena (neobavezno)</label><textarea id="rNote" rows="2" maxlength="500"></textarea></div>
@@ -1536,7 +1548,7 @@
           <pre class="raskid-form" id="raskidPreview"></pre>
           <div class="raskid-msg" id="raskidError2" role="alert" tabindex="-1" hidden></div>
           <button type="button" class="order-btn" id="raskidConfirm">Potvrditi raskid ugovora</button>
-          <button type="button" class="edit-order" id="raskidBack">Ispravite podatke</button>
+          <button type="button" class="edit-order" id="raskidBack">Ispravi podatke</button>
         </div>
         <div class="raskid-msg raskid-ok" id="raskidDone" role="status" tabindex="-1" hidden></div>
       </form>
@@ -1582,7 +1594,7 @@
       <span>Ukupno</span><span id="totalAmount"></span>
     </div>
     <form class="order-form" id="orderForm" hidden>
-      <p class="trust-line">Bez registracije · Plaćanje uplatom · <span class="nw">14 dana za raskid</span> · <a href="#jamstvo" class="drawer-link" title="Usklađena obavijest EU, Uvjeti kupnje t. 8">Zakonsko jamstvo 2 godine</a></p>
+      <ul class="trust-line" aria-label="Ukratko"><li>Bez registracije</li><li>Plaćanje uplatom</li><li>14 dana za raskid</li><li><a href="#jamstvo" class="drawer-link" title="Usklađena obavijest EU, Uvjeti kupnje t. 8">Zakonsko jamstvo 2 godine</a></li></ul>
       <p class="cart-ask">Pitanje prije narudžbe? Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com"><span class="nw">e-mailom</span></a>.</p>
       <p class="order-fix" id="orderFix" aria-live="polite" hidden></p>
       <div class="hp-field" aria-hidden="true">
@@ -1673,7 +1685,7 @@
            prepisuje tekst između NJEGA-START i NJEGA-END (sj_care_text) -->
       <details class="lb-care" id="lbCare" hidden><summary>Njega torbe</summary><div class="lb-care-t"><!-- NJEGA-START --><p>Bok, ja sam tvoja nova torba.</p><p>Sašivena sam od umjetne kože i voljela bih s tobom potrajati. Zato te molim za nekoliko sitnica.</p><p>Nemoj me pretrpavati. Kad u mene naguraš previše stvari, najviše trpe šavovi i zatvarač. Ponesi ono što ti stvarno treba, a ostalo neka pričeka doma.</p><p>Kad me ne nosiš, spremi me na suho mjesto. Ne volim biti stisnuta među drugim stvarima, pa mi ostavi malo prostora da ne izgubim oblik.</p><p>Ako se zaprljam, obriši me nježno, mekom krpicom.</p><p>Čuvaj me od vode, od grubih površina koje me mogu ogrebati i od jakih sredstava za čišćenje. Kiša, beton i deterdžent nisu mi prijatelji.</p><p>Uz malo brige dugo ćemo ići zajedno.</p><!-- NJEGA-END --></div></details>
       <p class="lb-ship" id="lbShip" hidden></p>
-      <p class="lb-gone" id="lbGone" hidden><span id="lbGoneText"></span> <button type="button" class="lb-more" id="lbMore">Pogledajte slobodne torbe</button></p>
+      <p class="lb-gone" id="lbGone" hidden><span id="lbGoneText"></span> <button type="button" class="lb-more" id="lbMore">Pogledaj slobodne torbe</button></p>
       <p class="ask" id="lbAsk"><span id="lbAskLead">Pitanje prije narudžbe?</span> Pišite nam na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:shivaj.handmade@gmail.com"><span class="nw">e-mailom</span></a>.</p>
       <button class="add-btn" id="lbAdd"></button>
     </div>
@@ -2094,6 +2106,10 @@ function limitWhy(p, add){
 }
 const overLimit = (p, add) => !!limitWhy(p, add);
 const limitText = () => `U jednoj narudžbi može biti najviše ${LIMITS.bags} torbi i ${LIMITS.articles} artikala ukupno, od toga ${LIMITS.unique === 1 ? "jedna unikatna torba" : LIMITS.unique + " unikatne torbe"}.` + LIMIT_MORE;
+/* v96 (recenzija vijeća v95, mobitel): u povećanom prikazu bez obavijesti — gumb već kaže „U košarici ✓” (obavijest ga je prekrivala) */
+/* v96 (recenzija vijeća v95, dizajn B): „SMS-om”, „e-mailom” i sl. iz Postavki se ne lome na crtici (spojnica U+2060 iza crtice) */
+function noHyBreak(t){ return String(t).replace(/(^|[^\p{L}])(SMS|e)-(\p{L})/gu, "$1$2-\u2060$3"); }
+function cartToast(p){ if(!lightbox.classList.contains("open")) showToast(`U košarici: „${p.name}”\u00a0✓`); else srSay(`U košarici: „${p.name}”`); }
 function toggleCartItem(id){
   const p = PRODUCTS.find(x => x.id === id);
   if(!p || isGone(p) || noPhoto(p)) return;
@@ -2104,14 +2120,14 @@ function toggleCartItem(id){
     const cap = catOf(p) === "kolekcija" ? 1 : (madeLeft(p) === null ? 10 : Math.min(10, madeLeft(p))); /* v63: model iz Stalne kolekcije 1 komad po narudžbi */
     if(entry && qtyOf(entry) >= cap){ if(catOf(p) !== "kolekcija") showToast(`„${p.name}”: najviše ${cap} kom.`); if(lbCurrent) closeLightbox(true); openCart(); return; }
     if(entry){ entry.qty = Math.min(cap, qtyOf(entry) + 1); showToast(`„${p.name}” — ${entry.qty} kom. u košarici`); }
-    else { cart.push({ ...p, qty: 1, note: "" }); showToast(`U košarici: „${p.name}”\u00a0✓`); }
+    else { cart.push({ ...p, qty: 1, note: "" }); cartToast(p); }
   } else if(entry){
     /* v46: drugi dodir na „U košarici ✓” otvara košaricu (ukloniti se može u košarici) */
     if(lbCurrent) closeLightbox(true);
     openCart(); return;
   } else {
     cart.push({ ...p, qty: 1, note: "" }); /* unikat — uvijek količina 1 */
-    showToast(`U košarici: „${p.name}”\u00a0✓`);
+    cartToast(p);
   }
   /* v48: nakon ponovnog iscrtavanja fokus ostaje na istom gumbu (tipkovnica, čitač zaslona) */
   const hadFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches("#productGrid .add-btn");
@@ -2160,19 +2176,20 @@ document.getElementById("heroBag").addEventListener("click", e => {
 const lightbox = document.getElementById("lightbox");
 let lbCurrent = null, lbIndex = 0;
 
-let lbReturnFocus = null;
+let lbReturnFocus = null, lbNoReturn = false;
 /* v94 (recenzija vijeća, mobitel): povećani prikaz i košarica dodaju korak u povijest — „natrag” na mobitelu ih zatvara,
    umjesto da kupca vrati na Instagram ili prethodnu stranicu */
 let sjIgnorePop = false;
-function sjPushView(kind){
+function sjPushView(kind, extra){
+  const st = Object.assign({ sj: kind }, extra || {}); /* v96: povećani prikaz pamti torbu (gumb „naprijed” ga ponovno otvara) */
   try {
-    if(history.state && history.state.sj === kind) return;
-    if(history.state && history.state.sj){ history.replaceState({ sj: kind }, ""); return; } /* iz povećanog prikaza ravno u košaricu: isti korak */
+    if(history.state && history.state.sj === kind){ if(extra) history.replaceState(st, ""); return; }
+    if(history.state && history.state.sj){ history.replaceState(st, ""); return; } /* iz povećanog prikaza ravno u košaricu: isti korak */
     if(/^#torba-/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); /* ispod ostaje adresa bez #torba- */
     /* v95: položaj stranice ispod prikaza ne vraća preglednik (postavka vrijedi za svaki korak povijesti zasebno) — pri
        zatvaranju ostaje gdje je, ili se pomiče na karticu torbe; nakon povratka opet „auto” */
     try { history.scrollRestoration = "manual"; } catch(e){}
-    history.pushState({ sj: kind }, "", location.pathname + location.search + (/^#torba-/.test(location.hash) ? "" : location.hash));
+    history.pushState(st, "", location.pathname + location.search + (/^#torba-/.test(location.hash) ? "" : location.hash));
     try { history.scrollRestoration = "auto"; } catch(e){}
   } catch(e){}
 }
@@ -2187,6 +2204,11 @@ addEventListener("popstate", () => {
   if(document.body.classList.contains("menu-open") && st !== "menu") closeMenu(false); /* v95; recenzija: i dalje provjera prikaza i košarice */
   if(lightbox.classList.contains("open") && st !== "lb") closeLightbox(true);
   else if(document.body.classList.contains("cart-open") && st !== "cart") closeCart(true, true);
+  /* v96 (recenzija vijeća v95, mobitel): povratak na korak košarice (npr. nakon Uvjeta otvorenih iz košarice) ili „naprijed”
+     na korak prikaza ponovno otvara taj prikaz, bez novog koraka u povijesti */
+  else if(st === "cart-under"){ try { history.replaceState({ sj: "cart" }, ""); } catch(e){} openCart(); }
+  else if(st === "cart" && !document.body.classList.contains("cart-open")) openCart();
+  else if(st === "lb" && !lightbox.classList.contains("open") && history.state.id) openLightbox(String(history.state.id));
 });
 function openLightbox(id){
   closeMenu(false); /* v95 (recenzija): korak izbornika postaje korak prikaza (isti unos u povijesti) */
@@ -2243,7 +2265,7 @@ function openLightbox(id){
   document.getElementById("lbTag").textContent = statusLabel(lbCurrent);
   renderLbPhoto(); updateLbButton();
   lightbox.classList.add("open"); document.body.classList.add("lb-open");
-  sjPushView("lb");
+  sjPushView("lb", { id: lbCurrent ? lbCurrent.id : "" });
   document.body.style.overflow = "hidden";
   document.getElementById("lbClose").focus();
 }
@@ -2255,7 +2277,7 @@ function closeLightbox(fromPop){
   lbCurrent = null;
   document.body.style.overflow = "";
   if(lbReturnFocus && lbReturnFocus !== document.body && lbReturnFocus.focus) lbReturnFocus.focus();
-  else if(wasId){
+  else if(wasId && !lbNoReturn){
     /* v65: otvoreno linkom (#torba-ID, npr. s Instagrama) — natrag na karticu te torbe, ne na vrh stranice */
     const ph = grid.querySelector(`.photo[data-view="${CSS.escape(wasId)}"]`);
     if(ph){ const go = () => { ph.closest(".card").scrollIntoView({ block: "center", behavior: "instant" }); ph.focus({ preventScroll: true }); }; go(); if(popped) sjAfterPop = go; } /* v95: bez animacije (otišli unikati su na dnu) */
@@ -2324,11 +2346,15 @@ function updateLbButton(){
 document.getElementById("lbClose").addEventListener("click", () => closeLightbox());
 document.getElementById("lbMore").addEventListener("click", () => {
   lbReturnFocus = null; /* v51: fokus ne skače natrag na prodanu karticu */
-  closeLightbox(true); try { if(history.state && history.state.sj === "lb") history.replaceState(null, "", location.pathname + location.search); } catch(e){}
-  if(currentCat !== "torbe"){ location.hash = "#torbe"; return; }
-  document.getElementById("torbe").scrollIntoView({ behavior: SMOOTH });
-  const free = [...grid.querySelectorAll(".card:not(.sold):not(.made) .photo")][0];
-  if(free) free.focus({ preventScroll: true });
+  /* v96 (recenzija vijeća v95, mobitel): korak prikaza vraća se u povijesti (bez praznog „natrag”), pa se ide na slobodne torbe */
+  const go = () => {
+    if(currentCat !== "torbe"){ location.hash = "#torbe"; return; }
+    document.getElementById("torbe").scrollIntoView({ behavior: SMOOTH });
+    const free = [...grid.querySelectorAll(".card:not(.sold):not(.made) .photo")][0];
+    if(free) free.focus({ preventScroll: true });
+  };
+  lbNoReturn = true; closeLightbox(); lbNoReturn = false;
+  if(sjIgnorePop) sjAfterPop = go; else go();
 });
 document.getElementById("lbPrev").addEventListener("click", () => stepLb(-1));
 document.getElementById("lbNext").addEventListener("click", () => stepLb(1));
@@ -2414,7 +2440,9 @@ document.addEventListener("keydown", e => {
 });
 /* klik na uvjete/privatnost unutar košarice: zatvori košaricu pa skoči na odjeljak */
 drawer.addEventListener("click", e => {
-  if(e.target.closest(".drawer-link")) closeCart(false);
+  /* v96 (recenzija vijeća v95, mobitel): Uvjeti ili privatnost iz košarice — korak košarice ostaje označen, pa „natrag” vraća u košaricu */
+  const dl = e.target.closest(".drawer-link");
+  if(dl){ const keep = !dl.classList.contains("empty-go") && history.state && history.state.sj === "cart"; closeCart(false); if(keep){ try { history.replaceState({ sj: "cart-under" }, ""); history.scrollRestoration = "auto"; } catch(x){} } }
   const sb = e.target.closest(".share-btn");
   if(sb){
     navigator.share({ title: "Shiva.J — podaci za uplatu", text: sb.dataset.share }).catch(() => {});
@@ -2485,7 +2513,9 @@ function renderCart(){
     const q = qtyOf(p);
     const id = escHtml(p.id);
     /* v80 (završna recenzija, ZZP čl. 74. st. 1.): osnovna obilježja uz naziv i u košarici */
-    const cMat = filled(p.material) || ((p.cat || "torbe") === "torbe" ? "kvalitetna umjetna koža" : ""), cDims = filled(p.dims);
+    /* v96 (recenzija vijeća v95): materijal malim slovom u retku; mjere se ne lome usred („26 × 7 cm”) */
+    const cMat0 = filled(p.material) || ((p.cat || "torbe") === "torbe" ? "kvalitetna umjetna koža" : ""), cMat = cMat0 ? cMat0.charAt(0).toLowerCase() + cMat0.slice(1) : "";
+    const cDims = filled(p.dims) ? String(filled(p.dims)).replace(/\s*×\s*/g, "\u00a0×\u00a0").replace(/(\d)\s+(cm|mm|m)\b/g, "$1\u00a0$2") : "";
     const cInfo = [cMat, cDims ? "mjere " + cDims : ""].filter(Boolean).join(" · ");
     /* v95 (recenzija vijeća v94, dizajn 9): sličica torbe u košarici — kupac vidi da je to prava torba */
     const thumb = Array.isArray(p.imgs) && p.imgs[0] ? `<img class="cart-thumb" src="${escHtml(p.imgs[0])}" alt="" loading="lazy">` : "";
@@ -2833,7 +2863,7 @@ function renderShipping(){
       <input type="radio" name="ship" value="${escHtml(o.id)}" ${o.id === shipId ? "checked" : ""}>
       <span class="ship-main"><span>${escHtml(o.label)}</span><span class="price" data-ship-price="${escHtml(o.id)}">${optPrice(o) ? fmt(optPrice(o)) : "besplatno"}</span></span>
       ${freeFor(o) ? `<span class="ship-note ship-free-hint" data-free-hint="${escHtml(o.id)}">besplatno od ${fmt(FREE_SHIP.min)}</span>` : ""}
-      ${o.note ? `<span class="ship-note">${escHtml(o.note)}</span>` : ""}
+      ${o.note ? `<span class="ship-note">${noHyBreak(escHtml(o.note))}</span>` : ""}
     </label>`).join("");
   applyShipping();
 }
@@ -2937,6 +2967,12 @@ function pendingCartChanged(){
    osvježavanja ne treba sve upisivati ponovno; brišu se potvrdom narudžbe ili kad oznaka čekanja istekne */
 const PEND_FIELDS = ["fName", "fEmail", "fPhone", "fAddr", "fCity", "fLocker", "fNote"]; /* v95 (recenzija vijeća v94, mobitel): i paketomat i napomena */
 function pendFormFp(){ return JSON.stringify(PEND_FIELDS.map(id => { const el = document.getElementById(id); return el ? el.value.trim() : ""; }).concat([shipId])); }
+/* v96 (recenzija vijeća v94/v95, mobitel): upisani podaci obrasca čuvaju se i prije slanja (samo ova kartica, sessionStorage) —
+   iOS koji odbaci karticu dok kupac gleda e-mail ne briše upisano; brišu se potvrdom narudžbe */
+function formDraftSave(){ try { const o = {}; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el) o[id] = el.value; }); sessionStorage.setItem("sj-form", JSON.stringify(o)); } catch(e){} }
+function formDraftRestore(){ try { const o = JSON.parse(sessionStorage.getItem("sj-form") || "null"); if(!o) return; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el && !el.value && typeof o[id] === "string") el.value = o[id]; }); } catch(e){} }
+function formDraftClear(){ try { sessionStorage.removeItem("sj-form"); } catch(e){} }
+{ let dT = null; document.getElementById("orderForm").addEventListener("input", e => { if(PEND_FIELDS.includes(e.target.id)){ clearTimeout(dT); dT = setTimeout(formDraftSave, 400); } }); formDraftRestore(); }
 function pendFormSave(){ try { const o = {}; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el) o[id] = el.value; }); sessionStorage.setItem("sj-pend-form", JSON.stringify(o)); } catch(e){} }
 function pendFormClear(){ try { sessionStorage.removeItem("sj-pend-form"); } catch(e){} }
 function pendFormRestore(){ try { const o = JSON.parse(sessionStorage.getItem("sj-pend-form") || "null"); if(!o) return; PEND_FIELDS.forEach(id => { const el = document.getElementById(id); if(el && !el.value && typeof o[id] === "string") el.value = o[id]; }); } catch(e){} }
@@ -3080,7 +3116,7 @@ function showOrderPending(srv, email, note = ""){
        <span class="pend-p">Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu. Link radi i na mobitelu ili drugom računalu, pa ovu stranicu možete zatvoriti.</span>
        <span class="pend-p">E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:</span>
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji e-mail ponovno</button></div>
-       <button type="button" class="edit-order" id="editOrder">Promijenite podatke narudžbe</button>`,
+       <button type="button" class="edit-order" id="editOrder">Promijeni podatke narudžbe</button>`,
     srv.mailCustomer !== false);
   if(srv.mailCustomer !== false){
     orderFormEl.classList.add("is-pending"); pendingSig = cartSig();
@@ -3211,7 +3247,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2
     [["rName", !v.name], ["rNo", !v.no], ["rEmail", !EMAIL_RE.test(v.email)], ["rIban", !!(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban))]].forEach(([id, bad]) => { const el = $(id); if(!el) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " raskidError").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
     if(miss.length) return err($("raskidError"), "Molimo upišite: " + miss.join(", ") + ".");
     err($("raskidError"), "");
-    $("raskidPreview").textContent = "Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.\n"
+    $("raskidPreview").textContent = "Ovim izjavljujem da jednostrano raskidam ugovor o prodaji sljedeće robe:\n"
       + "Ime i prezime: " + v.name + "\nBroj narudžbe: " + v.no + "\nE-mail: " + v.email
       + (v.iban ? "\nIBAN za povrat novca: " + v.iban.replace(/(.{4})(?=.)/g, "$1 ") : "") + (v.note ? "\nNapomena: " + v.note : "");
     s1.hidden = true; s2.hidden = false; const lead = s2.querySelector(".raskid-lead"); lead.tabIndex = -1; lead.focus({ preventScroll: true }); lead.scrollIntoView({ block: "center" }); /* recenzija R76-D3; v94: ne ispod zaglavlja (iPhone SE) */
@@ -3227,7 +3263,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
         s2.hidden = true; done.hidden = false;
-        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-poštom trenutačno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako narudžba još nije plaćena, nećete je morati platiti; u potvrdi e-poštom piše što slijedi. Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, t. 7.4).`; /* v78 (t2; vijeće V78-S4: stranica ne otkriva stanje narudžbe) */
+        done.innerHTML = `<b>Vaša izjava o raskidu zaprimljena je ${escHtml(data.at || "")}.</b> ${data.mailed ? "Potvrdu s njezinim sadržajem, datumom i vremenom poslali smo vam na " + escHtml(val().email) + "." : "Potvrdu e-mailom trenutačno nismo uspjeli poslati; izjava je ipak zaprimljena, a javit ćemo vam se."} Ako narudžba još nije plaćena, nećete je morati platiti; u potvrdi e-mailom piše što slijedi. Ako ste torbu već primili, vratite nam je najkasnije 14 dana od danas (Uvjeti kupnje, točka 7.4.).`; /* v78 (t2; vijeće V78-S4: stranica ne otkriva stanje narudžbe) */
         done.focus({ preventScroll: true }); done.scrollIntoView({ block: "center" }); return;
       }
       btn.disabled = false;
@@ -3264,7 +3300,7 @@ function showOrderSuccess(srv){
   saveCart();
   storeSet("okey", null);
   /* v53: narudžba je potvrđena — preglednik više ne smatra rezervaciju „svojom” (torba se ne prikazuje slobodnom) */
-  heldRes = null; storeSet("hold", null); storeSet("pend", null); pendFormClear();
+  heldRes = null; storeSet("hold", null); storeSet("pend", null); pendFormClear(); formDraftClear();
   document.getElementById("fNote").value = "";
   clearOrderError();
   /* podaci za uplatu ostaju dostupni 24 sata i nakon osvježavanja (bez osobnih podataka) */
@@ -3483,7 +3519,7 @@ function paymentPanel(last){
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")" : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
           : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}</li>
-        <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, t.\u00a07.).</li>
+        <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to <a href="#raskid">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, točka\u00a07.).</li>
       </ol>
       <p class="pay-note">${mailSent}</p>
     </div>`;

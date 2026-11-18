@@ -564,7 +564,7 @@ if ($a === 'confirm') {
    narudžba. Granice: 5 po adresi na sat, 3 potvrde istom primatelju na sat, 40 ukupno na sat — iznad toga kupac dobiva
    uputu da izjavu pošalje e-mailom (rok je poštovan ako je pošalje prije isteka 14 dana). */
 function sj_terms_withdraw_lines(array $r): array {
-  $l = ['Ovime izjavljujem da jednostrano raskidam ugovor o kupnji.', 'Ime i prezime: ' . $r['name'], 'Broj narudžbe: ' . $r['no'], 'E-mail: ' . $r['email']];
+  $l = ['Ovim izjavljujem da jednostrano raskidam ugovor o prodaji sljedeće robe:' /* v96 (recenzija vijeća v95, dizajn C): isto kao obrazac u Uvjetima t. 7 */, 'Ime i prezime: ' . $r['name'], 'Broj narudžbe: ' . $r['no'], 'E-mail: ' . $r['email']];
   if ($r['iban'] !== '') $l[] = 'IBAN za povrat novca: ' . $r['iban'];
   if ($r['note'] !== '') $l[] = 'Napomena: ' . $r['note'];
   return $l;

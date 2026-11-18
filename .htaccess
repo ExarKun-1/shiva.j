@@ -28,5 +28,8 @@ Options -Indexes
 
 # v95 (recenzija vijeća v94, mobitel): sažimanje teksta (index.html ima oko 280 KB, sažet oko 90 KB) — brže na sporoj mreži
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+  <IfModule mod_filter.c>
+    # v96 (recenzija vijeća v95): AddOutputFilterByType je u Apacheu 2.4 dio mod_filter — bez njega ne smije srušiti stranicu
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+  </IfModule>
 </IfModule>
