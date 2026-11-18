@@ -215,6 +215,25 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
     ok(uv >= 0 && uv < 160 && /12\.\u00a011\. u\u00a000:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
+  { /* v96 (recenzija vijeća v95, hitno): na računalu fotografija u povećanom prikazu ne prekriva tekst */
+    const ov = [];
+    for (const w of [1440, 1024, 820, 700]) {
+      const cx = await browser.newContext({ viewport: { width: w, height: 800 } }); const po = await cx.newPage();
+      await po.goto(URL + '#torba-luna', { waitUntil: 'networkidle' }); await po.waitForTimeout(700);
+      const r = await po.evaluate(() => { const ph = document.querySelector('#lightbox .lb-photo').getBoundingClientRect(), inf = document.querySelector('#lightbox .lb-info').getBoundingClientRect(); return Math.round(ph.right - inf.left); });
+      ov.push(r); await cx.close();
+    }
+    ok(ov.every(x => x <= 0), 'v96: povećani prikaz bez preklapanja fotografije i teksta (1440/1024/820/700) ' + JSON.stringify(ov)); }
+  { /* v96 (recenzija vijeća v95, mobitel): Uvjeti otvoreni iz košarice → „natrag” ponovno otvara košaricu */
+    const pc = await m.newPage(); await pc.goto(URL, { waitUntil: 'networkidle' }); await pc.waitForTimeout(300);
+    await pc.locator('#productGrid .card:not(.made) .add-btn:not([disabled])').first().click(); await pc.waitForTimeout(200);
+    if(!(await pc.evaluate(() => document.body.classList.contains('cart-open')))) { await pc.evaluate(() => openCart()); await pc.waitForTimeout(400); }
+    await pc.locator('#orderForm a.drawer-link[href="#uvjeti"]').scrollIntoViewIfNeeded().catch(() => {});
+    await pc.locator('#orderForm a.drawer-link[href="#uvjeti"]').click(); await pc.waitForTimeout(700);
+    const at = await pc.evaluate(() => [document.body.classList.contains('cart-open'), Math.round(document.getElementById('uvjeti').getBoundingClientRect().top)]);
+    await pc.goBack(); await pc.waitForTimeout(700);
+    const back = await pc.evaluate(() => [document.body.classList.contains('cart-open'), location.href]);
+    ok(!at[0] && Math.abs(at[1]) < 200 && back[0] && !/logo\.svg|about:blank/.test(back[1]), 'v96: Uvjeti iz košarice, pa „natrag” — košarica ponovno otvorena ' + JSON.stringify([at, back])); await pc.close(); }
   { const pq = await m.newPage(); await pq.goto(URL + '#torba-luna', { waitUntil: 'networkidle' }); await pq.waitForTimeout(700);
     const lb = await pq.evaluate(() => { const a = document.getElementById('lbAdd').getBoundingClientRect(); return [Math.round(a.bottom), innerHeight, getComputedStyle(document.querySelector('.lb-photo img')).objectFit, getComputedStyle(document.getElementById('lbAdd')).backgroundColor]; });
     const cs = await pq.evaluate(() => { const c = document.getElementById('fConsent'); const r = c.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), document.getElementById('fName').getAttribute('autocapitalize')]; });
@@ -284,8 +303,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok((await pm.textContent('.pay-hello')).startsWith('Hvala vam!') && /Narudžba SJ-\d{4}-\d{4}/.test(await pm.textContent('.pay-hello')) && await pm.locator('.pay-thanks b').count() === 0 && !/Rok za uplatu/.test(await pm.textContent('.pay-thanks')) && /Ako se predomislite/.test(await pm.textContent('.pay-steps')) && /navečer ili vikendom/.test(await pm.textContent('.pay-steps')), 'v42/v69: „Hvala vam!” kao naslov; rok samo jednom (u koraku), uplata navečer ili vikendom, korak „Ako se predomislite”');
   const cbh = await pm.locator('.pay-data .copy-btn').first().boundingBox();
   ok(cbh && cbh.height >= 44, 'v42: gumb „Kopiraj” u podacima ' + Math.round(cbh && cbh.height) + ' px');
-  const ibanRow = await pm.evaluate(() => { const v = document.querySelector('.pay-data .iban'), b = v && v.parentElement.querySelector('.copy-btn'); if(!b) return null; const a = v.getBoundingClientRect(), c = b.getBoundingClientRect(); return Math.abs((a.top + a.bottom) / 2 - (c.top + c.bottom) / 2) < 14; });
-  ok(ibanRow === true, 'v44: „Kopiraj” u istom redu s IBAN-om (390 px)');
+  const ibanRow = await pm.evaluate(() => { const v = document.querySelector('.pay-data .iban'), b = v && v.parentElement.querySelector('.copy-btn'); if(!b) return null; const a = v.getBoundingClientRect(), c = b.getBoundingClientRect(); return c.top >= a.bottom - 1 && Math.abs(c.left - a.left) < 4; });
+  ok(ibanRow === true, 'v96 (recenzija vijeća v95): „Kopiraj” uvijek ispod vrijednosti, poravnat lijevo (390 px)');
   ok(await pm.evaluate(() => { const b = document.getElementById('payBarcode'), d = document.querySelector('.pay-data'); return !b || !!(d.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); }), 'v42: na mobitelu barkod ispod podataka');
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
@@ -704,7 +723,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       await rem.first().click(); await p23.click('#openCart'); await p23.waitForTimeout(300);
       const c23 = await p23.textContent('.drawer-body');
       ok(!/Stalne kolekcije|torbu bez te želje/i.test(c23) && /za takav artikl imate pravo na raskid ugovora u 14 dana/.test(c23), 'v66/v73: Ostalo u košarici — bez teksta za torbe iz kolekcije, napomena o boji iz ponude i povratu');
-      ok(/Boja i duljina iz opisa artikla \(neobavezno\)/.test(c23) && !/želj/i.test(c23) && (await p23.getAttribute('.cart-note', 'placeholder')) === 'npr. crna, 100 cm', 'v78: Ostalo u košarici — polje „Boja i duljina iz opisa artikla”, bez riječi „želja”');
+      const ph23 = await p23.getAttribute('.cart-note', 'placeholder');
+      ok(/Boja( i duljina)? iz opisa artikla \(neobavezno\)/.test(c23) && !/želj/i.test(c23) && (/Boja i duljina iz opisa/.test(c23) ? ph23 === 'npr. crna, 100 cm' : ph23 === 'npr. crna'), 'v78/v96: Ostalo u košarici — polje „Boja (i duljina) iz opisa artikla”, duljina samo za remene, bez riječi „želja”');
       const ut = await p23.textContent('#uvjeti');
       ok(await p23.locator('[data-terms-auto-wrap]').evaluate(el => el.hidden) && /Zasebnu isporuku prihvatljivu za okoliš ne nudimo\./.test(ut) && /ništa nam ne dugujete/.test(ut),
         'v78: Uvjeti — bez rokova (ispitni podaci) sati automatskog storna skriveni; t. 6 pakiranje i isporuka za okoliš; t. 7.3 raskid prije uplate');
