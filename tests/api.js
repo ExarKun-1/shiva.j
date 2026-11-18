@@ -13,6 +13,7 @@ const pickup = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0
 const order = (key, email, items, total, hold) => ({ _gotcha: '', Napomena: '', _order: { key, hold: hold || '', customer: cust(email), items, shipping: pickup, goods: total, total } });
 const hrs = iso => (Date.parse(iso) - Date.now()) / 3600000;
 const read = f => JSON.parse(fs.readFileSync(D + f, 'utf8'));
+const Y = String(new Date().getFullYear()); /* v96 (recenzija vijeća v95, N9): brojevi narudžbi nose tekuću godinu */
 const prods = () => read('proizvodi.json');
 const rTok = no => { const o = read('narudzbe.json').find(x => x.no === no) || {}; return o.claim ? require('crypto').createHash('sha256').update('raskid|' + o.claim).digest('hex').slice(0, 24) : ''; }; /* v93: oznaka iz poveznice u e-mailu */
 const setProd = (id, patch) => { const p = prods(); Object.assign(p.find(x => x.id === id), patch); fs.writeFileSync(D + 'proizvodi.json', JSON.stringify(p, null, 2)); };
@@ -328,7 +329,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
+    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, rok za uplatu produljujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?(, a torbu čuvamo i nakon toga, do automatskog storna \(najmanje \d+ sat[a-z]* kasnije\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x)).map(x => x.split('UVJETI KUPNJE (vrijede')[0]); /* v73: Uvjeti na kraju e-maila provjerava zaseban test */
       const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4,} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4,}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
@@ -354,11 +355,11 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const good = await post('raskid', { name: 'Ana Kupac', no: o.no.replace(/^SJ-/, ''), email: o.email, iban: 'HR12 1001 0051 8630 0016 0', note: 'Ne odgovara boja.' });
       const ml3 = fs.readFileSync(D + 'mail-log.txt', 'utf8');
       const rr = read('raskidi.json'); const oo = read('narudzbe.json').find(x => x.no === o.no);
-      ok(good.status === 200 && good.data.ok && good.data.mailed === true && /\d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(good.data.at || ''),
+      ok(good.status === 200 && good.data.ok && !('mailed' in good.data) && /\d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(good.data.at || ''),
         'v73: api/raskid — 200, potvrda poslana, datum i vrijeme u odgovoru');
       const cm = ml3.split(/^=== /m).find(x => /potvrda primitka izjave o raskidu ugovora/.test(x)) || '';
       const om = ml3.split(/^=== /m).find(x => /RASKID UGOVORA: SJ-/.test(x)) || '';
-      ok(cm.includes(o.email) && /SADRŽAJ IZJAVE\nOvime izjavljujem da jednostrano raskidam ugovor o kupnji\.\nIme i prezime: Ana Kupac\nBroj narudžbe: SJ-\d{4}-\d{4,6}\n/.test(cm) && /IBAN za povrat novca: HR12 … 0160/.test(cm) && !/HR1210010051863000160/.test(cm) && /Napomena: Ne odgovara boja\./.test(cm) && /Datum i vrijeme podnošenja: \d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(cm),
+      ok(cm.includes(o.email) && /SADRŽAJ IZJAVE\nOvim izjavljujem da jednostrano raskidam ugovor o prodaji sljedeće robe:\nIme i prezime: Ana Kupac\nBroj narudžbe: SJ-\d{4}-\d{4,6}\n/.test(cm) && /IBAN za povrat novca: HR12 … 0160/.test(cm) && !/HR1210010051863000160/.test(cm) && /Napomena: Ne odgovara boja\./.test(cm) && /Datum i vrijeme podnošenja: \d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d/.test(cm),
         'v73: potvrda kupcu na trajnom mediju — sadržaj izjave, datum i vrijeme (čl. 81.a st. 6.)');
       ok(/\(e-mail se podudara\)/.test(om) && /IBAN za povrat novca: HR1210010051863000160/.test(om) && /Na drugi IBAN samo ako ga kupac potvrdi s e-adrese iz narudžbe\./.test(om) && rr.length === 1 && rr[0].order === o.no && rr[0].emailMatch === true && (oo.withdrawals || []).length === 1,
         'v73: vlasnica dobiva kopiju s narudžbom; izjava spremljena (raskidi.json) i zabilježena uz narudžbu');
@@ -366,27 +367,27 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const om2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /RASKID UGOVORA: kupila/.test(x)) || '';
       ok(unk.status === 200 && unk.data.ok && /Broj narudžbe nije pronađen u sustavu — izjava ipak vrijedi/.test(om2),
         'v73: izjava bez pronađene narudžbe vrijedi (st. 7.), kupac ne saznaje postoji li narudžba, vlasnica je upozorena');
-      const miss = await post('raskid', { name: '', no: '2026-0001', email: 'x' });
-      const bIban = await post('raskid', { name: 'A', no: '2026-0001', email: 'a@primjer.hr', iban: '12345' });
-      const hp = await post('raskid', { name: 'A', no: '2026-0001', email: 'a@primjer.hr', website: 'x' });
+      const miss = await post('raskid', { name: '', no: Y + '-0001', email: 'x' });
+      const bIban = await post('raskid', { name: 'A', no: Y + '-0001', email: 'a@primjer.hr', iban: '12345' });
+      const hp = await post('raskid', { name: 'A', no: Y + '-0001', email: 'a@primjer.hr', website: 'x' });
       const getR = await fetch(U + 'raskid');
       ok(miss.status === 400 && /ime i prezime, ispravan e-mail/.test(miss.data.error || '') && bIban.status === 400 && /IBAN/.test(bIban.data.error || '') && hp.status === 400 && getR.status === 405,
         'v73: api/raskid odbija prazna polja, krivi IBAN, mamac za botove i GET');
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
-      const lnk = await post('raskid', { name: 'Hitno platite', no: '2026-0001', email: 'b@primjer.hr', note: 'Uplatite na http://zlo.example' });
+      const lnk = await post('raskid', { name: 'Hitno platite', no: Y + '-0001', email: 'b@primjer.hr', note: 'Uplatite na http://zlo.example' });
       const mlL = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m);
       const cL = mlL.find(x => /potvrda primitka izjave o raskidu/.test(x)) || '', oL = mlL.find(x => /RASKID UGOVORA:/.test(x)) || '';
       ok(lnk.status === 200 && lnk.data.ok && /Napomena: \[primljena, proslijeđena trgovini\]/.test(cL) && !/zlo\.example|Uplatite na/.test(cL) && /http:\/\/zlo\.example/.test(oL),
         'v77/v94 (ZZP čl. 81.a st. 3.): izjava s poveznicom se prima; kad se ne podudara s narudžbom, kupcu bez slobodnog teksta, vlasnici izvorni tekst');
       clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
-      await post('raskid', { name: 'Nazovite 060 123 456', no: '2026-0001', email: 'c@primjer.hr' });
+      await post('raskid', { name: 'Nazovite 060 123 456', no: Y + '-0001', email: 'c@primjer.hr' });
       const cN = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /potvrda primitka izjave o raskidu/.test(x)) || '';
       ok(/\nDobar dan,\n/.test(cN) && !/Dobar dan, Nazovite/.test(cN), 'v77 (vijeće V77-3): ime koje nije samo slovima ne ide u pozdrav potvrde raskida');
       { clearLimits(); const cL0 = read('config.json'); setLimits({ mail_per_day: 1 });
-        const r1 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
-        const r2 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
+        const r1 = await post('raskid', { name: 'Dana Kupac', no: Y + '-0001', email: 'dan@primjer.hr' });
+        const r2 = await post('raskid', { name: 'Dana Kupac', no: Y + '-0001', email: 'dan@primjer.hr' });
         const own2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /RASKID UGOVORA:/.test(x)).pop() || '';
-        ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-mail sa stranice/.test(own2),
+        ok(r1.status === 200 && r2.status === 200 && !('mailed' in r1.data) && (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: dan@primjer\.hr[^\n]*potvrda primitka/g) || []).length === 1 && /danas već dobila 1 e-mail sa stranice/.test(own2),
           'v90 (recenzija): dnevna granica e-mailova ne odbija izjavu o raskidu (ZZP čl. 81.a) — izjava primljena, potvrda kupcu preskočena, vlasnica upozorena');
         fs.writeFileSync(D + 'config.json', JSON.stringify(cL0, null, 2)); clearLimits(); }
       { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw = fs.readFileSync(D + 'proizvodi.json', 'utf8'); setProd('luna', { sold: false, reserved: false, hidden: false });
@@ -431,7 +432,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       ok(ordL.status === 400 && /poveznice/.test(ordL.data.error || ''), 'v77 (recenzija R76-S3): narudžba s poveznicom u imenu odbijena (e-mail ne nosi lažnu poruku)');
       clearLimits(); const same = [];
       fs.writeFileSync(D + 'mail-log.txt', '');
-      for (let i = 0; i < 6; i++) same.push((await post('raskid', { name: 'Isti', no: '2026-0001', email: 'isti@primjer.hr' })).status);
+      for (let i = 0; i < 6; i++) same.push((await post('raskid', { name: 'Isti', no: Y + '-0001', email: 'isti@primjer.hr' })).status);
       const nIsti = (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: isti@primjer\.hr[^\n]*potvrda primitka izjave/g) || []).length;
       const rrI = read('raskidi.json').filter(x => x.email === 'isti@primjer.hr').length;
       ok(same.join() === '200,200,200,200,200,429' && nIsti === 3 && rrI === 5, 'v73/v95: najviše 3 potvrde istom primatelju na sat (izjava se ipak sprema); s iste veze najviše 5 izjava na sat, zatim uputa za e-mail (429) ' + same.join() + ' mail=' + nIsti + ' spremljeno=' + rrI);
@@ -463,6 +464,34 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const mlO = fs.readFileSync(D + 'mail-log.txt', 'utf8');
       ok(ov.status === 200 && ov.data.ok && read('raskidi.json').length === rr0 && vis.length === 1 && vis[0].email === 'prava@primjer.hr' && sz.n === 1 && !/RASKID UGOVORA: torba iz listopada/.test(mlO),
         'v95 (sigurnost 4): iznad granica izjava se ipak prima (200), upisuje u raskidi-visak-*.jsonl, a vlasnica je dobiva u sažetku ' + JSON.stringify([ov.status, vis.length, sz.n]));
+      clearLimits(); }
+    // v96 (recenzija vijeća v95): raskid nakon „Uplatio/la sam” — paket se ne šalje; stranica „Uplatio/la sam” više ne obećava čuvanje; odgovor bez „mailed”
+    { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
+      const w1 = await post('order', order('api-key-v96-w1', 'v96w@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+      const ow = read('narudzbe.json').find(x => x.no === w1.data.orderNo) || {};
+      const cl = await post('paidclaim', { no: ow.no, t: ow.claim });
+      fs.writeFileSync(D + 'mail-log.txt', '');
+      const rw = await post('raskid', { name: 'Vera Kupac', no: ow.no, email: 'v96w@primjer.hr' });
+      const mlw = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      const cw = mlw.split(/^=== /m).find(x => /To: v96w@primjer\.hr[^\n]*potvrda primitka/.test(x)) || '';
+      const owm = mlw.split(/^=== /m).find(x => /RASKID UGOVORA:/.test(x)) || '';
+      const pg = await (await fetch(U + 'paidclaim?no=' + ow.no + '&t=' + ow.claim)).json();
+      ok(w1.data.ok && cl.data.ok && rw.data.ok && !('mailed' in rw.data) && /paket nismo poslali i nećemo ga poslati/.test(cw) && /Ništa nam ne morate vraćati\./.test(cw) && /NE šaljite paket/.test(owm) && pg.state === 'withdrawn',
+        'v96: raskid nakon „Uplatio/la sam” — „paket ne šaljemo”, vlasnici „NE šaljite”, stranica „Uplatio/la sam” stanje withdrawn, odgovor bez „mailed” ' + JSON.stringify([cl.data.state, pg.state]));
+      clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
+      for (let i = 0; i < 4; i++) await post('raskid', { name: 'Vera Kupac', no: ow.no, email: 'v96w@primjer.hr' });
+      const n3 = (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: v96w@primjer\.hr[^\n]*potvrda primitka/g) || []).length;
+      ok(n3 === 3, 'v96 (sigurnost N4): potvrde istoj adresi iz narudžbe najviše 3 dnevno (' + n3 + ')');
+      clearLimits();
+      const nameEcho = await post('raskid', { name: 'Novi racun HR12 2360 0001 1023 4567 8', no: ow.no, email: 'v96w@primjer.hr' });
+      const cne = (fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /To: v96w@primjer\.hr[^\n]*potvrda primitka/.test(x)).pop()) || '';
+      ok(nameEcho.data.ok && !/HR12 2360/.test(cne), 'v96 (sigurnost N5): broj računa u imenu se ne ponavlja kupcu');
+      const rz = fs.readFileSync(D + 'narudzbe.json'); fs.writeFileSync(D + 'narudzbe.json', '');
+      const z0 = await post('order', order('api-key-v96-z0', 'v96z@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+      const hitno = fs.existsSync(D + 'ostecene-datoteke.json') ? read('ostecene-datoteke.json') : {};
+      const z0n = fs.readFileSync(D + 'narudzbe.json', 'utf8');
+      fs.writeFileSync(D + 'narudzbe.json', rz); try { fs.unlinkSync(D + 'ostecene-datoteke.json'); } catch (e) {}
+      ok(!z0.data.ok && z0.status >= 500 && hitno['narudzbe.json'] && z0n === '', 'v96 (N2): prazna (0 B) narudzbe.json — narudžba se ne prima, ništa se ne prepisuje, traka HITNO ' + z0.status);
       clearLimits(); }
     // v78 (12. krug): t2 raskid neplaćene narudžbe je stornira; t1 ista torba 7 dana s istog e-maila ili veze; t5 e-mail nakon „Uplatio/la sam”
     { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');

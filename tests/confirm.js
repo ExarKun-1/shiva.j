@@ -10,7 +10,8 @@ const strapFill = body => { const it = body && body._order && body._order.items;
 const post = async (a, body, type) => { const r = await fetch(U + a, { method: 'POST', headers: { 'Content-Type': type || 'application/json' }, body: JSON.stringify(strapFill(body)) }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
 const cust = email => ({ name: 'Potvrda Test', email, phone: '', street: '', city: '' });
 const pickup = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' };
-const order = (key, email, items, total) => ({ _gotcha: '', Napomena: '', _order: { key, customer: cust(email), items, shipping: pickup, goods: total, total } });
+const order = (key, email, items, total, series) => ({ _gotcha: '', Napomena: '', _order: Object.assign({ key, customer: cust(email), items, shipping: pickup, goods: total, total }, series ? { series } : {}) });
+const SER = 'serija-preglednika-0001'; /* v96: stalna oznaka preglednika (ispravak zamjenjuje raniji link samo iz istog preglednika) */
 const read = (f, d) => { try { return JSON.parse(fs.readFileSync(D + f, 'utf8')); } catch (e) { return d; } };
 const write = (f, v) => fs.writeFileSync(D + f, JSON.stringify(v, null, 2));
 const mailLog = () => { try { return fs.readFileSync(D + 'mail-log.txt', 'utf8'); } catch (e) { return ''; } };
@@ -141,20 +142,29 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     ok(o3.status === 503, 'v95: tvrda granica (300 e-mailova za potvrdu na sat) — nova narudžba 503 i s nove veze');
     // 7h) v94: ispravljena narudžba (novi ključ, isti e-mail, iste stavke, ista veza) zamjenjuje stari link
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
-      const a1 = await post('order', order('zamjena-key-0001', 'ispravak@primjer.hr', [{ id: 'luna' }], 65)); const LA = lastLink();
-      const a2 = await post('order', order('zamjena-key-0002', 'ispravak@primjer.hr', [{ id: 'luna' }], 65)); const LB = lastLink();
+      const a1 = await post('order', order('zamjena-key-0001', 'ispravak@primjer.hr', [{ id: 'luna' }], 65, SER)); const LA = lastLink();
+      const a2 = await post('order', order('zamjena-key-0002', 'ispravak@primjer.hr', [{ id: 'luna' }], 65, SER)); const LB = lastLink();
       const ca = await post('confirm', { id: LA.id, t: LA.t }); const cb = await post('confirm', { id: LB.id, t: LB.t });
       ok(a1.data.pending && a2.data.pending && LA.id !== LB.id && ca.status === 410 && ca.data.replaced && /zamijenjen novijim/.test(ca.data.error || '') && cb.data.ok && cb.data.orderNo,
         'v94 (recenzija vijeća): ispravljena narudžba poništava raniji link (410 „zamijenjen novijim”), novi link potvrđuje ' + JSON.stringify([ca.status, cb.status])); }
     // 7i) v95 (recenzija vijeća v94, kupac 1): ispravak s DRUGIM stavkama (dodan artikl) također poništava raniji link; e-mail kaže „novi link”
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
-      const b1 = await post('order', order('zamjena-key-0101', 'ispravak2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const L1 = lastLink();
-      const b2 = await post('order', order('zamjena-key-0102', 'ispravak2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }, { id: 'klasik', qty: 1 }], 80)); const L2 = lastLink();
+      const b1 = await post('order', order('zamjena-key-0101', 'ispravak2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, SER)); const L1 = lastLink();
+      const b2 = await post('order', order('zamjena-key-0102', 'ispravak2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }, { id: 'klasik', qty: 1 }], 80, SER)); const L2 = lastLink();
       const ml = mailLog(); const lastM = ml.split(/^=== /m).filter(x => /To: ispravak2@/.test(x)).pop() || '';
       const c1 = await post('confirm', { id: L1.id, t: L1.t }); const c2 = await post('confirm', { id: L2.id, t: L2.t });
       ok(b1.data.pending && b2.data.pending && b2.data.replaced === true && /potvrdite narudžbu \(novi link\)/.test(lastM) && /NOVI link za potvrdu narudžbe\. Link iz ranijeg e-maila više ne vrijedi/.test(lastM)
         && c1.status === 410 && c1.data.replaced && c2.data.ok && read('narudzbe.json', []).length === 1,
         'v95: ispravak s drugim artiklima poništava raniji link (samo jedna narudžba), e-mail „(novi link)” ' + JSON.stringify([c1.status, c2.status, b2.data.replaced])); }
+    // 7k) v96 (recenzija vijeća v95, sigurnost N6): netko na ISTOJ vezi (CGNAT) s tuđim e-mailom, ali iz drugog preglednika, ne zamjenjuje pravi link
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
+      await post('order', order('cgnat-key-0001', 'cgnat@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, 'serija-zrtve-0000000001')); const LV = lastLink();
+      const at = await post('order', order('cgnat-key-0002', 'cgnat@primjer.hr', [{ id: 'kozmeticka', qty: 2 }], 40, 'serija-napadaca-000000001'));
+      const cv = await post('confirm', { id: LV.id, t: LV.t });
+      ok(at.data.pending && at.data.replaced === false && cv.data.ok && /^SJ-/.test(cv.data.orderNo || ''), 'v96: s iste veze, drugi preglednik — pravi link i dalje potvrđuje (bez otmice) ' + JSON.stringify([at.data.replaced, cv.status]));
+      const pnd = read('narudzbe-na-cekanju.json', []).find(x => x.id === LV.id) || {};
+      const st = await (await fetch(U + 'status?pt=' + (pnd.pt || ''))).json();
+      ok(/^[0-9a-f]{24}$/.test(pnd.pt || '') && st.pendState === 'confirmed' && st.pendNo === cv.data.orderNo, 'v96: api/status?pt= javlja da je narudžba potvrđena (drugi uređaj) ' + JSON.stringify([st.pendState, st.pendNo])); }
     // 7j) v95 (recenzija vijeća v94, sigurnost 3): e-mail „potvrdite narudžbu” bez teksta koji je kupac upisao (paketomat, boja i duljina);
     //     nakon potvrde ploča dobiva adresu za dostavu (kupac 3)
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);

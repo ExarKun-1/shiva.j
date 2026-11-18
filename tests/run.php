@@ -290,7 +290,7 @@ $ok($cd92 === strtotime('2026-11-09T10:00:00Z'), 'v92 (recenzija): rok automatsk
 $cd92b = sj_cancel_due(['expiredAt' => '2026-11-05T23:00:00Z', 'payUntil' => '2026-11-05T22:59:00Z', 'cancelDue' => '2026-11-01T10:00:00Z', 'claimedAt' => '2026-11-04T10:00:00Z'], 48);
 $ok($cd92b > strtotime('2026-11-05T23:00:00Z'), 'v92 (recenzija): stari zapisani rok storna nikad ne skraćuje novi (nakon produženja roka)');
 $tt93 = sj_terms_text();
-$ok(str_contains($tt93, 'uvećan za zakonske zatezne kamate od dana uplate do dana povrata') && str_contains($tt93, 'Kliknite „Uplatio/la sam” u e-mailu o narudžbi: više vam ne šaljemo podsjetnike.'), 'v93 (odluka vlasnice): Uvjeti u e-mailu — zatezne kamate (ZZP čl. 14) i „Uplatio/la sam” bez podsjetnika');
+$ok(str_contains($tt93, 'uvećan za zakonske zatezne kamate od dana uplate do dana povrata') && str_contains($tt93, 'Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili na stranici s podacima za uplatu: više vam ne šaljemo podsjetnike.'), 'v93 (odluka vlasnice): Uvjeti u e-mailu — zatezne kamate (ZZP čl. 14) i „Uplatio/la sam” bez podsjetnika');
 $ok(sj_pow_zero_bits('000fff', 12) && !sj_pow_zero_bits('001fff', 12) && sj_pow_zero_bits('07ff', 5) && !sj_pow_zero_bits('08ff', 5), 'v93: provjera nultih bitova (sj_pow_zero_bits)');
 /* v94 (recenzija vijeća, H1): poplava ključeva koje napadač može stvarati ne briše granice po adresi */
 $zq = SJ_DATA . '/zahtjevi.json'; $zb94 = (string)@file_get_contents($zq); $tn = time(); $ip94 = sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'));
@@ -339,6 +339,7 @@ $ok(str_starts_with($e95, 'RuntimeException: brava se ne može otvoriti'), 'v95 
 $ovf95 = sj_raskid_overflow_path(time()); @unlink($ovf95); file_put_contents($ovf95, json_encode(['name' => 'Ov95', 'at' => sj_iso(time())]) . "\n");
 $ovr95 = sj_raskid_overflow_read(2, 100); @unlink($ovf95);
 $ok($ovr95['n'] === 1 && ($ovr95['list'][0]['name'] ?? '') === 'Ov95', 'v95 (recenzija): dodatni popis izjava vidljiv u adminu (isti mjesec)');
+$ok(sj_mask_numbers('NA 14 DANA ZBOG BOLESTI') === 'NA 14 DANA ZBOG BOLESTI' && sj_mask_numbers('Poslano 18. 11. 2026. 14:30') === 'Poslano 18. 11. 2026. 14:30' && sj_mask_numbers('2026-0007 2026-0008, SJ-2026-0009') === '2026-0007 2026-0008, SJ-2026-0009' && sj_mask_numbers('tel 091 234 5678') === 'tel [broj skriven]' && sj_mask_numbers('HR12  1001 0051 8630 0016 0') === '[IBAN skriven]', 'v96 (recenzija): maska ne skriva velika slova, datum ni brojeve narudžbi; telefon i IBAN skriva');
 $ok(sj_mask_numbers('Raskidam u roku od 14 dana od primitka.') === 'Raskidam u roku od 14 dana od primitka.' && sj_mask_numbers('torbu br 12 jer mi ne odgovara') === 'torbu br 12 jer mi ne odgovara' && sj_mask_numbers('IBAN HR12 1001 0051 8630 0016 0') === 'IBAN [IBAN skriven]', 'v95 (recenzija): maska skriva samo pravi IBAN');
 $ok(!sj_has_link('Dostava nakon 17h, 1.kat/stan 4') && !sj_has_link('ulaz B, 2.kat/desno') && !sj_has_link('Hvala.do viđenja') && !sj_has_link('boja.red') && sj_has_link('bit.do/x') && sj_has_link('t.co/x'), 'v95 (recenzija): obične napomene prolaze, kratke poveznice s putanjom ne');
 echo implode("\n", $R), "\n";
