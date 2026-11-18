@@ -96,6 +96,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   /* v95 (recenzija vijeća v94, M2): rokovi, brisanje, kopija i sažetak raskida NAKON prikaza stranice (kao u api/) — spor ili
      nedostupan poslužitelj pošte ne smije ostaviti admin praznim ni prekinuti slanje e-mailova istekom vremena */
   register_shutdown_function(function () {
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close(); /* v95 (recenzija): sljedeći klik u adminu ne čeka na e-mailove */
     if (function_exists('ignore_user_abort')) ignore_user_abort(true); if (function_exists('set_time_limit')) @set_time_limit(0);
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }

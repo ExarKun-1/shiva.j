@@ -681,7 +681,7 @@ if ($a === 'raskid') {
   if ($storno) $own[] = 'Narudžba nije bila plaćena (ni javljena uplata), pa je automatski stornirana (razlog: kupac odustao); torbe i mjesta vraćeni su u prodaju. Ništa ne šaljete. Ako uplata ipak stigne (kupac je možda platio, a nije javio), vratite je najkasnije 14 dana od danas na račun s kojeg je plaćeno (Uvjeti t. 7.5).';
   if ($saveErr !== '') $own[] = 'PAŽNJA: izjava NIJE upisana u evidenciju (' . $saveErr . ') — sačuvajte ovaj e-mail.';
   if (!$matched && !$extOk) $own[] = 'Potvrda kupcu nije poslana automatski (izjava se ne podudara s narudžbom, a stiglo ih je neuobičajeno mnogo ili bez provjere „niste robot”). Ako je izjava prava, pošaljite potvrdu sami.';
-  if ($matched || $extOk) $own[] = $mailed ? 'Kupac je automatski dobio potvrdu primitka.' : ($mailDayOk ? 'PAŽNJA: potvrda kupcu NIJE poslana (provjerite postavke e-maila) — pošaljite mu je sami.' : 'PAŽNJA: potvrda kupcu NIJE poslana jer je ta adresa danas već dobila ' . SJ_MAIL_PER_DAY . ' e-maila sa stranice (zaštita od zlouporabe) — pošaljite mu potvrdu sami.');
+  if ($matched || $extOk) $own[] = $mailed ? 'Kupac je automatski dobio potvrdu primitka.' : ($mailDayOk ? 'PAŽNJA: potvrda kupcu NIJE poslana (provjerite postavke e-maila) — pošaljite mu je sami.' : 'PAŽNJA: potvrda kupcu NIJE poslana jer je ta adresa danas već dobila ' . sj_count_words(SJ_MAIL_PER_DAY, 'e-mail', 'e-maila', 'e-mailova') . ' sa stranice (zaštita od zlouporabe) — pošaljite mu potvrdu sami.');
   if (!$storno) {
   $own[] = 'Novac (uključujući dostavu do najjeftinije standardne) vraćate najkasnije 14 dana od danas; smijete pričekati dok torba ne stigne ili kupac ne pošalje dokaz o slanju.';
   /* vijeće (N73-3): obrazac je bez prijave — IBAN iz izjave nije dokaz da je piše kupac */
@@ -689,7 +689,7 @@ if ($a === 'raskid') {
   }
   if (!$inMain) $own[] = 'Izjava je upisana u dodatni popis (Narudžbe → Izjave o raskidu → „Ostale izjave”), jer je stigla bez provjere „niste robot” ili ih je stiglo neuobičajeno mnogo.';
   /* v95 (sigurnost 4): vlasnica dobiva svaku izjavu koja se podudara s narudžbom i do 10 ostalih na sat; ostale idu u sažetak jednom na sat */
-  if ($match || sj_global_limit('raskid_own', 10, 3600))
+  if ($matched || !empty($match['gone']) || sj_global_limit('raskid_own', 10, 3600)) /* v95 (recenzija): pogođen broj narudžbe s tuđim e-mailom ne zaobilazi granicu */
     sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — RASKID UGOVORA: ' . ($match['no'] ?? $r['no']) . ' — ' . $r['name'], implode("\n", $own), null, ($match && $match['email']) ? $r['email'] : null);
   else try { sj_with_lock(SJ_DATA . '/raskid-sazetak.json', function (array &$d) use ($at) { $d['n'] = (int)($d['n'] ?? 0) + 1; if (empty($d['since'])) $d['since'] = $at; return true; }, []); } catch (Throwable $e) {}
   /* vijeće V78-S4: odgovor ne otkriva postoji li narudžba ni je li stornirana — to piše samo u potvrdi na e-adresu iz narudžbe */
@@ -878,7 +878,7 @@ function sj_order_pending(array $P): void {
   if (!sj_rate_limit($rk, 3, 3600, false, false) || !sj_global_limit($rk, 5, 3600, false))
     sj_json_out(['ok' => false, 'error' => 'Na ovu adresu već smo poslali e-mail za potvrdu. Pogledajte i neželjenu poštu (spam) ili pokušajte ponovno za sat vremena.'], 429);
   if (!sj_global_limit(sj_day_key((string)$cust['email']), SJ_MAIL_PER_DAY, 86400, false))
-    sj_json_out(['ok' => false, 'error' => 'Na ovu adresu danas smo već poslali ' . SJ_MAIL_PER_DAY . ' e-maila. Pogledajte i neželjenu poštu (spam), pokušajte sutra ili nam pišite na ' . $c['owner_email'] . '.'], 429);
+    sj_json_out(['ok' => false, 'error' => 'Na ovu adresu danas smo već poslali ' . sj_count_words(SJ_MAIL_PER_DAY, 'e-mail', 'e-maila', 'e-mailova') . '. Pogledajte i neželjenu poštu (spam), pokušajte sutra ili nam pišite na ' . $c['owner_email'] . '.'], 429);
   /* v95 (recenzija vijeća v94, sigurnost 1): ukupna granica više ne zatvara trgovinu svima — preko SJ_CONFIRM_TOTAL na sat
      odbija se samo veza koja je ovaj sat već dobila e-mail za potvrdu (napadačeve veze), nova veza prolazi uz teži zadatak
      „niste robot” (sj_pow_bits), a tek iznad tvrde granice SJ_CONFIRM_HARD (kvota pošte) privremeno nitko */

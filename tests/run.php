@@ -335,6 +335,12 @@ file_put_contents($pp, $pb95); @unlink(SJ_DATA . '/kopije/2099-01-01/proizvodi.j
 try { sj_with_lock(SJ_DATA . '/brava95.json', fn(array &$d) => true, []); } catch (Throwable $e) { $e95 = get_class($e) . ': ' . $e->getMessage(); }
 $ok(str_starts_with($e95, 'RuntimeException: brava se ne može otvoriti'), 'v95 (M3): neuspjela brava daje jasnu grešku (' . $e95 . ')');
 @rmdir(SJ_DATA . '/brava95.json.lock');
+/* v95 (recenzija): dodatni popis izjava čita se iz istog mjeseca u koji se piše; maska ne dira običan tekst; napomene s „1.kat/stan” prolaze */
+$ovf95 = sj_raskid_overflow_path(time()); @unlink($ovf95); file_put_contents($ovf95, json_encode(['name' => 'Ov95', 'at' => sj_iso(time())]) . "\n");
+$ovr95 = sj_raskid_overflow_read(2, 100); @unlink($ovf95);
+$ok($ovr95['n'] === 1 && ($ovr95['list'][0]['name'] ?? '') === 'Ov95', 'v95 (recenzija): dodatni popis izjava vidljiv u adminu (isti mjesec)');
+$ok(sj_mask_numbers('Raskidam u roku od 14 dana od primitka.') === 'Raskidam u roku od 14 dana od primitka.' && sj_mask_numbers('torbu br 12 jer mi ne odgovara') === 'torbu br 12 jer mi ne odgovara' && sj_mask_numbers('IBAN HR12 1001 0051 8630 0016 0') === 'IBAN [IBAN skriven]', 'v95 (recenzija): maska skriva samo pravi IBAN');
+$ok(!sj_has_link('Dostava nakon 17h, 1.kat/stan 4') && !sj_has_link('ulaz B, 2.kat/desno') && !sj_has_link('Hvala.do viđenja') && !sj_has_link('boja.red') && sj_has_link('bit.do/x') && sj_has_link('t.co/x'), 'v95 (recenzija): obične napomene prolaze, kratke poveznice s putanjom ne');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

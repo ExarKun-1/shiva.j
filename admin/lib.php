@@ -425,7 +425,7 @@ function sj_raskid_overflow_path(int $t): string { return SJ_DATA . '/raskidi-vi
 function sj_raskid_overflow_read(int $months = 2, int $max = 100): array {
   $out = []; $n = 0;
   for ($i = 0; $i < $months; $i++) {
-    $f = sj_raskid_overflow_path((int)strtotime(gmdate('Y-m-01') . " -$i month"));
+    $f = sj_raskid_overflow_path(gmmktime(0, 0, 0, (int)gmdate('n') - $i, 1, (int)gmdate('Y'))); /* v95 (recenzija): mjesec u UTC kao pri upisu */
     if (!is_file($f)) continue;
     $fh = @fopen($f, 'rb'); if (!$fh) continue;
     while (($ln = fgets($fh)) !== false) { $x = json_decode($ln, true); if (!is_array($x)) continue; $n++; $out[] = $x; if (count($out) > $max) array_shift($out); }
@@ -449,7 +449,8 @@ function sj_raskid_digest(): void {
 }
 /* v95 (sigurnost 5): u ponovljenoj napomeni IBAN i dugi brojevi (račun, telefon) nisu vidljivi */
 function sj_mask_numbers(string $s): string {
-  $s = preg_replace('~\b[A-Za-z]{2}\s?\d{2}(?:\s?[A-Za-z0-9]){8,30}\b~u', '[IBAN skriven]', $s) ?? '';
+  /* v95 (recenzija): samo pravi oblik IBAN-a (velika slova, skupine po 4), ne „u roku od 14 dana” */
+  $s = preg_replace('~\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){3,7}(?:[ ]?[A-Z0-9]{1,4})?\b~', '[IBAN skriven]', $s) ?? '';
   return preg_replace('~(?:\d[ /.\-]?){8,}\d~', '[broj skriven]', $s) ?? '';
 }
 /* v69: najviše toliko e-mailova kupcima u jednom prolazu rokova (ostatak u sljedećem) */
@@ -1453,9 +1454,10 @@ function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_
    izostavljeni razmak iza točke („12.kat”, „Hvala.lp”); široki uzorak samo u sj_unlink (zamjena u e-mailu) */
 /* v95 (recenzija vijeća v94): dulji popis vršnih domena; poznate „opasne” i miješanim slovima („Naplata.Com”), svaka domena s
    putanjom („t.co/x”) i adresa IP („192.168.0.1/pay”) */
-const SJ_TLDS = 'ai|gg|sh|to|tv|cn|su|ml|ga|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|help|support|cloud|one|ee|in|do|website|space|fun|tech|email|world|today|life|news|cash|money|finance|loan|wallet|host|cam|work|best|plus|now|global|group|city|zone|wiki|red|lt|lv|sk|hu|ro|bg|gr|mk|al|ua|kz|tr|ca|au|jp|kr|dk|fi|pt|ie|lu|gl|ms|im|ac|cx|nu|ninja|men|date|stream|download|review|trade|party|science|racing|bid|loans|account|ltd|services|agency|digital|network|center|systems|solutions|company|exchange|crypto|bet|casino|porn|sex|xxx|quest|beauty|hair|skin|makeup|mom|baby|sale|deals|bargains|discount|coupons';
+const SJ_TLDS = 'ai|gg|sh|to|tv|cn|su|ml|ga|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|help|support|cloud|one|ee|in|website|space|fun|tech|email|world|today|life|news|cash|money|finance|loan|wallet|host|cam|work|best|plus|now|global|group|city|zone|wiki|lt|lv|sk|hu|ro|bg|gr|mk|ua|kz|tr|ca|au|jp|kr|dk|fi|pt|ie|lu|gl|ms|ac|cx|nu|ninja|men|date|stream|download|review|trade|party|science|racing|bid|loans|account|ltd|services|agency|digital|network|center|systems|solutions|company|exchange|crypto|bet|casino|porn|sex|xxx|quest|beauty|hair|skin|makeup|mom|baby|sale|deals|bargains|discount|coupons'; /* v95 (recenzija): bez „do”, „red”, „al”, „im” (obične riječi: „Hvala.do viđenja”, „boja.red”) */
+const SJ_TLDS_PATH = SJ_TLDS . '|do|red|al|im'; /* s putanjom („bit.do/x”) ipak poveznica */
 define('SJ_LINK_RE', '~(https?:|www\\s*[.．。]|[\\p{L}\\p{N}-]{2,}[.．。](?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\\p{L}\\p{N}])'
-  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]+[.．。][a-z]{2,24}/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
+  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_PATH . ')/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
 function sj_link_norm(string $s): string {
   /* v94 (recenzija): „(.)”, „[.]”, „ dot ”, „ točka ” postaju točka samo kad iza njih stoji vršna domena („primjer točka hr”),
      da obična „točka 2 Uvjeta” ostane netaknuta */
@@ -1660,10 +1662,13 @@ function sj_mail_from(): string {
 function sj_send_mail(string $to, string $subject, string $text, ?string $attachmentPath = null, ?string $replyTo = null, ?string $attachmentName = null): bool {
   $c = sj_config();
   /* adrese u zaglavljima moraju biti ispravne e-mail adrese: bez novih redova, bez dodatnih zaglavlja */
-  $to = sj_valid_email($to);
-  $from = sj_valid_email(sj_mail_from());
+  /* v95 (recenzija): za zaglavlja dovoljna je osnovna provjera (bez novih redaka) — strogi oblik vrijedi za nov unos (narudžba,
+     raskid), a spremljene adrese (Postavke, starije narudžbe) i dalje primaju e-mail */
+  $hdr = fn(?string $v) => (($v = trim((string)$v)) !== '' && strlen($v) <= 120 && !preg_match('/[\r\n\0<>",;]/', $v) && filter_var($v, FILTER_VALIDATE_EMAIL)) ? $v : null;
+  $to = $hdr($to);
+  $from = $hdr(sj_mail_from());
   if ($to === null || $from === null) return false;
-  $replyTo = sj_valid_email($replyTo);
+  $replyTo = $hdr($replyTo);
   $subject = sj_clean($subject, 200);
   $shop = sj_clean((string)$c['shop'], 80);
   $encSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';

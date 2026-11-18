@@ -386,7 +386,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         const r1 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
         const r2 = await post('raskid', { name: 'Dana Kupac', no: '2026-0001', email: 'dan@primjer.hr' });
         const own2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /RASKID UGOVORA:/.test(x)).pop() || '';
-        ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-maila/.test(own2),
+        ok(r1.status === 200 && r1.data.mailed === true && r2.status === 200 && r2.data.mailed === false && /danas već dobila 1 e-mail sa stranice/.test(own2),
           'v90 (recenzija): dnevna granica e-mailova ne odbija izjavu o raskidu (ZZP čl. 81.a) — izjava primljena, potvrda kupcu preskočena, vlasnica upozorena');
         fs.writeFileSync(D + 'config.json', JSON.stringify(cL0, null, 2)); clearLimits(); }
       { clearLimits(); fs.writeFileSync(D + 'narudzbe.json', '[]'); clearRes(); const oRaw = fs.readFileSync(D + 'proizvodi.json', 'utf8'); setProd('luna', { sold: false, reserved: false, hidden: false });

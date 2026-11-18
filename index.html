@@ -2184,11 +2184,12 @@ addEventListener("popstate", () => {
   if(sjIgnorePop){ sjIgnorePop = false; const f = sjAfterPop; sjAfterPop = null; if(f) f(); return; }
   if(/^#torba-/.test(location.hash)) return; /* nova poveznica na torbu: otvara je hashchange */
   const st = history.state && history.state.sj;
-  if(document.body.classList.contains("menu-open") && st !== "menu"){ closeMenu(false); return; } /* v95 */
+  if(document.body.classList.contains("menu-open") && st !== "menu") closeMenu(false); /* v95; recenzija: i dalje provjera prikaza i košarice */
   if(lightbox.classList.contains("open") && st !== "lb") closeLightbox(true);
   else if(document.body.classList.contains("cart-open") && st !== "cart") closeCart(true, true);
 });
 function openLightbox(id){
+  closeMenu(false); /* v95 (recenzija): korak izbornika postaje korak prikaza (isti unos u povijesti) */
   const pL = PRODUCTS.find(p => p.id === id);
   if(!pL || !visibleCats().some(c => c.id === catOf(pL))) return; /* v63: artikl iz skrivene rubrike (Ostalo) se ne otvara */
   lbCurrent = pL;
@@ -2352,7 +2353,11 @@ menuBtn.addEventListener("click", () => {
   document.body.classList.add("menu-open"); menuBtn.setAttribute("aria-expanded", "true"); sjPushView("menu");
 });
 document.getElementById("mobileMenu").addEventListener("click", e => {
-  if(e.target.tagName === "A"){ closeMenu(false); try { if(history.state && history.state.sj === "menu") history.replaceState(null, ""); } catch(x){} } /* poveznica na odjeljak dodaje svoj korak (#sidro); oznaka izbornika se briše */
+  /* v95 (recenzija): poveznica u izborniku — prvo se korak izbornika vraća (jedan „natrag” manje), zatim se ide na odjeljak */
+  const a = e.target.closest("a[href^='#']");
+  if(a){ closeMenu(false); const h = a.getAttribute("href");
+    if(history.state && history.state.sj === "menu"){ e.preventDefault(); sjAfterPop = () => { try { history.scrollRestoration = "auto"; } catch(x){} setTimeout(() => { location.hash = h; }, 30); }; sjPopView("menu"); } }
+  else if(e.target.tagName === "A") closeMenu(false);
 });
 /* v91 (recenzija): fokus tipkovnicom izvan izbornika ga zatvara (ne ostaje otvoren preko sadržaja) */
 document.getElementById("mobileMenu").addEventListener("focusout", e => {
@@ -2369,6 +2374,7 @@ const drawer = document.getElementById("drawer");
 const EMPTY_MSG = document.getElementById("emptyCart").innerHTML;
 let cartReturnFocus = null;
 function openCart(){
+  closeMenu(false); /* v95 (recenzija) */
   /* v44: „U košarici: …” je suvišno kad se košarica otvori (torba se vidi u njoj), a prekrivalo bi obrazac */
   clearTimeout(toastTimer); document.getElementById("toast").classList.remove("show");
   cartReturnFocus = document.activeElement;
@@ -3216,7 +3222,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2
     try {
       /* v95 (recenzija vijeća v94): svjež zadatak (težina se mogla promijeniti) i dulje čekanje; bez provjere izjava ipak stiže */
       await Promise.race([powRefresh(), new Promise(r => setTimeout(r, 3000))]);
-      const pw = await Promise.race([powSolve(), new Promise(r => setTimeout(() => r(null), 15000))]); /* v94: provjera „niste robot” i uz izjavu */
+      const pw = await Promise.race([powSolve(), new Promise(r => setTimeout(() => r(null), 30000))]); /* v95 (recenzija): i najteži zadatak na sporijem mobitelu */ /* v94: provjera „niste robot” i uz izjavu */
       const res = await fetch(apiUrl("raskid"), { method: "POST", headers: POST_JSON, body: JSON.stringify(Object.assign(val(), pw ? { pow: { salt: pw.salt, nonce: pw.nonce } } : {})) });
       const { ok: resOk, data } = await apiRead(res);
       if(resOk && data.ok){
