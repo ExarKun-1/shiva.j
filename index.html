@@ -2505,7 +2505,7 @@ function renderCart(){
     hint.hidden = !anyMade; }
   document.getElementById("orderNote").hidden = document.getElementById("orderNoteHold").hidden && !anyMade;
   /* v46: promijenjena košarica → obrazac se vraća (stari link vrijedi za staru košaricu) */
-  if(form.classList.contains("is-pending") && cartSig() !== pendingSig) pendingCartChanged();
+  if((form.classList.contains("is-pending") || pendAfterReload) && cartSig() !== pendingSig) { pendAfterReload = false; pendingCartChanged(); }
   const firstMadeId = (cart.find(p => p.made) || {}).id; /* v66: napomena o želji samo jednom */
   cart.forEach(p => {
     const row = document.createElement("div");
@@ -2567,7 +2567,7 @@ function strapHtml(p, id){
     + `<label class="strap-l">Duljina remena<select class="strap-sel" data-id="${id}" data-k="sl" aria-describedby="cartWish">${opt(STRAP_LENGTHS, p.sl || "")}</select></label></div>`;
 }
 function cartSig(){ return cart.map(p => p.id + "×" + qtyOf(p) + "|" + (p.note || "")).join(","); }
-var pendingSig = "";
+var pendingSig = "", pendAfterReload = false; /* var: renderCart ih može pozvati prije ovog retka */
 document.getElementById("cartItems").addEventListener("click", e => {
   const qb = e.target.closest(".q");
   if(qb){
@@ -2590,13 +2590,13 @@ document.getElementById("cartItems").addEventListener("change", e => {
   /* vijeće V77-5: poruka „odaberite boju i duljinu” nestaje kad su odabrane za sve modele */
   const fx = document.getElementById("orderFix");
   if(/remena\.$/.test(fx.textContent) && !cart.some(p => p.made && catOf(p) === "kolekcija" && (!p.sc || !p.sl))){ fx.hidden = true; fx.textContent = ""; }
-  if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) pendingCartChanged();
+  if((orderFormEl.classList.contains("is-pending") || pendAfterReload) && cartSig() !== pendingSig) { pendAfterReload = false; pendingCartChanged(); }
 });
 document.getElementById("cartItems").addEventListener("input", e => {
   const n = e.target.closest(".cart-note");
   if(n){ const it = cart.find(c => c.id === n.dataset.id); if(it){ it.note = n.value.slice(0, 120); saveCart();
     /* v51: promijenjena napomena dok narudžba čeka potvrdu — link iz e-maila vrijedi za staru, pa se obrazac vraća */
-    if(orderFormEl.classList.contains("is-pending") && cartSig() !== pendingSig) pendingCartChanged(); } }
+    if((orderFormEl.classList.contains("is-pending") || pendAfterReload) && cartSig() !== pendingSig) { pendAfterReload = false; pendingCartChanged(); } } }
 });
 
 /* ---------- v93: provjera „niste robot” izračunom (zadatak stiže uz api/status; bez vanjske usluge) ---------- */
@@ -2759,12 +2759,16 @@ async function refreshReservations(first = false){
     /* v92 (recenzija): spremljena ploča za uplatu — je li narudžba u međuvremenu stornirana */
     const lastS = first ? storeGet("last") : null;
     if(lastS && lastS.srv && lastS.srv.orderNo && lastS.srv.check && !lastS.cancelled) q += (q ? "&" : "") + "stanje=" + encodeURIComponent(lastS.srv.orderNo) + "&t=" + encodeURIComponent(lastS.srv.check);
+    /* v96 (recenzija vijeća v95): je li narudžba koja čeka potvrdu u međuvremenu potvrđena (druga kartica ili drugi uređaj) */
+    const pdS = storeGet("pend");
+    if(pdS && /^[0-9a-f]{24}$/.test(pdS.pt || "")) q += (q ? "&" : "") + "pt=" + pdS.pt;
     const res = await fetch(apiUrl("status", q), { cache: "no-store" });
     if(!res.ok) return;
     const data = await res.json();
     if(submitting) return; /* odgovor stigao usred slanja narudžbe — ne diraj košaricu */
     applyServerSettings(data);
     powSet(data.pow || null); if(cart.length && powOffer) powSolve(); /* v93: izračun u pozadini dok kupac ispunjava obrazac */
+    if(data.pendState === "confirmed" && storeGet("pend")) pendConfirmedElsewhere(String(data.pendNo || ""));
     if(lastS && (data.orderState === "cancelled" || data.orderState === "closed")){ lastS.cancelled = true; storeSet("last", lastS); setTimeout(renderCart, 0); }
     const reservedIds = new Set((data.ids || []).map(String));
     const soldIds = new Set((data.sold || []).map(String));
@@ -2773,16 +2777,36 @@ async function refreshReservations(first = false){
     const dropped = [];
     /* rezervacija koju drži ovaj preglednik (npr. nakon kvara pri slanju) nije „tuđa” — torba ostaje u košarici */
     const mine = id => !!(heldRes && Date.parse(heldRes.until) > Date.now() && heldRes.ids.includes(id));
+    /* v96 (recenzija vijeća v95, mobitel): torba iz vlastite potvrđene narudžbe (npr. u drugoj kartici) nije „otišla drugom kupcu” */
+    const lastO = storeGet("last"), ownDone = id => !!(lastO && Date.now() - Number(lastO.at || 0) < 2 * 86400e3 && (lastO.items || []).some(i => String(i.id) === id));
     PRODUCTS.forEach(p => {
       const r = reservedIds.has(p.id) && !mine(p.id), sd = soldIds.has(p.id);
       if(!!p.srvReserved !== r){ p.srvReserved = r; changed = true; }
       if(!!p.srvSold !== sd){ p.srvSold = sd; changed = true; }
-      if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); dropped.push(p.name); }
+      if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); if(!ownDone(p.id)) dropped.push(p.name); else changed = true; }
     });
     if(changed || dropped.length){ renderGrid(); renderCart(); if(lbCurrent) updateLbButton(); }
     if(dropped.length) noticeGone(dropped);
   } catch(err){ /* servis nedostupan — stranica radi bez blokade */ }
 }
+/* v96 (recenzija vijeća v95): narudžba koju ovaj preglednik čeka potvrđena je na drugom uređaju — bez „drugi kupac”, uz uputu gdje su podaci */
+function pendConfirmedElsewhere(no){
+  const pd = storeGet("pend");
+  storeSet("pend", null); storeSet("hold", null); heldRes = null; pendFormClear(); formDraftClear();
+  if(pd && pd.sig === cartSig()){ cart = []; saveCart(); }
+  clearOrderError(); renderGrid(); renderCart();
+  confirmError(`<b>Narudžbu${no ? " " + escHtml(no) : ""} potvrdili ste linkom iz <span class="nw">e-maila</span>.</b> Podaci za uplatu su u <span class="nw">e-mailu</span> s potvrdom narudžbe i na uređaju na kojem ste je potvrdili.`);
+}
+/* isto u drugoj kartici ovog preglednika: potvrda je spremila ploču za uplatu („last”) */
+addEventListener("storage", e => {
+  if(e.key !== STORE_KEY + ".last" || !e.newValue) return;
+  const last = storeGet("last"); if(!last || !Array.isArray(last.items)) return;
+  const ids = last.items.map(i => String(i.id));
+  cart = cart.filter(c => !ids.includes(c.id)); heldRes = null; pendFormClear(); formDraftClear();
+  orderFormEl.classList.remove("is-pending"); clearOrderError();
+  renderGrid(); renderCart();
+  if(!cart.length) renderPaymentPanel(last);
+});
 /* "24 sata", "12 sati", "1 sat" — broj sati dolazi iz postavki admina (ttl_hours) */
 function hoursText(n){
   n = Number(n) || 0;
@@ -2938,6 +2962,8 @@ function loadBoxnowWidget(onReady){
 /* Ključ narudžbe: ista narudžba poslana dvaput (ponovni klik, prekid veze, osvježena stranica) dobiva isti broj,
    bez druge narudžbe i drugog e-maila. Ključ vrijedi dok je sadržaj narudžbe isti (otisak: stavke, dostava,
    paketomat, podaci kupca, napomena); svaka promjena = nova narudžba, novi ključ. */
+/* v96 (recenzija vijeća v95): stalna nasumična oznaka ovog preglednika (bez osobnih podataka) */
+function orderSeries(){ let v = storeGet("series"); if(typeof v !== "string" || !/^[A-Za-z0-9-]{16,64}$/.test(v)){ v = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("")); storeSet("series", v); } return v; }
 function orderKey(orderData, note){
   /* v83 (vijeće): u preglednik ide samo sažetak (FNV-1a), ne ime, e-mail ni adresa (Politika privatnosti t. 8) */
   const fpRaw = JSON.stringify([orderData.customer, orderData.items.map(i => [i.id, i.qty, i.note]), orderData.shipping && [orderData.shipping.id, orderData.shipping.locker], note]);
@@ -3102,7 +3128,7 @@ let lastPending = null;
 function showOrderPending(srv, email, note = ""){
   lastPending = { srv, email, fp: note && lastPending ? lastPending.fp : pendFormFp() }; /* v95: otisak poslanih podataka (bez slanja ikamo) */
   /* v53: oznaka čekanja na ovom uređaju — samo rok linka i potpis košarice, bez osobnih podataka */
-  if(srv.mailCustomer !== false){ storeSet("pend", { until: srv.confirmUntil || null, sig: cartSig() }); pendFormSave(); }
+  if(srv.mailCustomer !== false){ storeSet("pend", { until: srv.confirmUntil || null, sig: cartSig(), pt: /^[0-9a-f]{24}$/.test(srv.pt || "") ? srv.pt : ((storeGet("pend") || {}).pt || "") }); pendFormSave(); }
   const until = srv.confirmUntil ? fmtDateTime(srv.confirmUntil) : "";
   /* v45: koliko link vrijedi, ne samo do kada (60 → „1 sat”, 90 → „90 minuta”) */
   const cm = Number(srv.confirmMinutes) || 0;
@@ -3133,6 +3159,7 @@ function showPendingAfterReload(){
   const until = pd.until ? Date.parse(pd.until) : 0;
   if(!until || until < Date.now() || pd.sig !== cartSig()){ storeSet("pend", null); pendFormClear(); return; }
   pendFormRestore();
+  pendingSig = pd.sig; pendAfterReload = true; /* v96 (recenzija vijeća v95, kupac 2): promjena košarice i nakon osvježavanja kaže da stari link vrijedi za staru košaricu */
   showOrderError(`<b>Ovu narudžbu ste već poslali.</b> Potvrdite je linkom iz <span class="nw">e-maila</span> (vrijedi do ${escHtml(fmtDateTime(pd.until))}). Ako <span class="nw">e-mail</span> nije stigao, pogledajte neželjenu poštu ili ispunite obrazac i pošaljite ponovno (novi <span class="nw">e-mail</span> poništava prethodni link).`, true);
 }
 /* poruka uz potvrdu iz linka: u obrascu ako je košarica na ovom uređaju, inače u praznoj košarici */
@@ -3204,7 +3231,7 @@ function claimFromLink(){
     try {
       const res = await fetch(apiUrl("paidclaim"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ no, t }) });
       const { ok: resOk, data } = await apiRead(res);
-      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala!" : data.state === "paid" ? "Uplata je već zabilježena." : data.state === "late" ? "Javili smo vlasnici." : "Već ste nam javili."}</b> <span class="pend-p">${escHtml(data.message || "")}</span>`, true); return; }
+      if(resOk && data.ok){ claimPanel(`<b>${data.state === "extended" ? "Hvala!" : data.state === "paid" ? "Uplata je već zabilježena." : data.state === "late" ? "Javili smo vlasnici." : data.state === "withdrawn" ? "Izjava o raskidu je zaprimljena." : "Već ste nam javili."}</b> <span class="pend-p">${data.state === "withdrawn" ? "Za ovu narudžbu zaprimili smo vašu izjavu o raskidu ugovora, pa paket ne šaljemo. Ako ste već uplatili, cijeli iznos vraćamo najkasnije 14 dana od izjave, na račun s kojeg ste platili." : escHtml(data.message || "")}</span>`, true); return; }
       claimPanel(`<b>${data.state === "full" ? "Mjesto je u međuvremenu popunjeno." : "Nije uspjelo."}</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}${data.state === "full" ? "" : " Možete i odgovoriti na e-mail o narudžbi sa snimkom potvrde o uplati."}`, false);
     } catch(err){
       btn.disabled = false;
@@ -3216,6 +3243,7 @@ function claimFromLink(){
       if(pre && pre.ok && pre.state === "paid") return claimPanel(`<b>Uplata je već zabilježena.</b> <span class="pend-p">Hvala!</span>`, true);
       /* v70 (D70-4): već kliknuto ili stornirano — bez gumba i bez obećanja */
       if(pre && pre.ok && pre.state === "already") return claimPanel(`<b>Već ste nam javili.</b> <span class="pend-p">${escHtml(pre.message || "")}</span>`, true);
+      if(pre && pre.ok && pre.state === "withdrawn") return claimPanel(`<b>Izjava o raskidu je zaprimljena.</b> <span class="pend-p">Za ovu narudžbu zaprimili smo vašu izjavu o raskidu ugovora, pa paket ne šaljemo. Ako ste već uplatili, cijeli iznos vraćamo najkasnije 14 dana od izjave, na račun s kojeg ste platili.</span>`, true); /* v96 */
       if(pre && pre.ok && pre.state === "cancelled") return claimPanel(`<b>Ova narudžba je stornirana.</b> <span class="pend-p">Ako ste je platili, odgovorite na e-mail o narudžbi i riješit ćemo to (povrat ili ponovna narudžba).</span>`, false);
       ask(pre && pre.ok ? pre : null);
     }).catch(() => ask(null));
@@ -3279,7 +3307,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2
   });
 })();
 
-let paneAddr = ""; /* v95: adresa za dostavu samo dok je ploča otvorena */
+let paneAddr = "", paneLeftover = []; /* v95: adresa za dostavu samo dok je ploča otvorena; v96: artikli izvan narudžbe */
 function showOrderSuccess(srv){
   /* v62: podaci za uplatu iz odgovora servisa (Postavke) imaju prednost pred ugrađenima */
   if(srv && (srv.payment || srv.ownerEmail)) applyServerSettings({ payment: srv.payment, ownerEmail: srv.ownerEmail });
@@ -3296,8 +3324,13 @@ function showOrderSuccess(srv){
     const p = PRODUCTS.find(x => x.id === item.id);
     if(p && !p.made) p.reserved = true;
   });
+  /* v96 (recenzija vijeća v95, kupac 2): artikli koji nisu u potvrđenoj narudžbi (dodani nakon slanja) ne nestaju tiho — ostaju
+     spremljeni za košaricu (vide se kad se ploča za uplatu zatvori ili stranica ponovno otvori), a ploča to kaže */
+  const leftover = fromSrv ? cart.filter(c => !items.some(i => i.id === c.id)) : [];
   cart = []; storeSet("cart", null); /* v89 (recenzija): i kad košarica još nije vraćena (ponuda se nije učitala) */
   saveCart();
+  if(leftover.length) storeSet("cart", leftover.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "", sc: c.sc || "", sl: c.sl || "" })));
+  paneLeftover = leftover.map(c => c.name);
   storeSet("okey", null);
   /* v53: narudžba je potvrđena — preglednik više ne smatra rezervaciju „svojom” (torba se ne prikazuje slobodnom) */
   heldRes = null; storeSet("hold", null); storeSet("pend", null); pendFormClear(); formDraftClear();
@@ -3497,7 +3530,7 @@ function paymentPanel(last){
     : `Potvrdu narudžbe s istim podacima šaljemo vam i <span class="nw">e-mailom</span>; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju do isteka roka za uplatu.`;
   return `
     <div class="pay">
-      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p></div>
+      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p>${paneLeftover.length ? `<p class="pay-left"><small>${escHtml(paneLeftover.map(n => "„" + n + "”").join(" i "))} ${paneLeftover.length > 1 ? "nisu u ovoj narudžbi — ostali su" : "nije u ovoj narudžbi — ostao je"} u košarici; naručite ${paneLeftover.length > 1 ? "ih" : "ga"} zasebno kad zatvorite ove podatke.</small></p>` : ""}</div>
       ${payIso || so ? `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso ? " do " + fmtDeadline(payIso) : ""}.</p>` : ""}
       <h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
@@ -3566,6 +3599,7 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
     reservation: null
   };
   orderData.key = orderKey(orderData, o.note);
+  orderData.series = orderSeries(); /* v96: ispravak iz istog preglednika zamjenjuje raniji link */
 
   /* 1) rezervacija u stvarnom vremenu — torba se odmah blokira za sve druge kupce */
   let rez = null;
