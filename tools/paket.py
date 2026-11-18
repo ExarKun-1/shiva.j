@@ -33,7 +33,9 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v04.md u repozitoriju.
    (img/zakonsko-jamstvo-hr.jpg): narudžbe, lozinka, postavke, ponuda i fotografije
    ostaju kakve jesu. Ako changelog kaže da je nova i slika, nju prenesite zasebno.
 3. Paket zamjenjuje i .htaccess: ako vam je hosting dodao svoja pravila (npr. preusmjeravanje na https), ponovno ih
-   uključite u panelu.
+   uključite u panelu. index.html i .htaccess uvijek prenesite ZAJEDNO iz istog paketa: .htaccess nosi otisak
+   skripte iz index.html, pa sam novi index.html (ili sam .htaccess) zaustavlja košaricu i narudžbe.
+   Admin → Postavke → „Provjeri zaštitu podataka” javlja ako se ne podudaraju.
 4. Otvorite admin (https://vasa-domena.hr/admin) i na dnu stranice provjerite da piše „Verzija stranice: {v}”.
 """,
 }

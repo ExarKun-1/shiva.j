@@ -2786,7 +2786,7 @@ async function refreshReservations(first = false){
     /* rezervacija koju drži ovaj preglednik (npr. nakon kvara pri slanju) nije „tuđa” — torba ostaje u košarici */
     const mine = id => !!(heldRes && Date.parse(heldRes.until) > Date.now() && heldRes.ids.includes(id));
     /* v96 (recenzija vijeća v95, mobitel): torba iz vlastite potvrđene narudžbe (npr. u drugoj kartici) nije „otišla drugom kupcu” */
-    const lastO = storeGet("last"), ownDone = id => !!(lastO && Date.now() - Number(lastO.at || 0) < 2 * 86400e3 && (lastO.items || []).some(i => String(i.id) === id));
+    const lastO = storeGet("last"), ownDone = id => !!(lastO && !lastO.cancelled && Date.now() - Number(lastO.at || 0) < 2 * 86400e3 && (lastO.items || []).some(i => String(i.id) === id));
     PRODUCTS.forEach(p => {
       const r = reservedIds.has(p.id) && !mine(p.id), sd = soldIds.has(p.id);
       if(!!p.srvReserved !== r){ p.srvReserved = r; changed = true; }
@@ -2808,7 +2808,10 @@ function pendConfirmedElsewhere(no){
 /* isto u drugoj kartici ovog preglednika: potvrda je spremila ploču za uplatu („last”) */
 addEventListener("storage", e => {
   if(e.key !== STORE_KEY + ".last" || !e.newValue) return;
-  const last = storeGet("last"); if(!last || !Array.isArray(last.items)) return;
+  const last = storeGet("last"); if(!last || !Array.isArray(last.items) || last.cancelled) return;
+  /* recenzija v96: samo nova potvrda (noviji „at”), ne kad druga kartica stari zapis označi storniranim */
+  let prevAt = 0; try { prevAt = Number((JSON.parse(e.oldValue || "null") || {}).at || 0); } catch(x){}
+  if(!(Number(last.at || 0) > prevAt)) return;
   const ids = last.items.map(i => String(i.id));
   cart = cart.filter(c => !ids.includes(c.id)); heldRes = null; pendFormClear(); formDraftClear();
   orderFormEl.classList.remove("is-pending"); clearOrderError();

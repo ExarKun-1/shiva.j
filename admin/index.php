@@ -679,8 +679,9 @@ function sj_handle_action(string $act, array &$c): string {
     }
 
     case 'check_exposure': { /* v90 (vijeće): smije li se data/ otvoriti s interneta (nginx bez .htaccess) */
+      $cspBad = sj_csp_hash_problem(dirname(__DIR__)); /* recenzija v96 */
       $base = sj_site_url_trusted();
-      if ($base === '') return 'Prvo upišite adresu stranice (https://…) u Postavke, pa provjerite ponovno.';
+      if ($base === '') return ($cspBad !== '' ? $cspBad . ' ' : '') . 'Prvo upišite adresu stranice (https://…) u Postavke, pa provjerite ponovno.';
       $out = []; $bad = [];
       $paths = ['data/config.json', 'data/PRVA-PRIJAVA.php', 'data/narudzbe.json', 'data/greske.log'];
       if (($lb = sj_last_backup()) !== '') $paths[] = 'data/kopije/' . $lb . '/config.json'; /* v90 (recenzija): i dnevna kopija */
@@ -696,7 +697,7 @@ function sj_handle_action(string $act, array &$c): string {
       $proxyIp = sj_proxy_ip_suspect();
       $ipTxt = $proxyIp ? ' POZOR — poslužitelj ne vidi stvarnu adresu posjetitelja (vidi ' . ($ra !== '' ? $ra : 'ništa') . '), pa bi svi kupci dijelili iste granice narudžbi. Zamolite Croadriju da uključi prosljeđivanje stvarne adrese (mod_remoteip / X-Forwarded-For) i provjerite ponovno.' : ' Stvarna adresa posjetitelja: vidljiva (u redu).';
       return ($bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
-        : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').') . $ipTxt;
+        : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').') . $ipTxt . ($cspBad !== '' ? ' ' . $cspBad : '');
     }
 
     case 'test_mail': {

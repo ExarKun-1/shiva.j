@@ -449,12 +449,29 @@ function sj_raskid_digest(): void {
   if (!sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — izjave o raskidu: sažetak (' . $send . ')', 'Od ' . ($since !== '' ? sj_fmt_hr($since) : 'zadnjeg sažetka') . ' stiglo je još ' . $send . ' izjava o raskidu koje se ne podudaraju s narudžbom, pa vam nisu poslane pojedinačno (zaštita od zlouporabe; možda ih netko šalje masovno). Sve su upisane: admin → Narudžbe → Izjave o raskidu. Prave izjave prepoznat ćete po imenu i e-mailu kupca.'))
     sj_with_lock($f, function (array &$d) use ($send, $since) { $d['n'] = (int)($d['n'] ?? 0) + $send; if ($since !== '') $d['since'] = $since; $d['last'] = time() - 3600 + 900; return true; }, []); /* neposlano: ponovno za 15 min (v96, N8: ne pri svakom zahtjevu) */
 }
+/* recenzija v96: otisak ugrađene skripte u .htaccess (CSP iz paketa) mora odgovarati index.html — inače preglednik
+   blokira cijelu skriptu (nema košarice ni narudžbi), npr. nakon što je zamijenjen samo index.html. '' = u redu ili bez otiska */
+function sj_csp_hash_problem(string $root): string {
+  $ht = @file_get_contents($root . '/.htaccess'); $html = @file_get_contents($root . '/index.html');
+  if (!is_string($ht) || !is_string($html) || !preg_match_all("~'sha256-([A-Za-z0-9+/=]+)'~", $ht, $m)) return '';
+  $want = $m[1];
+  if (!preg_match_all('~<script\b([^>]*)>(.*?)</script>~is', $html, $sc, PREG_SET_ORDER)) return '';
+  foreach ($sc as $x) {
+    if (preg_match('~\bsrc\s*=~i', $x[1]) || preg_match('~type\s*=\s*["\']application/ld\+json~i', $x[1])) continue;
+    if (!in_array(base64_encode(hash('sha256', $x[2], true)), $want, true)) return 'POZOR — index.html i .htaccess nisu iz istog paketa (otisak skripte se ne podudara), pa preglednici blokiraju trgovinu. Učitajte cijeli paket „nadogradnja” (index.html i .htaccess zajedno).';
+  }
+  return '';
+}
 /* v95 (sigurnost 5): u ponovljenoj napomeni IBAN i dugi brojevi (račun, telefon) nisu vidljivi */
 function sj_mask_numbers(string $s): string {
   /* v95 (recenzija): samo pravi oblik IBAN-a (velika slova, skupine po 4), ne „u roku od 14 dana” */
   /* v96 (recenzija vijeća v95, sigurnost N5): i s višestrukim razmacima („HR12  2360 …”, „091  234  5678”) */
-  $s = preg_replace('~\b[A-Z]{2}\s*\d{2}(?:\s*[A-Z0-9]{4}){3,7}(?:\s*[A-Z0-9]{1,4})?\b~', '[IBAN skriven]', $s) ?? '';
-  return preg_replace('~(?:\d[\s/.\-]{0,3}){8,}\d~u', '[broj skriven]', $s) ?? '';
+  /* recenzija v96: bez razmaka između oznake zemlje i kontrolnog broja i najviše dva razmaka u skupini (ne „NA 14 DANA ZBOG …”) */
+  $s = preg_replace('~\b[A-Z]{2}\d{2}(?: {0,2}[A-Z0-9]{4}){3,7}(?: {0,2}[A-Z0-9]{1,4})?\b~', '[IBAN skriven]', $s) ?? '';
+  /* brojevi narudžbi (2026-0007) ostaju vidljivi; između znamenki najviše jedan znak, pa datum s vremenom („18. 11. 2026. 14:30”) ostaje */
+  $keep = []; $s = preg_replace_callback('~(?<![\d\-])(?:SJ-)?\d{4}-\d{4,6}(?![\d\-])~', function ($m) use (&$keep) { $keep[] = $m[0]; return "\x01" . (count($keep) - 1) . "\x02"; }, $s) ?? '';
+  $s = preg_replace('~(?:\d[ /.\-]?){8,}\d~u', '[broj skriven]', $s) ?? '';
+  return preg_replace_callback('~\x01(\d+)\x02~', fn($m) => $keep[(int)$m[1]] ?? '', $s) ?? '';
 }
 /* v69: najviše toliko e-mailova kupcima u jednom prolazu rokova (ostatak u sljedećem) */
 const SJ_TICK_MAX_MAILS = 20;
@@ -695,14 +712,14 @@ function sj_same_ip(array $rec, array $mine): bool {
    zaobilazi granicu i ne napuhuje datoteku. $short ostaje radi starih poziva i više ništa ne mijenja. */
 /* $record = false: samo provjera, bez upisa (npr. narudžba se upisuje tek kad je zaprimljena, pa odbijeni
    pokušaji, 409 i slično, ne troše ograničenje); upis kasnije istim pozivom s $record = true */
-function sj_rl_attacker_key(string $k): bool { foreach (['sve|dan|', 'sve|raskid_to|', 'sve|mailto-', 'sve|pow|', 'sve|c24|', 'sve|cdom|', 'sve|raskid_m|'] as $p) if (str_starts_with($k, $p)) return true; return false; }
+function sj_rl_attacker_key(string $k): bool { foreach (['sve|dan|', 'sve|raskid_to|', 'sve|mailto-', 'sve|pow|', 'sve|c24|', 'sve|cdom|'] as $p) if (str_starts_with($k, $p)) return true; return false; }
 function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = false, bool $record = true): bool {
   $ip = sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'));
   $now = time();
   return (bool)sj_with_lock(SJ_DATA . '/zahtjevi.json', function (array &$d) use ($key, $ip, $max, $windowSec, $now, $record) {
     foreach ($d as $k => $times) {
       /* v90 (recenzija): dnevna granica po primatelju ('sve|dan|') čuva se 24 h, ostale 'sve|' 1 h */
-      $keep = str_starts_with($k, 'sve|dan|') ? 86400 : ((str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400);
+      $keep = (str_starts_with($k, 'sve|dan|') || str_starts_with($k, 'sve|dnevno|')) ? 86400 : ((str_starts_with($k, 'visit|') || str_starts_with($k, 'count|') || str_starts_with($k, 'sve|')) ? 3600 : 86400);
       $times = array_values(array_filter((array)$times, fn($t) => (int)$t > $now - $keep));
       if ($times) $d[$k] = $times; else unset($d[$k]);
     }
