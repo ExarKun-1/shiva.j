@@ -7,9 +7,11 @@ R = []
 def ok(c, m): R.append(('PASS ' if c else 'FAIL ') + m)
 
 v = re.search(r'SHIVA\.J WEBSHOP — (v\d+)', open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()).group(1)
-subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'paket.py')], check=True, capture_output=True)
-first = zipfile.ZipFile(os.path.join(ROOT, 'dist', f'shivaj-{v}-prvi.zip'))
-upd = zipfile.ZipFile(os.path.join(ROOT, 'dist', f'shivaj-{v}-nadogradnja.zip'))
+# v95 (recenzija vijeća v94, L5): paket se gradi u privremenu mapu — test ne prepisuje prave zipove ni kod prve prijave u dist/
+DIST = tempfile.mkdtemp(prefix='shivaj-dist-')
+subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'paket.py')], check=True, capture_output=True, env=dict(os.environ, SHIVAJ_DIST=DIST))
+first = zipfile.ZipFile(os.path.join(DIST, f'shivaj-{v}-prvi.zip'))
+upd = zipfile.ZipFile(os.path.join(DIST, f'shivaj-{v}-nadogradnja.zip'))
 fn, un = first.namelist(), upd.namelist()
 need = ['index.html', '.htaccess', 'api/index.php', 'admin/index.php', 'admin/lib.php', 'js/hub3-barcode.js']
 ok(all(n in fn for n in need) and all(n in un for n in need), 'oba paketa imaju stranicu, servis, admin i barkod')
@@ -25,12 +27,14 @@ ok('data/.htaccess' in fn and 'data/PRVA-PRIJAVA.php' in fn and first.read('torb
 bad = re.compile(r'(^|/)(\.git|docs|tests|proba|tools)/|\.md$|primjer|router\.php|\.example$')
 ok(not [n for n in fn + un if bad.search(n)], 'bez uputa, testova, primjera i lokalnog routera')
 kod = re.search(r'^kod: (\S{12,})$', first.read('data/PRVA-PRIJAVA.php').decode(), re.M)
-ok(kod and kod.group(1) in open(os.path.join(ROOT, 'dist', f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt'), encoding='utf-8').read(), 'v51: prvi paket nosi nasumičan kod za prvu prijavu, kod je i u dist/')
+ok(kod and kod.group(1) in open(os.path.join(DIST, f'shivaj-{v}-KOD-PRVE-PRIJAVE.txt'), encoding='utf-8').read(), 'v51: prvi paket nosi nasumičan kod za prvu prijavu, kod je i u dist/')
 pg = first.read('index.html').decode()
 ok(all(m in pg for m in ('<!-- UVJETI-START -->', '<!-- UVJETI-END -->', '<!-- NJEGA-START -->', '<!-- NJEGA-END -->')) and 'SHIVA.J WEBSHOP — v' not in pg, 'v82: stranica u paketu bez bilješki, ali s oznakama za Uvjete i Njegu u e-mailu')
 ok(v in first.read('PROCITAJ.txt').decode() and 'NEMA' in upd.read('PROCITAJ.txt').decode(), 'PROCITAJ.txt s verzijom ' + v)
+ok(f'<meta name="shivaj-verzija" content="{v}">' in pg and f'Verzija stranice: {v}' in upd.read('PROCITAJ.txt').decode() and 'podnožju' not in upd.read('PROCITAJ.txt').decode(), 'v95 (L4): verzija ostaje u paketu (meta), upute za nadogradnju upućuju na admin')
 ok(all(((first.getinfo(n).external_attr >> 16) & 0o444) == 0o444 for n in ('torbe.json', 'PROCITAJ.txt', 'data/PRVA-PRIJAVA.php')), 'v58: datoteke napisane u paketu čitljive su poslužitelju (0644)')
 
+import shutil; shutil.rmtree(DIST, ignore_errors=True)
 print('\n'.join(R))
 f = sum(l.startswith('FAIL') for l in R)
 print('NEUSPJELO: %d' % f if f else 'SVE PROŠLO (%d)' % len(R))

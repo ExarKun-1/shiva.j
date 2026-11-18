@@ -20,6 +20,13 @@ Options -Indexes
   # v77 (recenzija R76-S5): stranica se ne smije umetati u tuđe stranice (clickjacking); setifempty — admin i
   # storno šalju vlastiti, stroži CSP i DENY iz PHP-a, koji se ne smije pregaziti
   Header setifempty X-Frame-Options "SAMEORIGIN"
-  Header setifempty Content-Security-Policy "frame-ancestors 'self'"
+  # v95 (recenzija vijeća v94, sigurnost 7): skripte samo s ove stranice (i ugrađene) i karta BOX NOW; bez eval-a, bez
+  # dodataka (object), bez tuđe osnovne adrese (base) i tuđih obrazaca; izračun „niste robot” radi u Workeru (blob:)
+  Header setifempty Content-Security-Policy "script-src 'self' 'unsafe-inline' https://widget-cdn.boxnow.hr; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# v95 (recenzija vijeća v94, mobitel): sažimanje teksta (index.html ima oko 280 KB, sažet oko 90 KB) — brže na sporoj mreži
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
 </IfModule>

@@ -10,7 +10,7 @@ Raspakirati u httpdocs (Plesk; na drugim hostinzima public_html) (File Manager �
 import os, re, secrets, sys, time, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'dist')
+OUT = os.environ.get('SHIVAJ_DIST') or os.path.join(ROOT, 'dist')  # v95 (recenzija vijeća v94, L5): testovi grade u privremenu mapu
 CODE = ['index.html', '.htaccess', 'favicon.ico', 'js', 'api', 'admin', 'img/zakonsko-jamstvo-hr.jpg', 'img/logo.svg', 'img/ikona.svg', 'img/ikona-180.png', 'img/.htaccess']  # uvijek (v84: EU obavijest o jamstvu; v86: logo; v87: ikona)
 # samo prvi put (+ prazna torbe.json): slika za dijeljenje linka i barkod iz banke; fotografije torbi dodaje admin
 FIRST = ['img/og.jpg', 'img/barkod-uplata.png', 'data/.htaccess', 'data/PRVA-PRIJAVA.php']
@@ -34,7 +34,7 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v04.md u repozitoriju.
    ostaju kakve jesu. Ako changelog kaže da je nova i slika, nju prenesite zasebno.
 3. Paket zamjenjuje i .htaccess: ako vam je hosting dodao svoja pravila (npr. preusmjeravanje na https), ponovno ih
    uključite u panelu.
-4. Otvorite stranicu i u podnožju provjerite da piše {v}.
+4. Otvorite admin (https://vasa-domena.hr/admin) i na dnu stranice provjerite da piše „Verzija stranice: {v}”.
 """,
 }
 
@@ -42,8 +42,11 @@ Upute: docs/UPUTE-OBJAVA-CROADRIA-v04.md u repozitoriju.
 def version():
     html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
     m = re.search(r'SHIVA\.J WEBSHOP — (v\d+)', html)
-    if not m:
-        sys.exit('verzija nije pronađena u podnožju index.html')
+    meta = re.search(r'<meta name="shivaj-verzija" content="(v\d+)"', html)  # v95: oznaka koju admin ispisuje (ostaje u paketu)
+    if not m or not meta:
+        sys.exit('verzija nije pronađena u zaglavlju index.html (komentar i <meta name="shivaj-verzija">)')
+    if m.group(1) != meta.group(1):
+        sys.exit(f'verzija u komentaru ({m.group(1)}) i u <meta name="shivaj-verzija"> ({meta.group(1)}) se razlikuju')
     return m.group(1)
 
 

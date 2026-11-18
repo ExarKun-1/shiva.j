@@ -69,9 +69,14 @@ uključujući e-mail s podacima za uplatu. Zato:
   `…/docs/`, `…/img/.htaccess`, `…/data/mail-log.txt`, `…/data/greske.log`, `…/data/zahtjevi.json`, `…/data/kopije/`.
   Najlakše: Admin → Postavke → **Provjeri zaštitu podataka** (v90) radi to sam i crveno upozorava. Ako se bilo što otvori: Plesk → Apache & nginx Settings → isključiti „Serve static files
   directly by nginx” (ili mu maknuti `json`/`txt`), pa provjeriti ponovno.
-- [ ] **Dodatna zaštita za nginx (v91, preporučeno):** Plesk → Websites & Domains → shivaj.hr → **Apache & nginx Settings** →
+- [ ] **Zaštita za nginx (v91; od v95 OBAVEZNO):** Plesk → Websites & Domains → shivaj.hr → **Apache & nginx Settings** →
   polje **Additional nginx directives** → upišite redak `location ^~ /data/ { deny all; }` → **OK**.
-  Tada je mapa `data/` zatvorena bez obzira na to poslužuje li nginx statične datoteke. Ponovite provjeru gore.
+  Tada je mapa `data/` zatvorena bez obzira na to poslužuje li nginx statične datoteke (Pleskov nginx može `.txt`, `.json`
+  i `.log` poslati izravno, mimo `.htaccess`). Ponovite provjeru gore.
+- [ ] **Stvarna adresa posjetitelja (v95):** Admin → Postavke → **Provjeri zaštitu podataka**. Na kraju poruke mora pisati
+  „Stvarna adresa posjetitelja: vidljiva”. Ako piše „POZOR — poslužitelj ne vidi stvarnu adresu”, sve granice po vezi
+  (broj narudžbi, izjava, e-mailova) dijele svi kupci: zamolite Croadriju da za Apache iza nginxa uključi prosljeđivanje
+  stvarne adrese (mod_remoteip, zaglavlje X-Forwarded-For), pa provjerite ponovno.
 - [ ] Prije prve prijave u admin adresa `https://shivaj.hr/data/PRVA-PRIJAVA.php` mora vratiti 403 ili 404 (prazna stranica bez teksta).
   Datoteka je od v91 `.php`, pa je poslužitelj nikad ne šalje kao tekst; kod u njoj čitate samo u File Manageru.
 
@@ -136,7 +141,9 @@ Datoteke na hostingu pritom se ne diraju.
 2. `python3 tools/paket.py` → `dist/shivaj-vNN-nadogradnja.zip`.
 3. Plesk → Files → `httpdocs` → Upload → Extract → **dopustite zamjenu** postojećih datoteka. Zatim obrišite zip i
    `PROCITAJ.txt`.
-4. Otvorite stranicu: u podnožju mora pisati nova verzija (`· vNN`). Ako se ne vidi, osvježite stranicu (Ctrl+F5).
+4. Otvorite admin (`https://shivaj.hr/admin`): na dnu stranice mora pisati „Verzija stranice: vNN” (v95; prije je verzija bila
+   u podnožju trgovine). Ako piše stara verzija, osvježite stranicu (Ctrl+F5) i provjerite je li zip raspakiran u `httpdocs`.
+   U istom retku piše kad su rokovi zadnji put obrađeni; ako piše „PAŽNJA … provjerite cron”, pogledajte odjeljak 7.
 
 > **Nikad ne prenosite `data/`, `torbe.json` ni `img/` s računala na hosting.** U njima su prave narudžbe, lozinka,
 > postavke, ponuda i fotografije koje je spremio admin. Paket „nadogradnja” ih zato namjerno nema.
