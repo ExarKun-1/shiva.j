@@ -83,6 +83,7 @@ function sj_config(bool $reload = false): array {
     /* popisi se ne spajaju po indeksu, nego zamjenjuju u cijelosti */
     foreach (['shipping', 'allowed_origins', 'sizes'] as $k) if (isset($saved[$k]) && is_array($saved[$k])) $c[$k] = array_values($saved[$k]);
     if (isset($saved['free_ship']['ids']) && is_array($saved['free_ship']['ids'])) $c['free_ship']['ids'] = array_values($saved['free_ship']['ids']);
+    if (!isset($GLOBALS['sj_cfg_snap'])) $GLOBALS['sj_cfg_snap'] = $c; /* v95: stanje na početku zahtjeva (sj_save_config sprema samo promjene) */
   }
   return $c;
 }
@@ -775,8 +776,17 @@ function sj_orders_prepend(array $entry, int $keep = 300): void {
   sj_with_lock(SJ_DATA . '/narudzbe.json', function (array &$list) use ($entry, $keep) {
     array_unshift($list, $entry);
     if (count($list) > $keep) {
-      $old = array_slice($list, $keep); $list = array_slice($list, 0, $keep);
-      sj_with_lock(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', function (array &$a) use ($old) { foreach (array_reverse($old) as $o) $a[] = $o; return true; }, []);
+      /* v95 (recenzija vijeća v94, L1): u arhivu idu samo zatvorene narudžbe (plaćene, stornirane, obrisane); otvorena (čeka uplatu,
+         izjava o raskidu, javljena uplata) ostaje u glavnom popisu, pa je rokovi, „Uplatio/la sam” i admin i dalje vide.
+         Krajnja granica 2 × $keep (i otvorene), da datoteka ne raste bez kraja */
+      $closed = fn($o) => !empty($o['paidAt']) || !empty($o['cancelledAt']) || !empty($o['anonymizedAt']);
+      $remove = [];
+      for ($i = count($list) - 1; $i >= $keep && count($list) - count($remove) > $keep; $i--) if ($closed($list[$i])) $remove[$i] = true;
+      $old = []; $new = [];
+      foreach ($list as $i => $o) { if (isset($remove[$i])) $old[] = $o; else $new[] = $o; }
+      if (count($new) > 2 * $keep) { $old = array_merge($old, array_slice($new, 2 * $keep)); $new = array_slice($new, 0, 2 * $keep); }
+      $list = $new;
+      if ($old) sj_with_lock(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', function (array &$a) use ($old) { foreach (array_reverse($old) as $o) $a[] = $o; return true; }, []);
     }
     return true;
   }, []);
@@ -1001,12 +1011,19 @@ function sj_config_update(callable $fn): array {
   return $new;
 }
 
+/* v95 (recenzija vijeća v94, L2): sprema samo ključeve koje je ovaj zahtjev promijenio (u odnosu na stanje na početku zahtjeva) —
+   istodobna promjena u drugom zahtjevu (brojač neuspjelih prijava, tajna „niste robot”, lozinka iz druge kartice) se ne gubi */
 function sj_save_config(array $c): void {
-  sj_config_update(function (array &$d) use ($c) {
+  $snap = $GLOBALS['sj_cfg_snap'] ?? null;
+  sj_config_update(function (array &$d) use ($c, $snap) {
     $seq = max((int)($d['order_seq'] ?? 0), (int)($c['order_seq'] ?? 0));
-    $d = $c;
+    if (is_array($snap)) {
+      foreach ($c as $k => $v) if (!array_key_exists($k, $snap) || $snap[$k] !== $v) $d[$k] = $v;
+      foreach ($snap as $k => $_) if (!array_key_exists($k, $c)) unset($d[$k]);
+    } else $d = $c;
     $d['order_seq'] = $seq;
   });
+  $GLOBALS['sj_cfg_snap'] = sj_config();
 }
 
 function sj_site_url(): string {
@@ -1110,8 +1127,10 @@ function sj_log_rotate(): void { $f = SJ_DATA . '/greske.log'; if (is_file($f) &
 function sj_with_lock(string $path, callable $fn, $default = []) {
   $dir = dirname($path);
   if (!is_dir($dir)) mkdir($dir, 0755, true);
-  $fp = fopen($path . '.lock', 'c');
-  flock($fp, LOCK_EX);
+  /* v95 (recenzija vijeća v94, M3): neuspjela brava (vlasnik datoteke nakon vraćanja preko FTP-a, puna kvota) — jasna greška, ne TypeError */
+  $fp = @fopen($path . '.lock', 'c');
+  if (!$fp) throw new RuntimeException('brava se ne može otvoriti: data/' . basename($path) . '.lock (provjerite prava pristupa i prostor na hostingu)');
+  if (!flock($fp, LOCK_EX)) { fclose($fp); throw new RuntimeException('brava se ne može zaključati: data/' . basename($path) . '.lock'); }
   try {
     $data = sj_read_json($path, $default);
     /* datoteka postoji i nije prazna, ali nije čitljiv JSON: čuva se kopija (ime.json.osteceno-datum), a postavke se
@@ -1144,6 +1163,17 @@ function sj_products(): array {
      kopija .osteceno, traka HITNO u adminu i e-mail vlasnici, a trgovina dotle prikazuje zadnji javni popis (bez skrivenih) */
   if (!is_file($path) || filesize($path) === 0) { /* v94 (recenzija): prazna datoteka (prekinut prijenos) kao da je nema — uvoz javnog popisa */
     clearstatcache(true, $path);
+    /* v95 (recenzija vijeća v94, L3): prazna datoteka (ne nepostojeća) — prvo zadnja dnevna kopija (s nevidljivim proizvodima),
+       uz napomenu vlasnici; javni torbe.json samo ako kopije nema */
+    if (is_file($path)) {
+      foreach (array_reverse(glob(SJ_DATA . '/kopije/*/proizvodi.json') ?: []) as $bk) {
+        $bp = sj_read_json($bk, null);
+        if (is_array($bp) && $bp) { sj_write_json($path, array_values($bp));
+          try { $c = sj_config(); if (!empty($c['owner_email'])) sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — popis proizvoda vraćen iz kopije',
+            "Datoteka data/proizvodi.json bila je prazna (vjerojatno prekinut prijenos). Stranica ju je vratila iz dnevne kopije " . basename(dirname($bk)) . ".\n\nProvjerite u adminu → Proizvodi jesu li svi proizvodi tu; promjene napravljene nakon te kopije treba ponoviti."); } catch (Throwable $e) {}
+          return array_values($bp); }
+      }
+    }
     $p = sj_read_json(SJ_PUBLIC_JSON, []);
     if ($p) sj_write_json($path, $p);
     return is_array($p) ? array_values($p) : [];
@@ -1259,11 +1289,12 @@ function sj_res_prune(array &$d): void {
 function sj_count(string $key, int $n = 1): void {
   if (!in_array($key, ['visits', 'ig', 'orders', 'paid', 'expired', 'press', 'rad', 'cart', 'copy', 'orders_m'], true) || $n < 1) return;
   $day = (new DateTime('now', new DateTimeZone('Europe/Zagreb')))->format('Y-m-d');
-  sj_with_lock(SJ_DATA . '/brojac.json', function (array &$d) use ($key, $n, $day) {
+  /* v95 (recenzija vijeća v94, M3): brojač je samo statistika — njegova greška (brava, oštećena datoteka) ne smije srušiti stranicu ni narudžbu */
+  try { sj_with_lock(SJ_DATA . '/brojac.json', function (array &$d) use ($key, $n, $day) {
     $d[$day][$key] = (int)($d[$day][$key] ?? 0) + $n;
     if (count($d) > 400) { ksort($d); $d = array_slice($d, -400, null, true); }
     return true;
-  }, []);
+  }, []); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brojač: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
 }
 
 function sj_res_read(): array {
@@ -1642,15 +1673,19 @@ function sj_send_mail(string $to, string $subject, string $text, ?string $attach
 
   /* v25: prikazno ime privitka (kupac vidi npr. barkod-za-uplatu-2026-0007.png, ne ime privremene datoteke) */
   $attName = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($attachmentName ?: ($attachmentPath ? basename($attachmentPath) : ''))) ?: 'privitak.png';
+  /* v95 (recenzija vijeća v94, L6): redak dulji od 900 bajtova (npr. dugačak tekst iz Postavki) — quoted-printable, jer SMTP
+     odbija retke dulje od 998 znakova (RFC 5321); kratki e-mailovi ostaju 8bit kao dosad */
+  $te = '8bit'; $textOut = $text;
+  if (max(array_map('strlen', preg_split('/\r?\n/', $text) ?: [''])) > 900) { $te = 'quoted-printable'; $textOut = quoted_printable_encode(preg_replace('/\r?\n/', "\r\n", $text)); }
   if ($attachmentPath && is_file($attachmentPath)) {
     $headers[] = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
-    $body  = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n" . $text . "\r\n";
+    $body  = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: $te\r\n\r\n" . $textOut . "\r\n";
     $body .= "--$boundary\r\nContent-Type: image/png; name=\"" . $attName . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $attName . "\"\r\n\r\n";
     $body .= chunk_split(base64_encode((string)file_get_contents($attachmentPath))) . "--$boundary--\r\n";
   } else {
     $headers[] = "Content-Type: text/plain; charset=UTF-8";
-    $headers[] = "Content-Transfer-Encoding: 8bit";
-    $body = $text;
+    $headers[] = "Content-Transfer-Encoding: $te";
+    $body = $textOut;
   }
 
   if (($c['mail_mode'] ?? 'mail') === 'log') {

@@ -322,10 +322,12 @@ function sj_handle_action(string $act, array &$c): string {
       if ($withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if ((!empty($oc['claimedAt']) || !empty($oc['proofAt'])) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) $mailNos[] = (string)($oc['no'] ?? '');
       $claimed = []; $claimedNo = [];
       if (!$withClaimed) foreach (sj_read_json(SJ_DATA . '/narudzbe.json', []) as $oc) if ((!empty($oc['claimedAt']) || !empty($oc['proofAt'])) && empty($oc['paidAt']) && empty($oc['cancelledAt']) && sj_same_ip($oc, [$ip])) { $claimedNo[] = (string)($oc['no'] ?? ''); if (!empty($oc['reservation']['token'])) $claimed[] = (string)$oc['reservation']['token']; }
-      $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip, $claimed) {
+      $n = sj_with_lock(sj_res_path(), function (array &$d) use ($ip, $claimed, $withClaimed) {
         $d = array_replace(sj_res_default(), $d);
         $n = []; /* v29: tko je storniran — da se vlasnica može javiti */
-        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip]) && !in_array((string)($r['token'] ?? ''), $claimed, true)) { unset($d['res'][$id]); $n[] = [(string)$id, (string)($r['email'] ?? ''), (string)($r['token'] ?? '')]; sj_order_cancelled((string)($r['token'] ?? ''), 'lažna narudžba'); } /* i zapisi s prošlotjednom oznakom iste adrese */
+        /* v95 (recenzija vijeća v94, L7): kupac je mogao javiti uplatu nakon što je popis pročitan — pod bravom se provjerava ponovno */
+        $claimedNow = function (string $tk) { if ($tk === '') return false; $oo = sj_order_find(['token' => $tk]); return $oo && (!empty($oo['claimedAt']) || !empty($oo['proofAt'])) && empty($oo['paidAt']); };
+        foreach ($d['res'] as $id => $r) if (sj_same_ip($r, [$ip]) && !in_array((string)($r['token'] ?? ''), $claimed, true) && ($withClaimed || !$claimedNow((string)($r['token'] ?? '')))) { unset($d['res'][$id]); $n[] = [(string)$id, (string)($r['email'] ?? ''), (string)($r['token'] ?? '')]; sj_order_cancelled((string)($r['token'] ?? ''), 'lažna narudžba'); } /* i zapisi s prošlotjednom oznakom iste adrese */
         return $n;
       }, sj_res_default());
       $who = [];
@@ -677,8 +679,13 @@ function sj_handle_action(string $act, array &$c): string {
         $out[] = $u . ': ' . ($code ?: 'nema odgovora');
         if ($code >= 200 && $code < 300) $bad[] = $u; /* svaki 2xx (i 206) znači da se datoteka može pročitati */
       }
-      return $bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
-        : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').';
+      /* v95 (recenzija vijeća v94, upute): sve granice po vezi ovise o stvarnoj adresi posjetitelja — ako poslužitelj vidi
+         adresu posrednika (nginx, 127.0.0.1, privatna mreža), svi kupci dijele jednu granicu */
+      $ra = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+      $proxyIp = $ra === '' || !filter_var($ra, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+      $ipTxt = $proxyIp ? ' POZOR — poslužitelj ne vidi stvarnu adresu posjetitelja (vidi ' . ($ra !== '' ? $ra : 'ništa') . '), pa bi svi kupci dijelili iste granice narudžbi. Zamolite Croadriju da uključi prosljeđivanje stvarne adrese (mod_remoteip / X-Forwarded-For) i provjerite ponovno.' : ' Stvarna adresa posjetitelja: vidljiva (u redu).';
+      return ($bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
+        : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').') . $ipTxt;
     }
 
     case 'test_mail': {
@@ -1291,6 +1298,13 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
     if ($miss) echo '<div class="err">Nije upisano: ' . e(implode(' i ', $miss)) . '. Bez toga narudžbe ili potvrde kupcima mogu zapeti. <a href="?s=postavke">Postavke →</a></div>';
   }
   /* v23: jedna skripta za sve potvrde (data-confirm, data-confirm-sel s imenom odabrane torbe) */
+  /* v95 (recenzija vijeća v94, L4 i L9): verzija stranice (provjera nadogradnje) i kad su rokovi zadnji put obrađeni (cron) */
+  if ($nav) {
+    $ver = preg_match('/<meta name="shivaj-verzija" content="(v\d+)"/', (string)@file_get_contents(dirname(__DIR__) . '/index.html'), $vm) ? $vm[1] : '?';
+    $tickLast = (int)(sj_read_json(SJ_DATA . '/rokovi.json', [])['last'] ?? 0);
+    $tickTxt = empty($c['deadline_tick']) ? 'automatski rokovi su isključeni (Postavke)' : ($tickLast > 0 ? 'rokovi zadnji put obrađeni ' . sj_fmt_hr(sj_iso($tickLast)) . ($tickLast < time() - 3 * 3600 ? ' — PAŽNJA: dulje od 3 sata; provjerite cron (upute za objavu, odjeljak 7)' : '') : 'rokovi još nisu obrađeni — provjerite cron (upute za objavu, odjeljak 7)');
+    $content .= '<p class="muted" style="margin-top:32px;font-size:.8rem">Verzija stranice: ' . e($ver) . ' · ' . e($tickTxt) . '</p>';
+  }
   echo $content . '</main><script nonce="' . $nonce . '">document.addEventListener("submit",function(e){var f=e.target,m=f.getAttribute("data-confirm");'
     . 'var ms=f.getAttribute("data-confirm-sel");if(ms){var sel=f.querySelector("select");if(!sel||!sel.value){e.preventDefault();return;}m=ms.replace("%s",sel.options[sel.selectedIndex].text);}'
     . 'if(m&&!window.confirm(m))e.preventDefault();},true);'

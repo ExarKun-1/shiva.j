@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v94 (2026-11-17)
+     SHIVA.J WEBSHOP — v95 (2026-11-18)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,14 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v95 — vijeće na v94 (5 recenzenata): ispravak narudžbe s drugim artiklima poništava stari link, „(novi link)” u e-mailu i na
+           stranici, treći e-mail za potvrdu u satu (drugi ispravak); e-mail za potvrdu bez paketomata i boje (sigurnost), adresa
+           za dostavu na ploči za uplatu (ne sprema se), „Uplatio/la sam” i na ploči; strogi oblik e-adrese; paketomat bez
+           dvotočke, domene i telefona; izračun „niste robot” bez new Function (CSP); izbornik se zatvara gumbom „natrag”;
+           paketomat i napomena ostaju nakon osvježavanja; potvrda „Kopirano” na gumbu; jamstvo i radionica učitavaju se pri
+           pomicanju; „Unikati”, zbijena mreža otišlih unikata, sličica u košarici, veći krug na mobitelu, „e-mail” se ne
+           prelama, brojke u Uvjetima u stupcu, „trenutačno”, „e-adresa”, „produljujemo”, Uvjeti 7.1/7.2 spojeni, verzija u
+           <meta name="shivaj-verzija"> (admin je ispisuje).
      v90 — vijeće (5 recenzenata): rok uplate s „u noći sa … na …”, iznos i podaci za uplatu prije objašnjenja, „Spremi barkod”,
            „Dodaj u košaricu” prilijepljen u povećanom prikazu (mobitel), kvačica 24 px, obavijest gore na mobitelu, cijela fotografija
            u povećanom prikazu, veći naslovi odjeljaka, „Pogledaj torbe” u praznoj košarici, izravne poveznice na odjeljke.
@@ -468,6 +476,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="shivaj-verzija" content="v95"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">

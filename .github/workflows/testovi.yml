@@ -1,0 +1,38 @@
+# v95 (recenzija vijeća v94): testovi pri svakoj promjeni — PHP jedinični testovi, admin, API, potvrda e-mailom, SMTP i paket.
+# Testovi preglednika (e2e, proba, pdf417) traže Playwright i pokreću se ručno (tests/README.md).
+name: Testovi
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testovi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'  # isto kao lokalni testovi; hosting ima 8.4
+          extensions: gd, mbstring, openssl
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: PHP jedinični testovi
+        run: php tests/run.php
+      - name: Admin
+        run: php tests/admin.php
+      - name: Paket
+        run: python3 tests/paket.py
+      - name: API, potvrda e-mailom i SMTP (lokalni PHP poslužitelj)
+        run: |
+          for t in api confirm smtp; do
+            sh tests/serve.sh > /tmp/srv.log 2>&1 &
+            SRV=$!
+            for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:8090/ && break; sleep 0.5; done
+            node tests/$t.js || { kill $SRV; cat /tmp/srv.log | tail -20; exit 1; }
+            kill $SRV; wait $SRV 2>/dev/null || true
+          done

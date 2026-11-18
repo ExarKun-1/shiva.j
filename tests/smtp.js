@@ -62,8 +62,11 @@ const php = code => new Promise(res => execFile('php', ['-r', "require '" + SITE
     const msg = cs ? cs.data : '';
     ok(/^Date: /m.test(msg) && /^Message-ID: <[a-f0-9]{24}@shivaj\.hr>$/m.test(msg) && /^To: <kupac79@primjer\.hr>$/m.test(msg) && /^Subject: =\?UTF-8\?B\?/m.test(msg) && /^From: =\?UTF-8\?B\?[^?]+\?= <info@shivaj\.hr>$/m.test(msg) && !/^Return-Path:/m.test(msg),
       'v79: zaglavlja — Date, Message-ID na domeni, To, UTF-8 naslov i pošiljatelj; bez Return-Path');
-    ok(/Content-Type: multipart\/mixed/.test(msg) && /filename="barkod-za-uplatu-[\d-]+\.png"/.test(msg) && /Dobar dan, Šime Čupić/.test(msg) && !/[^\r]\n/.test(msg.replace(/\r\n/g, '')) && msg.split('\n').every(l => l === '' || l.endsWith('\r') || l === msg.split('\n').slice(-1)[0]),
-      'v79: tijelo — privitak barkoda, UTF-8 tekst, redovi završavaju s CRLF');
+    /* v95 (recenzija vijeća v94, L6): tekst s retkom duljim od 900 bajtova (Uvjeti) ide kao quoted-printable — nijedan redak iznad 998 */
+    const qp = /Content-Transfer-Encoding: quoted-printable/.test(msg);
+    const dec = qp ? Buffer.from(msg.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16))), 'latin1').toString('utf8') : msg;
+    ok(/Content-Type: multipart\/mixed/.test(msg) && /filename="barkod-za-uplatu-[\d-]+\.png"/.test(msg) && /Dobar dan, Šime Čupić/.test(dec) && !/[^\r]\n/.test(msg.replace(/\r\n/g, '')) && msg.split('\n').every(l => l === '' || l.endsWith('\r') || l === msg.split('\n').slice(-1)[0]) && msg.split('\r\n').every(l => Buffer.byteLength(l) <= 998),
+      'v79/v95: tijelo — privitak barkoda, UTF-8 tekst, redovi završavaju s CRLF, nijedan dulji od 998 bajtova ' + (qp ? '(quoted-printable)' : '(8bit)'));
     ok(sessions.some(s => s.to.some(t => /shivaj|vlasnica|@/.test(t)) && s !== cs) && read('smtp-zadnja-greska.json', {}).ok === true, 'v79: e-mail vlasnici također preko SMTP-a; zadnji ishod zabilježen kao uspjeh');
     // 2) točka na početku reda i AUTH LOGIN (izravno sj_send_mail)
     mechs = 'LOGIN'; const n0 = sessions.length;

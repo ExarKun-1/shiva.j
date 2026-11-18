@@ -109,7 +109,7 @@ $ok(sj_email_key('Ana.Kovac+torba@GMAIL.com') === sj_email_key('anakovac@gmail.c
 
 /* M: arhiva narudžbi umjesto brisanja */
 file_put_contents(SJ_DATA . '/narudzbe.json', '[]'); @unlink(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json');
-for ($i = 1; $i <= 5; $i++) sj_orders_prepend(['no' => 'SJ-T-' . $i], 3);
+for ($i = 1; $i <= 5; $i++) sj_orders_prepend(['no' => 'SJ-T-' . $i, 'paidAt' => '2026-01-01T00:00:00Z'], 3); /* v95: u arhivu idu samo zatvorene */
 $list = sj_read_json(SJ_DATA . '/narudzbe.json', []); $arh = sj_read_json(SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json', []);
 $ok(array_column($list, 'no') === ['SJ-T-5', 'SJ-T-4', 'SJ-T-3'] && array_column($arh, 'no') === ['SJ-T-1', 'SJ-T-2'], 'starije narudžbe idu u arhivu, ništa se ne briše');
 
@@ -316,6 +316,25 @@ file_put_contents($pp, ''); clearstatcache(); sj_sync_public_products(); clearst
 $ok(filesize($pp) > 2 && count((array)json_decode((string)file_get_contents(SJ_PUBLIC_JSON), true)) === count((array)json_decode($pub94, true)), 'v94 (recenzija): prazna proizvodi.json se obnavlja iz javnog popisa; trgovina ne ostaje prazna');
 file_put_contents($pp, $pb94b); file_put_contents(SJ_PUBLIC_JSON, $pub94);
 $ok(sj_unlink('Razlog: točka 2 Uvjeta') === 'Razlog: točka 2 Uvjeta' && sj_has_link('pay.ai/login'), 'v94 (recenzija): „točka” u običnom tekstu ostaje; nove vršne domene u filtru');
+/* v95 (recenzija vijeća v94, L1): u arhivu idu samo zatvorene narudžbe; otvorena stara narudžba ostaje u glavnom popisu */
+$nb95 = (string)@file_get_contents(SJ_DATA . '/narudzbe.json'); $ab95 = SJ_DATA . '/narudzbe-arhiva-' . date('Y') . '.json'; $abk95 = is_file($ab95) ? file_get_contents($ab95) : null;
+$l95 = [['no' => 'SJ-OPEN-OLD', 'at' => '2026-01-01T00:00:00Z']]; for ($i = 0; $i < 6; $i++) $l95[] = ['no' => 'SJ-C-' . $i, 'paidAt' => '2026-01-02T00:00:00Z'];
+file_put_contents(SJ_DATA . '/narudzbe.json', json_encode(array_reverse($l95))); @unlink($ab95);
+sj_orders_prepend(['no' => 'SJ-NEW'], 3);
+$m95 = array_column((array)json_decode((string)file_get_contents(SJ_DATA . '/narudzbe.json'), true), 'no'); $a95 = array_column((array)json_decode((string)@file_get_contents($ab95), true), 'no');
+$ok(in_array('SJ-OPEN-OLD', $m95, true) && !in_array('SJ-OPEN-OLD', $a95, true) && count($m95) === 4 && count($a95) === 4, 'v95 (L1): otvorena narudžba ostaje u glavnom popisu, zatvorene idu u arhivu ' . json_encode([$m95, count($a95)]));
+file_put_contents(SJ_DATA . '/narudzbe.json', $nb95); if ($abk95 === null) @unlink($ab95); else file_put_contents($ab95, $abk95);
+/* v95 (L3): prazna proizvodi.json vraća se iz zadnje dnevne kopije (s nevidljivim proizvodima), ne iz javnog popisa */
+$pp = sj_products_path(); $pb95 = (string)@file_get_contents($pp); @mkdir(SJ_DATA . '/kopije/2099-01-01', 0755, true);
+file_put_contents(SJ_DATA . '/kopije/2099-01-01/proizvodi.json', json_encode([['id' => 'skrivena95', 'name' => 'Skrivena', 'hidden' => true]]));
+file_put_contents($pp, ''); clearstatcache(); $l95p = sj_products(); clearstatcache();
+$ok(count($l95p) === 1 && ($l95p[0]['id'] ?? '') === 'skrivena95', 'v95 (L3): prazna proizvodi.json obnovljena iz dnevne kopije');
+file_put_contents($pp, $pb95); @unlink(SJ_DATA . '/kopije/2099-01-01/proizvodi.json'); @rmdir(SJ_DATA . '/kopije/2099-01-01');
+/* v95 (M3): brava koja se ne može otvoriti — jasna greška, ne TypeError */
+@mkdir(SJ_DATA . '/brava95.json.lock'); $e95 = '';
+try { sj_with_lock(SJ_DATA . '/brava95.json', fn(array &$d) => true, []); } catch (Throwable $e) { $e95 = get_class($e) . ': ' . $e->getMessage(); }
+$ok(str_starts_with($e95, 'RuntimeException: brava se ne može otvoriti'), 'v95 (M3): neuspjela brava daje jasnu grešku (' . $e95 . ')');
+@rmdir(SJ_DATA . '/brava95.json.lock');
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

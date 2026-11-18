@@ -18,6 +18,11 @@
         se provjeravaju prije upisa u zaglavlja; veličina narudžbe ograničena.
    v03: poziv na broj = broj narudžbe (npr. SJ-2026-0007 → 2026-0007, model
         HR00) umjesto datuma uplate; odgovor servisa i potvrda kupcu ga nose.
+   v51 (stranica v95; vijeće na v94): ukupna granica e-mailova za potvrdu odbija samo veze koje su ih već dobile (nove uz teži
+        zadatak, tvrda granica 300/h); ispravak narudžbe zamjenjuje raniji link i s drugim stavkama; e-mail za potvrdu bez
+        paketomata i boje; paketomat samo slova, brojke i znakovi adrese; raskid se uvijek sprema (višak u
+        raskidi-visak-GGGG-MM.jsonl), granice samo za e-mailove, sažetak vlasnici jednom na sat; potvrda raskida bez IBAN-a i
+        poveznica iz napomene; adresa za dostavu i poveznica „Uplatio/la sam” u odgovoru potvrde; brojač ne ruši api/status.
    v50 (v83, završno vijeće): artikl bez mjera, materijala (Ostalo) ili roka izrade nije u ponudi (ZZP čl. 60. i 74.).
    v49 (v82, pregled prije objave): poštanski broj kod dostave na adresu; ignore_user_abort/set_time_limit/getmypid samo ako postoje.
    v48 (v82, završna recenzija): raskid uz obrisanu narudžbu bilježi „orderGone” (admin ne javlja lažno nepodudaranje e-maila);
@@ -249,9 +254,11 @@ function sj_products_by_id(): array {
 /* ---------- status ---------- */
 if ($a === 'status') {
   $owner = isset($_COOKIE['sjadmin']); /* prijavljena vlasnica: njezini posjeti i klikovi se ne broje */
+  try { /* v95 (recenzija vijeća v94, M3): statistika ne ruši api/status */
   if (!$owner && ($_GET['v'] ?? '') === '1' && sj_rate_limit('visit', 30, 3600, true)) { sj_count('visits'); if (($_GET['src'] ?? '') === 'ig') sj_count('ig'); }
   $ck = (string)($_GET['c'] ?? '');
   if (!$owner && in_array($ck, ['press', 'rad', 'cart', 'copy'], true) && sj_rate_limit('count', 60, 3600, true)) sj_count($ck); /* drugi ključevi se ne primaju */
+  } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brojač: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
   /* nepotvrđene narudžbe (osobni podaci) brišu se dan nakon isteka linka; provjera najviše jednom na sat */
   $pf = sj_pending_path();
   if (is_file($pf) && filemtime($pf) < time() - 3600) { try { sj_pending_prune(); } catch (Throwable $ex) { @touch($pf); } } /* v90: stranica radi i kad je datoteka oštećena */
