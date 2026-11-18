@@ -2169,12 +2169,19 @@ function sjPushView(kind){
     if(history.state && history.state.sj === kind) return;
     if(history.state && history.state.sj){ history.replaceState({ sj: kind }, ""); return; } /* iz povećanog prikaza ravno u košaricu: isti korak */
     if(/^#torba-/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); /* ispod ostaje adresa bez #torba- */
+    /* v95: položaj stranice ispod prikaza ne vraća preglednik (postavka vrijedi za svaki korak povijesti zasebno) — pri
+       zatvaranju ostaje gdje je, ili se pomiče na karticu torbe; nakon povratka opet „auto” */
+    try { history.scrollRestoration = "manual"; } catch(e){}
     history.pushState({ sj: kind }, "", location.pathname + location.search + (/^#torba-/.test(location.hash) ? "" : location.hash));
+    try { history.scrollRestoration = "auto"; } catch(e){}
   } catch(e){}
 }
-function sjPopView(kind){ try { if(history.state && history.state.sj === kind){ sjIgnorePop = true; history.back(); } } catch(e){} }
+function sjPopView(kind){ try { if(history.state && history.state.sj === kind){ sjIgnorePop = true; history.back(); return true; } } catch(e){} return false; }
+/* v95: povratak u povijesti može vratiti spremljeni položaj stranice nakon našeg pomicanja — pomicanje se ponavlja nakon popstate */
+let sjAfterPop = null;
 addEventListener("popstate", () => {
-  if(sjIgnorePop){ sjIgnorePop = false; return; }
+  setTimeout(() => { try { if(!(history.state && history.state.sj)) history.scrollRestoration = "auto"; } catch(e){} }, 0);
+  if(sjIgnorePop){ sjIgnorePop = false; const f = sjAfterPop; sjAfterPop = null; if(f) f(); return; }
   if(/^#torba-/.test(location.hash)) return; /* nova poveznica na torbu: otvara je hashchange */
   const st = history.state && history.state.sj;
   if(document.body.classList.contains("menu-open") && st !== "menu"){ closeMenu(false); return; } /* v95 */
@@ -2242,7 +2249,7 @@ function openLightbox(id){
 function closeLightbox(fromPop){
   if(!lightbox.classList.contains("open")) return;
   lightbox.classList.remove("open"); document.body.classList.remove("lb-open");
-  if(!fromPop) sjPopView("lb");
+  const popped = !fromPop && sjPopView("lb");
   const wasId = lbCurrent && lbCurrent.id;
   lbCurrent = null;
   document.body.style.overflow = "";
@@ -2250,7 +2257,7 @@ function closeLightbox(fromPop){
   else if(wasId){
     /* v65: otvoreno linkom (#torba-ID, npr. s Instagrama) — natrag na karticu te torbe, ne na vrh stranice */
     const ph = grid.querySelector(`.photo[data-view="${CSS.escape(wasId)}"]`);
-    if(ph){ ph.closest(".card").scrollIntoView({ block: "center" }); ph.focus({ preventScroll: true }); }
+    if(ph){ const go = () => { ph.closest(".card").scrollIntoView({ block: "center", behavior: "instant" }); ph.focus({ preventScroll: true }); }; go(); if(popped) sjAfterPop = go; } /* v95: bez animacije (otišli unikati su na dnu) */
   }
   /* v66: adresa bez #torba-… — osvježavanje je ne otvara ponovno, a novi klik na isti link s Instagrama radi */
   if(/^#torba-/.test(location.hash)){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
