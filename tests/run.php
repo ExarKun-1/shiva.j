@@ -290,7 +290,7 @@ $ok($cd92 === strtotime('2026-11-09T10:00:00Z'), 'v92 (recenzija): rok automatsk
 $cd92b = sj_cancel_due(['expiredAt' => '2026-11-05T23:00:00Z', 'payUntil' => '2026-11-05T22:59:00Z', 'cancelDue' => '2026-11-01T10:00:00Z', 'claimedAt' => '2026-11-04T10:00:00Z'], 48);
 $ok($cd92b > strtotime('2026-11-05T23:00:00Z'), 'v92 (recenzija): stari zapisani rok storna nikad ne skraćuje novi (nakon produženja roka)');
 $tt93 = sj_terms_text();
-$ok(str_contains($tt93, 'uvećan za zakonske zatezne kamate od dana uplate do dana povrata') && str_contains($tt93, 'Kliknite „Uplatio/la sam” u e-mailu o narudžbi: više vam ne šaljemo podsjetnike.'), 'v93 (odluka vlasnice): Uvjeti u e-mailu — zatezne kamate (ZZP čl. 14) i „Uplatio/la sam” bez podsjetnika');
+$ok(str_contains($tt93, 'uvećan za zakonske zatezne kamate od dana uplate do dana povrata') && str_contains($tt93, 'Kliknite „Uplatio/la sam” u e-mailu o narudžbi ili na stranici s podacima za uplatu: više vam ne šaljemo podsjetnike.'), 'v93 (odluka vlasnice): Uvjeti u e-mailu — zatezne kamate (ZZP čl. 14) i „Uplatio/la sam” bez podsjetnika');
 $ok(sj_pow_zero_bits('000fff', 12) && !sj_pow_zero_bits('001fff', 12) && sj_pow_zero_bits('07ff', 5) && !sj_pow_zero_bits('08ff', 5), 'v93: provjera nultih bitova (sj_pow_zero_bits)');
 /* v94 (recenzija vijeća, H1): poplava ključeva koje napadač može stvarati ne briše granice po adresi */
 $zq = SJ_DATA . '/zahtjevi.json'; $zb94 = (string)@file_get_contents($zq); $tn = time(); $ip94 = sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'));

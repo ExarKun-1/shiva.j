@@ -329,7 +329,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(read('narudzbe.json').concat(JSON.parse(n0)))); clearRes(); clearLimits(); }
     // 16) e-mailovi
     const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8');
-    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
+    ok(/ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\.\n/.test(ml) && /Kad uplatite, kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, rok za uplatu produljujemo do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?(, a torbu čuvamo i nakon toga, do automatskog storna \(najmanje \d+ sat[a-z]* kasnije\))?, da obična uplata stigne na vrijeme\./.test(ml) && /Link ne radi\? Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke\./.test(ml) && !/čuvamo za vas i nakon isteka roka|čuvamo dok je slobodna|čuvamo dok su slobodne/.test(ml) && /Uplata je pravodobna ako je vaša banka nalog za plaćanje zaprimila do isteka roka\. Torbu zato čuvamo i bez te obavijesti još do [^;]+; ako ni tada ne vidimo uplatu, a niste nam javili da ste platili \(„Uplatio\/la sam”\), torba se vraća u prodaju\./.test(ml) && !/vaš klik|klik brži/.test(ml) && /popune se sami/.test(ml) && /na Instagramu \(@shiva\.j_handmade\)/.test(ml) && /preuzeli narudžbu/.test(ml) && /kako piše u točki 7\. Uvjeta kupnje na kraju ovog e-maila/.test(ml), 'e-mail kupcu: rok, jedno obećanje „Uplatio/la sam” s datumom (v70), bez riječi „klik” (v71), barkod popunjava sve, „na Instagramu”, preuzimanje, t. 7 (v73)');
     { const custs = ml.split(/^=== /m).filter(x => /\| Subject: [^|]*potvrda narudžbe SJ-/.test(x)).map(x => x.split('UVJETI KUPNJE (vrijede')[0]); /* v73: Uvjeti na kraju e-maila provjerava zaseban test */
       const uniq = custs.filter(x => !/rok izrade/i.test(x) && /čeka vašu uplatu/.test(x)), made = custs.filter(x => /rok izrade/i.test(x));
       ok(custs.length > 0 && custs.every(x => /Poziv na broj: \d{4}-\d{4,} \(upišite točno ovako, bez „SJ-”\)/.test(x) && /hvala vam na narudžbi br\. SJ-\d{4}-\d{4,}! Ova poruka je potvrda vaše narudžbe\./.test(x) && !/prepišite|rađene/.test(x)),
@@ -464,6 +464,34 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const mlO = fs.readFileSync(D + 'mail-log.txt', 'utf8');
       ok(ov.status === 200 && ov.data.ok && read('raskidi.json').length === rr0 && vis.length === 1 && vis[0].email === 'prava@primjer.hr' && sz.n === 1 && !/RASKID UGOVORA: torba iz listopada/.test(mlO),
         'v95 (sigurnost 4): iznad granica izjava se ipak prima (200), upisuje u raskidi-visak-*.jsonl, a vlasnica je dobiva u sažetku ' + JSON.stringify([ov.status, vis.length, sz.n]));
+      clearLimits(); }
+    // v96 (recenzija vijeća v95): raskid nakon „Uplatio/la sam” — paket se ne šalje; stranica „Uplatio/la sam” više ne obećava čuvanje; odgovor bez „mailed”
+    { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
+      const w1 = await post('order', order('api-key-v96-w1', 'v96w@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+      const ow = read('narudzbe.json').find(x => x.no === w1.data.orderNo) || {};
+      const cl = await post('paidclaim', { no: ow.no, t: ow.claim });
+      fs.writeFileSync(D + 'mail-log.txt', '');
+      const rw = await post('raskid', { name: 'Vera Kupac', no: ow.no, email: 'v96w@primjer.hr' });
+      const mlw = fs.readFileSync(D + 'mail-log.txt', 'utf8');
+      const cw = mlw.split(/^=== /m).find(x => /To: v96w@primjer\.hr[^\n]*potvrda primitka/.test(x)) || '';
+      const owm = mlw.split(/^=== /m).find(x => /RASKID UGOVORA:/.test(x)) || '';
+      const pg = await (await fetch(U + 'paidclaim?no=' + ow.no + '&t=' + ow.claim)).json();
+      ok(w1.data.ok && cl.data.ok && rw.data.ok && !('mailed' in rw.data) && /paket nismo poslali i nećemo ga poslati/.test(cw) && /Ništa nam ne morate vraćati\./.test(cw) && /NE šaljite paket/.test(owm) && pg.state === 'withdrawn',
+        'v96: raskid nakon „Uplatio/la sam” — „paket ne šaljemo”, vlasnici „NE šaljite”, stranica „Uplatio/la sam” stanje withdrawn, odgovor bez „mailed” ' + JSON.stringify([cl.data.state, pg.state]));
+      clearLimits(); fs.writeFileSync(D + 'mail-log.txt', '');
+      for (let i = 0; i < 4; i++) await post('raskid', { name: 'Vera Kupac', no: ow.no, email: 'v96w@primjer.hr' });
+      const n3 = (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/To: v96w@primjer\.hr[^\n]*potvrda primitka/g) || []).length;
+      ok(n3 === 3, 'v96 (sigurnost N4): potvrde istoj adresi iz narudžbe najviše 3 dnevno (' + n3 + ')');
+      clearLimits();
+      const nameEcho = await post('raskid', { name: 'Novi racun HR12 2360 0001 1023 4567 8', no: ow.no, email: 'v96w@primjer.hr' });
+      const cne = (fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /To: v96w@primjer\.hr[^\n]*potvrda primitka/.test(x)).pop()) || '';
+      ok(nameEcho.data.ok && !/HR12 2360/.test(cne), 'v96 (sigurnost N5): broj računa u imenu se ne ponavlja kupcu');
+      const rz = fs.readFileSync(D + 'narudzbe.json'); fs.writeFileSync(D + 'narudzbe.json', '');
+      const z0 = await post('order', order('api-key-v96-z0', 'v96z@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+      const hitno = fs.existsSync(D + 'ostecene-datoteke.json') ? read('ostecene-datoteke.json') : {};
+      const z0n = fs.readFileSync(D + 'narudzbe.json', 'utf8');
+      fs.writeFileSync(D + 'narudzbe.json', rz); try { fs.unlinkSync(D + 'ostecene-datoteke.json'); } catch (e) {}
+      ok(!z0.data.ok && z0.status >= 500 && hitno['narudzbe.json'] && z0n === '', 'v96 (N2): prazna (0 B) narudzbe.json — narudžba se ne prima, ništa se ne prepisuje, traka HITNO ' + z0.status);
       clearLimits(); }
     // v78 (12. krug): t2 raskid neplaćene narudžbe je stornira; t1 ista torba 7 dana s istog e-maila ili veze; t5 e-mail nakon „Uplatio/la sam”
     { clearLimits(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');

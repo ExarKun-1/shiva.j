@@ -672,13 +672,14 @@ if ($a === 'raskid') {
   /* v95 (recenzija vijeća v94, sigurnost 5): i kad se izjava podudara s narudžbom, broj je onaj iz narudžbe, a napomena bez
      poveznica, IBAN-a i dugih brojeva (lažni „novi IBAN za uplatu” s adrese trgovine) */
   /* v96 (recenzija vijeća v95, sigurnost N5): uz podudaranje ime iz narudžbe (ne upisano — „Novi racun HR12…”), napomena maskirana */
-  $rC = ['name' => ($matched && ($match['oname'] ?? '') !== '') ? (string)$match['oname'] : sj_mask_numbers(sj_unlink($r['name'])), 'no' => $match ? (string)$match['no'] : sj_unlink($r['no']), 'note' => sj_mask_numbers(sj_unlink($r['note']))] + $r;
+  $nameOk = (bool)preg_match("/^\p{L}[\p{L} '’\-]{0,79}$/u", $r['name']); /* samo slova — ponavlja se kako je upisano (sadržaj izjave) */
+  $rC = ['name' => $nameOk ? $r['name'] : (($matched && ($match['oname'] ?? '') !== '') ? (string)$match['oname'] : sj_mask_numbers(sj_unlink($r['name']))), 'no' => $match ? (string)$match['no'] : sj_unlink($r['no']), 'note' => sj_mask_numbers(sj_unlink($r['note']))] + $r;
   /* v94 (recenzija vijeća, M2): kad se izjava ne podudara s narudžbom, potvrda ne ponavlja slobodan tekst (lažne poruke s adrese
      trgovine); sadržaj ostaje prepoznatljiv: ime samo ako je slovima, broj samo u obliku GGGG-NNNN, napomena samo kao „primljena” */
   if (!$matched) $rC = ['name' => (preg_match("/^\p{L}[\p{L} '’\-]{0,59}$/u", $r['name']) && count(preg_split('/\s+/', trim($r['name']))) <= 4) ? $r['name'] : '[navedeno u izjavi]', 'no' => preg_match('/^(SJ-)?\d{4}-\d{4,6}$/', $r['no']) ? $r['no'] : '[navedeno u izjavi]', 'note' => $r['note'] !== '' ? '[primljena, proslijeđena trgovini]' : ''] + $r;
   $bodyC = sj_terms_withdraw_lines($r['iban'] !== '' ? ['iban' => substr($r['iban'], 0, 4) . ' … ' . substr($r['iban'], -4)] + $rC : $rC);
   /* vijeće V77-3: ime koje nije samo slova ne ide u pozdrav (lažna poruka s adrese trgovine) */
-  $t = [sj_hi($matched ? (($match['oname'] ?? '') !== '' ? (string)$match['oname'] : $r['name']) : ''), '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];
+  $t = [sj_hi($matched ? $r['name'] : ''), '', 'potvrđujemo primitak vaše izjave o jednostranom raskidu ugovora, podnesene ' . $when . ' (hrvatsko vrijeme) putem funkcije „Raskid ugovora” na našoj stranici.', '', 'SADRŽAJ IZJAVE'];
   foreach ($bodyC as $l) $t[] = $l;
   $t[] = 'Datum i vrijeme podnošenja: ' . $when;
   $t[] = '';
@@ -718,9 +719,9 @@ if ($a === 'raskid') {
   if ($paidOrd) $own[] = 'Narudžba je plaćena. Ako paket još nije poslan, NE šaljite ga i vratite cijeli iznos najkasnije 14 dana od danas.'; /* v96 */
   if (!$storno && !$claimedUnpaid) {
   $own[] = 'Novac (uključujući dostavu do najjeftinije standardne) vraćate najkasnije 14 dana od danas; ako je paket već poslan, smijete pričekati dok torba ne stigne ili kupac ne pošalje dokaz o slanju.';
-  /* vijeće (N73-3): obrazac je bez prijave — IBAN iz izjave nije dokaz da je piše kupac */
-  $own[] = 'Novac vraćajte na račun s kojeg je uplaćeno. Na drugi IBAN samo ako ga kupac potvrdi s e-adrese iz narudžbe.';
   }
+  /* vijeće (N73-3): obrazac je bez prijave — IBAN iz izjave nije dokaz da je piše kupac; v96: i kad je kupac javio uplatu */
+  if (!$storno) $own[] = 'Novac vraćajte na račun s kojeg je uplaćeno. Na drugi IBAN samo ako ga kupac potvrdi s e-adrese iz narudžbe.';
   if (!$inMain) $own[] = 'Izjava je upisana u dodatni popis (Narudžbe → Izjave o raskidu → „Ostale izjave”), jer je stigla bez provjere „niste robot” ili ih je stiglo neuobičajeno mnogo.';
   /* v95 (sigurnost 4): vlasnica dobiva svaku izjavu koja se podudara s narudžbom i do 10 ostalih na sat; ostale idu u sažetak jednom na sat */
   if ($matched || $saveErr !== '' || sj_global_limit('raskid_own', 10, 3600)) /* v95 (recenzija): pogođen broj narudžbe s tuđim e-mailom ne zaobilazi granicu; v96: ni obrisana narudžba (N3); neuspio upis uvijek ide e-mailom (N6) */
