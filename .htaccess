@@ -33,6 +33,7 @@ Options -Indexes
 <IfModule mod_deflate.c>
   <IfModule mod_filter.c>
     # v96 (recenzija vijeća v95): AddOutputFilterByType je u Apacheu 2.4 dio mod_filter — bez njega ne smije srušiti stranicu
-    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+    # v99 (recenzija vijeća v98, H1): bez application/json — sažimanje bi spriječilo rani odgovor izjave o raskidu (mod_php)
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript image/svg+xml
   </IfModule>
 </IfModule>

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v98 (2026-11-18)
+     SHIVA.J WEBSHOP — v99 (2026-11-21)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -108,6 +108,12 @@
            lightbox i vraća se natrag, vidljiv fokus u boji konca,
            poruke čita čitač zaslona (role=status/alert), ograničenja
            duljine, oblik telefona i poruke provjere polja na hrvatskom
+     v99 — vijeće na v98: gumb u povećanom prikazu s pozadinom i na položenom mobitelu; potvrda na drugom uređaju nakon promjene
+           košarice (provjera pt prije brisanja); „Podaci za uplatu” i uz punu košaricu; ploča nakon izjave o raskidu („ne trebate
+           platiti”); isti tekst za pravu i ponovljenu narudžbu; obavijest (ne greška) za već potvrđenu narudžbu; duljina remena i za
+           zamjenski remen; rok za uplatu s godinom; „Impresum”, „Telefon:”, „E-adresa:”; poštanski broj s greškom na svom polju;
+           veće poveznice za prst; × u prikazu ne prekriva tekst; množina „21 mjesto”; e-adresa, „točka 2.” i brojke s jedinicom
+           bez prijeloma (i u tekstu koji skripta dodaje)
      v98 — vijeće na v97: artikl izvan potvrđene narudžbe stvarno ostaje u košarici („carry”); vlastita torba „rezervirana za vas”;
            „natrag” vraća rubriku; prazna košarica bez praznog koraka povijesti; fokus nakon dodavanja iz prikaza; poveznica za raskid
            i u otvorenoj kartici; poštanski broj i mjesto u dva polja (autocomplete); gumb u prikazu na niskom zaslonu; zbijena mreža i
@@ -488,7 +494,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v98"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v99"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -686,6 +692,9 @@
     min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;
   }
   .lb-close:hover{color:var(--ink)}
+  /* v99 (recenzija vijeća v98, dizajn): × ne prekriva tekst kad je „Njega torbe” otvorena i ploča se pomiče */
+  .lb-close{background:var(--paper);border-radius:50%}
+  @media (min-width:681px){ .lb-info{padding-right:48px} }
   .lb-info .add-btn{margin-top:auto}
   /* v90 (vijeće, mobitel): „Dodaj u košaricu” uvijek vidljiv na dnu povećanog prikaza */
   @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)}
@@ -737,7 +746,7 @@
   .legal h4{font-family:'Space Mono',monospace;font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--thread);margin:18px 0 6px}
   .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impressum,#kontakt,#raskid,#jamstvo{scroll-margin-top:72px}
+  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impresum,#impressum,#kontakt,#raskid,#jamstvo{scroll-margin-top:72px}
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -987,7 +996,7 @@
   .cart-item .qty{grid-column:1;grid-row:2;justify-self:start}
   .cart-item .remove{grid-column:2;grid-row:2;justify-self:end;margin:-10px -4px -10px 0}
   .cart-item .cart-note-l,.cart-item .cart-note,.cart-item .cart-wish{grid-column:1/-1}
-  .cart-item .cart-info{display:block;font-size:.8rem;color:var(--ink-soft);font-weight:400;margin-top:2px}
+  .cart-item .cart-info{display:block;overflow:hidden;font-size:.8rem;color:var(--ink-soft);font-weight:400;margin-top:2px} /* v99 (mobitel L6): uz sličicu, ne ispod nje */
   .cart-item .n{font-family:'Marcellus',serif}
   .cart-thumb{float:left;width:44px;height:44px;object-fit:cover;border-radius:var(--radius);margin:2px 10px 4px 0;background:var(--thread-light)}
   .cart-item .qty{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:.85rem}
@@ -1098,7 +1107,7 @@
     text-transform:none;letter-spacing:0;color:var(--ink);font-size:.92rem;line-height:1.4;
   }
   .order-form .ship-opt.on{border:1.5px dashed var(--thread)}
-  .order-form .ship-opt input{width:auto;padding:0;margin:0;accent-color:var(--thread);align-self:center}
+  .order-form .ship-opt input{width:auto;padding:0;margin:0;accent-color:var(--thread);align-self:center;min-height:0} /* v99: bez dodatnog razmaka ispod opcija dostave */
   .ship-main{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-width:0}
   .ship-note{grid-column:2;display:block;color:var(--ink-soft);font-size:.8rem;margin:4px 0 0;line-height:1.45}
   .stack{display:flex;flex-direction:column;gap:12px}
@@ -1118,7 +1127,7 @@
   .lg-badge{display:flex;gap:12px;align-items:center;margin:10px 0;padding:6px 0 14px;min-height:44px;color:var(--ink);text-decoration:none;font-size:.85rem;line-height:1.35}
   .lg-badge img{width:48px;height:auto;border:1px solid var(--line,#ddd);flex:none}
   .locker-btn:hover{background:var(--thread);color:var(--paper);border-style:solid}
-  .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread);display:inline-block;padding:12px 0;margin:-8px 0;line-height:1.2} /* v98 (mobitel L4): veća površina za dodir */
+  .locker-link{font-size:.8rem;color:var(--ink-soft);border-bottom:1.5px dashed var(--thread);display:inline-flex;align-items:center;min-height:44px;margin:-6px 0;line-height:1.2} /* v98 (mobitel L4); v99: 44 px */
   #boxnowmap:not(:empty){margin-top:10px}
   #boxnowmap iframe{width:100%;min-height:480px;border:1px solid var(--line);border-radius:var(--radius)}
   .order-form .consent{display:flex;gap:10px;align-items:flex-start;margin-top:2px}
@@ -1174,6 +1183,7 @@
   .pay-fallback{border:1.5px dashed #9B2C1F;border-radius:var(--radius);background:#FBF1EE;color:#7A2418;padding:14px;margin-bottom:18px;font-size:.9rem;line-height:1.55}
   .pay-fallback ol{margin:8px 0 0 18px}
   .pay-fallback li{margin-bottom:4px}
+  .last-line{margin:0 0 10px} .last-line .last-order{margin-top:0} /* v99 */
   .last-order{display:inline-block;margin-top:18px;border-bottom:1.5px dashed var(--thread);color:var(--thread);background:none;border-top:none;border-left:none;border-right:none;min-height:44px;font:inherit}
   .copy-btn:hover{border-color:var(--ink);color:var(--ink)}
   .pay-barcode{margin:0 0 16px;border:1.5px dashed var(--thread);border-radius:var(--radius);padding:14px;background:#fff}
@@ -1202,7 +1212,7 @@
   /* v94: na niskom zaslonu gumb ne prekriva cijenu; v98 (recenzija vijeća v97, mobitel L1): manja fotografija, pa su naziv i cijena
      na prvom zaslonu, a gumb „Dodaj u košaricu” ostaje vidljiv pri dnu (iPhone SE); položeni mobitel — gumb uz dno desnog stupca */
   @media (max-width:680px) and (max-height:640px){ .lb-photo{max-height:46dvh} }
-  @media (min-width:681px) and (max-height:500px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)} }
+  @media (min-width:681px) and (max-height:500px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)} .lb-info .add-btn:not(.in-cart):not(:hover):not(:focus-visible){background:var(--paper)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
   summary h3 .n{font-family:'Space Mono',monospace;font-size:.82em;letter-spacing:0;margin-right:.15em} /* v94: brojka 1 u Marcellusu izgleda kao I */
   /* v95 (recenzija vijeća v94, dizajn 4): brojke u stupcu iste širine — naslovi „10.” i „11.” u ravnini, preloženi redak pod naslovom */
   summary h3:has(> .n){display:grid;grid-template-columns:3.4ch minmax(0,1fr);align-items:baseline}
@@ -1223,6 +1233,9 @@
   /* v63: „Stalna kolekcija” je dulja — izbornik u jednom retku, hamburger već ispod 960 px */
   nav a.navlink{white-space:nowrap}
   @media (max-width:960px){ nav a.navlink{display:none} .menu-btn{display:flex} }
+  /* v99 (recenzija vijeća v98, mobitel L2/L3): na zaslonu osjetljivom na dodir (i položen mobitel širi od 820 px) poveznice u podnožju i
+     „Zakonsko jamstvo” u košarici visoke 44 px */
+  @media (pointer:coarse){ .foot-links a{min-height:44px;display:inline-flex;align-items:center} .trust-line a{display:inline-flex;align-items:center;min-height:44px;margin:-14px 0} }
   @media (max-width:820px){
     nav a.navlink{display:none}
     .menu-btn{display:flex}
@@ -1390,7 +1403,7 @@
       <p>Ukratko: naručite obrascem u košarici<span data-if-confirm> i potvrdite narudžbu linkom iz <span class="nw">e-maila</span></span>; tada unikatnu torbu odmah rezerviramo za vas, a podatke za uplatu vidite na zaslonu i dobivate ih <span class="nw">e-mailom</span>. Nakon uplate torbu šaljemo ili je preuzimate u radionici (modele iz Stalne kolekcije kad ih sašijemo). Ako vam ne odgovara, možete je vratiti u roku <span class="nw">14 dana</span> od preuzimanja. Detalji su u nastavku.</p>
 <!-- UVJETI-START -->
       <details><summary><h3><span class="n">1.</span> Prodavatelj</h3></summary>
-      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, upisan u Obrtni registar, MBO: 98020200, telefon: <a href="tel:+385998866877">099 886 6877</a>, <span class="nw">e-mail</span>: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
+      <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec, Matije Gupca 33, 49210 Zabok, Hrvatska, OIB: 50934176320, upisan u Obrtni registar, MBO: 98020200, telefon: <a href="tel:+385998866877">099 886 6877</a>, <span class="nw">e-adresa</span>: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> (dalje: Shiva.J). Ovi Uvjeti uređuju kupnju na ovoj stranici između nas i vas kao kupca. Prije narudžbe molimo pročitajte ih; slanjem narudžbe potvrđujete da ste s njima upoznati.</p>
       </details>
 
       <details><summary><h3><span class="n">2.</span> Torbe i ostali artikli</h3></summary>
@@ -1484,7 +1497,7 @@
 
       <details><summary><h3><span class="n">2.</span> Koje podatke prikupljamo</h3></summary>
       <ul class="legal-list">
-        <li><b>Narudžba:</b> ime i prezime, <span class="nw">e-adresa</span>, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili sadržaj polja „Boja i duljina” te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi: nakon storna neplaćene narudžbe s iste <span class="nw">e-adrese</span>, a nakon storna lažne narudžbe i s iste veze, <span class="nw">7 dana</span> nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
+        <li><b>Narudžba:</b> ime i prezime, <span class="nw">e-adresa</span>, broj telefona, adresa za dostavu ili odabrani paketomat, naručeni artikli, odabrana boja i duljina remena ili ono što upišete u polje uz artikl („Boja” ili „Boja i duljina”) te napomena, a uz narudžbu i skraćena, neprepoznatljiva oznaka internetske veze s koje je poslana (radi zaštite od lažnih narudžbi: nakon storna neplaćene narudžbe s iste <span class="nw">e-adrese</span>, a nakon storna lažne narudžbe i s iste veze, <span class="nw">7 dana</span> nije moguće ponovno naručiti isti artikl). U ta polja molimo ne upisujte podatke koji nisu potrebni za izradu torbe.</li>
         <li><b>Plaćanje:</b> podaci o uplati koje vidimo na izvodu (ime uplatitelja, iznos, poziv na broj). Podatke o vašoj kartici ili internetskom bankarstvu ne prikupljamo.</li>
         <li><b>Raskid ugovora, reklamacija ili prigovor:</b> podaci iz izjave ili poruke (ime, broj narudžbe, <span class="nw">e-adresa</span>, IBAN za povrat novca, napomena) i fotografije torbe koje nam pošaljete.</li>
         <li><b>Kontakt <span class="nw">e-mailom</span> ili na Instagramu:</b> podaci koje nam sami navedete.</li>
@@ -1524,14 +1537,15 @@
       <p>Izjavu možemo mijenjati, primjerice kada uvedemo novu uslugu ili promijenimo pružatelja usluge. Važeća verzija uvijek je objavljena na ovoj stranici.</p>
       </details>
 
-      <div class="impressum" id="impressum">
-        <h3>Impressum</h3>
+      <div class="impressum" id="impresum"><span id="impressum" aria-hidden="true"></span> <!-- v99 (recenzija vijeća v98, dizajn N2): „Impresum”; stara oznaka #impressum i dalje vodi ovamo -->
+        <h3>Impresum</h3>
         <p>SHIVA.&nbsp;J, obrt za dizajn, vl. Jasmina Šivalec</p>
         <p>Matije Gupca 33, 49210 Zabok, Hrvatska</p>
         <p><span class="nw">OIB: 50934176320</span><span class="imp-sep"> · </span><span class="nw imp-mbo">Obrtni registar, MBO: 98020200</span></p>
         <p>IBAN: <span class="nowrap">HR98 2360 0001 1027 9044 2</span></p>
-        <p>telefon: <a href="tel:+385998866877">099 886 6877</a></p>
-        <p><span class="nw">e-mail</span>: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a> · Instagram: <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a></p>
+        <p>Telefon: <a href="tel:+385998866877">099 886 6877</a></p>
+        <p><span class="nw">E-adresa</span>: <a href="mailto:shivaj.handmade@gmail.com">shivaj.handmade@gmail.com</a></p>
+        <p>Instagram: <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">@shiva.j_handmade</a></p>
         <a class="lg-badge" href="img/zakonsko-jamstvo-hr.jpg" target="_blank" rel="noopener"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-later="img/zakonsko-jamstvo-hr.jpg" width="64" height="90" decoding="async" alt=""><span><b>Zakonsko jamstvo: najmanje <span class="nw">2 godine</span></b><br>usklađena obavijest EU — otvara se u novoj kartici</span></a>
         <p style="margin-top:24px">Pravo na jednostrani raskid ugovora u roku <span class="nw">14 dana</span>, prigovori i ostali uvjeti kupnje opisani su u odjeljku <a href="#uvjeti">Uvjeti kupnje</a>; ugovor možete raskinuti i <a href="#raskid">ovdje na stranici</a>.</p>
       </div>
@@ -1590,7 +1604,7 @@
       <a href="#raskid" class="foot-raskid">Raskid ugovora</a>
       <a href="#uvjeti">Uvjeti kupnje i pravo na raskid</a>
       <a href="#privatnost">Izjava o zaštiti osobnih podataka</a>
-      <a href="#impressum">Impressum</a>
+      <a href="#impresum">Impresum</a>
     </div>
   </div>
   <p class="copyright">© 2026 Shiva.J · Sva prava pridržana</p>
@@ -1874,6 +1888,8 @@ const statusLabel = p => p.made
   ? (p.sold ? "Trenutačno nedostupno" : madeFull(p) ? "Popunjeno" : "Po narudžbi")
   : (p.sold || p.srvSold) ? "Prodano" : (p.reserved || p.srvReserved) ? "Rezervirano" : "Jedan primjerak";
 const qtyOf = c => Math.max(1, Number(c.qty) || 1);
+/* v99 (recenzija vijeća v98, kupac N6): remen (duljina iz opisa) — podrubrika „remeni” ili naziv s „remen” (npr. „Zamjenski remen”) */
+const isStrap = p => !!p && (p.sub === "remeni" || /remen/i.test(String(p.name || "")));
 /* nepopunjeno polje iz torbe.json ({DIMENZIJE} i sl.) kupac ne smije vidjeti */
 const filled = v => { const t = String(v ?? "").trim(); return t && !/^\{.*\}$/.test(t) ? t : ""; };
 let SHIP_LEAD = ""; /* rok slanja nakon uplate iz postavki admina (api/status) */
@@ -1982,7 +1998,7 @@ function renderShopHead(){
 function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
 document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
 /* v90 (vijeće): izravna poveznica (npr. iz e-maila) na odjeljak — visina stranice se mijenja dok se učitava, pa skok i nakon učitavanja */
-if(/^#(uvjeti|privatnost|raskid|kako|radionica|impressum|kontakt)$/.test(location.hash)){ const goSec = () => { const el = document.getElementById(location.hash.slice(1)); if(el) el.scrollIntoView(); }; setTimeout(goSec, 0); addEventListener("load", () => { goSec(); setTimeout(goSec, 600); }); }
+if(/^#(uvjeti|privatnost|raskid|kako|radionica|impresum|impressum|kontakt)$/.test(location.hash)){ const goSec = () => { const el = document.getElementById(location.hash.slice(1)); if(el) el.scrollIntoView(); }; setTimeout(goSec, 0); addEventListener("load", () => { goSec(); setTimeout(goSec, 600); }); }
 if(location.hash === "#jamstvo"){ setTimeout(openJamstvo, 0); addEventListener("load", () => { openJamstvo(); setTimeout(openJamstvo, 600); }); } /* kao #raskid: visina se mijenja dok se stranica učitava */
 window.addEventListener("hashchange", () => {
   const bagId = bagFromHash();
@@ -2095,12 +2111,12 @@ function renderGrid(){
       ${filled(p.tagline) ? `<p class="tagline">${escHtml(p.tagline)}</p>` : ""}
       <p class="desc">${escHtml(p.desc || "")}</p>
       ${p.made && !gone && filled(p.lead) ? `<p class="lead">Izrada: ${escHtml(filled(p.lead))} od uplate</p>` : ""}
-      ${p.made && !p.sold && madeLeft(p) !== null ? (madeLeft(p) > 0 ? `<p class="lead">Još ${madeLeft(p)} ${madeLeft(p) === 1 ? "mjesto" : madeLeft(p) < 5 ? "mjesta" : "mjesta"} za narudžbu</p>` : `<p class="ask-ig">Sva mjesta za ovaj model su zauzeta. Javite nam se na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:${escHtml(OWNER_EMAIL)}">e-mailom</a> pa vam napišemo kad otvorimo nova mjesta.</p>`) : ""}
+      ${p.made && !p.sold && madeLeft(p) !== null ? (madeLeft(p) > 0 ? `<p class="lead">Još ${madeLeft(p)} ${madeLeft(p) % 10 === 1 && madeLeft(p) % 100 !== 11 ? "mjesto" : "mjesta"} za narudžbu</p>` : `<p class="ask-ig">Sva mjesta za ovaj model su zauzeta. Javite nam se na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a> ili <a href="mailto:${escHtml(OWNER_EMAIL)}">e-mailom</a> pa vam napišemo kad otvorimo nova mjesta.</p>`) : ""}
       ${(() => { /* v51: mjere i dostava u jednom retku (manje sitnih redaka na kartici) */
         const dm = filled(p.dims) ? "Mjere: " + escHtml(filled(p.dims)) : ""; /* v83: artikl bez mjera nije u ponudi (admin ga ne objavljuje) */
         const sh = !gone && !wait && shipFrom !== null ? (dm ? "dostava od " : "Dostava od ") + fmt(shipFrom) : "";
         /* v54: mjere mogu i same sadržavati „·”, pa dostava ide iza crtice, u komadu koji se ne prelama */
-        return dm || sh ? `<p class="ship-from">${dm}${dm && sh ? " · " : ""}${sh ? `<span class="nw">${sh}</span>` : ""}</p>` : "";
+        return dm || sh ? `<p class="ship-from">${dm}${dm && sh ? "\u00a0· " : ""}${sh ? `<span class="nw">${sh}</span>` : ""}</p>` : "";
       })()}
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       ${p.made && !gone && !wait && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
@@ -2160,6 +2176,24 @@ const overLimit = (p, add) => !!limitWhy(p, add);
 const limitText = () => `U jednoj narudžbi može biti najviše ${LIMITS.bags} torbi i ${LIMITS.articles} artikala ukupno, od toga ${LIMITS.unique === 1 ? "jedna unikatna torba" : LIMITS.unique + " unikatne torbe"}.` + LIMIT_MORE;
 /* v96 (recenzija vijeća v95, mobitel): u povećanom prikazu bez obavijesti — gumb već kaže „U košarici ✓” (obavijest ga je prekrivala) */
 /* v96 (recenzija vijeća v95, dizajn B): „SMS-om”, „e-mailom” i sl. iz Postavki se ne lome na crtici (spojnica U+2060 iza crtice) */
+/* v99 (recenzija vijeća v98, dizajn N4/N5): „e-mail…”, „e-adres…”, „e-pošt…” i broj s jedinicom („5 radnih dana”, „14 dana”, „12 cm”)
+   u tekstovima koje stranica sama iscrtava omataju se u <span class="nw"> — tekst je isti (textContent se ne mijenja), samo se ne lomi */
+const NW_RE = /(?<![\p{L}\-])(?:[Ee]-(?:mail|adres|pošt)\p{L}*|[Tt]očk[aeiu][ \u00a0]\d+\.|\d+(?:[.,]\d+)?[ \u00a0](?:radnih dana|radna dana|dana|sati|sata|sat|mjeseci|mjeseca|godine|godina|minuta|cm|mm|kom\.?|€))(?![\p{L}])/gu;
+function nwWrap(root){
+  if(!root || !root.nodeType) return;
+  const texts = [];
+  if(root.nodeType === 3){ if(root.parentNode) texts.push(root); }
+  else { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while((n = w.nextNode())) texts.push(n); }
+  texts.forEach(t => {
+    const pe = t.parentElement; if(!pe || pe.closest(".nw, script, style, textarea, title, noscript, [contenteditable]")) return;
+    const v = t.nodeValue; NW_RE.lastIndex = 0; if(!NW_RE.test(v)) return;
+    NW_RE.lastIndex = 0; const frag = document.createDocumentFragment(); let last = 0, m;
+    while((m = NW_RE.exec(v))){ if(m.index > last) frag.appendChild(document.createTextNode(v.slice(last, m.index))); const sp = document.createElement("span"); sp.className = "nw"; sp.textContent = m[0]; frag.appendChild(sp); last = m.index + m[0].length; }
+    if(last < v.length) frag.appendChild(document.createTextNode(v.slice(last)));
+    t.parentNode.replaceChild(frag, t);
+  });
+}
+try { nwWrap(document.body); new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => nwWrap(n)))).observe(document.body, { childList: true, subtree: true }); } catch(e){}
 function noHyBreak(t){ return String(t).replace(/(^|[^\p{L}])(SMS|e)-(\p{L})/gu, "$1$2-\u2060$3"); }
 function cartToast(p){ if(!lightbox.classList.contains("open")) showToast(`U košarici: „${p.name}”\u00a0✓`); else srSay(`U košarici: „${p.name}”`); }
 function toggleCartItem(id){
@@ -2526,7 +2560,12 @@ drawer.addEventListener("click", e => {
   if(e.target.closest("#retryMail") && lastMailOrder){ sendMailto(lastMailOrder); return; }
   if(e.target.closest("#editOrder")){ clearOrderError(); document.getElementById("fName").focus(); return; }
   if(e.target.closest("#retrySend")){ orderFormEl.requestSubmit ? orderFormEl.requestSubmit() : orderFormEl.querySelector(".order-btn").click(); return; }
-  if(e.target.closest("#showLast")){ const last = storeGet("last"); if(last) renderPaymentPanel(last); }
+  if(e.target.closest("#showLast")){ const last = storeGet("last"); if(last){
+    /* v99: iz pune košarice — košarica se privremeno sakrije, a „Natrag na košaricu” je vraća */
+    if(cart.length){ document.getElementById("cartItems").hidden = true; document.getElementById("cartTotal").hidden = true; document.getElementById("orderForm").hidden = true; }
+    renderPaymentPanel(last);
+    if(cart.length) document.getElementById("emptyCart").insertAdjacentHTML("afterbegin", `<p class="last-line"><button type="button" class="last-order" id="backToCart">← Natrag na košaricu</button></p>`); } }
+  if(e.target.closest("#backToCart")) renderCart();
 });
 
 function renderCart(){
@@ -2537,7 +2576,7 @@ function renderCart(){
   const form = document.getElementById("orderForm");
   document.getElementById("cartCount").textContent = cart.reduce((n, p) => n + qtyOf(p), 0); /* v47: komadi, ne retci */
   saveCart();
-  box.innerHTML = "";
+  box.innerHTML = ""; box.hidden = false;
   if(cart.length === 0){
     if(!empty.classList.contains("pay-mode")) empty.innerHTML = emptyHtml();
     empty.hidden = false; totalRow.hidden = true; form.hidden = true; clearOrderError(); return;
@@ -2545,6 +2584,8 @@ function renderCart(){
   empty.hidden = true; totalRow.hidden = false; form.hidden = false;
   if(empty.classList.contains("pay-mode")){ empty.classList.remove("pay-mode"); empty.innerHTML = emptyHtml(); }
   document.getElementById("drawerTitle").textContent = "Vaša košarica";
+  /* v99 (recenzija vijeća v98, kupac N2): podaci za uplatu zadnje narudžbe dostupni i kad je nešto u košarici (npr. artikl izvan narudžbe) */
+  { const lv = lastValid(); if(lv) setTimeout(() => { if(!box.querySelector(".last-line")) box.insertAdjacentHTML("afterbegin", `<p class="last-line"><button type="button" class="last-order" id="showLast">Podaci za uplatu narudžbe ${escHtml(lv.srv.orderNo)}</button></p>`); }, 0); }
   const uniques = cart.filter(p => !p.made).map(p => p.name);
   const hold = document.getElementById("orderHold");
   /* v69 (vijeće na v68, D68-1): rok za uplatu vidi se prije klika za svaku narudžbu, i bez unikata */
@@ -2564,7 +2605,7 @@ function renderCart(){
   document.getElementById("fNoteLabel").textContent = anyMade ? "Napomena uz dostavu (neobvezno)" : "Napomena uz dostavu ili narudžbu (neobvezno)";
   /* v95 (recenzija vijeća v94, kupac 8): uputa o remenu samo kad je u košarici model s remenom (Stalna kolekcija) */
   { const hasColl = cart.some(p => p.made && catOf(p) === "kolekcija"), hint = document.getElementById("fNoteHint");
-    hint.textContent = hasColl ? "Boju i duljinu remena odaberite gore, uz model." : (cart.some(p => p.made && p.sub === "remeni") ? "Boju i duljinu upišite gore, uz artikl." : "Boju upišite gore, uz artikl."); /* v98: duljina samo za remene */
+    hint.textContent = hasColl ? "Boju i duljinu remena odaberite gore, uz model." : (cart.some(p => p.made && isStrap(p)) ? "Boju i duljinu upišite gore, uz artikl." : "Boju upišite gore, uz artikl."); /* v98: duljina samo za remene */
     hint.hidden = !anyMade; }
   document.getElementById("orderNote").hidden = document.getElementById("orderNoteHold").hidden && !anyMade;
   /* v46: promijenjena košarica → obrazac se vraća (stari link vrijedi za staru košaricu) */
@@ -2587,7 +2628,7 @@ function renderCart(){
         : p.made ? `<span class="qty"><span class="qty-l">Količina</span><button type="button" class="q" data-id="${id}" data-d="-1" aria-label="Smanji količinu">−</button><b>${q}</b><button type="button" class="q" data-id="${id}" data-d="1" aria-label="Povećaj količinu"${overLimit(p, 1) ? ` disabled aria-describedby="qmax-${id}"` : ""}>+</button></span>${overLimit(p, 1) ? `<span class="field-hint qty-max" id="qmax-${id}">${escHtml(limitWhy(p, 1).split(/[.;]/)[0])} — za više nam se javite.</span>` : ""}` : ""}
       <span class="price">${fmt(p.price * q)}</span>
       <button type="button" class="remove" data-id="${id}" aria-label="Ukloni ${escHtml(p.name)}">Ukloni</button>
-      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">${p.sub === "remeni" ? "Boja i duljina" : "Boja"} iz opisa artikla (neobvezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="${p.sub === "remeni" ? "npr. crna, 100 cm" : "npr. crna"}" maxlength="120" aria-describedby="cartWish">` /* v96 (recenzija vijeća v95): duljina samo za remene */ : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">${catOf(p) === "kolekcija" ? "Odaberite boju i duljinu remena iz ponude — i za takvu torbu imate pravo na raskid ugovora u roku 14 dana." : (cart.some(c => c.made && c.sub === "remeni") ? "Boju i duljinu birate" : "Boju birate") + " iz opisa artikla — i za takav artikl imate pravo na raskid ugovora u roku 14 dana." /* v98 (recenzija vijeća v97): duljina samo za remene; crtica i „u roku” kao drugdje */}</span>` : ""}` : ""}`;
+      ${p.made && catOf(p) === "kolekcija" ? strapHtml(p, id) : p.made ? `<label class="cart-note-l" for="note-${id}">${isStrap(p) ? "Boja i duljina" : "Boja"} iz opisa artikla (neobvezno)</label><input class="cart-note" id="note-${id}" data-id="${id}" value="${escHtml(p.note || "")}" placeholder="${isStrap(p) ? "npr. crna, 100 cm" : "npr. crna"}" maxlength="120" aria-describedby="cartWish">` /* v96 (recenzija vijeća v95): duljina samo za remene */ : ""}${p.made ? `${p.id === firstMadeId ? `<span class="field-hint cart-wish" id="cartWish">${catOf(p) === "kolekcija" ? "Odaberite boju i duljinu remena iz ponude — i za takvu torbu imate pravo na raskid ugovora u roku 14 dana." : (cart.some(c => c.made && isStrap(c)) ? "Boju i duljinu birate" : "Boju birate") + " iz opisa artikla — i za takav artikl imate pravo na raskid ugovora u roku 14 dana." /* v98 (recenzija vijeća v97): duljina samo za remene; crtica i „u roku” kao drugdje */}</span>` : ""}` : ""}`;
     box.appendChild(row);
   });
   /* dostava */
@@ -2832,7 +2873,9 @@ async function refreshReservations(first = false){
     applyServerSettings(data);
     powSet(data.pow || null); if(cart.length && powOffer) powSolve(); /* v93: izračun u pozadini dok kupac ispunjava obrazac */
     if(data.pendState === "confirmed" && storeGet("pend")) pendConfirmedElsewhere(String(data.pendNo || ""));
+    else if(storeGet("pend") && storeGet("pend").stale){ storeSet("pend", null); pendFormClear(); } /* v99: nije potvrđena — stara oznaka se briše */
     if(lastS && (data.orderState === "cancelled" || data.orderState === "closed")){ lastS.cancelled = true; storeSet("last", lastS); setTimeout(renderCart, 0); }
+    if(lastS && data.orderState === "withdrawn" && !lastS.withdrawn){ lastS.withdrawn = true; storeSet("last", lastS); setTimeout(renderCart, 0); } /* v99: izjava o raskidu — ploča više ne traži uplatu */
     const reservedIds = new Set((data.ids || []).map(String));
     const soldIds = new Set((data.sold || []).map(String));
     if(data.ttlHours) setTtlText(data.ttlHours);
@@ -2860,8 +2903,9 @@ function pendConfirmedElsewhere(no){
   if(pd && Array.isArray(pd.ids) && pd.ids.length) storeSet("own", { at: Date.now(), no: no || "", ids: pd.ids.map(String) }); /* v98 (recenzija vijeća v97, mobitel M1) */
   storeSet("pend", null); storeSet("hold", null); heldRes = null; pendFormClear(); formDraftClear();
   if(pd && pd.sig === cartSig()){ cart = []; saveCart(); }
+  else if(pd && Array.isArray(pd.all)){ cart = cart.filter(c => !pd.all.includes(c.id)); saveCart(); } /* v99: artikli iz potvrđene narudžbe izlaze, ostatak ostaje */
   clearOrderError(); renderGrid(); renderCart();
-  confirmError(`<b>Narudžbu${no ? " " + escHtml(no) : ""} potvrdili ste linkom iz <span class="nw">e-maila</span>.</b> Podaci za uplatu su u <span class="nw">e-mailu</span> s potvrdom narudžbe i na uređaju na kojem ste je potvrdili.`);
+  confirmError(`<b>Narudžbu${no ? " " + escHtml(no) : ""} potvrdili ste linkom iz <span class="nw">e-maila</span>.</b> Podaci za uplatu su u <span class="nw">e-mailu</span> s potvrdom narudžbe i na uređaju na kojem ste je potvrdili.`, true);
 }
 /* isto u drugoj kartici ovog preglednika: potvrda je spremila ploču za uplatu („last”) */
 addEventListener("storage", e => {
@@ -3115,10 +3159,18 @@ function showSendRetry(o, rez){
     <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button>
     <button type="button" class="copy-btn" id="retryMail">Pošalji <span class="nw">e-mailom</span></button></div>`);
 }
+/* v99: zadnja narudžba čiji su podaci za uplatu još dostupni (nije stornirana ni povučena izjavom o raskidu) */
+function lastValid(){
+  const last = storeGet("last");
+  const lastUntil = last && last.srv ? Math.max((last.at || 0) + 24 * 3600 * 1000, Date.parse(last.srv.payUntil || "") || 0) : 0;
+  return (last && !last.cancelled && !last.withdrawn && last.at && Date.now() < lastUntil && last.srv && last.srv.orderNo) ? last : null;
+}
 function emptyHtml(){
   const last = storeGet("last");
   /* v77 (recenzija R76-D2): podaci za uplatu ostaju do roka za uplatu (preko vikenda dulje od 24 h), najmanje 24 h */
   const lastUntil = last && last.srv ? Math.max((last.at || 0) + 24 * 3600 * 1000, Date.parse(last.srv.payUntil || "") || 0) : 0;
+  if(last && last.withdrawn && last.srv && last.srv.orderNo && Date.now() < lastUntil)
+    return EMPTY_MSG + `<p class="last-cancelled" role="status">Za narudžbu ${escHtml(last.srv.orderNo)} primili smo vašu izjavu o raskidu ugovora; ne trebate je platiti.</p>`; /* v99 (recenzija vijeća v98, kupac N3) */
   if(last && last.cancelled && last.srv && last.srv.orderNo && Date.now() < lastUntil)
     return EMPTY_MSG + `<p class="last-cancelled" role="status">Narudžba ${escHtml(last.srv.orderNo)} je stornirana; ne uplaćujte je.</p>`;
   if(last && last.at && Date.now() < lastUntil && last.srv && last.srv.orderNo)
@@ -3187,7 +3239,7 @@ function buildOrder(){
 `Nova narudžba — Shiva.J
 
 Kupac: ${name}
-E-mail: ${email}
+E-adresa: ${email}
 Telefon: ${phone}
 Adresa: ${addr}
 
@@ -3216,7 +3268,7 @@ let lastPending = null;
 function showOrderPending(srv, email, note = ""){
   lastPending = { srv, email, fp: note && lastPending ? lastPending.fp : pendFormFp() }; /* v95: otisak poslanih podataka (bez slanja ikamo) */
   /* v53: oznaka čekanja na ovom uređaju — samo rok linka i potpis košarice, bez osobnih podataka */
-  if(srv.mailCustomer !== false){ storeSet("pend", { until: srv.confirmUntil || null, sig: cartSig(), ids: cart.filter(c => !c.made).map(c => c.id) /* v98: vlastite torbe (drugi uređaj) */, pt: /^[0-9a-f]{24}$/.test(srv.pt || "") ? srv.pt : ((storeGet("pend") || {}).pt || "") }); pendFormSave(); }
+  if(srv.mailCustomer !== false){ storeSet("pend", { until: srv.confirmUntil || null, sig: cartSig(), ids: cart.filter(c => !c.made).map(c => c.id) /* v98: vlastite torbe (drugi uređaj) */, all: cart.map(c => c.id) /* v99: svi artikli te narudžbe */, pt: /^[0-9a-f]{24}$/.test(srv.pt || "") ? srv.pt : ((storeGet("pend") || {}).pt || "") }); pendFormSave(); }
   const until = srv.confirmUntil ? fmtDateTime(srv.confirmUntil) : "";
   /* v45: koliko link vrijedi, ne samo do kada (60 → „1 sat”, 90 → „90 minuta”) */
   const cm = Number(srv.confirmMinutes) || 0;
@@ -3226,7 +3278,7 @@ function showOrderPending(srv, email, note = ""){
     ? `<b>E-mail za potvrdu nismo uspjeli poslati.</b> Provjerite adresu <span class="addr">${escHtml(email)}</span> i pošaljite narudžbu ponovno ili nam pišite na ${escHtml(OWNER_EMAIL)}.
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji ponovno</button></div>`
     : (srv.replaced && !note ? `<p class="pend-note"><b>Poslali smo novi <span class="nw">e-mail</span>.</b> Link iz ranijeg <span class="nw">e-maila</span> više ne vrijedi; vrijedi samo novi.</p>` : "") + note + `<b>Još jedan korak: potvrdite narudžbu.</b>
-       <span class="pend-p">Poslali smo <span class="nw">e-mail</span> na <b class="inline addr">${escHtml(email)}</b> s naslovom „Shiva.J — potvrdite narudžbu${srv.replaced ? " (novi link)" : ""}”. Otvorite link iz njega${linkFor ? "; vrijedi " + escHtml(linkFor) + (until ? " (do " + escHtml(until) + ")" : "") : until ? "; vrijedi do " + escHtml(until) : ""}.</span>
+       <span class="pend-p">Poslali smo <span class="nw">e-mail</span> na <b class="inline addr">${escHtml(email)}</b> ${srv.replaced ? " (novi; zamjenjuje raniji)" : ""}. Otvorite ga i slijedite upute${linkFor ? "; link za potvrdu vrijedi " + escHtml(linkFor) + (until ? " (do " + escHtml(until) + ")" : "") : until ? "; link za potvrdu vrijedi do " + escHtml(until) : ""}.</span>
        <span class="pend-p">Tek tada je narudžba zaprimljena${anyUnique ? " i torba rezervirana za vas" : ""}, a otvorit će se podaci za uplatu. Link radi i na mobitelu ili drugom računalu, pa ovu stranicu možete zatvoriti.</span>
        <span class="pend-p">E-mail ne stiže za nekoliko minuta? Pogledajte neželjenu poštu (spam) ili ga zatražite ponovno:</span>
        <div class="retry-row"><button type="button" class="copy-btn" id="retrySend">Pošalji <span class="nw">e-mail</span> ponovno</button></div>
@@ -3245,17 +3297,20 @@ function showPendingAfterReload(){
   if(!pd){ pendFormClear(); return; } /* v92 (recenzija): narudžba potvrđena u drugoj kartici */
   if(!cart.length || /potvrda=/.test(location.search)) return;
   const until = pd.until ? Date.parse(pd.until) : 0;
+  /* v99 (recenzija vijeća v98, kupac N1): promijenjena košarica — „pend” ostaje dok api/status?pt= ne kaže je li narudžba potvrđena
+     na drugom uređaju (refreshReservations); tek ako nije, briše se kao prije */
+  if(until && until >= Date.now() && pd.sig !== cartSig() && /^[0-9a-f]{24}$/.test(pd.pt || "")){ storeSet("pend", { ...pd, stale: true }); return; }
   if(!until || until < Date.now() || pd.sig !== cartSig()){ storeSet("pend", null); pendFormClear(); return; }
   pendFormRestore();
   pendingSig = pd.sig; pendAfterReload = true; /* v96 (recenzija vijeća v95, kupac 2): promjena košarice i nakon osvježavanja kaže da stari link vrijedi za staru košaricu */
   showOrderError(`<b>Ovu narudžbu ste već poslali.</b> Potvrdite je linkom iz <span class="nw">e-maila</span> (vrijedi do ${escHtml(fmtDateTime(pd.until))}). Ako <span class="nw">e-mail</span> nije stigao, pogledajte neželjenu poštu ili ispunite obrazac i pošaljite ponovno (novi <span class="nw">e-mail</span> poništava prethodni link).`, true);
 }
 /* poruka uz potvrdu iz linka: u obrascu ako je košarica na ovom uređaju, inače u praznoj košarici */
-function confirmError(html){
-  if(cart.length){ showOrderError(html); return; }
+function confirmError(html, info = false){ /* v99 (recenzija vijeća v98, kupac N5): i obavijest (ne samo greška) */
+  if(cart.length){ showOrderError(html, info); return; }
   const empty = document.getElementById("emptyCart");
   empty.classList.add("pay-mode");
-  empty.innerHTML = `<div class="order-error" role="alert">${html}</div>`;
+  empty.innerHTML = `<div class="order-error${info ? " order-info" : ""}" role="${info ? "status" : "alert"}">${html}</div>`;
   empty.hidden = false;
 }
 /* link iz e-maila: ?potvrda=<id>.<tajna> → poslužitelj potvrđuje narudžbu, a stranica pokazuje podatke za uplatu */
@@ -3309,7 +3364,7 @@ function claimFromLink(){
     const d = pre && pre.claimUntil ? fmtDeadline(pre.claimUntil) : "";
     const what = pre && pre.unique === 0 ? "rok za uplatu produljujemo" : (pre && pre.unique > 1 ? "torbe čuvamo" : "torbu čuvamo");
     claimPanel(`<b>Narudžba ${escHtml(no)}: jeste li već uplatili?</b>
-    <span class="pend-p">${pre && pre.state === "late" ? "Rok za uplatu je već prošao. Ako ste platili, kliknite ispod: javit ćemo vlasnici, koja će provjeriti izvod i javiti vam se." : d ? `Ako ste platili, kliknite ispod: rok za uplatu produljujemo do ${d} i više vam ne šaljemo podsjetnike${what !== "rok za uplatu produljujemo" ? "; " + what + " do tada" : ""}. U međuvremenu provjeravamo izvod. Ovo možete kliknuti samo jednom.` /* v98 (recenzija vijeća v97, kupac 5): kao e-mail — što klik mijenja */ : `Ako ste platili, kliknite ispod: ${what} i nakon roka za uplatu, a točan datum i sat vidite odmah nakon klika. Ovo možete kliknuti samo jednom.`}</span>
+    <span class="pend-p">${pre && pre.state === "late" ? "Rok za uplatu je već prošao. Ako ste platili, kliknite ispod: javit ćemo vlasnici, koja će provjeriti izvod i javiti vam se." : d ? `Ako ste platili, kliknite ispod: rok za uplatu produljujemo do ${d} i više vam ne šaljemo podsjetnike${what !== "rok za uplatu produljujemo" ? " (" + what.replace("čuvamo", "ionako čuvamo") + " do tada)" : ""}. U međuvremenu provjeravamo izvod. Ovo možete kliknuti samo jednom.` /* v98 (recenzija vijeća v97, kupac 5): kao e-mail — što klik mijenja */ : `Ako ste platili, kliknite ispod: ${what} i nakon roka za uplatu, a točan datum i sat vidite odmah nakon klika. Ovo možete kliknuti samo jednom.`}</span>
     <button type="button" class="order-btn claim-btn" id="claimBtn">Da, uplatio/la sam</button>
     <span class="field-hint">Još niste platili? Ne klikajte. Podaci za uplatu su u e-mailu s potvrdom narudžbe.</span>`, true);
     document.getElementById("claimBtn").addEventListener("click", send);
@@ -3360,20 +3415,21 @@ const EMAIL_RE = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,
   };
   raskidFromHash(true);
   addEventListener("hashchange", () => raskidFromHash(false));
+  addEventListener("popstate", () => { if(/^#raskid\?/.test(location.hash)) raskidFromHash(false); }); /* v99 (recenzija vijeća v98, mobitel L4) */
   f.addEventListener("submit", e => {
     e.preventDefault();
     const v = val(), miss = [];
     if(!v.name) miss.push("ime i prezime");
     if(!v.no) miss.push("broj narudžbe (ili datum narudžbe i naziv torbe)");
-    if(!EMAIL_RE.test(v.email)) miss.push("ispravan e-mail za potvrdu");
-    if(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban)) miss.push("IBAN u obliku HR12 3456 … (ili ga ostavite prazno)");
+    if(!EMAIL_RE.test(v.email)) miss.push("ispravnu e-adresu za potvrdu");
+    if(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban)) miss.push("IBAN u obliku HR12 3456 … (ili polje ostavite prazno)");
     /* v83 (vijeće): neispravna polja označena za čitač zaslona */
     [["rName", !v.name], ["rNo", !v.no], ["rEmail", !EMAIL_RE.test(v.email)], ["rIban", !!(v.iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.iban))]].forEach(([id, bad]) => { const el = $(id); if(!el) return; if(el.dataset.desc === undefined) el.dataset.desc = el.getAttribute("aria-describedby") || ""; const d0 = el.dataset.desc; if(bad){ el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", (d0 + " raskidError").trim()); } else { el.removeAttribute("aria-invalid"); if(d0) el.setAttribute("aria-describedby", d0); else el.removeAttribute("aria-describedby"); } });
     if(miss.length) return err($("raskidError"), "Molimo upišite: " + miss.join(", ") + ".");
     err($("raskidError"), "");
     $("raskidPreview").textContent = "Ovim izjavljujem da jednostrano raskidam ugovor o prodaji sljedeće robe:\n" /* v98 (recenzija vijeća v97, dizajn): roba odmah iza izjave, „E-adresa” */
       + "Broj narudžbe: " + v.no + "\nIme i prezime: " + v.name + "\nE-adresa: " + v.email
-      + (v.iban ? "\nIBAN za povrat novca: " + v.iban.replace(/(.{4})(?=.)/g, "$1 ") : "") + (v.note ? "\nNapomena: " + v.note : "");
+      + (v.iban ? "\nIBAN za povrat novca: " + v.iban.replace(/(.{4})(?=.)/g, "$1\u00a0") : "") + (v.note ? "\nNapomena: " + v.note : "");
     s1.hidden = true; s2.hidden = false; const lead = s2.querySelector(".raskid-lead"); lead.tabIndex = -1; lead.focus({ preventScroll: true }); lead.scrollIntoView({ block: "center" }); /* recenzija R76-D3; v94: ne ispod zaglavlja (iPhone SE) */
   });
   $("raskidBack").addEventListener("click", () => { s2.hidden = true; s1.hidden = false; $("rName").focus(); });
@@ -3530,8 +3586,8 @@ function fmtDeadline(iso){
     const d = new Date(iso), z = { timeZone: "Europe/Zagreb" };
     const wd = new Intl.DateTimeFormat("en-GB", { ...z, weekday: "short" }).format(d);
     const gen = { Mon: "ponedjeljka", Tue: "utorka", Wed: "srijede", Thu: "četvrtka", Fri: "petka", Sat: "subote", Sun: "nedjelje" }[wd] || "";
-    const pt = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { ...z, day: "numeric", month: "numeric" }).formatToParts(d).map(x => [x.type, x.value]));
-    const dm = parseInt(pt.day, 10) + ". " + parseInt(pt.month, 10) + ".";
+    const pt = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { ...z, day: "numeric", month: "numeric", year: "numeric" }).formatToParts(d).map(x => [x.type, x.value]));
+    const dm = parseInt(pt.day, 10) + ". " + parseInt(pt.month, 10) + ". " + pt.year + "."; /* v99 (recenzija vijeća v98, dizajn N1): s godinom, kao e-mail */
     const hm = new Intl.DateTimeFormat("hr-HR", { ...z, hour: "2-digit", minute: "2-digit" }).format(d);
     /* v90 (vijeće, kupci): noćni rok („u 00:01”) s pojašnjenjem „u noći sa srijede na četvrtak” */
     const hh = parseInt(new Intl.DateTimeFormat("en-GB", { ...z, hour: "2-digit", hourCycle: "h23" }).format(d), 10);
@@ -3540,7 +3596,7 @@ function fmtDeadline(iso){
       const acc = { Mon: "ponedjeljak", Tue: "utorak", Wed: "srijedu", Thu: "četvrtak", Fri: "petak", Sat: "subotu", Sun: "nedjelju" }[wd];
       const pg = { Mon: "ponedjeljka", Tue: "utorka", Wed: "srijede", Thu: "četvrtka", Fri: "petka", Sat: "subote", Sun: "nedjelje" }[p];
       if(acc && pg) night = " (u\u00a0noći " + (p === "Wed" || p === "Sat" ? "sa" : "s") + "\u00a0" + pg + " na\u00a0" + acc + ")"; }
-    return (gen ? gen + ", " : "") + dm.replace(/ /g, "\u00a0") + " u\u00a0" + hm + night;
+    return (gen ? gen + ", " : "") + dm.replace(/ /g, "\u00a0") + "\u00a0u\u00a0" + hm + night; /* v99: ni ispred „u” bez prijeloma */
   } catch(e){ return fmtDateTime(iso); }
 }
 const copyBtn = (value, label) => `<button type="button" class="copy-btn" data-copy="${escHtml(value)}" data-label="${escHtml(label)}" aria-label="Kopiraj: ${escHtml(label)}">Kopiraj</button>`;
@@ -3763,7 +3819,7 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
       }
       else if (data.code === "open_order") {
         /* v64: kupac već ima neplaćenu narudžbu — nije greška u e-adresi */
-        showOrderError(`<b>Prethodna narudžba${data.kind === "coll" ? " iz Stalne kolekcije" : data.kind === "unique" ? " s unikatnom torbom" : ""} čeka uplatu.</b> ${escHtml((data.error || "").replace(/^Prethodna narudžba[^;]*;\s*/, "").replace(/^./, c => c.toUpperCase()))}`, true); /* v65: pravilo, ne greška */
+        showOrderError(`<b>Prethodna narudžba${data.kind === "coll" ? " iz Stalne kolekcije" : data.kind === "unique" ? " s unikatnom torbom" : ""} čeka uplatu.</b> ${escHtml(noHyBreak(data.error || "").replace(/^Prethodna narudžba[^;]*;\s*/, "").replace(/^./, c => c.toUpperCase()))}`, true); /* v65: pravilo, ne greška */
         { const ob = document.getElementById("orderBtn"); ob.classList.add("is-blocked"); ob.setAttribute("aria-disabled", "true"); ob.title = "Prethodna narudžba čeka uplatu";
           document.getElementById("orderHold").hidden = true; document.getElementById("orderNoteHold").hidden = true; /* v67: obećanje rezervacije ne vrijedi dok je gumb blokiran */ ob.dataset.blockedEmail = document.getElementById("fEmail").value.trim().toLowerCase(); }
       }
@@ -3772,7 +3828,13 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
         showOrderError(`<b>Provjerite e-adresu.</b> ${escHtml(data.error)}`);
         const fe = document.getElementById("fEmail"); fe.setCustomValidity("Upišite ispravnu e-adresu, npr. ime@primjer.hr."); fe.focus(); fe.reportValidity && fe.reportValidity();
       }
-      else { showOrderError(`<b>Narudžba nije prihvaćena.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu; upisani podaci ostaju. Ako ne uspije, pišite nam na " + OWNER_EMAIL + ".")}`); }
+      else if (data.field === "city") {
+        /* v99 (recenzija vijeća v98, L6): poštanski broj — poruka i fokus na polje „Poštanski broj” (ili „Mjesto” ako je broj ispravan) */
+        showOrderError(`<b>Provjerite adresu.</b> ${escHtml(noHyBreak(data.error || ""))}`);
+        const zipBad = !/^\d{5}$/.test(document.getElementById("fZip").value.replace(/\s+/g, "")) && !/^\s*\d{5}\s+\S/.test(document.getElementById("fCity").value);
+        const fz = document.getElementById(zipBad ? "fZip" : "fCity"); fz.setCustomValidity(zipBad ? "Upišite poštanski broj (5 znamenki), npr. 10000." : "Upišite mjesto, npr. Zagreb."); fz.focus(); fz.reportValidity && fz.reportValidity();
+      }
+      else { showOrderError(`<b>Narudžba nije prihvaćena.</b> ${escHtml(noHyBreak(data.error || "Pokušajte ponovno za minutu; upisani podaci ostaju. Ako ne uspije, pišite nam na " + OWNER_EMAIL + "."))}`); }
       if (status === 409) refreshReservations();
       return;
     }

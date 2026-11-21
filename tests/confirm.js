@@ -46,7 +46,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const c1 = await post('confirm', { id: L2.id, t: L2.t }, 'text/plain');
     const res = read('rezervacije.json', {}).res || {};
     const all = mailLog().slice(mail0);
-    ok(c1.data.ok && /^SJ-\d{4}-\d{4}$/.test(c1.data.orderNo || '') && res.luna && res.luna.ordered === true, 'potvrda → broj narudžbe ' + c1.data.orderNo + ' i rezervacija');
+    ok(c1.data.ok && /^SJ-\d{4}-\d{4,6}$/.test(c1.data.orderNo || '') && res.luna && res.luna.ordered === true, 'potvrda → broj narudžbe ' + c1.data.orderNo + ' i rezervacija');
     ok(Array.isArray(c1.data.items) && c1.data.items[0].id === 'luna' && c1.data.ship && c1.data.ship.id === 'pickup', 'odgovor nosi stavke i dostavu (ploča i na drugom uređaju)');
     ok(/Nova narudžba/.test(all) && /potvrdio narudžbu linkom/.test(all) && /PODACI ZA UPLATU/.test(all), 'nakon potvrde: e-mail vlasnici i kupcu s podacima za uplatu');
     const c2 = await post('confirm', { id: L2.id, t: L2.t });
@@ -61,8 +61,13 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const c4 = await post('confirm', { id: L4.id, t: L4.t });
     ok(r4.data.pending && c4.status === 410 && c4.data.expired && !(read('rezervacije.json', {}).res || {}).vela, 'istekao link → 410, bez rezervacije');
     // 6) lažne narudžbe bez potvrde ne zatvaraju ponudu: 5 nepotvrđenih na 5 adresa, status prazan, pravi kupac rezervira
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     for (let i = 0; i < 5; i++) await post('order', order('potvrda-lazna-' + i + '-xx', 'lazni' + i + '@primjer.hr', [{ id: 'vela' }], 70));
     const st2 = await (await fetch(U + 'status')).json();
+    /* v99 (recenzija vijeća v98, N5): iz iste mreže /24 najviše 5 e-mailova za potvrdu na sat i ispod meke granice */
+    const net6 = await post('order', order('potvrda-lazna-5-xx', 'lazni5@primjer.hr', [{ id: 'vela' }], 70));
+    ok(net6.status === 503, 'v99: šesti e-mail za potvrdu iz iste mreže /24 u satu → 503 (' + net6.status + ')');
+    try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     const real = await post('order', order('potvrda-key-0004', 'pravi@primjer.hr', [{ id: 'vela' }], 70));
     const Lr = lastLink(); const cr = await post('confirm', { id: Lr.id, t: Lr.t });
     ok(!(st2.ids || []).includes('vela') && cr.data.ok && (read('rezervacije.json', {}).res || {}).vela?.email === 'pravi@primjer.hr', 'nepotvrđene lažne narudžbe ne drže torbu; pravi kupac je potvrdi i dobiva');
@@ -121,7 +126,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     write('config.json', Object.assign({}, cfg0, { require_confirm: true, confirm_minutes: 60 }));
     // 7g) preopterećenje (200 e-mailova za potvrdu u satu): v68 — narudžba se odbija (iznimka „bez rezervacije” je ukinuta); vlasnica dobiva jedno upozorenje
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
-    write('zahtjevi.json', { 'sve|confirm': Array(200).fill(nowE) });
+    write('zahtjevi.json', { 'sve|confirm': Array(100).fill(nowE) }); /* v99: između meke (50) i tvrde granice (150) */
     const prodsO = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8'));
     const mailBefore = mailLog().length;
     const free1 = ['nera', 'vela', 'luna', 'tara'].find(id => !(read('rezervacije.json', {}).res || {})[id] && !(read('rezervacije.json', {}).sold || {})[id]) || 'nera';
@@ -133,7 +138,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const ent = read('narudzbe.json', []).find(x => x.no === o1.data.orderNo) || {};
     const nOwner2 = (newMails.match(/PAŽNJA: previše narudžbi/g) || []).length;
     /* v95 (recenzija vijeća v94, sigurnost 1): iznad 50 na sat nova veza i dalje naručuje (uz teži zadatak), veza koja je
-       ovaj sat već dobila e-mail za potvrdu dobiva 503; iznad tvrde granice (300) svi dobivaju 503 */
+       ovaj sat već dobila e-mail za potvrdu dobiva 503; iznad tvrde granice (v99: 150) svi dobivaju 503 */
     ok(o1.status === 200 && o1.data.pending && o2.status === 503 && /previše narudžbi odjednom/.test(o2.data.error || '') && !((read('rezervacije.json', {}).res || {})[free1]) && !ent.no,
       'v95: preopterećenje — nova veza i dalje naručuje (200, čeka potvrdu), ista veza drugi put 503; ništa se ne rezervira ' + o1.status + '/' + o2.status);
     ok(!/To: preopt2@primjer\.hr/.test(newMails) && nOwner2 === 1, 'v68/v95: preopterećenje — odbijenoj vezi nema e-maila, vlasnica dobiva jedno upozorenje (' + nOwner2 + ')');

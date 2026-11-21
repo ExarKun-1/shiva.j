@@ -7,9 +7,11 @@ $D = $site . '/data';
 $c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('proba-lozinka-123', PASSWORD_DEFAULT);
 file_put_contents($D . '/config.json', json_encode($c));
 /* pravi poslužitelj na 8091 i prava prijava (kolačić, CSRF iz stranice), da se vide i poruke iz preusmjeravanja */
-$port = 8091; $jar = tempnam(sys_get_temp_dir(), 'sjck');
+/* v99 (C9): portovi iz okoline (SHIVAJ_ADMIN_PORT, drugi = +1), čekanje dok port ne prima veze umjesto fiksne pauze */
+$port = (int)(getenv('SHIVAJ_ADMIN_PORT') ?: 8091); $jar = tempnam(sys_get_temp_dir(), 'sjck');
 $srv = proc_open(['php', '-S', "127.0.0.1:$port", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
-usleep(700000);
+$waitPort = function (int $p): void { for ($i = 0; $i < 100; $i++) { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return; } usleep(50000); } fwrite(STDERR, "poslužitelj na $p se nije pokrenuo\n"); };
+$waitPort($port);
 $curl = fn(array $args) => (string)shell_exec('curl -s -i -c ' . escapeshellarg($jar) . ' -b ' . escapeshellarg($jar) . ' ' . implode(' ', array_map('escapeshellarg', $args)));
 $curl(['-d', 'password=proba-lozinka-123', "http://127.0.0.1:$port/admin/"]);
 $req = function (string $m, array $f) use ($curl, $port) {
@@ -304,6 +306,22 @@ $ok(substr_count($log, 'podsjetnik za uplatu') === 1 && str_contains($remSeg, 'I
 @unlink($D . '/rokovi.json'); $before = strlen((string)@file_get_contents($D . '/mail-log.txt'));
 $req('GET', ['s' => 'narudzbe']);
 $ok(strlen((string)@file_get_contents($D . '/mail-log.txt')) === $before, 'v68: ponovno otvaranje ne šalje iste poruke dvaput');
+/* v99 (recenzija vijeća v98, N3): neprovjerena izjava o raskidu (bez poveznice iz e-maila) ne zaustavlja rokove — podsjetnik i „rok prošao”
+   s napomenom o izjavi, storno teče; izjava preko poveznice (tok) zaustavlja sve */
+@unlink($D . '/rokovi.json'); @unlink($D . '/mail-log.txt'); file_put_contents($D . '/rezervacije.json', json_encode(['res' => [], 'sold' => []]));
+$wU = [['at' => $isoAgo(14), 'tok' => false]]; $wV = [['at' => $isoAgo(14), 'tok' => true]];
+file_put_contents($D . '/narudzbe.json', json_encode([
+  ['no' => 'SJ-2026-0991', 'at' => $isoAgo(13), 'payUntil' => $isoAgo(-11), 'name' => 'Una U', 'email' => 'u991@p.hr', 'total' => '59,00 €', 'withdrawals' => $wU, 'order' => ['items' => [['id' => 'tara', 'name' => 'Tara', 'qty' => 1, 'price' => 55]]]],
+  ['no' => 'SJ-2026-0992', 'at' => $isoAgo(30), 'payUntil' => $isoAgo(6), 'name' => 'Uma U', 'email' => 'u992@p.hr', 'total' => '64,00 €', 'withdrawals' => $wU, 'order' => ['items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'qty' => 1, 'price' => 60, 'made' => true]]]],
+  ['no' => 'SJ-2026-0993', 'at' => $isoAgo(200), 'payUntil' => $isoAgo(176), 'expiredAt' => $isoAgo(170), 'name' => 'Uta U', 'email' => 'u993@p.hr', 'total' => '74,00 €', 'withdrawals' => $wU, 'order' => ['items' => [['id' => 'vela', 'name' => 'Vela', 'qty' => 1, 'price' => 70]]]],
+  ['no' => 'SJ-2026-0994', 'at' => $isoAgo(13), 'payUntil' => $isoAgo(-11), 'name' => 'Vid V', 'email' => 'v994@p.hr', 'total' => '59,00 €', 'withdrawals' => $wV, 'order' => ['items' => [['id' => 'mira', 'name' => 'Mira', 'qty' => 1, 'price' => 48]]]],
+]));
+$req('GET', ['s' => 'narudzbe']);
+$nn = []; foreach (json_decode(file_get_contents($D . '/narudzbe.json'), true) as $x) $nn[$x['no']] = $x;
+$log99 = (string)@file_get_contents($D . '/mail-log.txt');
+$ok(!empty($nn['SJ-2026-0991']['remindedAt']) && !empty($nn['SJ-2026-0992']['expiredAt']) && ($nn['SJ-2026-0993']['cancelBy'] ?? '') === 'automatski'
+  && empty($nn['SJ-2026-0994']['remindedAt']) && substr_count($log99, 'primili smo i izjavu o jednostranom raskidu ugovora') >= 2 && !str_contains($log99, 'SJ-2026-0994'),
+  'v99 (N3): neprovjerena izjava — podsjetnik i „rok prošao” s napomenom, storno teče; izjava preko poveznice zaustavlja sve ' . substr_count($log99, 'primili smo i izjavu o jednostranom raskidu ugovora'));
 /* ---------- v69: nalazi vijeća na v68 (N68-1, N68-3, N68-5, N68-6) i odluke vlasnice ---------- */
 $isoIn = fn(int $h) => gmdate('Y-m-d\TH:i:s\Z', time() + $h * 3600);
 $mk = fn(string $no, array $x) => array_replace(['no' => $no, 'at' => $isoAgo(30), 'name' => 'K ' . $no, 'email' => strtolower(str_replace('-', '', $no)) . '@p.hr', 'total' => '64,00 €', 'reservation' => null, 'order' => ['total' => 64, 'items' => [['id' => 'klasik', 'name' => 'Klasik crna', 'qty' => 1, 'price' => 60, 'made' => true]]]], $x);
@@ -575,8 +593,8 @@ $ok(str_contains($bad, 'SMTP poslužitelj nije ispravan'), 'v79: neispravan nazi
 file_put_contents($D . '/config.json', $cfgS); @unlink($D . '/smtp-zadnja-greska.json');
 
 /* v89: poslužitelj s malim ograničenjima — prevelika fotografija i prevelik zahtjev daju jasnu poruku */
-$p2 = 8092; $srv2 = proc_open(['php', '-d', 'upload_max_filesize=10K', '-d', 'post_max_size=60K', '-S', "127.0.0.1:$p2", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pp2);
-usleep(700000);
+$p2 = $port + 1; $srv2 = proc_open(['php', '-d', 'upload_max_filesize=10K', '-d', 'post_max_size=60K', '-S', "127.0.0.1:$p2", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pp2);
+$waitPort($p2);
 $u2 = "http://127.0.0.1:$p2/admin/";
 preg_match('/name="csrf" value="([^"]+)"/', $curl([$u2 . '?s=torbe']), $c2);
 $big = tempnam(sys_get_temp_dir(), 'sjimg'); file_put_contents($big, str_repeat('x', 30000));
