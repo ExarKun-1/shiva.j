@@ -110,6 +110,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
     try { sj_raskid_digest(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' sažetak raskida: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
+    try { sj_raskid_reconcile(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' provjera izjava: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* recenzija v99 */
     try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
     try { sj_daily_backup(); sj_log_rotate(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' kopija: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v90 (vijeće) */
   });
@@ -545,7 +546,9 @@ function sj_handle_action(string $act, array &$c): string {
         if ($out['live']) $warn[] = 'torba je rezervirana u drugoj zaprimljenoj narudžbi kojoj rok još traje, pa NIJE prodana ovom kupcu: ' . implode('; ', $out['live']) . ' — vratite ovom kupcu uplatu ili dogovorite drugu torbu';
         /* v91 (recenzija M3): kupac je poslao izjavu o raskidu — ne šalje se „uplata je stigla”, torba se ne šalje */
         $wd = !empty($fresh['withdrawals']);
-        if ($wd) $warn[] = 'kupac je poslao izjavu o raskidu ugovora (vidi „Izjave o raskidu”) — torbu ne šaljite, novac vratite najkasnije 14 dana od izjave na račun s kojeg je uplaćeno';
+        /* v99 (recenzija vijeća v98, N3): neprovjerena izjava (bez poveznice iz e-maila) — blaže upozorenje */
+        if ($wd) $warn[] = sj_withdrawn($fresh) ? 'kupac je poslao izjavu o raskidu ugovora (vidi „Izjave o raskidu”) — torbu ne šaljite, novac vratite najkasnije 14 dana od izjave na račun s kojeg je uplaćeno'
+          : 'za ovu narudžbu stigla je izjava o raskidu bez poveznice iz e-maila (vidi „Izjave o raskidu”) — provjerite s kupcem prije slanja; ako je izjava njegova, torbu ne šaljite i novac vratite najkasnije 14 dana od izjave';
         if ($out['other']) $warn[] = 'uklonjena je neplaćena rezervacija drugog kupca: ' . implode('; ', $out['other']) . ' — javite mu se da je torba prodana';
         /* v71 (odluka vlasnice, 6. krug): „uplata je stigla” — vijeće N71-1: ne kad je torba plaćena za drugog kupca ili nije
            na prodaji (tada se vlasnica javlja kupcu sama) */
@@ -694,15 +697,14 @@ function sj_handle_action(string $act, array &$c): string {
         if ($code >= 200 && $code < 300) $bad[] = $u; /* svaki 2xx (i 206) znači da se datoteka može pročitati */
       }
       @unlink($probe);
-      /* v98 (recenzija vijeća v97, sigurnost L3): vjeruje li poslužitelj lažnom zaglavlju X-Forwarded-For (tada bi se granice po vezi
-         mogle zaobići) — zahtjev samom sebi s izmišljenom adresom; api/status bilježi što vidi samo uz jednokratnu oznaku */
+      /* v99 (recenzija vijeća v98, L3): X-Forwarded-For provjerava se iz preglednika vlasnice (Postavke, ispod gumba) — zahtjev poslužitelja
+         samom sebi dao bi lažnu uzbunu kad je RemoteIPInternalProxy postavljen na adresu poslužitelja (Plesk) */
       $xff = '';
-      try {
-        $tk = bin2hex(random_bytes(12)); sj_write_json(SJ_DATA . '/ipchk.json', ['t' => $tk, 'exp' => time() + 60]);
-        sj_http_code($base . '/api/status?ipchk=' . $tk, ['X-Forwarded-For: 203.0.113.77']);
-        $seen = (string)(sj_read_json(SJ_DATA . '/ipchk.json', [])['seen'] ?? ''); @unlink(SJ_DATA . '/ipchk.json');
-        if ($seen === '203.0.113.77') $xff = ' POZOR — poslužitelj vjeruje zaglavlju X-Forwarded-For od bilo koga, pa se granice narudžbi po vezi mogu zaobići. Zamolite Croadriju da RemoteIPInternalProxy postavi samo na adresu vlastitog nginxa (upute, odjeljak o stvarnoj adresi).';
-      } catch (Throwable $e) {}
+      /* v99 (recenzija vijeća v98, L2): stiže li zaglavlje CSP s otiskom skripte do preglednika (nginx može posluživati index.html mimo .htaccess) */
+      $hdr = sj_http_headers($base . '/');
+      if ($hdr !== null && !preg_match("~content-security-policy:[^\n]*'sha256-~i", $hdr)) $xff .= ' POZOR — naslovna stranica stiže bez zaglavlja Content-Security-Policy s otiskom skripte (možda je poslužuje nginx mimo .htaccess): zaštita od ubačenih skripti ne radi. Zamolite Croadriju da isključi „Serve static files directly by nginx” za .html ili prenesite .htaccess iz paketa.';
+      /* v99 (recenzija vijeća v98, H1): rani odgovor izjave o raskidu traži PHP-FPM ili LiteSpeed */
+      if (!function_exists('fastcgi_finish_request') && !function_exists('litespeed_finish_request')) $xff .= ' PAŽNJA — PHP ne radi kao FPM: izjava o raskidu odgovara tek nakon slanja e-mailova, pa bi se po brzini odgovora moglo naslutiti postoji li narudžba. U Pleksu → PHP Settings odaberite „FPM application”.';
       /* v95 (recenzija vijeća v94, upute): sve granice po vezi ovise o stvarnoj adresi posjetitelja — ako poslužitelj vidi
          adresu posrednika (nginx, 127.0.0.1, privatna mreža), svi kupci dijele jednu granicu */
       $ra = (string)($_SERVER['REMOTE_ADDR'] ?? '');
@@ -1057,7 +1059,7 @@ function sj_view_withdrawals(): string {
     if (empty($x['order'])) { $hn = $oix['ek'][sj_email_key((string)($x['email'] ?? ''))] ?? ($oix['name'][mb_strtolower(trim((string)($x['name'] ?? '')))] ?? '');
       if ($hn !== '') $hint = ' <span class="badge ink">e-adresa ili ime podudara se s narudžbom ' . e((string)$hn) . ' — vjerojatno prava izjava</span>'; }
     $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
-    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
+    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . (!empty($x['recovered']) ? ' <b style="color:#b3261e">obnovljeno iz dnevnika — kupcu pošaljite potvrdu sami</b>' : '') . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
   };
   $shown = 0;
   foreach ($l as $x) { if (++$shown > 300) break; $h .= $card($x); }
@@ -1223,8 +1225,11 @@ function sj_view_settings(array $c): string {
   /* v90 (vijeće): zaštita data/, adresa posjetitelja (iza nginxa), zadnja kopija, zadnje greške */
   $rip = (string)($_SERVER['REMOTE_ADDR'] ?? ''); $sip = (string)($_SERVER['SERVER_ADDR'] ?? '');
   $ipWarn = sj_proxy_ip_suspect(); /* v96 (N8): i 127.0.0.1 / ::1 (nginx ispred Apachea bez stvarne adrese) */
+  /* v99 (recenzija vijeća v98, L3): provjera lažnog X-Forwarded-For iz preglednika vlasnice (jednokratna oznaka, 5 minuta) */
+  $ipTk = bin2hex(random_bytes(12)); try { sj_write_json(SJ_DATA . '/ipchk.json', ['t' => $ipTk, 'exp' => time() + 300]); } catch (Throwable $e) { $ipTk = ''; }
   $h .= sj_btn('check_exposure', [], 'Provjeri zaštitu podataka', '?s=postavke', true)
     . '<p class="muted">Otvara data/config.json i druge zaštićene datoteke (i zadnju dnevnu kopiju) preko adrese stranice: svaka mora vratiti 403 ili 404.</p>'
+    . ($ipTk !== '' ? '<p class="muted" id="xffchk" data-t="' . e($ipTk) . '">Provjera lažne adrese (X-Forwarded-For): …</p>' : '')
     . '<p class="muted">Vaša adresa kako je vidi poslužitelj: <span class="mono">' . e($rip) . '</span>' . ($ipWarn ? ' — <b style="color:#9B2C1F">izgleda kao adresa poslužitelja ili unutarnja adresa; ograničenja pokušaja tada vrijede za sve posjetitelje zajedno. Zamolite podršku hostinga da uključi stvarnu adresu posjetitelja (nginx real_ip / mod_remoteip).</b>' : ' (ako je to vaša javna adresa, ograničenja pokušaja rade ispravno)') . '</p>'
     . '<p class="muted">Zadnja dnevna kopija podataka: ' . (($lb = sj_last_backup()) !== '' ? '<span class="mono">data/kopije/' . e($lb) . '/</span>' : 'još nema (radi se jednom dnevno, pri otvaranju admina ili preko crona)') . '</p>';
   $lg = SJ_DATA . '/greske.log';
@@ -1351,6 +1356,8 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
     /* v69 (D69-7): za „lažna narudžba” e-mail kupcu se ne šalje — kvačica se isključi */
     . 'document.querySelectorAll("form.cancelf select[name=reason]").forEach(function(s){s.addEventListener("change",function(){var m=s.form.querySelector("input[name=mail]");if(m){m.disabled=s.value==="lažna narudžba";if(m.disabled)m.checked=false;else m.checked=true;}});});'
     /* v63: polja koja vrijede samo za Stalnu kolekciju / Ostalo */
+    /* v99 (recenzija vijeća v98, L3): lažno X-Forwarded-For iz preglednika vlasnice — ako ga poslužitelj prihvati, granice po vezi mogu se zaobići */
+    . 'var xc=document.getElementById("xffchk");if(xc&&window.fetch){fetch("../api/status?ipchk="+encodeURIComponent(xc.getAttribute("data-t")),{headers:{"X-Forwarded-For":"203.0.113.77"},cache:"no-store"}).then(function(r){return r.json();}).then(function(j){xc.textContent=j.ipchkSeen==="203.0.113.77"?"POZOR — poslužitelj prihvaća lažnu adresu iz zaglavlja X-Forwarded-For, pa se granice narudžbi po vezi mogu zaobići. Zamolite Croadriju da RemoteIPInternalProxy postavi samo na adresu vlastitog nginxa (upute za objavu).":(j.ipchkSeen?"Lažna adresa iz zaglavlja X-Forwarded-For se ne prihvaća (u redu).":"Provjera lažne adrese nije uspjela (osvježite stranicu).");}).catch(function(){xc.textContent="Provjera lažne adrese nije uspjela (osvježite stranicu).";});}'
     . 'var dw=document.getElementById("dimsWrap");document.querySelectorAll("input[name=size]").forEach(function(r){r.addEventListener("change",function(){if(dw)dw.hidden=r.value!=="druga";});});'
     . 'var vs=document.getElementById("vrsta");function sv(){if(!vs)return;document.querySelectorAll("[data-vrsta]").forEach(function(el){el.hidden=el.getAttribute("data-vrsta").split(" ").indexOf(vs.value)<0;});}if(vs){vs.addEventListener("change",sv);sv();}'
     . '</script></body></html>';

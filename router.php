@@ -14,4 +14,11 @@ if (preg_match('#^/api/(?!index\.php$)#', $uri)) { http_response_code(404); echo
 if ($uri === '/admin' || $uri === '/admin/') { require __DIR__ . '/admin/index.php'; return true; }
 if (preg_match('#^/data(/|$)#i', $uri)) { http_response_code(403); echo 'Forbidden'; return true; }
 if ($uri === '/torbe.json') { header('Cache-Control: no-cache'); }
+/* v99 (recenzija vijeća v98, C7): stranica dobiva isti CSP kao iz .htaccess (ako je uz router), da testovi u pregledniku vide
+   kršenja pravila (default-src 'self') prije objave */
+if (($uri === '/' || $uri === '/index.html') && is_file(__DIR__ . '/.htaccess') && is_file(__DIR__ . '/index.html')
+    && preg_match('/^\s*Header\s+setifempty\s+Content-Security-Policy\s+"([^"]+)"/mi', (string)file_get_contents(__DIR__ . '/.htaccess'), $csp)) {
+  header('Content-Type: text/html; charset=utf-8'); header('Content-Security-Policy: ' . $csp[1]); header('Cache-Control: no-cache');
+  readfile(__DIR__ . '/index.html'); return true;
+}
 return false;

@@ -21,6 +21,17 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const errors = [];
   const watch = pg => { pg.on('pageerror', e => errors.push(e.message)); pg.on('console', m => { if (m.type() === 'error' && !/bunny|ERR_TUNNEL|Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
 
+  { /* v99 (recenzija vijeća v98, C7): stranica stiže sa zaglavljem CSP iz .htaccess (router.php) i ništa ga ne krši — fotografije,
+       povećani prikaz, košarica, izračun „niste robot” (Worker) */
+    const cc = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const pc = await cc.newPage();
+    await pc.addInitScript(() => { window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI)); });
+    const rsp = await pc.goto(URL, { waitUntil: 'networkidle' }); const hdr = (rsp && rsp.headers()['content-security-policy']) || '';
+    await pc.locator('#productGrid .card .photo[data-view]').first().click().catch(() => {}); await pc.waitForTimeout(400);
+    await pc.keyboard.press('Escape'); await pc.evaluate(() => { try { openCart(); } catch (e) {} }); await pc.waitForTimeout(1500);
+    const vio = await pc.evaluate(() => window.__csp.filter(x => !/bunny|boxnow/.test(x)));
+    ok(/default-src 'self'/.test(hdr) && /object-src 'none'/.test(hdr) && vio.length === 0, "v99: CSP iz .htaccess stiže uz stranicu i nema kršenja " + JSON.stringify(vio).slice(0, 300));
+    await cc.close(); }
+
   // desktop
   const d = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const pd = await d.newPage(); watch(pd);
@@ -120,8 +131,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const dimsTxt = await pd.$$eval('.card .ship-from', els => els.map(e => e.textContent).filter(t => /^Mjere/.test(t)));
   ok(!dimsTxt.some(t => /na upit/.test(t)) && /Mjere: 26 × 7 cm/.test(await pd.textContent('.card:has(h3:has(.card-name:text-is("Luna")))')), 'v83: nigdje „Mjere: na upit” (artikl bez mjera nije u ponudi)');
   ok(/Unikate šaljemo u roku 1\u2060?–\u2060?2 radna dana nakon uplate/.test(await pd.textContent('#kako')), 'v50/v83: rok slanja u „Kako naručiti” (unikati; po narudžbi kad ih sašijemo)');
-  { const imp = await pd.textContent('#impressum'), t1 = await pd.textContent('#uvjeti');
-    const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"], .lg-notice img[data-later="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length, !!document.querySelector('#impressum .lg-badge')]; });
+  { const imp = await pd.textContent('#impresum'), t1 = await pd.textContent('#uvjeti');
+    const lg = await pd.evaluate(async () => { const r = await fetch('img/zakonsko-jamstvo-hr.jpg'); return [r.status, document.querySelectorAll('.lg-notice img[src="img/zakonsko-jamstvo-hr.jpg"], .lg-notice img[data-later="img/zakonsko-jamstvo-hr.jpg"]').length, document.querySelectorAll('.lg-badge[href="img/zakonsko-jamstvo-hr.jpg"]').length, !!document.querySelector('#impresum .lg-badge')]; });
     ok(/MBO: 98020200/.test(imp) && /Obrtni registar, MBO: 98020200/.test(t1) && lg[0] === 200 && lg[1] === 1 && lg[2] === 1 && lg[3] === true, 'v84/v88: MBO u impresumu i Uvjetima t. 1; EU obavijest o zakonskom jamstvu u Uvjetima t. 8 i u impresumu ' + JSON.stringify(lg)); }
   { const j88 = await pd.evaluate(() => { const a = document.querySelector('#orderForm .trust-line a[href="#jamstvo"]'); return [!!a && a.textContent.trim(), document.querySelectorAll('#orderForm .lg-badge, #orderForm img[src*="zakonsko"]').length, !!document.querySelector('details#jamstvo .lg-notice')]; });
     await pd.evaluate(() => { document.getElementById('jamstvo').open = false; });
@@ -141,7 +152,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   { const lg86 = await pd.evaluate(() => [...document.querySelectorAll('img[src="img/logo.svg"]')].map(i => [i.closest('header') ? 'h' : i.closest('footer') ? 'f' : '?', i.alt]));
     const hl = await pd.evaluate(async () => { const i = document.querySelector('header .wordmark img'); await i.decode().catch(() => {}); const r = i.getBoundingClientRect(); return [i.naturalWidth > 0, Math.round(r.height), Math.round(r.width)]; });
     ok(JSON.stringify(lg86) === '[["h","Shiva.J"],["f","Shiva.J"]]' && hl[0] && hl[1] === 28 && hl[2] > 90 && hl[2] < 130, 'v86: logo u zaglavlju i podnožju, učitan, 28 px visok ' + JSON.stringify([lg86, hl])); }
-  { const tel = await pd.evaluate(() => [...document.querySelectorAll('a[href="tel:+385998866877"]')].map(a => (a.closest('#impressum') ? 'imp' : a.closest('footer') ? 'foot' : a.closest('#privatnost') ? 'priv' : a.closest('#uvjeti') ? 'uvj' : '?') + ':' + a.textContent.trim()));
+  { const tel = await pd.evaluate(() => [...document.querySelectorAll('a[href="tel:+385998866877"]')].map(a => (a.closest('#impresum') ? 'imp' : a.closest('footer') ? 'foot' : a.closest('#privatnost') ? 'priv' : a.closest('#uvjeti') ? 'uvj' : '?') + ':' + a.textContent.trim()));
     const form = await pd.textContent('.raskid-form');
     ok(['uvj', 'priv', 'imp', 'foot'].every(k => tel.includes(k + ':099 886 6877')) && /Prima: .*tel\. 099 886 6877/.test(form), 'v85: telefon obrta u Uvjetima t. 1, Izjavi t. 1, impresumu, podnožju i obrascu za raskid ' + JSON.stringify(tel)); }
   ok(!/na upit/.test(await pd.textContent('#uvjeti')) && /navedeni su uz svaki artikl/.test(await pd.textContent('#uvjeti')) && !/tkanin/.test(await pd.textContent('#uvjeti')), 'v83: Uvjeti t. 2 — mjere i materijal uz svaki artikl, bez „na upit” i „tkanine”');
@@ -214,7 +225,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   { const pu = await d.newPage(); await pu.goto(URL + '#uvjeti', { waitUntil: 'load' }); await pu.waitForTimeout(1200);
     const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
-    ok(uv >= 0 && uv < 160 && /12\.\u00a011\. u\u00a000:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
+    ok(uv >= 0 && uv < 160 && /12\.\s11\.\s2026\.\su\s00:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
   { /* v96 (recenzija vijeća v95, hitno): na računalu fotografija u povećanom prikazu ne prekriva tekst */
     const ov = [];
     for (const w of [1440, 1024, 820, 700]) {
@@ -229,9 +240,11 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await pc.locator('#productGrid .card:not(.made) .add-btn:not([disabled])').first().click(); await pc.waitForTimeout(200);
     if(!(await pc.evaluate(() => document.body.classList.contains('cart-open')))) { await pc.evaluate(() => openCart()); await pc.waitForTimeout(400); }
     await pc.locator('#orderForm a.drawer-link[href="#uvjeti"]').scrollIntoViewIfNeeded().catch(() => {});
-    await pc.locator('#orderForm a.drawer-link[href="#uvjeti"]').click(); await pc.waitForTimeout(700);
+    await pc.locator('#orderForm a.drawer-link[href="#uvjeti"]').click();
+    /* v99 (C8): čeka stanje (zatvorena košarica, Uvjeti pri vrhu) umjesto fiksnog čekanja — glatko pomicanje traje različito */
+    await pc.waitForFunction(() => !document.body.classList.contains('cart-open') && Math.abs(document.getElementById('uvjeti').getBoundingClientRect().top) < 200, null, { timeout: 4000 }).catch(() => {});
     const at = await pc.evaluate(() => [document.body.classList.contains('cart-open'), Math.round(document.getElementById('uvjeti').getBoundingClientRect().top)]);
-    await pc.goBack(); await pc.waitForTimeout(700);
+    await pc.goBack(); await pc.waitForFunction(() => document.body.classList.contains('cart-open'), null, { timeout: 4000 }).catch(() => {});
     const back = await pc.evaluate(() => [document.body.classList.contains('cart-open'), location.href]);
     ok(!at[0] && Math.abs(at[1]) < 200 && back[0] && !/logo\.svg|about:blank/.test(back[1]), 'v96: Uvjeti iz košarice, pa „natrag” — košarica ponovno otvorena ' + JSON.stringify([at, back])); await pc.close(); }
   { /* v98 (recenzija vijeća v97): ostatak košarice, vlastita torba, „natrag” vraća rubriku, prazna košarica bez praznog koraka, zbijena mreža, datum */
@@ -322,8 +335,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const steps = (await pm.textContent('.pay-sum').catch(() => '')) + ' ' + stepsOnly;
   ok(await pm.evaluate(() => !!(powDone && /^\d+$/.test(powDone.nonce) && powOffer && powOffer.bits === 14)), 'v93: narudžba je poslana uz provjeru „niste robot” izračunatu u pregledniku (14 bitova)'); /* v90: točan rok u sažetku na vrhu, korak kaže „Do roka” */
   ok(/^Do roka/.test(stepsOnly.trim()) && !/\d{2}:\d{2}/.test(stepsOnly.split('Uplatite')[0]), 'v90 (recenzija): rok samo jednom — u sažetku „Uplatite … do …”, korak 1 „Do roka”');
-  ok(/1–2 radna dana/.test(steps) && /[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(steps), 'vremenska crta s rokom slanja (v68: „Do” + točan rok za uplatu)');
-  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(steps) && /pripremamo za preuzimanje u radionici/.test(steps) && /javit ćemo vam se kad bude spremna i dogovoriti termin/.test(steps), 'novi tekst koraka (preuzimanje)');
+  ok(/1–2 radna dana/.test(steps) && /[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(steps), 'vremenska crta s rokom slanja (v68: „Do” + točan rok za uplatu)');
+  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(steps) && /pripremamo za preuzimanje u radionici/.test(steps) && /javit ćemo vam se kad bude spremna i dogovoriti termin/.test(steps), 'novi tekst koraka (preuzimanje)');
   ok(/Torba „Luna” je rezervirana za vas/.test(await pm.textContent('.pay-thanks')) && !/✂/.test(await pm.textContent('.pay-thanks')), 'zahvala „Torba „Luna” je rezervirana”, bez emojija');
   ok(await pm.evaluate(() => document.activeElement && document.activeElement.classList.contains('pay-thanks')), 'fokus na zahvali nakon narudžbe');
   ok((await pm.textContent('.pay-hello')).startsWith('Hvala vam!') && /Narudžba SJ-\d{4}-\d{4}/.test(await pm.textContent('.pay-hello')) && await pm.locator('.pay-thanks b').count() === 0 && !/Rok za uplatu/.test(await pm.textContent('.pay-thanks')) && /Ako se predomislite/.test(await pm.textContent('.pay-steps')) && /navečer ili vikendom/.test(await pm.textContent('.pay-steps')), 'v42/v69: „Hvala vam!” kao naslov; rok samo jednom (u koraku), uplata navečer ili vikendom, korak „Ako se predomislite”');
@@ -335,7 +348,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
   const stepsU = (await pm.textContent('.pay-sum')) + ' ' + await pm.textContent('.pay-steps');
-  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
+  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
     ok(!(await pm.locator('#toast.show').count()), 'nakon narudžbe nema obavijesti preko ploče');
   const prim = await pm.locator('.pay-data div:has(dt:text-is("Primatelj")) dd').innerHTML();
   ok(prim.indexOf('Matije Gupca') < prim.indexOf('copy-btn'), 'Kopiraj primatelja ispod adrese');
@@ -486,7 +499,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pickStrap(p7); await p7.click('#orderBtn'); await p7.waitForSelector('.order-error.order-info', { timeout: 8000 }).catch(() => {});
   const pend7 = await p7.textContent('#orderError').catch(() => '');
   ok(/potvrdite narudžbu/.test(pend7) && /potvrda@primjer\.hr/.test(pend7) && await p7.locator('.pay-steps').count() === 0 && await p7.isVisible('#retrySend'), 'nakon slanja: „potvrdite narudžbu”, bez podataka za uplatu, gumb za ponovno slanje');
-  ok(/vrijedi 1 sat \(do /.test(pend7) && /s naslovom „Shiva\.J — potvrdite narudžbu”/.test(pend7), 'v45/v65: okvir potvrde — pravi naslov e-maila i koliko link vrijedi');
+  ok(/vrijedi 1 sat \(do /.test(pend7) && /Otvorite ga i slijedite upute/.test(pend7) && !/s naslovom/.test(pend7), 'v45/v65: okvir potvrde — pravi naslov e-maila i koliko link vrijedi');
   ok(/možete zatvoriti/.test(pend7) && /zatražite ponovno:/.test(pend7) && (await p7.getAttribute('#orderError', 'role')) === 'status' && /čeka vašu potvrdu/.test(await p7.textContent('.next-step')), 'v41: okvir kaže da se stranica može zatvoriti, role=status, „Sljedeći korak” u čekanju');
   await p7.screenshot({ path: OUT + 'm-40-potvrda.png' });
   ok(!(await p7.isVisible('#orderBtn')) && !(await p7.isVisible('#fName')) && await p7.isVisible('#editOrder'), 'v46: dok narudžba čeka potvrdu, obrazac i gumb su skriveni');
@@ -495,7 +508,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pickStrap(p7); await p7.click('#orderBtn'); await p7.waitForSelector('#editOrder', { timeout: 8000 }).catch(() => {});
   // v53 G: četvrti e-mail na istu adresu (429; v95: 3 na sat) dok narudžba čeka — okvir „čeka potvrdu” ostaje
   await p7.click('#retrySend'); await p7.waitForTimeout(1500);
-  ok(/Poslali smo novi e-mail\. Link iz ranijeg e-maila više ne vrijedi/.test(await p7.textContent('#orderError')) && /potvrdite narudžbu \(novi link\)/.test(await p7.textContent('#orderError')), 'v95: ponovno poslan e-mail — okvir kaže da stari link više ne vrijedi');
+  ok(/Poslali smo novi e-mail\. Link iz ranijeg e-maila više ne vrijedi/.test(await p7.textContent('#orderError')) , 'v95: ponovno poslan e-mail — okvir kaže da stari link više ne vrijedi');
   await p7.click('#retrySend'); await p7.waitForTimeout(1500);
   ok(await p7.isVisible('.pend-note') && /već smo poslali više puta/.test(await p7.textContent('#orderError')) && !/nije prihvaćena/.test(await p7.textContent('#orderError')) && await p7.isVisible('#editOrder'), 'v53 G: ponovno slanje u čekanju (429) — okvir ostaje, zadnji link vrijedi');
   // v53 H: nova kartica / osvježavanje s istom košaricom — napomena da narudžba čeka potvrdu
@@ -703,7 +716,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const e20 = await p20.textContent('.order-error').catch(() => '');
     const foc20 = await p20.evaluate(() => document.activeElement && document.activeElement.id);
     ok(await p20.locator('#orderBtn.is-blocked').count() === 1, 'v66: gumb za narudžbu izgleda neaktivno dok prethodna narudžba čeka uplatu');
-    ok(/Prethodna narudžba iz Stalne kolekcije čeka uplatu\. Podatke za uplatu imate u e-mailu s potvrdom narudžbe/.test(e20) && await p20.locator('.order-error.order-info').count() === 1 && !/Provjerite e-mail adresu/.test(e20) && foc20 !== 'fEmail', 'v64: druga narudžba iz kolekcije s istog e-maila — „Već imate otvorenu narudžbu”, ne „Provjerite e-mail adresu”: ' + e20.slice(0, 120));
+    ok(/Prethodna narudžba iz Stalne kolekcije čeka uplatu\. Podatke za uplatu imate u e-\u2060?mailu s potvrdom narudžbe/.test(e20) && await p20.locator('.order-error.order-info').count() === 1 && !/Provjerite e-mail adresu/.test(e20) && foc20 !== 'fEmail', 'v64: druga narudžba iz kolekcije s istog e-maila — „Već imate otvorenu narudžbu”, ne „Provjerite e-mail adresu”: ' + e20.slice(0, 120));
     await m20.close();
   }
   // v65: košarica u dva stupca, ukupno čekanje prije narudžbe, napomena, „od uplate”, e-mail mješovite narudžbe, povratak na karticu
@@ -815,7 +828,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const ask = await pc.textContent('#claimBox').catch(() => '');
     const urlClean = !/uplata=/.test(pc.url());
     const before = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).find(o => o.no === oc.no);
-    ok(/jeste li već uplatili/.test(ask) && new RegExp('rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\\s\\d{1,2}\\.\\s\\d{1,2}\\.\\su\\s\\d{2}:\\d{2} i više vam ne šaljemo podsjetnike; torb[ue] čuvamo do tada').test(ask) && /Ne klikajte/.test(ask) && urlClean && !before.claimedAt, 'v69: link „Uplatio/la sam” otvara pitanje u košarici; bez klika se ništa ne mijenja, adresa se čisti');
+    ok(/jeste li već uplatili/.test(ask) && new RegExp('rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\\s\\d{1,2}\\.\\s\\d{1,2}\\.\\s\\d{4}\\.\\su\\s\\d{2}:\\d{2} i više vam ne šaljemo podsjetnike \\(torb[ue] ionako čuvamo do tada\\)').test(ask) && /Ne klikajte/.test(ask) && urlClean && !before.claimedAt, 'v69: link „Uplatio/la sam” otvara pitanje u košarici; bez klika se ništa ne mijenja, adresa se čisti');
     await pc.click('#claimBtn'); await pc.waitForTimeout(600);
     const after = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).find(o => o.no === oc.no);
     ok(/Torbu čuvamo za vas do/.test(await pc.textContent('#claimBox')) && !!after.claimedAt, 'v69/v70: klik „Da, uplatio/la sam” produžuje rok i zahvaljuje kupcu');
@@ -849,7 +862,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       ok(/nakon primitka uplate, u roku 1–2 radna dana\. Modele/.test(u73) && !/Slanje u roku/.test(u73) && /najkasnije u roku 14 dana od primitka uplate/.test(u73), 'v75 (vijeće V75-1): Uvjeti t. 6 — rok slanja iz Postavki, bez rečenice iz košarice; Stalna kolekcija 14 dana'); }
     await p73.click('footer a.foot-raskid'); await p73.waitForTimeout(300);
     await p73.click('#raskidNext'); await p73.waitForTimeout(100);
-    ok(/Molimo upišite: ime i prezime, broj narudžbe .*ispravan e-mail/.test(await p73.textContent('#raskidError')) && await p73.isVisible('#raskidStep1'), 'v73: raskid — prazna polja ostaju na prvom koraku s porukom');
+    ok(/Molimo upišite: ime i prezime, broj narudžbe .*ispravnu e-adresu za potvrdu/.test(await p73.textContent('#raskidError')) && await p73.isVisible('#raskidStep1'), 'v73: raskid — prazna polja ostaju na prvom koraku s porukom');
     await p73.fill('#rName', 'Ana Raskid'); await p73.fill('#rNo', '2026-0999'); await p73.fill('#rEmail', 'ana.raskid@primjer.hr'); await p73.fill('#rIban', 'HR12 1001 0051 8630 0016 0');
     await p73.click('#raskidNext'); await p73.waitForTimeout(100);
     const prev = await p73.textContent('#raskidPreview');

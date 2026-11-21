@@ -281,6 +281,7 @@ $ok($b3 !== null && is_file($bd98 . '/.gotovo') && !is_file($bd98 . '/config.jso
 $thr98 = false; try { sj_config_update(function (array &$c) { $c['shop'] = 'X'; }); } catch (RuntimeException $e) { $thr98 = true; }
 $sec98 = sj_pow_secret();
 $ok($thr98 && file_get_contents(SJ_DATA . '/config.json') === '' && strlen($sec98) === 64, 'v98 (N1): prazan config.json — izmjena se odbija, tajna za „niste robot” privremena, ništa se ne prepisuje');
+$ok(isset(json_decode((string)@file_get_contents(SJ_DATA . '/ostecene-datoteke.json'), true)['config.json']), 'v99 (L1): prazan config.json — zapis u ostecene-datoteke.json (traka HITNO, e-mail vlasnici jednom dnevno)');
 file_put_contents(SJ_DATA . '/config.json', $cb98); @unlink(SJ_DATA . '/ostecene-datoteke.json'); sj_config(true);
 /* v90 (recenzija): dnevna granica po primatelju ostaje 24 h i nakon čišćenja drugih ključeva */
 $zq = SJ_DATA . '/zahtjevi.json'; $zb = (string)@file_get_contents($zq); $tn = time();
@@ -355,6 +356,36 @@ $ok(sj_has_link('evil .hr') && sj_has_link('a.co/x') && sj_has_link('nesto.games
 $ok(sj_mask_numbers('NA 14 DANA ZBOG BOLESTI') === 'NA 14 DANA ZBOG BOLESTI' && sj_mask_numbers('Poslano 18. 11. 2026. 14:30') === 'Poslano 18. 11. 2026. 14:30' && sj_mask_numbers('2026-0007 2026-0008, SJ-2026-0009') === '2026-0007 2026-0008, SJ-2026-0009' && sj_mask_numbers('tel 091 234 5678') === 'tel [broj skriven]' && sj_mask_numbers('HR12  1001 0051 8630 0016 0') === '[IBAN skriven]', 'v96 (recenzija): maska ne skriva velika slova, datum ni brojeve narudžbi; telefon i IBAN skriva');
 $ok(sj_mask_numbers('Raskidam u roku od 14 dana od primitka.') === 'Raskidam u roku od 14 dana od primitka.' && sj_mask_numbers('torbu br 12 jer mi ne odgovara') === 'torbu br 12 jer mi ne odgovara' && sj_mask_numbers('IBAN HR12 1001 0051 8630 0016 0') === 'IBAN [IBAN skriven]', 'v95 (recenzija): maska skriva samo pravi IBAN');
 $ok(!sj_has_link('Dostava nakon 17h, 1.kat/stan 4') && !sj_has_link('ulaz B, 2.kat/desno') && !sj_has_link('Hvala.do viđenja') && !sj_has_link('boja.red') && sj_has_link('bit.do/x') && sj_has_link('t.co/x'), 'v95 (recenzija): obične napomene prolaze, kratke poveznice s putanjom ne');
+/* v99 (recenzija vijeća v98, B1/B3): maska preko svih razdjelnika i znamenki pune širine; filtar poveznica i lažno pozitivni */
+$m99 = ['0912;345;678', '091|234|5678', '091*234*5678', '091–234–5678', "091\n234\n5678", '０９１２３４５６７８', "091\u{2009}234\u{2009}5678", '091,234,5678', '091~234~5678'];
+$ok(count(array_filter($m99, fn($t) => sj_mask_numbers($t) === '[broj skriven]')) === count($m99) && sj_mask_numbers('Poslano 18. 11. 2026. 14:30') === 'Poslano 18. 11. 2026. 14:30' && sj_mask_numbers('SJ-2026-0009, 2026-0010') === 'SJ-2026-0009, 2026-0010' && sj_mask_numbers('NA 14 DANA') === 'NA 14 DANA',
+  'v99 (B1): maska broja preko ; | * – ~ zareza, novog retka i uskog razmaka, i znamenke pune širine; datumi i brojevi narudžbi ostaju');
+$l99 = ['prevara.pw', 'nesto.ovh', 'moja.art', 'zlo.blog', 'evil.Ru', 'ime.Eu', 'prevara . com', 'plati na prevara .eu hvala', 'crna.id', 'bit.do/x'];
+$f99 = ['npr. crna', 't. 7', 'cca. 5', 'Hvala.do viđenja', 'boja.red', 'Tel.br.', 'kuć.br. 33', 'Pozdrav.Eu sam', 'Ulaz.se nalazi lijevo', 'Hvala.lp', 'točka 2. Uvjeta', 'Tel: 091 234 5678, zvono ne radi', 'tel:0912345678', 'npr.crna/smeđa', 'Ulaz.desno/lijevo', 'str.lijeva/desna', 'Zvono.ne/radi', 'hvala . to je sve', 'nema . me doma'];
+$ok(count(array_filter($l99, 'sj_has_link')) === count($l99) && !array_filter($f99, 'sj_has_link'),
+  'v99 (B3): filtar poveznica — pw/ovh/art/blog/id, miješana slova na kraju, razmak oko točke; obične napomene (i telefon, „npr.crna/smeđa”, „hvala . to je sve”) prolaze ' . json_encode([array_values(array_filter($l99, fn($t) => !sj_has_link($t))), array_values(array_filter($f99, 'sj_has_link'))], JSON_UNESCAPED_UNICODE));
+$ok(sj_mask_numbers('Ilica 123/4, 10000 Zagreb') === 'Ilica 123/4, 10000 Zagreb' && sj_mask_numbers('091,234,5678') === '[broj skriven]', 'recenzija v99: „zarez i razmak” dijeli adresu, telefon sa zarezima bez razmaka i dalje se skriva');
+/* recenzija v99: izjava samo u dnevniku (obrada prekinuta nakon odgovora) — upisuje se u glavni popis i vlasnica dobiva e-mail; jednom */
+$jr99 = sj_raskid_journal_path(time()); $jb99 = (string)@file_get_contents($jr99); $rb99 = (string)@file_get_contents(SJ_DATA . '/raskidi.json'); $ml0 = strlen((string)@file_get_contents(SJ_DATA . '/mail-log.txt'));
+file_put_contents($jr99, json_encode(['name' => 'Iz Dnevnika', 'no' => '2026-0042', 'email' => 'dn@primjer.hr', 'id' => 'dnevnik99a', 'at' => sj_iso(time() - 1800)]) . "\n" . json_encode(['name' => 'Svjeza', 'no' => '2026-0043', 'email' => 'sv@primjer.hr', 'id' => 'dnevnik99b', 'at' => sj_iso(time() - 60)]) . "\n", FILE_APPEND);
+$rc1 = sj_raskid_reconcile(true); $rc2 = sj_raskid_reconcile(true);
+$rl99 = array_values(array_filter((array)json_decode((string)file_get_contents(SJ_DATA . '/raskidi.json'), true), fn($x) => ($x['id'] ?? '') === 'dnevnik99a'));
+$mlR = substr((string)@file_get_contents(SJ_DATA . '/mail-log.txt'), $ml0);
+$ok($rc1 === ['dnevnik99a'] && $rc2 === [] && count($rl99) === 1 && !empty($rl99[0]['recovered']) && substr_count($mlR, 'izjava o raskidu nije do kraja obrađena') === 1 && str_contains($mlR, 'Iz Dnevnika'),
+  'recenzija v99: izjava samo u dnevniku (starija od 15 min) upisuje se u glavni popis („obnovljeno”), vlasnica dobiva jedan e-mail; svježa se ne dira ' . json_encode([$rc1, $rc2]));
+file_put_contents($jr99, $jb99); file_put_contents(SJ_DATA . '/raskidi.json', $rb99 === '' ? '[]' : $rb99); @unlink(SJ_DATA . '/raskidi-provjera.json');
+/* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
+$kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");
+$dA = date('Y-m-d', time() - 2 * 86400); $dB = date('Y-m-d', time() - 86400); $dT = date('Y-m-d');
+foreach ([$dA, $dB, $dT] as $dd) { foreach (glob("$kr/$dd/*") ?: [] as $x) @unlink($x); @unlink("$kr/$dd/.gotovo"); @rmdir("$kr/$dd"); }
+@mkdir("$kr/$dA", 0755, true); copy($ovf, "$kr/$dA/" . basename($ovf)); file_put_contents("$kr/$dA/.gotovo", 'x');
+@mkdir("$kr/$dB", 0755, true); file_put_contents("$kr/$dB/.gotovo", 'x'); /* jučerašnja kopija bez dodatnog popisa */
+$tOld = SJ_DATA . '/narudzbe.json.tmp-staro99'; $tNew = SJ_DATA . '/narudzbe.json.tmp-novo99'; file_put_contents($tOld, '{}'); touch($tOld, time() - 7200); file_put_contents($tNew, '{}');
+sj_daily_backup(); $same99 = !is_file("$kr/$dT/" . basename($ovf));
+file_put_contents($ovf, json_encode(['name' => 'Ov99b']) . "\n", FILE_APPEND); @unlink("$kr/$dT/.gotovo");
+sj_daily_backup(); $chg99 = is_file("$kr/$dT/" . basename($ovf));
+$ok($same99 && $chg99 && !is_file($tOld) && is_file($tNew), 'v99 (L4/L5): dodatni popis izjava ide u kopiju samo kad se promijenio (usporedba s najnovijom kopijom koja ga sadrži); privremene datoteke starije od sata brišu se');
+@unlink($tNew); @unlink($ovf);
 echo implode("\n", $R), "\n";
 $fails = count(array_filter($R, fn($l) => str_starts_with($l, 'FAIL')));
 echo $fails ? "NEUSPJELO: $fails\n" : "SVE PROŠLO (" . count($R) . ")\n";

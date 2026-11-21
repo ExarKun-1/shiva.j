@@ -83,9 +83,12 @@ uključujući e-mail s podacima za uplatu. Zato:
 - [ ] **Karta paketomata (v96, v98):** nakon objave otvorite košaricu → BOX NOW → „Odaberi paketomat na karti”. Ako se karta ne
   otvori ili izgleda bez stilova (stroža zaštita CSP iz `.htaccess`, od v98 i `default-src`), javite; paketomat se do tada
   može upisati ručno.
-- [ ] **Prihvaćen ostatak rizika (v96):** iznad 300 e-mailova za potvrdu na sat (kvota pošte) nove narudžbe privremeno se ne
-  primaju. Napadač za to treba stotine adresa iz različitih mreža; vlasnica tada dobiva upozorenje. Provjerite s Croadrijom
-  kolika je dnevna kvota pošte.
+- [ ] **Prihvaćen ostatak rizika (v96, v99):** iznad 150 e-mailova za potvrdu na sat (kvota pošte i ugled domene) nove narudžbe
+  privremeno se ne primaju; s jedne mreže (/24, IPv6 /44) najviše 5 na sat. Napadač za to treba desetke mreža; vlasnica tada
+  dobiva upozorenje. Provjerite s Croadrijom kolika je dnevna kvota pošte.
+- [ ] **PHP-FPM (v99):** u Pleksu → PHP Settings odaberite „FPM application served by Apache” (ili nginx). Izjava o raskidu tada
+  dobiva odgovor prije slanja e-mailova, pa brzina odgovora ne otkriva postoji li narudžba. Admin → Postavke → „Provjeri zaštitu
+  podataka” javlja ako PHP-FPM nije uključen.
 - [ ] Prije prve prijave u admin adresa `https://shivaj.hr/data/PRVA-PRIJAVA.php` mora vratiti 403 ili 404 (prazna stranica bez teksta).
   Datoteka je od v91 `.php`, pa je poslužitelj nikad ne šalje kao tekst; kod u njoj čitate samo u File Manageru.
 
