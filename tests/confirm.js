@@ -203,6 +203,17 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       const rg = await post('order', g); const LG = lastLink(); const cg = await post('confirm', { id: LG.id, t: LG.t });
       ok(rg.data.pending && cg.data.ok && cg.data.ship && cg.data.ship.address === 'Ilica 10, 10000 Zagreb' && /^\?uplata=SJ-\d{4}-\d+&t=[0-9a-f]{32}$/.test(cg.data.claimLink || ''),
         'v95: potvrda vraća adresu za dostavu (ploča za uplatu) i poveznicu „Uplatio/la sam” ' + JSON.stringify([cg.data.ship && cg.data.ship.address, cg.data.claimLink])); }
+    // recenzija v99: isti kupac naruči s mobitela i s računala (dvije oznake preglednika), klikne oba linka — drugi klik javlja
+    //      „već u vašoj ranijoj narudžbi”, ne „zauzeto” (klik na link dokazuje e-adresu)
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      const pl = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rz = read('rezervacije.json', {});
+      const fb = ['nera', 'tara', 'mira', 'luna', 'vela'].find(id => { const p = pl.find(x => x.id === id); return p && !p.sold && !p.reserved && !(rz.res || {})[id] && !(rz.sold || {})[id]; });
+      const prB = pl.find(x => x.id === fb).price;
+      await post('order', order('potvrda-dva-pregl-1', 'dvaprg@primjer.hr', [{ id: fb }], prB, 'serija-mobitel-aaaaaa')); const LA = lastLink();
+      await post('order', order('potvrda-dva-pregl-2', 'dvaprg@primjer.hr', [{ id: fb }], prB, 'serija-racunalo-bbbbb')); const LB = lastLink();
+      const cA = await post('confirm', { id: LA.id, t: LA.t }); const cB = await post('confirm', { id: LB.id, t: LB.t });
+      ok(fb && LA.id !== LB.id && cA.data.ok && !cB.data.taken && /već je u vašoj ranijoj narudžbi/.test(JSON.stringify(cB.data)),
+        'recenzija v99: dva linka iz dva preglednika — drugi javlja „već u vašoj ranijoj narudžbi”, ne „zauzeto” ' + JSON.stringify([fb, cA.status, cB.status, cB.data])); }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

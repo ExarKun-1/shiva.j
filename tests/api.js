@@ -634,6 +634,10 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       for (let i = 0; i < 7; i++) await post('raskid', { name: 'Mira Kupac', no: oc.no, email: 'v99ser@primjer.hr' });
       const ownC = (fs.readFileSync(D + 'mail-log.txt', 'utf8').match(/RASKID UGOVORA: SJ-/g) || []).length;
       ok(ownC === 3, 'v99 (A1): uz istu narudžbu vlasnica dnevno najviše 2 e-maila o izjavi + 1 kad kupac nije dobio potvrdu (' + ownC + ' od 7 izjava)');
+      { const nl = read('narudzbe.json'); const ox = nl.find(x => x.no === oc.no); ox.withdrawals = Array.from({ length: 5 }, (_, k) => ({ at: new Date(Date.now() - (k + 2) * 86400000).toISOString(), id: 'x' + k, tok: false })); fs.writeFileSync(D + 'narudzbe.json', JSON.stringify(nl)); }
+      clearLimits(); await post('raskid', { name: 'Mira Kupac', no: oc.no, email: 'v99ser@primjer.hr', tok: rTok(oc.no) });
+      const oc2 = read('narudzbe.json').find(x => x.no === oc.no) || {};
+      ok((oc2.withdrawals || []).some(w => w.tok === true) && !!oc2.cancelledAt, 'recenzija v99: izjava preko poveznice bilježi se i kad je popis izjava uz narudžbu pun (5) ' + (oc2.withdrawals || []).length);
       clearLimits(); clearRes(); }
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }
   console.log(R.join('\n'));

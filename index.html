@@ -3406,16 +3406,18 @@ const EMAIL_RE = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,
   const err = (el, msg) => { el.textContent = msg; el.hidden = !msg; if(msg) el.focus(); };
   /* iz e-maila s potvrdom: …#raskid?no=2026-0007 popuni broj narudžbe */
   /* v98 (recenzija vijeća v97, mobitel L3): i kad je stranica već otvorena u istoj kartici (promjena samo sidra) */
+  let raskidLastHash = "";
   const raskidFromHash = (onLoad) => {
     const pre = /^#raskid\?(.*)$/.exec(location.hash);
     if(!pre) return;
+    raskidLastHash = location.hash;
     const q = new URLSearchParams(pre[1]); if(q.get("no")) $("rNo").value = q.get("no").slice(0, 40); if(/^[0-9a-f]{24}$/.test(q.get("t") || "")){ rTok = q.get("t"); rTokNo = $("rNo").value.trim(); }
     const go = () => document.getElementById("raskid").scrollIntoView(); setTimeout(go, 0);
     if(onLoad) addEventListener("load", () => { go(); setTimeout(go, 600); }, { once: true });
   };
   raskidFromHash(true);
   addEventListener("hashchange", () => raskidFromHash(false));
-  addEventListener("popstate", () => { if(/^#raskid\?/.test(location.hash)) raskidFromHash(false); }); /* v99 (recenzija vijeća v98, mobitel L4) */
+  addEventListener("popstate", () => { if(/^#raskid\?/.test(location.hash) && location.hash !== raskidLastHash) raskidFromHash(false); }); /* v99 (recenzija vijeća v98, mobitel L4); recenzija v99: ne kad „natrag” samo zatvara košaricu ili prikaz (isti hash) */
   f.addEventListener("submit", e => {
     e.preventDefault();
     const v = val(), miss = [];

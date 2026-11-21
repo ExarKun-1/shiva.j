@@ -299,6 +299,7 @@ if ($a === 'status') {
     if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
     try { sj_deadline_tick(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' rokovi: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); }
     try { sj_raskid_digest(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' sažetak raskida: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v95 */
+    try { sj_raskid_reconcile(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' provjera izjava: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* recenzija v99 */
     try { sj_privacy_purge(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' brisanje: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v81 (p4) */
     try { sj_daily_backup(); sj_log_rotate(); } catch (Throwable $e) { @file_put_contents(SJ_DATA . '/greske.log', gmdate('c') . ' kopija: ' . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX); } /* v90 (vijeće) */
   });
@@ -577,6 +578,7 @@ if ($a === 'confirm') {
     /* v19: od narudžbe je moglo proći do sat vremena — ponuda i cijene provjeravaju se ponovno */
     $chk = sj_order_recheck($P);
     if ($chk) return $chk;
+    $P['viaLink'] = true; /* recenzija v99: klik na link iz e-maila dokazuje e-adresu — torba iz njezine ranije narudžbe nije „tuđa” */
     $done = sj_place_order($P);
     if (isset($done['no']) || isset($done['prev'])) {
       $no = (string)($done['no'] ?? ($done['prev']['no'] ?? ''));
@@ -710,7 +712,7 @@ if ($a === 'raskid') {
   try {
     if ($match && $match['email']) sj_order_edit(['no' => $match['no']], function (array &$o) use ($at, $id, &$stornoTok, $autoOk, $now) {
       $recent = array_filter((array)($o['withdrawals'] ?? []), fn($w) => (int)strtotime((string)($w['at'] ?? '')) > $now - 86400);
-      if ((count($recent) < 2 || $autoOk) && count((array)($o['withdrawals'] ?? [])) < 5) $o['withdrawals'] = array_merge((array)($o['withdrawals'] ?? []), [['at' => $at, 'id' => $id, 'tok' => $autoOk]]);
+      if ((count($recent) < 2 || $autoOk) && (count((array)($o['withdrawals'] ?? [])) < 5 || ($autoOk && !sj_withdrawn($o)))) /* recenzija v99: prva izjava preko poveznice uvijek se bilježi */ $o['withdrawals'] = array_merge((array)($o['withdrawals'] ?? []), [['at' => $at, 'id' => $id, 'tok' => $autoOk]]);
       if ($autoOk && empty($o['paidAt']) && empty($o['cancelledAt']) && empty($o['claimedAt']) && empty($o['proofAt'])) {
         $o['cancelledAt'] = $at; $o['cancelReason'] = 'kupac odustao'; $o['cancelBy'] = 'kupac (raskid)'; $stornoTok = (string)($o['reservation']['token'] ?? ''); }
     });
@@ -792,7 +794,7 @@ if ($a === 'raskid') {
   /* v99 (recenzija vijeća v98, M1/N3): „kupac nije dobio potvrdu” vrijedi samo kad slanje stvarno nije uspjelo; kad je dosegnuta dnevna granica
      potvrda kupcu, vlasnica o tome dobiva jedan e-mail po narudžbi dnevno, ostalo ide u sažetak s napomenom */
   $capMail = $matched && !$mailDayOk && sj_global_limit('dnevno|rcap|' . $ordKey, 1, 86400);
-  if ($capMail) $own[] = 'Ovo je zadnji e-mail o izjavama uz ovu narudžbu danas; daljnje izjave stižu u sažetku jednom na sat.';
+  if ($capMail) $own[] = 'Kupac je danas dosegnuo granicu potvrda e-mailom, pa ovu potvrdu pošaljite sami. Daljnje izjave uz ovu narudžbu danas mogu stići i u sažetku jednom na sat.';
   if ($matched ? ($linkFree || (!$mailed && $mailDayOk) || $capMail || sj_global_limit('dnevno|rown|' . $ordKey, 2, 86400) || $errMail) : ($errMail || sj_global_limit('raskid_own', 10, 3600))) /* v95 (recenzija): pogođen broj narudžbe s tuđim e-mailom ne zaobilazi granicu; v96: ni obrisana narudžba (N3); neuspio upis ide e-mailom (N6), najviše 30 na sat (recenzija v96: pun dodatni popis ne smije preplaviti pretinac) */
     sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — RASKID UGOVORA: ' . ($match['no'] ?? $r['no']) . ' — ' . $r['name'], implode("\n", $own), null, ($match && $match['email']) ? $r['email'] : null);
   else try { $noConf = ($matched || $extOk) && !$mailed; sj_with_lock(SJ_DATA . '/raskid-sazetak.json', function (array &$d) use ($at, $noConf) { $d['n'] = (int)($d['n'] ?? 0) + 1; if ($noConf) $d['noConf'] = (int)($d['noConf'] ?? 0) + 1; if (empty($d['since'])) $d['since'] = $at; return true; }, []); } catch (Throwable $e) {}
@@ -1191,8 +1193,8 @@ function sj_place_order_locked(array $P): array {
 
   $res = null; $back = null;
   if ($uniqueIds) {
-    $series = (string)($P['series'] ?? '');
-    $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $freeIds, $series) {
+    $series = (string)($P['series'] ?? ''); $viaLink = !empty($P['viaLink']);
+    $r = sj_with_lock(sj_res_path(), function (array &$d) use ($uniqueIds, $cust, $ttl, $holdKey, $ip, $ipPrev, $freeIds, $series, $viaLink) {
       $d = array_replace(sj_res_default(), $d);
       sj_res_prune($d);
       $blocking = sj_blocking_ids($d, $freeIds);
@@ -1205,7 +1207,7 @@ function sj_place_order_locked(array $P): array {
         if ($r && !$same && empty($r['ordered'])) $r = null;                          /* tuđa košarica bez narudžbe: ne blokira */
         /* v99 (recenzija vijeća v98, sigurnost N1): ista e-adresa iz drugog preglednika (bez tajnog ključa) dobiva „zauzeto” kao svatko,
            ne „već u vašoj ranijoj narudžbi” — inače bi tko upiše tuđu e-adresu saznao da ta adresa drži torbu */
-        $foreign = $same && !empty($r['ordered']) && (string)($r['series'] ?? '') !== '' && ($series === '' || !hash_equals((string)$r['series'], $series))
+        $foreign = !$viaLink && $same && !empty($r['ordered']) && (string)($r['series'] ?? '') !== '' && ($series === '' || !hash_equals((string)$r['series'], $series))
           && !($holdKey !== '' && hash_equals((string)($r['hold'] ?? ''), $holdKey));
         if (isset($d['sold'][$id]) || ($r && (!$same || $foreign) && isset($blocking[$id]))) $taken[] = $id; /* prodano ili tuđa narudžba koja blokira */
         elseif ($r && !empty($r['ordered'])) $mine[(string)($r['token'] ?? '')] = $id; /* isti kupac, već u ranijoj narudžbi */
