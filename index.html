@@ -2246,7 +2246,7 @@ function countOnce(key, once = true){
   if(!RESERVATION_ENDPOINT || (once && counted.has(key))) return;
   counted.add(key);
   const u = apiUrl("status", "c=" + key);
-  if(!(navigator.sendBeacon && navigator.sendBeacon(u))) fetch(u, { keepalive: true }).catch(() => {});
+  try { if(!(navigator.sendBeacon && navigator.sendBeacon(u))) fetch(u, { keepalive: true }).catch(() => {}); } catch(e){} /* v99: sendBeacon baca grešku izvan https (npr. demo otvoren iz datoteke) — brojanje nikad ne smije zaustaviti košaricu */
 }
 document.querySelectorAll(".press-list a").forEach(a => a.addEventListener("click", () => countOnce("press", false)));
 if("IntersectionObserver" in window){
