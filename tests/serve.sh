@@ -15,4 +15,7 @@ cp "$R/tests/fixtures/torbe.json" "$S/torbe.json"
 cp "$R/tests/fixtures/proizvodi.json" "$R/tests/fixtures/config.json" "$S/data/"
 echo "probna stranica: $S"
 [ -n "$SHIVAJ_NO_SERVE" ] && exit 0
-exec php -S 127.0.0.1:${SHIVAJ_PORT:-8090} -t "$S" "$S/router.php"
+# v101: zauzet port — stani (inače bi test prošao protiv starog poslužitelja i stare kopije stranice)
+P=${SHIVAJ_PORT:-8090}
+if php -r 'exit(@fsockopen("127.0.0.1", (int)$argv[1], $e, $s, 0.3) ? 0 : 1);' "$P"; then echo "port $P je zauzet — ugasite stari poslužitelj ili postavite SHIVAJ_PORT" >&2; exit 3; fi
+exec php -S 127.0.0.1:$P -t "$S" "$S/router.php"

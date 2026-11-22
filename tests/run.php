@@ -403,8 +403,27 @@ $ok(count($p1) === 20 && count((array)($st1['notify'] ?? [])) === 20 && count($p
 file_put_contents($jr, $jb); if ($ob === null) @unlink($of); else file_put_contents($of, $ob); file_put_contents(SJ_DATA . '/raskidi.json', $rb === '' ? '[]' : $rb); @unlink(SJ_DATA . '/raskidi-provjera.json');
 $ok(sj_mask_numbers('Nazovite 98/12, 34567 Ivana') === 'Nazovite [broj skriven] Ivana' && sj_mask_numbers('Mob 98/12, 34567 Ivana') === 'Mob [broj skriven] Ivana' && sj_mask_numbers('Zvonimirova 12a, 49210 Zabok') === 'Zvonimirova 12a, 49210 Zabok',
   'recenzija v100: adresa se štiti samo uz naziv ulice, ne uz „Nazovite” ili „Mob”');
-$ok(sj_has_link('Konzum Ilica 1, uplata na shivaj-pay.me prije slanja') && sj_unlink('naplata.ba danas') === '[uklonjeno] danas' && !sj_has_link('Hvala.to je sve'),
-  'recenzija v100: kratki nastavak-riječ uz domenu s crticom je poveznica; u e-mailu kupcu se uklanja i „naplata.ba”');
+/* v101 (recenzija vijeća v100, sigurnost): nastavci-riječi su poveznica samo s putanjom; sj_unlink ne briše običan tekst, nego razdvaja „riječ.riječ” */
+$f101 = ['Pozvonite Ana-Marija.to je sve', 'Ivana-Kos.at home', 'Prekrasne torbe, sve pohvale. Top', 'Super. top', 'Zovem se Ana. Info', 'Hvala.Me', 'super.in', 'Remen crna.it', 'Hvala.to je sve', 'Konzum Ilica 1, uplata na shivaj-pay.me prije slanja'];
+$l101 = ['shivaj-pay.me/racun', 'naplata.онлайн', 'plati.москва', 'naplata.рф', 'naplata｡com', 'naplata. pw', 'naplata .pw', 't.me/abc'];
+$ok(!array_filter($f101, 'sj_has_link') && count(array_filter($l101, 'sj_has_link')) === count($l101),
+  'v101: filtar — imena s crticom, „pohvale. Top”, „Hvala.Me” prolaze; putanja, ćirilica i točka U+FF61 se hvataju ' . json_encode([array_values(array_filter($f101, 'sj_has_link')), array_values(array_filter($l101, fn($t) => !sj_has_link($t)))], JSON_UNESCAPED_UNICODE));
+$u101 = ['naplata.ba danas' => 'naplata. ba danas', 'Hvala.to je sve' => 'Hvala. to je sve', 'Konzum Sv.Nedelja' => 'Konzum Sv. Nedelja', 'Ul.kralja Zvonimira 5' => 'Ul. kralja Zvonimira 5', 'shivaj-pay.me prije slanja' => 'shivaj-pay. me prije slanja',
+  'cijena 5.50 eura' => 'cijena 5.50 eura', '3.kat/lijevo' => '3.kat/lijevo', 'Naplata.Com odmah' => '[uklonjeno] odmah', 'idi na http://zlo.example sad' => 'idi na [uklonjeno] sad', 'Bit.Ly/x' => '[uklonjeno]', 'pisi na a@b.hr' => 'pisi na [uklonjeno]', 'molim naplata.рф/x hvala' => 'molim [uklonjeno] hvala'];
+$bad101 = []; foreach ($u101 as $in => $want) if (sj_unlink($in) !== $want) $bad101[$in] = sj_unlink($in);
+$ok(!$bad101, 'v101: sj_unlink uklanja samo prave poveznice, a „riječ.riječ” razdvaja razmakom (ništa klikabilno, ništa izbrisano) ' . json_encode($bad101, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+$ok(sj_mask_numbers('Hrvatskih branitelja 123/4, 10000 Zagreb') === 'Hrvatskih branitelja 123/4, 10000 Zagreb' && sj_mask_numbers('Trg Ivana Zovka 12/3, 10000 Zagreb') === 'Trg Ivana Zovka 12/3, 10000 Zagreb'
+  && sj_mask_numbers('Tel. 98/12, 34567 Ivana') === 'Tel. [broj skriven] Ivana' && sj_mask_numbers('091ʼ234ʼ5678') === '[broj skriven]',
+  'v101: maska — „branitelja” i „Zovka” nisu „tel” ni „zov”; „Tel.” ispred i dalje skriva; slovo-modifikator kao razdjelnik');
+/* v101 (recenzija vijeća v100, softver F): stari dnevnik izjava briše se tek kad je provjera prošla do kraja (25 izjava: prvi dan 20, dnevnik ostaje; drugi dan 5, briše se) */
+$oj = SJ_DATA . '/raskidi-ulaz-2020-01.jsonl'; $rb101 = (string)@file_get_contents(SJ_DATA . '/raskidi.json'); @unlink(SJ_DATA . '/raskidi-provjera.json');
+$fj = fopen($oj, 'w'); for ($i = 0; $i < 25; $i++) fwrite($fj, json_encode(['name' => 'Stari ' . $i, 'no' => '2020-0' . (100 + $i), 'email' => 's' . $i . '@primjer.hr', 'id' => sprintf('%032x', 77000 + $i), 'at' => '2020-01-15T10:00:00Z']) . "\n"); fclose($fj);
+$td = SJ_DATA . '/kopije/' . date('Y-m-d'); @unlink($td . '/.gotovo'); sj_daily_backup();
+$n1 = count(array_filter((array)json_decode((string)file_get_contents(SJ_DATA . '/raskidi.json'), true), fn($x) => str_starts_with((string)($x['name'] ?? ''), 'Stari '))); $left1 = is_file($oj);
+@unlink($td . '/.gotovo'); sj_daily_backup();
+$n2 = count(array_filter((array)json_decode((string)file_get_contents(SJ_DATA . '/raskidi.json'), true), fn($x) => str_starts_with((string)($x['name'] ?? ''), 'Stari '))); $left2 = is_file($oj);
+$ok($n1 === 20 && $left1 && $n2 === 25 && !$left2, 'v101 (softver F): stari dnevnik izjava ostaje dok provjera ne obnovi sve (20 po prolazu), tek tada se briše ' . json_encode([$n1, $left1, $n2, $left2]));
+@unlink($oj); file_put_contents(SJ_DATA . '/raskidi.json', $rb101 === '' ? '[]' : $rb101); @unlink(SJ_DATA . '/raskidi-provjera.json');
 /* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
 $kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");
 $dA = date('Y-m-d', time() - 2 * 86400); $dB = date('Y-m-d', time() - 86400); $dT = date('Y-m-d');

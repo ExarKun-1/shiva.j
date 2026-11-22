@@ -712,7 +712,7 @@ function sj_handle_action(string $act, array &$c): string {
       $ra = (string)($_SERVER['REMOTE_ADDR'] ?? '');
       $proxyIp = sj_proxy_ip_suspect();
       $ipTxt = $proxyIp ? ' POZOR — poslužitelj ne vidi stvarnu adresu posjetitelja (vidi ' . ($ra !== '' ? $ra : 'ništa') . '), pa bi svi kupci dijelili iste granice narudžbi. Zamolite Croadriju da uključi prosljeđivanje stvarne adrese (mod_remoteip / X-Forwarded-For) i provjerite ponovno.' : ' Stvarna adresa posjetitelja: vidljiva (u redu).';
-      return ($bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
+      return ($bad ? 'POZOR — VIDLJIVO S INTERNETA: ' . implode(', ', $bad) . '. Odmah: Plesk → Apache & nginx Settings → isključite „Serve static files directly by nginx” (ili maknite json/jsonl/txt/log), pa provjerite ponovno. Detalji: ' . implode(' · ', $out)
         : 'Zaštita podataka u redu (' . implode(' · ', $out) . ').') . $ipTxt . $xff . ($cspBad !== '' ? ' ' . $cspBad : '');
     }
 
@@ -823,7 +823,7 @@ function sj_view_products(): string {
     /* v66: prazno mjesto umjesto izostavljene strelice — gumbi ne „skaču” od retka do retka */
     $h .= $i > 0 ? sj_btn('move', ['id' => $id, 'dir' => 'up'], '↑', $back, true) : '<span class="arrow-gap" aria-hidden="true"></span>';
     $h .= $i < $n - 1 ? sj_btn('move', ['id' => $id, 'dir' => 'down'], '↓', $back, true) : '<span class="arrow-gap" aria-hidden="true"></span>';
-    $h .= str_replace('<button class="alt">', '<button class="alt danger">', sj_btn('delete_product', ['id' => $id], 'Obriši', $back, true, 'Obrisati „' . ($p['name'] ?? $id) . '“? Fotografije ostaju u mapi img.'));
+    $h .= str_replace('<button class="alt">', '<button class="alt danger">', sj_btn('delete_product', ['id' => $id], 'Obriši', $back, true, 'Obrisati „' . ($p['name'] ?? $id) . '”? Fotografije ostaju u mapi img.'));
     $h .= '</td></tr>';
   }
   return $h . '</tbody></table></div>';
@@ -1061,7 +1061,7 @@ function sj_view_withdrawals(): string {
     if (empty($x['order'])) { $hn = $oix['ek'][sj_email_key((string)($x['email'] ?? ''))] ?? ($oix['name'][mb_strtolower(trim((string)($x['name'] ?? '')))] ?? '');
       if ($hn !== '') $hint = ' <span class="badge ink">e-adresa ili ime podudara se s narudžbom ' . e((string)$hn) . ' — vjerojatno prava izjava</span>'; }
     $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
-    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . (!empty($x['recovered']) ? ' <b style="color:#b3261e">obnovljeno iz dnevnika — kupcu pošaljite potvrdu sami</b>' : '') . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-adresa se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
+    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . (!empty($x['recovered']) ? ' <b style="color:#b3261e">obnovljeno iz dnevnika — kupcu pošaljite potvrdu sami</b>' : '') . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-adresa se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-adresa se podudara)' : ' — e-adresa se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
   };
   $shown = 0;
   foreach ($l as $x) { if (++$shown > 300) break; $h .= $card($x); }
@@ -1311,7 +1311,7 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   details.cancelbox{margin-top:6px}details.cancelbox>summary{cursor:pointer;display:inline-block;list-style:none;min-height:40px;line-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:2px;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
   details.cancelbox>summary::-webkit-details-marker{display:none}details.cancelbox>summary::before{content:"▸ "}details.cancelbox[open]>summary::before{content:"▾ "}
   form.cancelf button.danger{border:1px solid #9B2C1F;color:#9B2C1F;border-style:solid;margin-top:4px}
-  form.cancelf input[name=reason_text]{display:none}form.cancelf:has(option[value=drugo]:checked) input[name=reason_text]{display:inline-block}
+  form.cancelf input[name=reason_text]{display:none}form.cancelf:has(option[value=drugo]:checked) input[name=reason_text]{display:inline-block}form.cancelf.r-drugo input[name=reason_text]{display:inline-block}
   details.cancelbox[open]>summary{margin-bottom:6px}label.cmail{display:block;margin:2px 0 6px;font-size:.9rem}
   form.cancelf select,form.cancelf input{display:inline-block;width:auto;max-width:100%;margin:0 4px 4px 0;padding:6px 8px;border:1px solid var(--line);border-radius:2px;font:inherit;font-size:16px;background:#fff}
   label.chip{border:1px solid var(--line);border-radius:2px;padding:8px 12px;background:#fff;margin:0}label.chip:has(input:checked){border-color:var(--thread);background:#E4EAE5}
@@ -1355,8 +1355,8 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   echo $content . '</main><script nonce="' . $nonce . '">document.addEventListener("submit",function(e){var f=e.target,m=f.getAttribute("data-confirm");'
     . 'var ms=f.getAttribute("data-confirm-sel");if(ms){var sel=f.querySelector("select");if(!sel||!sel.value){e.preventDefault();return;}m=ms.replace("%s",sel.options[sel.selectedIndex].text);}'
     . 'if(m&&!window.confirm(m))e.preventDefault();},true);'
-    /* v69 (D69-7): za „lažna narudžba” e-mail kupcu se ne šalje — kvačica se isključi */
-    . 'document.querySelectorAll("form.cancelf select[name=reason]").forEach(function(s){s.addEventListener("change",function(){var m=s.form.querySelector("input[name=mail]");if(m){m.disabled=s.value==="lažna narudžba";if(m.disabled)m.checked=false;else m.checked=true;}});});'
+    /* v69 (D69-7): za „lažna narudžba” e-mail kupcu se ne šalje — kvačica se isključi; v101: polje za „drugo” i bez :has (Safari < 15.4) */
+    . 'document.querySelectorAll("form.cancelf select[name=reason]").forEach(function(s){s.addEventListener("change",function(){s.form.classList.toggle("r-drugo",s.value==="drugo");var m=s.form.querySelector("input[name=mail]");if(m){m.disabled=s.value==="lažna narudžba";if(m.disabled)m.checked=false;else m.checked=true;}});});'
     /* v63: polja koja vrijede samo za Stalnu kolekciju / Ostalo */
     /* v99 (recenzija vijeća v98, L3): lažno X-Forwarded-For iz preglednika vlasnice — ako ga poslužitelj prihvati, granice po vezi mogu se zaobići */
     . 'var xc=document.getElementById("xffchk");if(xc&&window.fetch){fetch("../api/status?ipchk="+encodeURIComponent(xc.getAttribute("data-t")),{headers:{"X-Forwarded-For":"203.0.113.77"},cache:"no-store"}).then(function(r){return r.json();}).then(function(j){xc.textContent=j.ipchkSeen==="203.0.113.77"?"POZOR — poslužitelj prihvaća lažnu adresu iz zaglavlja X-Forwarded-For, pa se granice narudžbi po vezi mogu zaobići. Zamolite Croadriju da RemoteIPInternalProxy postavi samo na adresu vlastitog nginxa (upute za objavu).":(j.ipchkSeen?"Lažna adresa iz zaglavlja X-Forwarded-For se ne prihvaća (u redu).":"Provjera lažne adrese nije uspjela (osvježite stranicu).");}).catch(function(){xc.textContent="Provjera lažne adrese nije uspjela (osvježite stranicu).";});}'

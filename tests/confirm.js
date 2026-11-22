@@ -214,6 +214,30 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       const cA = await post('confirm', { id: LA.id, t: LA.t }); const cB = await post('confirm', { id: LB.id, t: LB.t });
       ok(fb && LA.id !== LB.id && cA.data.ok && !cB.data.taken && /već je u vašoj ranijoj narudžbi/.test(JSON.stringify(cB.data)),
         'recenzija v99: dva linka iz dva preglednika — drugi javlja „već u vašoj ranijoj narudžbi”, ne „zauzeto” ' + JSON.stringify([fb, cA.status, cB.status, cB.data])); }
+    // v101 (recenzija vijeća v100): potvrda nosi poveznicu za raskid s oznakom; nakon raskida neplaćene narudžbe stari link za potvrdu i
+    //      „Uplatio/la sam” kažu „izjava zaprimljena”, ne „stornirana”; nečitljiv config.json zaustavlja i potvrdu; 429 s razlogom
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      await post('order', order('potvrda-v101-raskid', 'v101r@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const Lw = lastLink();
+      const cfB = fs.readFileSync(D + 'config.json'); fs.writeFileSync(D + 'config.json', '{pokvareno');
+      const cBroken = await post('confirm', { id: Lw.id, t: Lw.t });
+      fs.writeFileSync(D + 'config.json', cfB); try { fs.unlinkSync(D + 'ostecene-datoteke.json'); } catch (e) {}
+      const cw = await post('confirm', { id: Lw.id, t: Lw.t });
+      ok(cBroken.status === 503 && /tehničke smetnje/.test(cBroken.data.error || '') && cw.data.ok, 'v101 (softver 3): nečitljiv config.json — potvrda 503 s porukom, nakon popravka isti link radi ' + cBroken.status);
+      const rl = cw.data.raskidLink || '', mR = /^#raskid\?no=(\d{4}-\d{4,6})&t=([0-9a-f]{24})$/.exec(rl);
+      ok(!!mR && ('SJ-' + mR[1]) === cw.data.orderNo && /^\?uplata=/.test(cw.data.claimLink || ''), 'v101 (kupac N2): potvrda vraća poveznicu za raskid s brojem i oznakom (kao u e-mailu) ' + rl.replace(/t=.*/, 't=…'));
+      const claimT = (/&t=([0-9a-f]{32})$/.exec(cw.data.claimLink || '') || [])[1] || '';
+      const wd = await post('raskid', { name: 'Kupac', no: 'SJ-' + (mR ? mR[1] : ''), email: 'v101r@primjer.hr', tok: mR ? mR[2] : '' });
+      const ow = read('narudzbe.json', []).find(x => x.no === cw.data.orderNo) || {};
+      const c2 = await post('confirm', { id: Lw.id, t: Lw.t });
+      const pcG = await (await fetch(U + 'paidclaim?no=' + cw.data.orderNo + '&t=' + claimT)).json();
+      const pcP = await post('paidclaim', { no: cw.data.orderNo, t: claimT });
+      ok(wd.data.ok && !!ow.cancelledAt && c2.status === 409 && c2.data.code === 'withdrawn' && /izjavu o raskidu/.test(c2.data.error || '') && pcG.state === 'withdrawn' && pcP.data.state === 'withdrawn',
+        'v101 (dizajn A): raskid neplaćene narudžbe je stornira, a stari link za potvrdu i „Uplatio/la sam” kažu „izjava zaprimljena” ' + JSON.stringify([c2.status, c2.data.code, pcG.state, pcP.data.state]));
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      const codes = [], cc = [];
+      for (let i = 0; i < 4; i++) { const r = await post('order', order('potvrda-v101-mr-' + i + 'x', 'v101m@primjer.hr', [{ id: 'kozmeticka', qty: 1 + i }], 20 * (1 + i))); codes.push(r.status); cc.push(r.data.code || ''); }
+      ok(codes.slice(0, 3).every(c => c === 200) && codes[3] === 429 && cc[3] === 'mail_rate', 'v101 (kupac N4): četvrti e-mail istom primatelju u satu → 429 s razlogom mail_rate ' + JSON.stringify([codes, cc]));
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
