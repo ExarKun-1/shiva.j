@@ -564,24 +564,38 @@ function sj_mask_numbers(string $s): string {
   $protect = function (string $re, ?callable $valid = null) use (&$s, &$keep): void {
     $subj = $s;
     $s = preg_replace_callback($re, function ($m) use (&$keep, $subj, $valid) {
-      [$txt, $off] = $m[0]; $end = $off + strlen($txt);
-      $near = substr($subj, max(0, $off - 3), $off - max(0, $off - 3)) . substr($subj, $end, 3);
-      if (preg_match('~\d~', $near) || ($valid && !$valid($m, $subj))) return $txt;
+      $txt = $m[0][0];
+      if ($valid && !$valid($m, $subj)) return $txt;
       $keep[] = $txt; return "\x01" . (count($keep) - 1) . "\x02";
     }, $s, -1, $cnt, PREG_OFFSET_CAPTURE) ?? '';
   };
   $protect('~(?<![\d\-])(?:SJ-)?20\d{2}-\d{4,6}(?:(?:,? | i )(?:SJ-)?20\d{2}-\d{4,6})*(?![\d\-])~i');                 /* broj(evi) narudžbe (godina 20xx) */
   /* v102: raspon datuma („20.11.-25.11.2026.”, „20. 11. – 25. 11.”) kao cjelina */
-  $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?\s?[-–]\s?(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?(?!\d)~u', fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12 && (int)$m[3][0] >= 1 && (int)$m[3][0] <= 31 && (int)$m[4][0] >= 1 && (int)$m[4][0] <= 12);
-  $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
+  $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?20\d{2}\.?)?\s?[-–]\s?(\d{1,2})\.\s?(\d{1,2})\.(?:\s?20\d{2}\.?)?(?!\d)~u', /* provjera v102: godina samo 20xx („09.12.3456.-7.8.” nije raspon datuma) */ fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12 && (int)$m[3][0] >= 1 && (int)$m[3][0] <= 31 && (int)$m[4][0] >= 1 && (int)$m[4][0] <= 12);
+  $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?(?:19|20)\d{2}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', /* provjera v102: godina 19xx/20xx („09.12.3456.” nije datum) */ fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
   $protect('~(?<!\d)\d{1,2}:\d{2}(?!\d)~');
   /* v102 (recenzija vijeća v101, sigurnost N5): mjere („22 × 14 × 6, 28 × 22 × 8 cm”) — najviše dvoznamenkasti brojevi bez vodeće nule */
   $dim = '[1-9]\d?(?:[.,]\d)?(?:\s?[×x]\s?[1-9]\d?(?:[.,]\d)?){1,2}';
   $protect('~(?<![\d×x])' . $dim . '(?:\s?[,;/]\s?' . $dim . '){0,2}(?=\s?(?:cm|mm)\b)~u');
   /* v100: kućni broj i poštanski broj („Ilica 123/4, 10000 Zagreb”) — zarez i razmak, pa pet znamenki i naziv mjesta */
-  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,2})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u', /* recenzija v101: iza kose crte najviše dvije znamenke („385/912, 34567” nije kućni broj) */ function ($m, $subj) { $bf = mb_strcut($subj, max(0, $m[0][1] - 40), min(40, $m[0][1]), 'UTF-8');
+  /* provjera v102 (sigurnost N2): i raspon kućnih brojeva („Ilica 12-14, 10000 Zagreb”), poštanski broj na kraju i oznaka paketomata s karte („…106/1, 10000 (ID 4051)”) */
+  $protect('~(?<![\d/])[1-9]\d{0,2}(?:[-–][1-9]\d{0,2})?(?:/\d{1,2})?[a-zA-Z]?,\s?[1-5]\d{4}(?:\s?\(ID\s?\d{1,6}\))?(?=\s\p{L}|\s*$)~u', /* recenzija v101: iza kose crte najviše dvije znamenke („385/912, 34567” nije kućni broj) */ function ($m, $subj) { $bf = mb_strcut($subj, max(0, $m[0][1] - 40), min(40, $m[0][1]), 'UTF-8');
     /* v101 (recenzija vijeća v100, sigurnost): riječi samo na početku riječi i u cijelom obliku — „Hrvatskih branitelja 123/4”, „Trg Ivana Zovka 5” ostaju adrese */
     return (bool)preg_match('~\p{L}{3,}\.?\s$~u', $bf) && !preg_match('~(?<!\p{L})(?:tel(?:efon\p{L}*)?|mob(?:itel\p{L}*|iln\p{L}*)?|broj\p{L}*|kontakt(?!\s+adres)\p{L}*|nazov\p{L}*|zovi\p{L}*|zove\p{L}*|poziv\p{L}*|whats\p{L}*|viber|sms)(?!\p{L})~iu', $bf); }); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
+  /* provjera v102 (sigurnost N4): sati od–do („6-14, 14-22, 22-6”) */
+  $protect('~(?<![\d:.,/\x01-])(?:[01]?\d|2[0-4])\s?[-–]\s?(?:[01]?\d|2[0-4])(?![\d:./\x02])(?!\s?[-–]\s?\d)~u');
+  /* provjera v102 (sigurnost N3/N4): zaštićeni dijelovi procjenjuju se po SKUPINAMA (znamenke i zaštićeni dijelovi na najviše dva znaka razmaka).
+     Skupina samo od zaštićenih dijelova (najviše tri: „8:00-16:00, 20.11.-25.11.2026.”) ostaje. Čim uz zaštićeni dio stoje i druge znamenke, a
+     zajedno ih je devet ili više, zaštita se skida i cijela skupina ide pod masku („09:12 345 678”, „091 2345-6789”) — kao dosadašnje pravilo
+     „znamenka u tri znaka”, ali bez kvarenja običnih napomena. */
+  $s = preg_replace_callback('~(?:\x01\d+\x02|\d)(?:[^\p{L}\d\p{Sc}\x01\x02]{0,2}(?:\x01\d+\x02|\d))+~u', function ($m) use (&$keep) {
+    $run = $m[0]; $nTok = preg_match_all('~\x01(\d+)\x02~', $run, $mm);
+    if (!$nTok) return $run;
+    $left = preg_match_all('~\d~', (string)preg_replace('~\x01\d+\x02~', '', $run));
+    $tokDigits = 0; foreach ($mm[1] as $i) $tokDigits += preg_match_all('~\d~', (string)($keep[(int)$i] ?? ''));
+    if (($left === 0 && $nTok <= 3) || ($left > 0 && $left + $tokDigits < 9)) return $run;
+    return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
+  }, $s) ?? $s;
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */
   /* v99: razdjelnik je bilo što osim slova, znamenke i oznake valute (zarez, točka-zarez, |, *, ~, crtice, novi red, više razmaka) */
   $s = preg_replace('~\b[A-Za-z]{2}[^\p{L}\d\p{Sc}\x01\x02]{0,3}\d{2}(?:[^\p{L}\d\p{Sc}\x01\x02]{0,4}\d){11,30}(?!\d)~u', '[IBAN skriven]', $s) ?? '';
@@ -658,7 +672,7 @@ function sj_deadline_tick(bool $force = false): array {
   if ($canc) sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — automatski stornirano: ' . implode(', ', array_map(fn($x) => (string)($x[1]['no'] ?? ''), $canc)),
     (count($canc) === 1 ? "Ova narudžba automatski je stornirana" : "Ove narudžbe automatski su stornirane") /* v102 (recenzija vijeća v101, dizajn 5): jednina */ . " jer uplata nije označena ni " . sj_hours_text($auto) . " nakon isteka roka (subota, nedjelja i blagdan pomiču storno na 23:59 radnog dana):\n\n"
     . implode("\n", array_map(fn($x) => '- ' . (string)($x[1]['no'] ?? '') . ' — ' . (string)($x[1]['name'] ?? '') . ', ' . (string)($x[1]['total'] ?? '') . ', poziv na broj ' . sj_payment_ref((string)($x[1]['no'] ?? '')), $canc))
-    . "\n\nKupci su dobili e-mail o stornu. Ako ipak vidite uplatu, u adminu → Narudžbe kliknite „Označi plaćenom”: ako je komad još slobodan, ostaje kupcu."
+    . "\n\n" . (count($canc) === 1 ? 'Kupac je dobio' : 'Kupci su dobili') . " e-mail o stornu. Ako ipak vidite uplatu, u adminu → Narudžbe kliknite „Označi plaćenom”: ako je komad još slobodan, ostaje kupcu."
     . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
   return array_map(fn($x) => [$x[0], (string)($x[1]['no'] ?? '')], $todo);
 }
@@ -1698,14 +1712,14 @@ const SJ_TLDS_WORDS = 'to|su|me|si|ga|it|ba|de|in|at|us';
 /* v102 (recenzija vijeća v101, sigurnost N5): i ovi nastavci su hrvatske riječi („mamu.mom bratu”, „crnu.plus zlatni”, „torbe.one crne”, „Hvala.Top ste”) —
    poveznica su s putanjom ili kad oznaka ima crticu ili znamenku („secure-pay.top”); inače ih u e-mailu sj_unlink razdvaja razmakom */
 const SJ_TLDS_WORDS2 = 'mom|plus|one|top|pro';
-const SJ_TLDS_PATH = SJ_TLDS . '|' . SJ_TLDS_WORDS . '|' . SJ_TLDS_WORDS2 . '|do|red|al|im|br'; /* s putanjom („bit.do/x”) ipak poveznica */
+const SJ_TLDS_PATH = SJ_TLDS . '|' . SJ_TLDS_WORDS . '|' . SJ_TLDS_WORDS2 . '|do|red|al|im|br|gd|mp|gy|ae|tt|cl'; /* provjera v102 (sigurnost N1): i nastavci servisa za kratke poveznice („v.gd/x”, „j.mp/x”, „rb.gy/x”) */ /* s putanjom („bit.do/x”) ipak poveznica */
 /* v101 (recenzija vijeća v100, sigurnost): točka i kao U+FF61; nastavci-riječi (to, su, me…) poveznica su SAMO s putanjom (ni na kraju teksta,
    ni uz crticu u imenu — „Ana-Marija.to je sve”, „Hvala.Me” prolaze; u e-mailu ih sj_unlink razdvaja razmakom); svaki nastavak ćirilicom je poveznica */
 const SJ_DOT = '[.．。｡․ꓸ﹒]'; /* v102: i U+2024, U+A4F8, U+FE52 */
 /* v102 (recenzija vijeća v101, sigurnost N2): oznaka domene smije nositi kombinirajuće znakove („uplata” + U+0301 + „.com”, U+FE0F, U+034F) */
 const SJ_LBL = '[\\p{L}\\p{N}\\p{M}-]';
-const SJ_SCHEMES = 'skype|viber|tg|whatsapp|callto|facetime|signal|mailto';
-define('SJ_LINK_RE', '~(https?:|(?<![\\p{L}\\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\\p{L}\\p{N}])(?:' . SJ_SCHEMES . '):(?=[^\\s\\d+])|www\\s*' . SJ_DOT
+const SJ_SCHEMES = 'skype|viber|tg|whatsapp|callto|facetime|signal|mailto'; /* provjera v102: samo malim slovima („Viber:isti broj kao gore” je rečenica) */
+define('SJ_LINK_RE', '~(https?:|(?<![\\p{L}\\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\\p{L}\\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\\s\\d+])|www\\s*' . SJ_DOT
   . '|' . SJ_LBL . '{2,}' . SJ_DOT . '(?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\\p{L}\\p{N}]|' . SJ_DOT . '\\p{L})'
   . '|' . SJ_LBL . '{3,}' . SJ_DOT . '(?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|pay|bank|cloud|website|hr)(?![\\p{L}\\p{N}]|' . SJ_DOT . '\\p{L})'
   . '|' . SJ_LBL . '{3,}' . SJ_DOT . '(?:ru|eu|pw|io|biz|cn)(?=/|\\s*$)'
@@ -1715,6 +1729,9 @@ define('SJ_LINK_RE', '~(https?:|(?<![\\p{L}\\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<
   . '|' . SJ_LBL . '{3,}\\s+' . SJ_DOT . '(?:hr|com)(?![\\p{L}\\p{N}])|' . SJ_LBL . '{2,}' . SJ_DOT . 'xn--[a-z0-9-]{2,}|' . SJ_LBL . '+' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/[^\\s]'
   . '|(?<![\\d.])\\d{1,3}(?:' . SJ_DOT . '\\d{1,3}){3}[/:]|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)~iu'); /* v102: e-adresa bez kvadratnog vremena */
 function sj_link_norm(string $s): string {
+  /* provjera v102 (sigurnost): nevidljivi znakovi koji nisu kategorije Cf (U+034F, selektori varijante) brišu se — „naplata.c”+U+034F+„om” izgleda kao
+     prava domena; u e-mailu kupcu tekst zato izlazi bez njih */
+  $s = preg_replace('~[\x{034F}\x{180B}-\x{180D}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}]~u', '', $s) ?? $s;
   /* v94 (recenzija): „(.)”, „[.]”, „ dot ”, „ točka ” postaju točka samo kad iza njih stoji vršna domena („primjer točka hr”),
      da obična „točka 2 Uvjeta” ostane netaknuta */
   $tld = SJ_TLDS;
@@ -1740,10 +1757,12 @@ function sj_unlink_raw(string $s): string {
   $d = SJ_DOT; $L = SJ_LBL;
   /* v102 (recenzija vijeća v101): i druge sheme („tg://…”, „skype:ime”), oznaka s kombinirajućim znakom, jednoslovna oznaka; oblik „riječ.riječ/…”
      briše se samo uz poznat nastavak — „Sv.Duh/Novaki 4”, „12.kat/stan 45” ostaju (dobiju razmak iza točke) */
-  $s = preg_replace('~((?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://\S+|(?<![\p{L}\p{N}])(?:' . SJ_SCHEMES . '):[^\s\d+]\S*|www\s*' . $d . '\S+|[^\s@]+@[^\s@]+\.[^\s@]+|' . $L . '+' . $d . '(?:' . SJ_TLDS_PATH . ')/\S*|\d{1,3}(?:' . $d . '\d{1,3}){3}\S*'
+  $s = preg_replace('~((?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://\S+|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):[^\s\d+]\S*|www\s*' . $d . '\S+|[^\s@]+@[^\s@]+\.[^\s@]+|' . $L . '+' . $d . '(?:' . SJ_TLDS_PATH . ')/\S*|\d{1,3}(?:' . $d . '\d{1,3}){3}\S*'
     . '|' . $L . '{2,}' . $d . '(?:' . SJ_TLDS . ')(?![\p{L}]|' . $d . '\p{L})\S*|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]\p{M}*' . $d . '(?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\p{L}\p{N}]|' . $d . '\p{L})\S*'
     . '|(?=' . $L . '*[\p{N}-])' . $L . '{3,}' . $d . '(?:' . SJ_TLDS_WORDS2 . ')(?![\p{L}\p{N}])\S*|' . $L . '{2,}' . $d . 'xn--[a-z0-9-]{2,}\S*|' . $L . '{2,}' . $d . '\p{Cyrillic}{2,}(?![\p{L}])\S*)~iu', '[uklonjeno]', $s) ?? '';
-  return preg_replace('~(' . $L . '{2,})' . $d . '(?=\p{L}{2,24}(?!\p{L}))~u', '$1. ', $s) ?? $s;
+  $s = preg_replace('~(' . $L . '{2,})' . $d . '(?=\p{L}{2,24}(?!\p{L}))~u', '$1. ', $s) ?? $s;
+  /* provjera v102 (sigurnost N1): i jednoslovna oznaka pred putanjom („v.xyzq/abc” → „v. xyzq/abc”) */
+  return preg_replace('~(?<![\p{L}\p{N}\p{M}-])([\p{L}\p{N}]\p{M}*)' . $d . '(?=\p{L}{2,24}/)~u', '$1. ', $s) ?? $s;
 }
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
 const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];

@@ -561,7 +561,7 @@ if ($a === 'order') {
      poveznice hvata sj_has_link, brojeve telefona provjera znamenki */
   /* v102 (recenzija vijeća v101): ista uska provjera poveznica kao za ulicu („BOX NOW Konzum, Ul.hr.branitelja 12” prolazi), a brojeve
      procjenjuje maska (i znamenke pune širine, razmaknute crticama ili zarezima) — u e-mailu kupcu paketomat ionako prolazi filtar i masku */
-  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S~iu', $x);
+  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|' . SJ_LBL . '+' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S~iu', $x);
   if ($locker !== '' && (!preg_match("~^[\\p{L}\\p{N}\\p{M} ,.:\\-–—/()#'’&„”\"]+$~u", $locker) || str_contains(sj_mask_numbers($locker), ' skriven]') || $addrLink($locker) || sj_has_link($locker)))
     sj_json_out(['ok' => false, 'error' => 'Za paketomat upišite samo naziv ili adresu (bez poveznica, e-adresa i brojeva telefona), ili ga odaberite na karti.', 'field' => 'locker'], 400);
   if ($ship && $ship['address'] && ($cust['street'] === '' || $cust['city'] === '')) sj_json_out(['ok' => false, 'error' => 'Upišite adresu za dostavu.'], 400);
@@ -631,7 +631,7 @@ if ($a === 'confirm') {
      Zaštita pošte koja poveznice otvara u pregledniku tako više ne potvrđuje narudžbu poslanu na tuđu e-adresu. */
   $peek = !empty($b['peek']);
   if (!preg_match('/^[a-f0-9]{32}$/', $pid) || !preg_match('/^[a-f0-9]{32}$/', $sec)) sj_json_out(['ok' => false, 'error' => 'Neispravan link za potvrdu. Kopirajte cijeli link iz e-maila.'], 400);
-  if (!sj_rate_limit('confirmclick', 30, 3600)) sj_json_out(['ok' => false, 'error' => 'Previše pokušaja. Pokušajte ponovno za sat vremena.'], 429);
+  if (!sj_rate_limit('confirmclick', 60, 3600)) /* v102: provjera (peek) i potvrda su dva zahtjeva — ista stvarna granica kao prije */ sj_json_out(['ok' => false, 'error' => 'Previše pokušaja. Pokušajte ponovno za sat vremena.'], 429);
   /* ista brava kao narudžba: potvrda i nove narudžbe idu jedna po jedna */
   $out = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($pid, $sec, $peek) {
     $e = null;
@@ -692,7 +692,9 @@ function sj_raskid_no_echo(string $no): string {
      kratak opis od naziva artikala iz ponude, nekoliko običnih riječi i jednog datuma („torba Luna 3. 10. 2026.”); slobodan tekst
      („IBAN stiže SMS-om, rok 1.12., hitno”) ide samo vlasnici */
   $no = trim($no);
-  if (preg_match('/^(SJ-)?\d{4}-\d{4,6}$/i', $no)) return $no;
+  /* provjera v102: godina iz broja mora biti stvarna (prošla, tekuća ili sljedeća) — „0912-345678” nije broj narudžbe */
+  if (preg_match('/^(?:SJ-)?(\d{4})-\d{4,6}$/i', $no, $ym) && abs((int)$ym[1] - (int)date('Y')) <= 1) return $no;
+  if (preg_match('/\d{4}-\d{4}/', $no)) return '[navedeno u izjavi]';
   if (mb_strlen($no) > 40 || !preg_match('/\p{L}/u', $no) || sj_has_link($no)) return '[navedeno u izjavi]';
   $rest = preg_replace('/(?<!\d)\d{1,2}\.\s?\d{1,2}\.(?:\s?\d{4}\.?)?(?!\d)/', ' ', $no, 1) ?? $no;
   if (!preg_match('/^[\p{L} ,\-]*$/u', $rest)) return '[navedeno u izjavi]';

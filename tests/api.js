@@ -680,13 +680,21 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const lm = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102f@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
       ok(l1.data.ok && /Paketomat: BOX NOW Konzum, Ul\. hr\. branitelja 12, 10000 Zagreb\./.test(lm) && [l2, l3, l4].every(x => x.status === 400 && x.data.field === 'locker'),
         'v102 (sigurnost N3/N5): paketomat „Ul.hr.branitelja 12” prolazi (u e-mailu razdvojen razmakom); znamenke pune širine, IBAN sa zarezima i „skype:” → 400 ' + JSON.stringify([l1.status, l2.status, l3.status, l4.status, (lm.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
+      /* provjera v102 (krug 1, sigurnost N2): paketomat kakav stranica sastavi s karte i ručno upisan raspon kućnih brojeva prolaze i ostaju cijeli u e-mailu */
+      const l5 = await post('order', mk('api-key-v102-lk5', 'v102j@primjer.hr', null, box('BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)')));
+      const l6 = await post('order', mk('api-key-v102-lk6', 'v102k@primjer.hr', null, box('Tisak, Ilica 12-14, 10000 Zagreb')));
+      const l7 = await post('order', mk('api-key-v102-lk7', 'v102l@primjer.hr', null, box('BOX NOW v.gd/abc123')));
+      const lm5 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102j@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
+      ok(l5.data.ok && l6.data.ok && l7.status === 400 && l7.data.field === 'locker' && /Paketomat: BOX NOW Savska — Savska cesta 106\/1, 10000 \(ID 4051\)\./.test(lm5),
+        'provjera v102 (sigurnost N1/N2): paketomat s karte „…106/1, 10000 (ID 4051)” i „Ilica 12-14, 10000 Zagreb” prolaze i ostaju cijeli; „v.gd/abc123” → 400 ' + JSON.stringify([l5.status, l6.status, l7.status, (lm5.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
       /* izjava bez narudžbe: slobodan tekst u „Broj narudžbe” ne ponavlja se */
       fs.writeFileSync(D + 'mail-log.txt', '');
       await post('raskid', { name: 'Ivana Kupac', no: 'IBAN stiže SMS-om, rok 1.12.2026., hitno', email: 'v102r1@primjer.hr' });
       await post('raskid', { name: 'Ivana Kupac', no: 'torba Luna 3. 10. 2026.', email: 'v102r2@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: '0912-345678', email: 'v102r4@primjer.hr' });
       const mr = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /potvrda primitka izjave o raskidu/.test(x));
-      const r1 = mr.find(x => x.includes('v102r1@')) || '', r2 = mr.find(x => x.includes('v102r2@')) || '';
-      ok(/Broj narudžbe: \[navedeno u izjavi\]/.test(r1) && !/IBAN stiže/.test(r1) && /torba Luna 3\. 10\. 2026\./.test(r2), 'v102 (sigurnost N6): slobodan tekst u broju narudžbe ne ide u potvrdu izjave; „torba Luna” s datumom ostaje');
+      const r1 = mr.find(x => x.includes('v102r1@')) || '', r2 = mr.find(x => x.includes('v102r2@')) || '', r4 = mr.find(x => x.includes('v102r4@')) || '';
+      ok(/Broj narudžbe: \[navedeno u izjavi\]/.test(r1) && !/IBAN stiže/.test(r1) && /torba Luna 3\. 10\. 2026\./.test(r2) && /Broj narudžbe: \[navedeno u izjavi\]/.test(r4) && !/0912-345678/.test(r4), 'v102 (sigurnost N6): slobodan tekst u broju narudžbe ne ide u potvrdu izjave; „torba Luna” s datumom ostaje');
       /* krnji zadnji redak dnevnika (prekinut zapis) ne proguta sljedeću izjavu */
       const jf = D + fs.readdirSync(D).filter(f => /^raskidi-ulaz-\d{4}-\d{2}\.jsonl$/.test(f)).sort().pop();
       fs.appendFileSync(jf, '{"name":"Krnji","no":"2020-00');
