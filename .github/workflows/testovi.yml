@@ -31,6 +31,10 @@ jobs:
         run: php tests/admin.php
       - name: Paket
         run: python3 tests/paket.py
+      - name: Stariji preglednici (v100)
+        run: |
+          npm install --no-save --no-audit --no-fund eslint@10.1.0
+          node tests/compat.js
       - name: API, potvrda e-mailom i SMTP (lokalni PHP poslužitelj)
         run: |
           for t in api confirm smtp; do

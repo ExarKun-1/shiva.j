@@ -8,7 +8,7 @@ const SITE = (process.env.SHIVAJ_SITE || '/tmp/shivaj-test') + '/';
 const D = SITE + 'data/';
 const U = (process.env.SHIVAJ_URL || 'http://127.0.0.1:8090/') + 'api/';
 const R = []; const ok = (c, m) => R.push((c ? 'PASS ' : 'FAIL ') + m);
-const PORT = 2526, USER = 'info@shivaj.hr', PASS = 'Tajna-Lozinka-79';
+const PORT = Number(process.env.SHIVAJ_SMTP_PORT) || 2526, /* v100: port iz okoline */ USER = 'info@shivaj.hr', PASS = 'Tajna-Lozinka-79';
 const read = (f, d) => { try { return JSON.parse(fs.readFileSync(D + f, 'utf8')); } catch (e) { return d; } };
 const sessions = [];
 let mechs = 'PLAIN LOGIN';

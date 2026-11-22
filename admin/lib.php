@@ -209,7 +209,7 @@ function sj_unique_count(array $o): int { $n = 0; foreach ((array)($o['order']['
 /* v70 (D70-5, D70-9): rok je prošao — torbu više ne čuvamo automatski; vlasnica provjerava izvod (bez novog obećanja) */
 function sj_late_text(array $o, string $lead): string {
   $n = sj_unique_count($o);
-  return $lead . ($n === 0 ? ', pa ga više ne možemo automatski produžiti' : ', pa ' . ($n > 1 ? 'torbe' : 'torbu') . ' više ne možemo automatski čuvati')
+  return $lead . ($n === 0 ? ', pa ga više ne možemo automatski produljiti' : ', pa ' . ($n > 1 ? 'torbe' : 'torbu') . ' više ne možemo automatski čuvati')
     . '. Javili smo vlasnici: provjerit će uplatu i javiti vam se.' . ($n === 0 ? '' : ($n > 1 ? ' Ako je neka od torbi u međuvremenu otišla drugom kupcu, za nju vam vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : ' Ako je torba u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.'));
 }
 function sj_already_text(array $o): string {
@@ -227,7 +227,7 @@ function sj_proof_held(array $o): bool {
 }
 function sj_hold_phrase(array $o): string {
   $n = sj_unique_count($o);
-  return $n > 1 ? 'torbe čuvamo za vas' : ($n === 1 ? 'torbu čuvamo za vas' : 'rok za uplatu produžen je');
+  return $n > 1 ? 'torbe čuvamo za vas' : ($n === 1 ? 'torbu čuvamo za vas' : 'rok za uplatu produljen je');
 }
 function sj_ucfirst(string $s): string { return mb_strtoupper(mb_substr($s, 0, 1)) . mb_substr($s, 1); }
 /* v76 (odluka vlasnika projekta, 11. krug): granice od 96 h od klika, 120 h od narudžbe i 7 dana (vijeće v70/v72)
@@ -446,39 +446,68 @@ const SJ_RASKID_OVERFLOW_MAX = 20 * 1024 * 1024;
    starije od 15 minuta kojih nema ni u glavnom ni u dodatnom popisu upisuju se u glavni popis („obnovljeno”) i vlasnica dobiva e-mail
    da kupcu sama pošalje potvrdu. Mjesec s punim dodatnim popisom (zlouporaba) se preskače; najviše 20 izjava po prolazu. */
 function sj_raskid_reconcile(bool $force = false): array {
-  $now = time();
-  $run = sj_with_lock(SJ_DATA . '/raskidi-provjera.json', function (array &$d) use ($now, $force) {
-    if (!$force && (int)($d['last'] ?? 0) > $now - 600) return false;
-    $d['last'] = $now; return true;
+  /* v100 (recenzija vijeća v99, softver N2/N4): čita redak po redak (fgets) i pamti samo id-ove i mjesta u datoteci, pa i dnevnik od
+     20 MB stane u malo memorije; za svaki dnevnik pamti do kojeg je mjesta sve već usklađeno (raskidi-provjera.json → off); e-mail
+     vlasnici koji nije prošao ponavlja se pri sljedećem prolazu (→ notify) */
+  $now = time(); $stF = SJ_DATA . '/raskidi-provjera.json';
+  $st = sj_with_lock($stF, function (array &$d) use ($now, $force) {
+    if (!$force && (int)($d['last'] ?? 0) > $now - 600) return null;
+    $d['last'] = $now; return $d;
   }, []);
-  if (!$run) return [];
+  if (!is_array($st)) return [];
   $months = [$now, gmmktime(0, 0, 0, (int)gmdate('n', $now) - 1, 1, (int)gmdate('Y', $now))];
-  $cand = [];
+  $cand = []; $newOff = (array)($st['off'] ?? []);
   foreach ($months as $t) {
-    $jf = sj_raskid_journal_path($t); $of = sj_raskid_overflow_path($t);
+    $jf = sj_raskid_journal_path($t); $of = sj_raskid_overflow_path($t); $bn = basename($jf);
     if (!is_file($jf) || (is_file($of) && filesize($of) > SJ_RASKID_OVERFLOW_MAX)) continue;
-    foreach (file($jf, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $ln) {
+    $fh = @fopen($jf, 'rb'); if (!$fh) continue;
+    $off = (int)($newOff[$bn] ?? 0); if ($off > 0 && $off <= filesize($jf)) fseek($fh, $off); else $off = 0;
+    while (true) {
+      $pos = ftell($fh); $ln = fgets($fh);
+      if ($ln === false || substr($ln, -1) !== "\n") { $off = $pos; break; } /* kraj ili redak koji se upravo piše */
       $e = json_decode($ln, true);
-      if (is_array($e) && !empty($e['id']) && (int)strtotime((string)($e['at'] ?? '')) < $now - 900) $cand[(string)$e['id']] = $e;
+      if (is_array($e) && !empty($e['id']) && (int)strtotime((string)($e['at'] ?? '')) >= $now - 900) { $off = $pos; break; } /* premlada — obrada možda još traje */
+      if (is_array($e) && !empty($e['id'])) $cand[(string)$e['id']] = [$bn, $pos];
+      $off = ftell($fh);
     }
+    fclose($fh); $newOff[$bn] = $off;
   }
-  if (!$cand) return [];
-  foreach ((array)sj_read_json(SJ_DATA . '/raskidi.json', []) as $x) unset($cand[(string)($x['id'] ?? '')]);
-  foreach ($months as $t) { $of = sj_raskid_overflow_path($t); if (is_file($of)) foreach (file($of, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $ln) { $x = json_decode($ln, true); if (is_array($x)) unset($cand[(string)($x['id'] ?? '')]); } }
-  if (!$cand) return [];
-  $miss = array_slice(array_values($cand), 0, 20);
-  sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use ($miss, $now) {
-    $have = array_flip(array_map(fn($x) => (string)($x['id'] ?? ''), $list));
-    foreach ($miss as $e) if (!isset($have[(string)$e['id']])) $list[] = $e + ['recovered' => sj_iso($now)];
+  $missing = [];
+  if ($cand) {
+    foreach ((array)sj_read_json(SJ_DATA . '/raskidi.json', []) as $x) unset($cand[(string)($x['id'] ?? '')]);
+    foreach ($months as $t) { $of = sj_raskid_overflow_path($t); if (!$cand || !is_file($of)) continue; $fh = @fopen($of, 'rb'); if (!$fh) continue;
+      while (($ln = fgets($fh)) !== false) { if (preg_match('/"id":"([0-9a-f]{8,64})"/', $ln, $mm)) unset($cand[$mm[1]]); } fclose($fh); }
+    /* najviše 20 po prolazu; mjesto u dnevniku ne prelazi prvu izjavu koja je ostala neobnovljena */
+    $k = 0;
+    foreach ($cand as $id => [$bn, $pos]) {
+      if ($k >= 20) { if ($pos < (int)$newOff[$bn]) $newOff[$bn] = $pos; continue; }
+      $fh = @fopen(SJ_DATA . '/' . $bn, 'rb'); if (!$fh) continue; fseek($fh, $pos); $e = json_decode((string)fgets($fh), true); fclose($fh);
+      if (is_array($e)) { $missing[] = $e; $k++; }
+    }
+    if ($missing) sj_with_lock(SJ_DATA . '/raskidi.json', function (array &$list) use ($missing, $now) {
+      $have = array_flip(array_map(fn($x) => (string)($x['id'] ?? ''), $list));
+      foreach ($missing as $e) if (!isset($have[(string)$e['id']])) $list[] = $e + ['recovered' => sj_iso($now)];
+    }, []);
+  }
+  /* obavijest: nove obnovljene izjave i one čiji e-mail ranije nije prošao */
+  $notifyIds = array_values(array_unique(array_merge(array_map('strval', (array)($st['notify'] ?? [])), array_map(fn($e) => (string)$e['id'], $missing))));
+  $sent = true;
+  if ($notifyIds) {
+    $byId = []; foreach ((array)sj_read_json(SJ_DATA . '/raskidi.json', []) as $x) if (in_array((string)($x['id'] ?? ''), $notifyIds, true)) $byId[(string)$x['id']] = $x;
+    $c = sj_config();
+    $lines = array_map(fn($e) => '- ' . sj_fmt_hr((string)($e['at'] ?? '')) . ': ' . (string)($e['name'] ?? '') . ', ' . (string)($e['email'] ?? '') . ', narudžba: ' . (string)($e['no'] ?? '')
+      . (!empty($e['iban']) ? ', IBAN: ' . (string)$e['iban'] : '') . (!empty($e['note']) ? "\n  napomena: " . (string)$e['note'] : ''), array_values($byId));
+    $sent = !$byId || sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — HITNO: izjava o raskidu nije do kraja obrađena',
+      "Stranica je kupcu potvrdila primitak izjave o raskidu, ali obrada nakon toga je prekinuta (npr. istek vremena ili ponovno pokretanje poslužitelja). Izjave su sada upisane u Narudžbe → Izjave o raskidu (oznaka „obnovljeno”).\n\n"
+      . "Kupac možda nije dobio potvrdu e-mailom: pošaljite mu je sami (ZZP čl. 81.a) i provjerite narudžbu (storno, povrat novca).\n\n" . implode("\n", $lines)
+      . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
+  }
+  sj_with_lock($stF, function (array &$d) use ($newOff, $notifyIds, $sent) {
+    $keep = [basename(sj_raskid_journal_path(time())), basename(sj_raskid_journal_path(gmmktime(0, 0, 0, (int)gmdate('n') - 1, 1, (int)gmdate('Y'))))];
+    $d['off'] = array_intersect_key($newOff, array_flip($keep));
+    $d['notify'] = $sent ? [] : array_slice($notifyIds, 0, 200);
   }, []);
-  $c = sj_config();
-  $lines = array_map(fn($e) => '- ' . sj_fmt_hr((string)($e['at'] ?? '')) . ': ' . (string)($e['name'] ?? '') . ', ' . (string)($e['email'] ?? '') . ', narudžba: ' . (string)($e['no'] ?? '')
-    . (!empty($e['iban']) ? ', IBAN: ' . (string)$e['iban'] : '') . (!empty($e['note']) ? "\n  napomena: " . (string)$e['note'] : ''), $miss);
-  sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — HITNO: izjava o raskidu nije do kraja obrađena',
-    "Stranica je kupcu potvrdila primitak izjave o raskidu, ali obrada nakon toga je prekinuta (npr. istek vremena ili ponovno pokretanje poslužitelja). Izjave su sada upisane u Narudžbe → Izjave o raskidu (oznaka „obnovljeno”).\n\n"
-    . "Kupac možda nije dobio potvrdu e-mailom: pošaljite mu je sami (ZZP čl. 81.a) i provjerite narudžbu (storno, povrat novca).\n\n" . implode("\n", $lines)
-    . (sj_site_url_trusted() !== '' ? "\n\n" . sj_site_url_trusted() . '/admin/?s=narudzbe' : ''));
-  return array_map(fn($e) => (string)$e['id'], $miss);
+  return array_map(fn($e) => (string)$e['id'], $missing);
 }
 /* sažetak vlasnici jednom na sat za izjave koje nisu poslane pojedinačno (poziva se iz api/status i admina) */
 function sj_raskid_digest(): void {
@@ -537,13 +566,15 @@ function sj_mask_numbers(string $s): string {
   };
   $protect('~(?<![\d\-])(?:SJ-)?20\d{2}-\d{4,6}(?:(?:,? | i )(?:SJ-)?20\d{2}-\d{4,6})*(?![\d\-])~i');                 /* broj(evi) narudžbe (godina 20xx) */
   $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
-  $protect('~(?<!\d)\d{1,2}:\d{2}(?!\d)~');                                                                     /* vrijeme */
+  $protect('~(?<!\d)\d{1,2}:\d{2}(?!\d)~');
+  /* v100: kućni broj i poštanski broj („Ilica 123/4, 10000 Zagreb”) — zarez i razmak, pa pet znamenki i naziv mjesta */
+  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,3})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u'); /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */
   /* v99: razdjelnik je bilo što osim slova, znamenke i oznake valute (zarez, točka-zarez, |, *, ~, crtice, novi red, više razmaka) */
   $s = preg_replace('~\b[A-Za-z]{2}[^\p{L}\d\p{Sc}\x01\x02]{0,3}\d{2}(?:[^\p{L}\d\p{Sc}\x01\x02]{0,4}\d){11,30}(?!\d)~u', '[IBAN skriven]', $s) ?? '';
   $s = preg_replace_callback('~\b[A-Za-z]{2}\d{2}(?:[ _.\-]{0,2}[A-Za-z0-9]{4}){3,7}(?:[ _.\-]{0,2}[A-Za-z0-9]{1,4})?\b~', fn($m) => preg_match_all('~\d~', $m[0]) >= 6 ? '[IBAN skriven]' : $m[0], $s) ?? '';
   /* telefon i račun: 9 ili više znamenki s razmacima, crticama, točkama, kosim crtama, podvlakama i zagradama između */
-  $s = preg_replace('~\+?\(?\d(?:(?:(?!,\s)[^\p{L}\d\p{Sc}\x01\x02]){0,6}\d){8,}\)?~u', '[broj skriven]', $s) ?? ''; /* recenzija v99: „zarez i razmak” dijeli dijelove adrese („Ilica 123/4, 10000 Zagreb”), ne telefon */
+  $s = preg_replace('~\+?\(?\d(?:[^\p{L}\d\p{Sc}\x01\x02]{0,6}\d){8,}\)?~u', '[broj skriven]', $s) ?? ''; /* v100 (recenzija vijeća v99, sigurnost N2): bez iznimke za „zarez i razmak” — adresa je zaštićena gore */
   return preg_replace_callback('~\x01(\d+)\x02~', fn($m) => $keep[(int)$m[1]] ?? '', $s) ?? '';
 }
 /* v69: najviše toliko e-mailova kupcima u jednom prolazu rokova (ostatak u sljedećem) */
@@ -690,7 +721,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
     /* recenzija v98: uz izjavu o raskidu (bez poveznice iz e-maila) storno ne obećava povrat s kamatama, nego povrat kao kod raskida */
     $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
       $hi . "narudžba br. $no je stornirana: uplata nije stigla, a za ovu narudžbu primili smo i izjavu o jednostranom raskidu ugovora." . ($uq ? ' ' . ($many ? 'Torbe su ponovno' : 'Torba je ponovno') . ' u prodaji.' : '')
-      . "\n\nAko ste ipak platili, cijeli iznos vraćamo najkasnije 14 dana od primitka izjave, na račun s kojeg ste platili (Uvjeti kupnje, točka 7.); javite nam se odgovorom na ovaj e-mail." . $bye);
+      . "\n\nAko ste ipak platili, cijeli iznos vraćamo najkasnije 14 dana od primitka izjave, na račun s kojeg ste platili (Uvjeti kupnje, točka 7.); javite nam se odgovorom na ovaj e-mail." . $bye, null, (string)$c['owner_email']); /* v100 (softver N6): i ovdje odgovor ide vlasnici */
   } else {
     $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — narudžba $no je stornirana",
       $hi . "narudžba br. $no je stornirana jer uplata nije stigla ni nakon roka." . ($uq ? ' ' . ($many ? 'Torbe su ponovno' : 'Torba je ponovno') . ' u prodaji.' : '')
@@ -811,16 +842,20 @@ function sj_rate_limit(string $key, int $max, int $windowSec, bool $short = fals
     /* v94 (recenzija vijeća, H1): zaštićeni su samo pravi ukupni brojači; ključeve koje napadač može stvarati sam
        (po primatelju: 'sve|dan|', 'sve|raskid_to|', 'sve|mailto-', 'sve|pow|') ne smiju istisnuti granice po adresi —
        redoslijed izbacivanja: posjeti i klikovi, zatim napadačevi ključevi, tek onda ključevi po adresi (najstariji prvi) */
-    if (count($d) >= 5000) {
-      $keepAll = array_filter($d, fn($k) => str_starts_with((string)$k, 'sve|') && !sj_rl_attacker_key((string)$k), ARRAY_FILTER_USE_KEY);
-      $rest = array_diff_key($d, $keepAll);
-      $prio = fn($k) => (str_starts_with($k, 'visit|') || str_starts_with($k, 'count|')) ? 0 : (sj_rl_attacker_key($k) ? 1 : 2);
-      uksort($rest, function ($a, $b) use ($rest, $prio) {
-        $pa = $prio((string)$a); $pb = $prio((string)$b);
-        return $pa !== $pb ? $pb <=> $pa : max((array)$rest[$b]) <=> max((array)$rest[$a]);
-      });
-      $d = $keepAll + array_slice($rest, 0, max(0, 4999 - count($keepAll)), true);
+    /* v100 (recenzija vijeća v99, sigurnost N4): odvojene kvote — ključevi po vezi (do 4000) i ključevi po primatelju/mreži/domeni
+       (sj_rl_attacker_key, do 4000) istiskuju samo sebe; tisuće ključeva po vezi više ne mogu izbrisati dnevnu granicu žrtve (i obrnuto).
+       Pravi ukupni brojači ('sve|' bez napadačevih) se ne brišu. Unutar kvote prvi ispadaju posjeti i klikovi, zatim najstariji. */
+    $byAge = function (array $x): array { uasort($x, fn($a, $b) => max((array)$b) <=> max((array)$a)); return $x; }; /* najnoviji prvi */
+    $tot = array_filter($d, fn($k) => str_starts_with((string)$k, 'sve|') && !sj_rl_attacker_key((string)$k), ARRAY_FILTER_USE_KEY);
+    $rcp = array_filter($d, fn($k) => sj_rl_attacker_key((string)$k), ARRAY_FILTER_USE_KEY);
+    $ipk = array_diff_key($d, $tot, $rcp);
+    if (count($rcp) > 4000) $rcp = array_slice($byAge($rcp), 0, 4000, true);
+    if (count($ipk) >= 4000) {
+      $cnt = array_filter($ipk, fn($k) => str_starts_with((string)$k, 'visit|') || str_starts_with((string)$k, 'count|'), ARRAY_FILTER_USE_KEY);
+      $oth = $byAge(array_diff_key($ipk, $cnt));
+      $ipk = count($oth) >= 3999 ? array_slice($oth, 0, 3999, true) : $oth + array_slice($byAge($cnt), 0, 3999 - count($oth), true);
     }
+    $d = $tot + $rcp + $ipk;
     $k = $key . '|' . $ip;
     $recent = array_filter((array)($d[$k] ?? []), fn($t) => (int)$t > $now - $windowSec);
     if (count($recent) >= $max) return false;
@@ -1217,7 +1252,7 @@ function sj_corrupt_note(string $base): void {
   if ($first) { $d[$base] = date('c'); @file_put_contents($f, json_encode($d), LOCK_EX); } /* upis samo prvi put u danu */
   if ($first) { try { $c = sj_config(); if (!empty($c['owner_email'])) sj_send_mail((string)$c['owner_email'], (string)($c['shop'] ?? 'Shiva.J') . ' — HITNO: oštećena datoteka ' . $base,
     "Datoteka data/$base nije čitljiva. " . ($base === 'config.json'
-      ? "Stranica dotle radi sa zadanim postavkama (bez vaših promjena: dostava, e-adrese, lozinka admina), a izmjene se ne spremaju.\n\nVratite datoteku iz dnevne kopije (data/kopije/GGGG-MM-DD/$base) u mapu data/ (upute za objavu, odjeljak D).\n" /* v99: config.json ne zaustavlja narudžbe i nema kopije .osteceno */
+      ? "Narudžbe su zaustavljene dok se datoteka ne vrati (kupci vide poruku o tehničkoj smetnji), a izmjene u adminu se ne spremaju.\n\nVratite datoteku iz dnevne kopije (data/kopije/GGGG-MM-DD/$base) u mapu data/ (upute za objavu, odjeljak D).\n" /* v99: config.json ne zaustavlja narudžbe i nema kopije .osteceno */
       : "Stranica je zaustavila narudžbe da se ništa ne izgubi.\n\nVratite datoteku iz dnevne kopije (data/kopije/GGGG-MM-DD/$base) u mapu data/ (upute za objavu, odjeljak D). Oštećena kopija spremljena je kao data/$base.osteceno-datum.\n")); } catch (Throwable $e) {} }
 }
 
@@ -1258,7 +1293,8 @@ function sj_daily_backup(int $keepDays = 14): ?string {
        dnevnik izjava (raskidi-ulaz) stariji od 2 mjeseca — izjave su u glavnom ili dodatnom popisu */
     foreach (glob(SJ_DATA . '/*.tmp-*') ?: [] as $tf) if (is_file($tf) && filemtime($tf) < time() - 3600) @unlink($tf);
     $keepJ = [basename(sj_raskid_journal_path(time())), basename(sj_raskid_journal_path(gmmktime(0, 0, 0, (int)gmdate('n') - 1, 1, (int)gmdate('Y'))))];
-    try { sj_raskid_reconcile(true); } catch (Throwable $e) {} /* recenzija v99: prije brisanja starog dnevnika još jedna provjera */
+    $oldJ = array_filter(glob(SJ_DATA . '/raskidi-ulaz-*.jsonl') ?: [], fn($jf) => !in_array(basename($jf), $keepJ, true));
+    if ($oldJ) { try { sj_raskid_reconcile(true); } catch (Throwable $e) {} } /* recenzija v99: prije brisanja starog dnevnika još jedna provjera; v100: samo tada */
     foreach (glob(SJ_DATA . '/raskidi-ulaz-*.jsonl') ?: [] as $jf) if (!in_array(basename($jf), $keepJ, true)) @unlink($jf);
     foreach (glob($root . '/????-??-??', GLOB_ONLYDIR) ?: [] as $old) {
       if (strtotime(basename($old)) < strtotime($day) - $keepDays * 86400) { foreach (array_merge(glob($old . '/*') ?: [], [$old . '/.gotovo']) as $x) if (is_file($x)) @unlink($x); @rmdir($old); }
@@ -1637,10 +1673,13 @@ function sj_payment_desc(string $no): string { return mb_substr('Shiva.J ' . sj_
    putanjom („t.co/x”) i adresa IP („192.168.0.1/pay”) */
 /* v99 (recenzija vijeća v98, sigurnost N4): i pw, ovh, art, blog, id; „se” namjerno nije na popisu — česta hrvatska riječ iza
    izostavljenog razmaka („Ulaz.se nalazi…”), a .se se rijetko koristi za prijevare */
-const SJ_TLDS = 'ai|gg|sh|to|tv|cn|su|ml|ga|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|me|info|xyz|ru|top|site|online|link|shop|store|de|at|si|ba|rs|it|co|uk|us|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|help|support|cloud|one|ee|in|website|space|fun|tech|email|world|today|life|news|cash|money|finance|loan|wallet|host|cam|work|best|plus|now|global|group|city|zone|wiki|lt|lv|sk|hu|ro|bg|gr|mk|ua|kz|tr|ca|au|jp|kr|dk|fi|pt|ie|lu|gl|ms|ac|cx|nu|ninja|men|date|stream|download|review|trade|party|science|racing|bid|loans|account|ltd|services|agency|digital|network|center|systems|solutions|company|exchange|crypto|bet|casino|porn|sex|xxx|quest|beauty|hair|skin|makeup|mom|baby|sale|deals|bargains|discount|coupons|rocks|fyi|fm|nz|mx|games|gift|mobi|lat|vn|pw|ovh|art|blog|id'; /* v99 (recenzija vijeća v98, sigurnost N4): i pw, ovh, art, blog, se, id; recenzija v98: „br” samo s putanjom („Tel.br.”, „kuć.br. 33”); v98 (recenzija vijeća v97, sigurnost 7): i games, gift, mobi, lat, vn, br; v95 (recenzija): bez „do”, „red”, „al”, „im” (obične riječi: „Hvala.do viđenja”, „boja.red”) */
-const SJ_TLDS_PATH = SJ_TLDS . '|do|red|al|im|br'; /* s putanjom („bit.do/x”) ipak poveznica */
+const SJ_TLDS = 'ai|gg|sh|tv|cn|ml|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|monster|buzz|rest|bond|hr|com|net|org|eu|io|ly|info|xyz|ru|top|site|online|link|shop|store|rs|co|uk|biz|app|club|live|pro|tk|cc|ws|cz|pl|fr|es|nl|ch|be|click|pay|bank|win|vip|help|support|cloud|one|ee|website|space|fun|tech|email|world|today|life|news|cash|money|finance|loan|wallet|host|cam|work|best|plus|now|global|group|city|zone|wiki|lt|lv|sk|hu|ro|bg|gr|mk|ua|kz|tr|ca|au|jp|kr|dk|fi|pt|ie|lu|gl|ms|ac|cx|nu|ninja|men|date|stream|download|review|trade|party|science|racing|bid|loans|account|ltd|services|agency|digital|network|center|systems|solutions|company|exchange|crypto|bet|casino|porn|sex|xxx|quest|beauty|hair|skin|makeup|mom|baby|sale|deals|bargains|discount|coupons|rocks|fyi|fm|nz|mx|games|gift|mobi|lat|vn|pw|ovh|art|blog|id'; /* v99 (recenzija vijeća v98, sigurnost N4): i pw, ovh, art, blog, se, id; recenzija v98: „br” samo s putanjom („Tel.br.”, „kuć.br. 33”); v98 (recenzija vijeća v97, sigurnost 7): i games, gift, mobi, lat, vn, br; v95 (recenzija): bez „do”, „red”, „al”, „im” (obične riječi: „Hvala.do viđenja”, „boja.red”) */
+/* v100 (recenzija vijeća v99, sigurnost N3): nastavci koji su i hrvatske (ili česte) riječi — to, su, me, si, ga, it, ba, de, in, at, us —
+   poveznica su samo s putanjom ili na kraju teksta („Hvala.to je sve”, „doma.me nazovite” prolaze) */
+const SJ_TLDS_WORDS = 'to|su|me|si|ga|it|ba|de|in|at|us';
+const SJ_TLDS_PATH = SJ_TLDS . '|' . SJ_TLDS_WORDS . '|do|red|al|im|br'; /* s putanjom („bit.do/x”) ipak poveznica */
 define('SJ_LINK_RE', '~(https?:|www\\s*[.．。]|[\\p{L}\\p{N}-]{2,}[.．。](?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\\p{L}\\p{N}])'
-  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website|hr)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}[.．。](?:ru|eu|pw|io|biz|cn|su)(?=/|\\s*$)|(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}][.．。](?:com|net|org|co)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}\\s+[.．。](?:hr|com)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{2,}[.．。]xn--[a-z0-9-]{2,}|[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_PATH . ')/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
+  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website|hr)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}[.．。](?:ru|eu|pw|io|biz|cn|' . SJ_TLDS_WORDS . ')(?=/|\\s*$)|[\\p{L}\\p{N}-]{2,}[.．。](?:рф|рус|срб|укр|бг|мкд|бел)(?![\\p{L}\\p{N}])|(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}][.．。](?:com|net|org|co)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}\\s+[.．。](?:hr|com)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{2,}[.．。]xn--[a-z0-9-]{2,}|[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_PATH . ')/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
 function sj_link_norm(string $s): string {
   /* v94 (recenzija): „(.)”, „[.]”, „ dot ”, „ točka ” postaju točka samo kad iza njih stoji vršna domena („primjer točka hr”),
      da obična „točka 2 Uvjeta” ostane netaknuta */
@@ -1648,7 +1687,10 @@ function sj_link_norm(string $s): string {
   /* v99 (recenzija vijeća v98, sigurnost N4): i razmak prije točke („primjer .eu”, „primjer . com”) */
   $s = preg_replace('~\s*(?:\(\s*(?:\.|dot|tocka|točka)\s*\)|\[\s*(?:\.|dot|tocka|točka)\s*\]|\s(?:dot|tocka|točka)\s)\s*(?=(?:' . $tld . ')(?![\p{L}\p{N}]))~iu', '.', $s) ?? $s;
   /* recenzija v99: razmak prije točke samo pred rizičnim nastavcima — ne „hvala . to je sve”, „nema . me doma” */
-  return preg_replace('~\s+[.．。]\s*(?=(?:com|net|org|hr|eu|ru|info|xyz|shop|online|site|top|link|click|io|ly)(?![\p{L}\p{N}]))~iu', '.', $s) ?? $s;
+  $risky = 'com|net|org|hr|eu|ru|info|xyz|shop|online|site|top|link|click|io|ly|pw|icu|zip|mov|ml|cf|gq|tk|sbs|cfd|cyou|buzz|bond|rest|monster|lol|ws|cc|biz|cn|app|dev|page|live|club|vip|win|bank|pay|support|help|cloud|website'; /* v100 (sigurnost N2): i opasni nastavci */
+  $s = preg_replace('~\s+[.．。]\s*(?=(?:' . $risky . ')(?![\p{L}\p{N}]))~iu', '.', $s) ?? $s;
+  /* v100: „naplata. pw” (razmak iza točke) — samo na kraju teksta ili pred putanjom, da „Lijepa torba. Hr kraj” ostane rečenica */
+  return preg_replace('~(?<=[\p{L}\p{N}])[.．。]\s+(?=(?:' . $risky . ')\s*(?:$|/))~iu', '.', $s) ?? $s;
 }
 function sj_has_link(string $s): bool { return (bool)preg_match(SJ_LINK_RE, $s) || (bool)preg_match(SJ_LINK_RE, sj_link_norm($s)); }
 function sj_unlink(string $s): string {
@@ -1656,7 +1698,7 @@ function sj_unlink(string $s): string {
   return sj_unlink_raw(sj_link_norm($s));
 }
 /* v95 (recenzija vijeća v94): u ponovljenom tekstu i miješana slova („Naplata.Com”), domena s putanjom i adresa IP */
-function sj_unlink_raw(string $s): string { return preg_replace('~(https?://\S+|www\s*[.．。]\S+|\S+@\S+\.\S+|[\p{L}\p{N}-]+[.．。][a-zａ-ｚ]{2,24}/\S*|\d{1,3}(?:[.．。]\d{1,3}){3}\S*|[\p{L}\p{N}-]{2,}[.．。][a-zａ-ｚ]{2,24}(?![\p{L}])\S*)~iu', '[uklonjeno]', $s) ?? ''; }
+function sj_unlink_raw(string $s): string { return preg_replace('~(https?://\S+|www\s*[.．。]\S+|\S+@\S+\.\S+|[\p{L}\p{N}-]+[.．。][a-zａ-ｚ]{2,24}/\S*|\d{1,3}(?:[.．。]\d{1,3}){3}\S*|[\p{L}\p{N}-]{2,}[.．。][a-zａ-ｚ]{2,24}(?![\p{L}])\S*|[\p{L}\p{N}-]{2,}[.．。](?:рф|рус|срб|укр|бг|мкд|бел)(?![\p{L}])\S*)~iu', '[uklonjeno]', $s) ?? ''; }
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
 const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];
 const SJ_STRAP_LENGTHS = ['140 cm', '100 cm'];

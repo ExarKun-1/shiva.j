@@ -171,7 +171,7 @@ $ok(sj_claim_until(['at' => gmdate('c', $T('2026-10-01 10:00')), 'payUntil' => g
 
 $ok(sj_claim_preview($oF) === 'do ponedjeljka, 2. 11. 2026. u 23:59' && sj_claim_preview($oX) === 'do ponedjeljka, 28. 12. 2026. u 23:59'
   && str_contains(sj_already_text(['claimLate' => true, 'payUntil' => '2000-01-01T00:00:00Z', 'order' => ['items' => [['id' => 'a', 'name' => 'A']]]]), 'torbu više ne možemo automatski čuvati')
-  && str_contains(sj_late_text(['order' => ['items' => [['id' => 'k', 'made' => true]]]], 'Rok je prošao'), 'ne možemo automatski produžiti'),
+  && str_contains(sj_late_text(['order' => ['items' => [['id' => 'k', 'made' => true]]]], 'Rok je prošao'), 'ne možemo automatski produljiti'),
   'v70/v76: datum unaprijed bez „najmanje” (nema granice od 96 h); nakon isteka bez obećanja čuvanja; bez unikata bez „torbe”');
 
 /* v72: torba do storna — granica 7 dana od narudžbe */
@@ -374,6 +374,16 @@ $mlR = substr((string)@file_get_contents(SJ_DATA . '/mail-log.txt'), $ml0);
 $ok($rc1 === ['dnevnik99a'] && $rc2 === [] && count($rl99) === 1 && !empty($rl99[0]['recovered']) && substr_count($mlR, 'izjava o raskidu nije do kraja obrađena') === 1 && str_contains($mlR, 'Iz Dnevnika'),
   'recenzija v99: izjava samo u dnevniku (starija od 15 min) upisuje se u glavni popis („obnovljeno”), vlasnica dobiva jedan e-mail; svježa se ne dira ' . json_encode([$rc1, $rc2]));
 file_put_contents($jr99, $jb99); file_put_contents(SJ_DATA . '/raskidi.json', $rb99 === '' ? '[]' : $rb99); @unlink(SJ_DATA . '/raskidi-provjera.json');
+/* v100 (recenzija vijeća v99, softver N2): dnevnik i dodatni popis od po ~20 MB — provjera čita redak po redak i ostaje u malo memorije */
+$jr100 = sj_raskid_journal_path(time()); $of100 = sj_raskid_overflow_path(time()); $jb100 = (string)@file_get_contents($jr100); $ob100 = is_file($of100) ? (string)file_get_contents($of100) : null;
+$fj = fopen($jr100, 'w'); $fo = fopen($of100, 'w'); $old = sj_iso(time() - 3600); $pad = str_repeat('x', 200);
+for ($i = 0; $i < 62000; $i++) { $ln = json_encode(['name' => 'Kupac ' . $i, 'no' => 'opis ' . $pad, 'email' => 'k' . $i . '@primjer.hr', 'id' => sprintf('%032x', $i + 1), 'at' => $old], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n"; fwrite($fj, $ln); fwrite($fo, $ln); }
+fclose($fj); fclose($fo); @unlink(SJ_DATA . '/raskidi-provjera.json');
+$m0 = memory_get_usage(); if (function_exists('memory_reset_peak_usage')) memory_reset_peak_usage();
+$rcBig = sj_raskid_reconcile(true); $peak = (memory_get_peak_usage() - $m0) / 1048576;
+$stBig = json_decode((string)file_get_contents(SJ_DATA . '/raskidi-provjera.json'), true);
+$ok($rcBig === [] && $peak < 40 && (int)($stBig['off'][basename($jr100)] ?? 0) === filesize($jr100), 'v100: provjera dnevnika od ' . round(filesize($jr100) / 1048576) . ' MB — ' . round($peak, 1) . ' MB memorije, mjesto u dnevniku zapamćeno');
+file_put_contents($jr100, $jb100); if ($ob100 === null) @unlink($of100); else file_put_contents($of100, $ob100); @unlink(SJ_DATA . '/raskidi-provjera.json');
 /* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
 $kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");
 $dA = date('Y-m-d', time() - 2 * 86400); $dB = date('Y-m-d', time() - 86400); $dT = date('Y-m-d');

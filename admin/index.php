@@ -448,7 +448,7 @@ function sj_handle_action(string $act, array &$c): string {
         if ($why !== '') return ['err' => 'Potvrda za ' . $no . ' nije zabilježena: ' . $why . '.'];
         $now = time();
         $r = sj_hold_extend($no, sj_proof_until($ord, $now), ['proofAt' => sj_iso($now), 'claimLate' => null]);
-        if ($r['state'] === 'full') return ['err' => 'Potvrda za ' . $no . ' nije zabilježena: mjesto u Stalnoj kolekciji (' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$r['lost'])) . ') je u međuvremenu popunjeno, pa rok nije produžen. Ako je kupac platio, javite mu se (povrat ili „Otvori nova mjesta” pa „Označi plaćenom”).'];
+        if ($r['state'] === 'full') return ['err' => 'Potvrda za ' . $no . ' nije zabilježena: mjesto u Stalnoj kolekciji (' . implode(', ', array_map(fn($n) => '„' . $n . '”', (array)$r['lost'])) . ') je u međuvremenu popunjeno, pa rok nije produljen. Ako je kupac platio, javite mu se (povrat ili „Otvori nova mjesta” pa „Označi plaćenom”).'];
         return $r['ok'] ? $r : ['err' => 'Potvrda za ' . $no . ' nije zabilježena: narudžba je u međuvremenu ' . ($r['state'] === 'paid' ? 'plaćena' : 'stornirana') . '.'];
       }, []);
       if (!empty($out['err'])) throw new RuntimeException((string)$out['err']);
@@ -467,8 +467,8 @@ function sj_handle_action(string $act, array &$c): string {
       /* v72 (vijeće, D72-10): vlasnica vidi oba datuma — rok za uplatu i do kada je torba rezervirana */
       $hY = sj_held_until(sj_order_find(['no' => $no]) ?? $ord); $pY = (int)strtotime((string)($out['payUntil'] ?? ''));
       return $no . ': potvrda zabilježena. ' . ($hY > $pY && $pY > 0
-          ? 'Rok za uplatu produžen je do ' . $untilTxt . '; ' . (sj_unique_count($ord) > 1 ? 'torbe su rezervirane' : 'torba je rezervirana') . ' do ' . sj_fmt_deadline(sj_iso($hY)) . ' (do automatskog storna).'
-          : (sj_hold_phrase($ord) === 'rok za uplatu produžen je' ? 'Rok za uplatu produžen je' : 'Narudžba je rezervirana') . ' do ' . $untilTxt . '.') . ' Kad uplata stigne na izvod, kliknite „Označi plaćenom”.'
+          ? 'Rok za uplatu produljen je do ' . $untilTxt . '; ' . (sj_unique_count($ord) > 1 ? 'torbe su rezervirane' : 'torba je rezervirana') . ' do ' . sj_fmt_deadline(sj_iso($hY)) . ' (do automatskog storna).'
+          : (sj_hold_phrase($ord) === 'rok za uplatu produljen je' ? 'Rok za uplatu produljen je' : 'Narudžba je rezervirana') . ' do ' . $untilTxt . '.') . ' Kad uplata stigne na izvod, kliknite „Označi plaćenom”.'
         . ($lost ? ' PAŽNJA: ' . $lostQ . ($lm ? ' su u međuvremenu prodane ili rezervirane drugom kupcu (ili je mjesto popunjeno); kupcu ćete vratiti iznos za njih.' : ' je u međuvremenu prodana ili rezervirana drugom kupcu (ili je mjesto popunjeno); kupcu ćete vratiti iznos za nju.') : '')
         . ($mailed ? ' Kupac je dobio kratku potvrdu e-mailom.' : ' Kupac nije dobio e-mail.');
     }
@@ -691,12 +691,14 @@ function sj_handle_action(string $act, array &$c): string {
       $paths[] = 'data/raskid-sazetak.json'; $paths[] = 'data/' . basename(sj_raskid_overflow_path(time())); /* v96 (N8): i izjave o raskidu */
       /* v98 (recenzija vijeća v97, sigurnost L3): i .txt (Plesk nginx ih po zadanom poslužuje sam) — privremena probna datoteka */
       $probe = SJ_DATA . '/zastita-proba.txt'; @file_put_contents($probe, 'proba'); $paths[] = 'data/zastita-proba.txt';
+      /* v100 (recenzija vijeća v99, sigurnost N6): i .jsonl (dnevnik i dodatni popis izjava o raskidu) — privremena probna datoteka, jer dodatni popis obično ne postoji */
+      $probeJ = SJ_DATA . '/zastita-proba.jsonl'; @file_put_contents($probeJ, "{}\n"); $paths[] = 'data/zastita-proba.jsonl';
       foreach ($paths as $u) {
         $code = sj_http_code($base . '/' . $u);
         $out[] = $u . ': ' . ($code ?: 'nema odgovora');
         if ($code >= 200 && $code < 300) $bad[] = $u; /* svaki 2xx (i 206) znači da se datoteka može pročitati */
       }
-      @unlink($probe);
+      @unlink($probe); @unlink($probeJ);
       /* v99 (recenzija vijeća v98, L3): X-Forwarded-For provjerava se iz preglednika vlasnice (Postavke, ispod gumba) — zahtjev poslužitelja
          samom sebi dao bi lažnu uzbunu kad je RemoteIPInternalProxy postavljen na adresu poslužitelja (Plesk) */
       $xff = '';
@@ -1059,7 +1061,7 @@ function sj_view_withdrawals(): string {
     if (empty($x['order'])) { $hn = $oix['ek'][sj_email_key((string)($x['email'] ?? ''))] ?? ($oix['name'][mb_strtolower(trim((string)($x['name'] ?? '')))] ?? '');
       if ($hn !== '') $hint = ' <span class="badge ink">e-adresa ili ime podudara se s narudžbom ' . e((string)$hn) . ' — vjerojatno prava izjava</span>'; }
     $unpaid = $ox && empty($ox['paidAt']) && empty($ox['anonymizedAt']) ? (!empty($ox['claimedAt']) ? ' <span class="badge ink">kupac je javio uplatu — provjerite izvod; ako je stigla, vratite je</span>' : ' <span class="badge">nije plaćeno — ništa za vratiti</span>') : '';
-    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . (!empty($x['recovered']) ? ' <b style="color:#b3261e">obnovljeno iz dnevnika — kupcu pošaljite potvrdu sami</b>' : '') . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-mail se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
+    return '<div class="card rok"><b>' . e(sj_fmt_hr((string)$x['at'])) . ' · ' . e((string)$x['name']) . '</b>' . (!empty($x['recovered']) ? ' <b style="color:#b3261e">obnovljeno iz dnevnika — kupcu pošaljite potvrdu sami</b>' : '') . $unpaid . $hint . '<span>Broj narudžbe: ' . e((string)$x['no']) . (!empty($x['order']) ? ' → ' . e((string)$x['order']) . (!empty($x['orderGone']) ? ' — podaci narudžbe su obrisani, e-mail se ne može provjeriti' : (!empty($x['emailMatch']) ? ' (e-adresa se podudara)' : ' — e-mail se NE podudara')) : ' — narudžba nije pronađena') . '</span><span class="mono">' . e((string)$x['email']) . ((string)($x['iban'] ?? '') !== '' ? ' · IBAN ' . e((string)$x['iban']) : '') . '</span>' . ((string)($x['note'] ?? '') !== '' ? '<span class="muted">' . e((string)$x['note']) . '</span>' : '') . (!empty($x['noPow']) ? '<span class="muted">stiglo bez provjere „niste robot”</span>' : '') . '</div>';
   };
   $shown = 0;
   foreach ($l as $x) { if (++$shown > 300) break; $h .= $card($x); }
