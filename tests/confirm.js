@@ -267,6 +267,28 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       ok(c3.status === 409 && /stornirana jer nije uplaćena u roku/.test(c3.data.error || '') && /Novu narudžbu istih artikala s ove e-adrese možemo primiti od (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(c3.data.error || '') && !/pošaljite novu narudžbu/.test(c3.data.error || '')
         && c4.status === 409 && /pošaljite novu narudžbu/.test(c4.data.error || ''),
         'v102 (kupac N3): stari link nakon storna zbog neplaćanja kaže od kada je nova narudžba moguća; nakon drugog storna poziva na novu ' + JSON.stringify([c3.data.error, c4.status]));
+      /* provjera v102 (krug 1): provjera linka ima svoju kvotu; vidi prodanu torbu i torbu koju je naručio drugi kupac; nakon „Uplatio/la sam” ponovljeni odgovor ne nudi klik */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} });
+        await post('order', order('potvrda-v102-kvota-1', 'v102q@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const Lq = lastLink();
+        const st = []; for (let i = 0; i < 35; i++) st.push((await post('confirm', { id: Lq.id, t: Lq.t, peek: true })).status);
+        const cq = await post('confirm', { id: Lq.id, t: Lq.t });
+        const claimT = (/&t=([0-9a-f]{32})$/.exec(cq.data.claimLink || '') || [])[1] || '';
+        const pcq = await post('paidclaim', { no: cq.data.orderNo, t: claimT });
+        const rq = await post('confirm', { id: Lq.id, t: Lq.t });
+        ok(st.every(x => x === 200) && cq.data.ok && pcq.data.ok && rq.data.ok && rq.data.claimed === true && !rq.data.claimLink && !rq.data.claimUntil && rq.data.claimAtLeast === false && /Već ste nam javili/.test(rq.data.claimMsg || '') && !!rq.data.raskidLink,
+          'provjera v102 (softver N5, kupac N2): 35 provjera linka ne troši klikove za potvrdu; nakon „Uplatio/la sam” ponovljeni odgovor kaže „već javljeno” i ne nudi novi rok ' + JSON.stringify([st.filter(x => x !== 200).length, cq.status, rq.data.claimed, rq.data.claimLink]));
+        try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const plq = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rzq = read('rezervacije.json', {});
+        const fq = ['zora', 'mira', 'nera', 'tara', 'luna', 'vela'].filter(id => { const q = plq.find(x => x.id === id); return q && !q.sold && !q.reserved && !(rzq.res || {})[id] && !(rzq.sold || {})[id]; })[0];
+        const prq = plq.find(x => x.id === fq).price;
+        await post('order', order('potvrda-v102-uzeta-1', 'v102prvi@primjer.hr', [{ id: fq }], prq, 'serija-v102-prvi-aaaaa')); const L1 = lastLink();
+        await post('order', order('potvrda-v102-uzeta-2', 'v102drugi@primjer.hr', [{ id: fq }], prq, 'serija-v102-drugi-bbbb')); const L2 = lastLink();
+        const pA = await post('confirm', { id: L1.id, t: L1.t, peek: true });
+        const c2q = await post('confirm', { id: L2.id, t: L2.t });
+        const pB = await post('confirm', { id: L1.id, t: L1.t, peek: true });
+        ok(pA.data.peek === 'waiting' && c2q.data.ok && pB.status === 409 && Array.isArray(pB.data.taken) && pB.data.taken[0] === fq,
+          'provjera v102 (softver N4, kupac N5): provjera linka odmah javlja da je torbu naručio drugi kupac (ne nudi gumb) ' + JSON.stringify([fq, pA.data.peek, c2q.status, pB.status, pB.data.taken]));
+        try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
       /* dvije torbe iz iste narudžbe: drugi preglednik dobiva „mine” za OBJE */
       try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
       const pl = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rz = read('rezervacije.json', {});
