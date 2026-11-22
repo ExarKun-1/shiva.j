@@ -50,7 +50,11 @@ const api = http.createServer((q, s) => {
     ok(/potvrdite narudžbu/.test(await p.textContent('#orderError').catch(() => '')) && mails.length === 1, 'narudžba preko Apps Scripta: „potvrdite narudžbu”, e-mail s linkom');
     ok(posts.length && posts.every(t => /^text\/plain/.test(t)), 'POST kao text/plain (bez CORS predzahtjeva): ' + [...new Set(posts)].join(','));
     const mm = /\?potvrda=([a-f0-9.]+)/.exec(mails[0].body);
-    await p.goto(SITE + '/?potvrda=' + (mm && mm[1]), { waitUntil: 'networkidle' }); await p.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
+    await p.goto(SITE + '/?potvrda=' + (mm && mm[1]), { waitUntil: 'networkidle' });
+    /* v102: otvaranje linka samo provjerava — potvrđuje tek gumb „Potvrdi narudžbu” (i uz probni poslužitelj) */
+    await p.waitForSelector('#confirmBtn', { timeout: 8000 }).catch(() => {});
+    ok(await p.isVisible('#confirmBtn').catch(() => false) && !(await p.locator('.pay-steps').count()), 'v102: link otvara gumb „Potvrdi narudžbu”, narudžba još nije potvrđena');
+    await p.click('#confirmBtn').catch(() => {}); await p.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
     const pay = await p.textContent('.pay').catch(() => '');
     ok(/SJ-2026-0001|SJ-\d{4}-0001/.test(pay) && /Torba „Luna” rezervirana je/.test(pay) && rows.length === 1, 'link: podaci za uplatu, Luna rezervirana, red u tablici');
     const p2 = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();

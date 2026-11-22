@@ -17,7 +17,12 @@ const html = fs.readFileSync(process.env.SHIVAJ_COMPAT_FILE || path.join(__dirna
 const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 /* v101 (recenzija vijeća v100, softver C): i vanjska skripta stranice (barkod) prolazi iste provjere */
 const extJs = process.env.SHIVAJ_COMPAT_FILE ? [] : fs.readdirSync(path.join(__dirname, '..', 'js')).filter(f => f.endsWith('.js')).map(f => [f, fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8')]);
-const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
+/* v102 (recenzija vijeća v101, softver N9): i admin (vlasnica ga može otvoriti na starijem iPhoneu) — njegov CSS prolazi iste provjere,
+   a skripta (složena u PHP-u, pa se ne parsira) pretragu zabranjenih značajki */
+const adminSrc = process.env.SHIVAJ_COMPAT_FILE ? '' : fs.readFileSync(path.join(__dirname, '..', 'admin', 'index.php'), 'utf8');
+const adminCss = [...adminSrc.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
+const adminJs = [...adminSrc.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
+const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n') + '\n' + adminCss;
 
 /* 1) sintaksa do ES2021 (iOS 15.0 ima ES2021; ES2022 tek djelomično) i zabranjene novije značajke */
 const banProps = [['AbortSignal', 'timeout'], ['AbortSignal', 'any'], ['window', 'structuredClone'], ['self', 'structuredClone'], ['globalThis', 'structuredClone'], ['Object', 'hasOwn'], ['Object', 'groupBy'], ['Map', 'groupBy'], ['Promise', 'withResolvers'], ['Array', 'fromAsync'], ['RegExp', 'escape']]
@@ -53,6 +58,12 @@ ok(rawLb.length === 0, 'ni u nizovima ni predlošcima nema lookbehinda ' + JSON.
 /* v101: crypto.randomUUID (iOS 15.4) samo uz provjeru postojanja u istom retku */
 const uuidBad = allJs.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /crypto\.randomUUID\(/.test(l) && !/crypto\.randomUUID\s*(\?|&&)/.test(l));
 ok(uuidBad.length === 0, 'JS: crypto.randomUUID samo uz provjeru postojanja ' + JSON.stringify(uuidBad.map(([n]) => n).slice(0, 5)));
+
+/* v102: i zapis s uglatim zagradama; admin skripta bez novijih značajki */
+const uuidBr = allJs.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /crypto\s*\[\s*["']randomUUID["']\s*\]\s*\(/.test(l) && !/crypto\s*\[\s*["']randomUUID["']\s*\]\s*(\?|&&)/.test(l));
+ok(uuidBr.length === 0, 'JS: crypto["randomUUID"] samo uz provjeru postojanja ' + JSON.stringify(uuidBr.map(([n]) => n)));
+const adminBad = ['(?<=', '(?<!', 'structuredClone', '.at(', '.findLast(', '.toSorted(', 'Object.hasOwn', 'randomUUID', ':has(', '?.', '??='].filter(t => adminJs.includes(t));
+ok((process.env.SHIVAJ_COMPAT_FILE || adminJs.length > 0) && adminBad.length === 0, 'admin: skripta bez značajki novijih od iOS 15.0 ' + JSON.stringify(adminBad));
 
 /* 2) CSS: dvh/svh/lvh uz prethodnu vh vrijednost istog svojstva u istom pravilu */
 const decls = [...styles.matchAll(/\{([^{}]*)\}/g)].map(m => m[1]);
@@ -91,6 +102,16 @@ ok(mediaRange.length === 0, 'CSS: @media bez sintakse raspona (width >= …; Saf
 ok(!/@layer\b|@container\b|@scope\b/.test(cssNc), 'CSS: bez @layer, @container i @scope');
 const nest = (cssNc.match(/[;{}]\s*&\s*[.:#\[>+~ ]/g) || []).length;
 ok(nest === 0, 'CSS: bez ugniježđenih pravila (&) ' + nest);
+/* v102: ugniježđena pravila i BEZ „&” (Safari 17.2) — vitičasta zagrada unutar običnog pravila */
+{ const bad = []; const st = []; let last = 0;
+  for (let i = 0; i < cssNc.length; i++) { const ch = cssNc[i];
+    if (ch === '{') { const pre = cssNc.slice(last, i).trim(); if (st.length && !st[st.length - 1].startsWith('@')) bad.push(pre.slice(0, 40)); st.push(pre); last = i + 1; }
+    else if (ch === '}') { st.pop(); last = i + 1; } else if (ch === ';') last = i + 1; }
+  ok(bad.length === 0, 'CSS: bez ugniježđenih pravila (ni bez &) ' + JSON.stringify(bad.slice(0, 4))); }
+/* v102 (recenzija vijeća v101, softver N9): kratica text-decoration s više vrijednosti (stil, boja) — stariji Safari odbaci cijelu deklaraciju,
+   pa poveznica ostane bez podcrte; koristiti text-decoration-style / -color */
+const tdBad = decls.filter(b => /(?:^|;)\s*text-decoration:\s*[^;]*\b(?:dashed|dotted|solid|double|wavy)\b/.test(b) || /(?:^|;)\s*text-decoration:\s*(?:underline|line-through|overline)\s+[^;\s]/.test(b)).map(b => (b.match(/text-decoration:[^;]*/) || [''])[0].slice(0, 60));
+ok(tdBad.length === 0, 'CSS: text-decoration samo s jednom vrijednošću (stil i boja zasebnim svojstvima) ' + JSON.stringify(tdBad.slice(0, 4)));
 const badColor = [];
 decls.forEach(body => { const parts = body.split(';').map(x => x.trim()).filter(Boolean); parts.forEach((d, k) => { if (!/\b(oklch|oklab|lch|lab|color-mix)\(/.test(d)) return; const prop = d.split(':')[0].trim(); const prev = parts.slice(0, k).reverse().find(x => x.split(':')[0].trim() === prop); if (!prev || /\b(oklch|oklab|lch|lab|color-mix)\(/.test(prev)) badColor.push(d.slice(0, 60)); }); });
 ok(badColor.length === 0, 'CSS: oklch/lab/color-mix samo uz prethodnu rezervnu vrijednost ' + JSON.stringify(badColor.slice(0, 4)));

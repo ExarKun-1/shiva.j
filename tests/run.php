@@ -434,6 +434,26 @@ $ok(sj_mask_numbers('broj Ivana 385/912, 34567 Zadar') === 'broj Ivana [broj skr
   && sj_mask_numbers('mobilni 98/12, 34567 Ivana') === 'mobilni [broj skriven] Ivana' && sj_mask_numbers('kontakt 98/12, 34567 Ivana') === 'kontakt [broj skriven] Ivana'
   && sj_mask_numbers('Kontakt adresa: Ilica 123/4, 10000 Zagreb') === 'Kontakt adresa: Ilica 123/4, 10000 Zagreb' && sj_mask_numbers('Ilica 123/45, 10000 Zagreb') === 'Ilica 123/45, 10000 Zagreb',
   'recenzija v101: maska — „broj/kontakt/mobilni” ispred brojeva skriva; „Kontakt adresa: …” i kućni broj „123/45” ostaju');
+/* v102 (recenzija vijeća v101, sigurnost N2/N5): filtar — kombinirajući i nevidljivi znakovi ispred točke, jednoslovna oznaka, točke-dvojnici, druge sheme;
+   riječi mom/plus/one/top/pro nisu poveznica u rečenici, jesu uz crticu, znamenku ili putanju */
+$v102pos = ["uplata\u{0301}.com", "racun\u{FE0F}.hr", "naplata\u{034F}.com", 't.ly', 'shivaj-uplata.a.bg', "uplata\u{2024}com", "uplata\u{A4F8}com", 'tg://resolve?domain=x', 'viber://pa?chatURI=x', 'skype:shivaj-uplata', 'secure-pay.top', 'pay2.one', 'prevara.top/x', 'naplata.plus/racun'];
+$v102neg = ['Poklon za mamu.mom bratu', 'Molim crnu.plus zlatni detalj', 'Super su vam torbe.one crne', 'Hvala.Top ste', 'hvala.pro račun molim', 'BOX NOW Konzum, Ul.hr.branitelja 12', 'viber: 091 234 567', 'viber:0912345678', 'Konzum: Ilica 1', 'npr. crna', 'd.o.o. Zabok', 'tel:091'];
+$miss = array_values(array_filter($v102pos, fn($x) => !sj_has_link($x))); $false = array_values(array_filter($v102neg, fn($x) => sj_has_link($x)));
+$ok(!$miss && !$false, 'v102 (sigurnost N2/N5): filtar hvata prikrivene domene i sheme, a ne odbija hrvatske rečenice ' . json_encode([$miss, $false], JSON_UNESCAPED_UNICODE));
+$ok(sj_unlink('Sv.Duh/Novaki 4') === 'Sv. Duh/Novaki 4' && !str_contains(sj_unlink('Vukovarska 269, 12.kat/stan 45'), 'uklonjeno') && sj_unlink('Poklon za mamu.mom bratu') === 'Poklon za mamu. mom bratu'
+  && sj_unlink('pisi na tg://resolve?domain=x odmah') === 'pisi na [uklonjeno] odmah' && sj_unlink("idi na uplata\u{0301}.com sad") === 'idi na [uklonjeno] sad' && sj_unlink('skype:shivaj-uplata') === '[uklonjeno]',
+  'v102: sj_unlink — adrese s kosom crtom i riječi-nastavci dobivaju razmak, sheme i prikrivene domene se uklanjaju');
+/* v102 (sigurnost N3/N5): maska — raspon datuma i mjere ostaju, „brojevi” koji nisu znamenke se skrivaju */
+$ok(sj_mask_numbers('dostava 20.11.-25.11.2026. ako može') === 'dostava 20.11.-25.11.2026. ako može' && sj_mask_numbers('mjere 22 × 14 × 6, 28 × 22 × 8 cm') === 'mjere 22 × 14 × 6, 28 × 22 × 8 cm'
+  && sj_mask_numbers('zovi ⓪⑨① ②③④ ⑤⑥⑦⑧') === 'zovi [broj skriven]' && sj_mask_numbers('zovi ⁰⁹¹ ²³⁴ ⁵⁶⁷⁸') === 'zovi [broj skriven]' && sj_mask_numbers('površina 12 m²') === 'površina 12 m²'
+  && sj_mask_numbers('091 234 5678 × 2') !== '091 234 5678 × 2' && sj_mask_numbers('rok 20.11.-0912345678') !== 'rok 20.11.-0912345678',
+  'v102: maska — raspon datuma i mjere torbe ostaju; ⓪⑨①… i ⁰⁹¹… se skrivaju; telefon uz „×” ili datum i dalje se skriva');
+/* v102 (sigurnost N4): zaglavlje Host s dijelom iza dvotočke koji nije port ne ulazi u link e-maila */
+{ $h0 = $_SERVER['HTTP_HOST'] ?? null; $cfgH = sj_config();
+  $_SERVER['HTTP_HOST'] = '127.0.0.1:8404@zlo.example'; $u1 = sj_site_url_trusted();
+  $_SERVER['HTTP_HOST'] = '127.0.0.1:8404'; $u2 = sj_site_url_trusted();
+  if ($h0 === null) unset($_SERVER['HTTP_HOST']); else $_SERVER['HTTP_HOST'] = $h0;
+  $ok(!empty($cfgH['site_url']) || ($u1 === '' && $u2 === 'http://127.0.0.1:8404'), 'v102 (sigurnost N4): Host „127.0.0.1:8404@zlo.example” ne daje adresu stranice; „127.0.0.1:8404” daje ' . json_encode([$u1, $u2])); }
 @unlink($oj); file_put_contents(SJ_DATA . '/raskidi.json', $rb101 === '' ? '[]' : $rb101); @unlink(SJ_DATA . '/raskidi-provjera.json');
 /* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
 $kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");

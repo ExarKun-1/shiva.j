@@ -238,6 +238,46 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       for (let i = 0; i < 4; i++) { const r = await post('order', order('potvrda-v101-mr-' + i + 'x', 'v101m@primjer.hr', [{ id: 'kozmeticka', qty: 1 + i }], 20 * (1 + i))); codes.push(r.status); cc.push(r.data.code || ''); }
       ok(codes.slice(0, 3).every(c => c === 200) && codes[3] === 429 && cc[3] === 'mail_rate', 'v101 (kupac N4): četvrti e-mail istom primatelju u satu → 429 s razlogom mail_rate ' + JSON.stringify([codes, cc]));
       try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
+    // v102 (recenzija vijeća v101; odluka korisnika): otvaranje linka samo provjerava (peek), potvrđuje tek drugi zahtjev; ponovljeni odgovor nosi
+    //      „Uplatio/la sam” i poveznicu za raskid; maska brojeva i nakon potvrde; „mine” za obje torbe; stari link nakon storna zbog neplaćanja
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      fs.writeFileSync(D + 'mail-log.txt', '');
+      const n0 = read('narudzbe.json', []).length;
+      const o102 = order('potvrda-v102-peek-01', 'v102p@primjer.hr', [{ id: 'kozmeticka', qty: 2 }], 40); o102.Napomena = 'nazovite 091 234 5678, IBAN HR1210010051863000160';
+      await post('order', o102); const L = lastLink(); const mailP = mailLog();
+      const pk = await post('confirm', { id: L.id, t: L.t, peek: true });
+      const n1 = read('narudzbe.json', []).length;
+      const badPk = await post('confirm', { id: L.id, t: 'f'.repeat(32), peek: true });
+      ok(pk.status === 200 && pk.data.ok && pk.data.peek === 'waiting' && !pk.data.orderNo && Array.isArray(pk.data.items) && pk.data.items[0].name === 'Kozmetička torbica' && pk.data.items[0].qty === 2 && pk.data.total === 40 && n1 === n0 && badPk.status === 403
+        && /otvorite link i na stranici kliknite „Potvrdi narudžbu”/.test(mailP),
+        'v102 (sigurnost N1): otvaranje linka (peek) vraća sažetak i NE potvrđuje narudžbu; e-mail upućuje na gumb ' + JSON.stringify([pk.status, pk.data.peek, n0, n1, badPk.status]));
+      const c = await post('confirm', { id: L.id, t: L.t });
+      const cm = mailLog().split(/^=== /m).find(x => /To: v102p@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
+      ok(c.data.ok && read('narudzbe.json', []).length === n0 + 1 && /Vaša napomena: nazovite \[broj skriven\], IBAN \[IBAN skriven\]/.test(cm) && !/091 234 5678|HR1210010051863000160/.test(cm.split('PODACI ZA UPLATU')[0]),
+        'v102 (sigurnost N1): potvrda bez peek stvara narudžbu; napomena u e-mailu kupcu maskirana i nakon potvrde linkom ' + JSON.stringify((cm.match(/Vaša napomena:[^\n]*/) || [''])[0]));
+      const pk2 = await post('confirm', { id: L.id, t: L.t, peek: true }), c2 = await post('confirm', { id: L.id, t: L.t });
+      ok([pk2, c2].every(x => x.data.ok && x.data.repeated && x.data.orderNo === c.data.orderNo && x.data.claimLink === c.data.claimLink && x.data.raskidLink === c.data.raskidLink && x.data.claimUntil === c.data.claimUntil && x.data.claimAtLeast === c.data.claimAtLeast)
+        && /^\?uplata=/.test(c.data.claimLink || '') && !!c.data.claimUntil && read('narudzbe.json', []).length === n0 + 1,
+        'v102 (mobitel 3): isti link otvoren ponovno (peek i potvrda) — ista narudžba s „Uplatio/la sam”, rokom i poveznicom za raskid ' + JSON.stringify([pk2.data.claimUntil, c2.data.claimLink && 'ima', c2.data.raskidLink && 'ima']));
+      const list = read('narudzbe.json', []); const oi = list.findIndex(x => x.no === c.data.orderNo);
+      Object.assign(list[oi], { cancelledAt: new Date().toISOString(), cancelBy: 'automatski', cancelReason: 'nije uplaćeno u roku' }); write('narudzbe.json', list);
+      const c3 = await post('confirm', { id: L.id, t: L.t });
+      list[oi].cancelBy = 'vlasnica'; list[oi].cancelReason = 'kupac odustao'; write('narudzbe.json', list);
+      const c4 = await post('confirm', { id: L.id, t: L.t });
+      ok(c3.status === 409 && /stornirana jer nije uplaćena u roku/.test(c3.data.error || '') && /Novu narudžbu istih artikala s ove e-adrese možemo primiti od (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(c3.data.error || '') && !/pošaljite novu narudžbu/.test(c3.data.error || '')
+        && c4.status === 409 && /pošaljite novu narudžbu/.test(c4.data.error || ''),
+        'v102 (kupac N3): stari link nakon storna zbog neplaćanja kaže od kada je nova narudžba moguća; nakon drugog storna poziva na novu ' + JSON.stringify([c3.data.error, c4.status]));
+      /* dvije torbe iz iste narudžbe: drugi preglednik dobiva „mine” za OBJE */
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+      const pl = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rz = read('rezervacije.json', {});
+      const free = ['nera', 'tara', 'mira', 'luna', 'vela', 'zora'].filter(id => { const q = pl.find(x => x.id === id); return q && !q.sold && !q.reserved && !(rz.res || {})[id] && !(rz.sold || {})[id]; }).slice(0, 2);
+      const tot = free.reduce((z, id) => z + pl.find(x => x.id === id).price, 0);
+      await post('order', order('potvrda-v102-dvije-1', 'v102dv@primjer.hr', free.map(id => ({ id })), tot, 'serija-v102-mobitel-aa')); const LA = lastLink();
+      await post('order', order('potvrda-v102-dvije-2', 'v102dv@primjer.hr', free.map(id => ({ id })), tot, 'serija-v102-racunalo-b')); const LB = lastLink();
+      const cA = await post('confirm', { id: LA.id, t: LA.t }), cB = await post('confirm', { id: LB.id, t: LB.t });
+      ok(free.length === 2 && cA.data.ok && cB.status === 409 && cB.data.code === 'mine' && Array.isArray(cB.data.mine) && cB.data.mine.slice().sort().join() === free.slice().sort().join() && /^Torbe „.*” i „.*” već su u vašoj ranijoj narudžbi/.test(cB.data.error || ''),
+        'v102 (dizajn 1): dvije torbe iz iste ranije narudžbe — „mine” navodi obje, poruka u množini ' + JSON.stringify([free, cB.status, cB.data.mine]));
+      try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
