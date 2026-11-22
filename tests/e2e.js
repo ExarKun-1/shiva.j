@@ -225,6 +225,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   { const pu = await d.newPage(); await pu.goto(URL + '#uvjeti', { waitUntil: 'load' }); await pu.waitForTimeout(1200);
     const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
+    { const raw = await pu.evaluate(() => [fmtDeadline('<i>nije datum</i>'), fmtDateTime('<b>x</b>'), fmtDeadline('')]);
+      ok(!/[<>]/.test(raw[0]) && /&lt;i&gt;/.test(raw[0]) && !/[<>]/.test(raw[1]) && raw[2] === '', 'recenzija v102 (sigurnost N6): neispravan datum ne ulazi sirov u HTML ' + JSON.stringify(raw)); }
     ok(uv >= 0 && uv < 160 && /12\.\s11\.\s2026\.\su\s00:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
   { /* v96 (recenzija vijeća v95, hitno): na računalu fotografija u povećanom prikazu ne prekriva tekst */
     const ov = [];

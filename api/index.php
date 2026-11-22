@@ -640,7 +640,7 @@ if ($a === 'confirm') {
   $out = sj_with_lock(SJ_DATA . '/narudzba-u-tijeku.json', function (array &$unused) use ($pid, $sec, $peek) {
     $e = null;
     foreach (sj_read_json(sj_pending_path(), []) as $x) if (($x['id'] ?? '') === $pid) { $e = $x; break; }
-    if (!$e) return ['err' => 410];
+    if (!$e) return ['err' => 'gone'];
     if (!hash_equals((string)($e['h'] ?? ''), hash('sha256', $sec))) return ['err' => 403];
     if (!empty($e['no'])) return ['prevNo' => (string)$e['no']];
     if (!empty($e['replacedBy'])) return ['err' => 'replaced']; /* v94 */
@@ -670,6 +670,8 @@ if ($a === 'confirm') {
   }, []);
   if (($out['err'] ?? 0) === 403) sj_json_out(['ok' => false, 'error' => 'Neispravan link za potvrdu. Otvorite najnoviji e-mail „Shiva.J — potvrdite narudžbu”.'], 403);
   if (($out['err'] ?? 0) === 'replaced') sj_json_out(['ok' => false, 'expired' => true, 'replaced' => true, 'error' => 'Ovaj link je zamijenjen novijim: otvorite najnoviji e-mail „Shiva.J — potvrdite narudžbu (novi link)”.'], 410);
+  /* recenzija v102 (sigurnost N7): zapisa više nema — ne znamo je li narudžba bila potvrđena, pa poruka ne tvrdi da nije zaprimljena */
+  if (($out['err'] ?? 0) === 'gone') sj_json_out(['ok' => false, 'expired' => true, 'error' => 'Ovaj link više ne vrijedi. Ako ste narudžbu već potvrdili, podaci za uplatu su u e-mailu s potvrdom narudžbe. Ako niste, narudžba nije zaprimljena i torba nije rezervirana — pošaljite je ponovno.'], 410);
   if (($out['err'] ?? 0) === 410) sj_json_out(['ok' => false, 'expired' => true, 'pt' => $out['pt'] ?? null, 'error' => 'Link za potvrdu je istekao, pa narudžba nije zaprimljena i torba nije rezervirana. Pošaljite narudžbu ponovno.'], 410);
   if (isset($out['peek'])) sj_json_out(['ok' => true, 'peek' => 'waiting'] + $out['peek']);
   if (isset($out['taken'])) sj_json_out(['ok' => false, 'taken' => $out['taken'], 'pt' => $out['pt'] ?? null], 409);
@@ -1028,9 +1030,20 @@ function sj_confirm_unavailable(): void {
     sj_send_mail((string)$c['owner_email'], $c['shop'] . ' — PAŽNJA: narudžbe ne rade', "Kupac je upravo pokušao naručiti, ali narudžba nije primljena: za link „potvrdite narudžbu” u e-mailu potrebna je adresa stranice.\n\nUpišite je u admin → Postavke → „Adresa stranice” (npr. https://shivaj.hr). Ova poruka stiže najviše jednom na sat.");
   sj_json_out(['ok' => false, 'error' => 'Narudžbe su trenutačno nedostupne. Pišite nam e-mailom na ' . $c['owner_email'] . ' i javit ćemo vam se.'], 503);
 }
+/* recenzija v102 (sigurnost N7): zapis POTVRĐENE narudžbe ostaje još SJ_PENDING_STUB_DAYS dana, ali bez podataka kupca (samo oznaka linka, njegov
+   otisak i broj narudžbe) — stari link tako i dalje vodi na podatke za uplatu, umjesto poruke da narudžba nije zaprimljena. true = zapis se briše */
+function sj_pending_old(array &$x, int $now): bool {
+  $u = (int)strtotime((string)($x['until'] ?? ''));
+  if ($u >= $now - 86400) return false;
+  if (empty($x['no']) || $u < $now - SJ_PENDING_STUB_DAYS * 86400) return true;
+  $x = array_intersect_key($x, ['id' => 1, 'h' => 1, 'no' => 1, 'until' => 1, 'confirmedAt' => 1]);
+  return false;
+}
 function sj_pending_prune(): void {
   sj_with_lock(sj_pending_path(), function (array &$list) {
-    $list = array_values(array_filter($list, fn($x) => strtotime((string)($x['until'] ?? '')) >= time() - 86400));
+    $now = time(); $keep = [];
+    foreach ($list as $x) { if (!is_array($x) || sj_pending_old($x, $now)) continue; $keep[] = $x; }
+    $list = $keep;
     return true;
   }, []);
   @touch(sj_pending_path());
@@ -1139,8 +1152,7 @@ function sj_order_pending(array $P): void {
        brišu se dan nakon isteka */
     $keep = [];
     foreach ($list as $x) {
-      $old = strtotime((string)($x['until'] ?? '')) < $now - 86400;
-      if ($old) continue;
+      if (sj_pending_old($x, $now)) continue;
       if (empty($x['no']) && ($P['key'] !== '' && ($x['key'] ?? '') === $P['key'])) { $id = (string)$x['id']; $replaced = true; continue; }
       $keep[] = $x;
     }
@@ -1236,7 +1248,7 @@ function sj_order_open_mail(array $P, string $openNo, string $why, bool $overSof
   sj_with_lock(sj_pending_path(), function (array &$list) use ($P, $ek, $until, &$replaced, &$ptok) {
     $now = time(); $id = ''; $keep = [];
     foreach ($list as $x) {
-      if (strtotime((string)($x['until'] ?? '')) < $now - 86400) continue;
+      if (sj_pending_old($x, $now)) continue;
       if (empty($x['no']) && ($P['key'] !== '' && ($x['key'] ?? '') === $P['key'])) { $id = (string)$x['id']; $replaced = true; continue; }
       $keep[] = $x;
     }
@@ -1657,6 +1669,9 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   /* v101 (recenzija vijeća v100, sigurnost S1): tekst koji je upisao kupac — bez poveznica; kad narudžba nije potvrđena linkom iz e-maila
      (require_confirm isključen), e-adresa nije provjerena, pa se skrivaju i dugi brojevi (lažni IBAN ili telefon uz podatke za uplatu) */
   $echo = fn(string $x): string => sj_mask_numbers(sj_unlink($x)); /* v102 (recenzija vijeća v101, sigurnost N1/N3): maska uvijek, i nakon potvrde linkom, i za paketomat */
+  /* recenzija v102 (sigurnost N3/N4): adresa (ulica, mjesto, paketomat) — ono što je ulaz primio ne briše se („Livada 2.red/5”), a ulica i mjesto
+     prolaze masku ZAJEDNO (broj podijeljen na dva polja, „…nazovite 09123” + „45678 odmah, Zagreb”, više nije čitljiv) */
+  $echoAddr = fn(string $x): string => sj_mask_numbers(sj_unlink_addr($x));
   $cust = $o['customer'] ?? [];
   $items = is_array($o['items'] ?? null) ? $o['items'] : [];
   $ship = is_array($o['shipping'] ?? null) ? $o['shipping'] : [];
@@ -1699,10 +1714,17 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $t[] = 'Ukupno za uplatu: ' . sj_fmt_eur($total);
   $t[] = '';
   $sid = (string)($ship['id'] ?? '');
-  if (!empty($ship['locker'])) $t[] = 'Paketomat: ' . $echo((string)$ship['locker']) . '. Kod za preuzimanje dobit ćete SMS-om ili e-mailom od BOX NOW-a kad paket stigne.';
+  if (!empty($ship['locker'])) $t[] = 'Paketomat: ' . $echoAddr((string)$ship['locker']) . '. Kod za preuzimanje dobit ćete SMS-om ili e-mailom od BOX NOW-a kad paket stigne.';
   elseif ($sid === 'pickup') $t[] = 'Preuzimanje u radionici: ' . rtrim((string)$c['pickup_info'], '.') . '.';
-  elseif (!empty($cust['street'])) $t[] = 'Adresa za dostavu: ' . $echo((string)$cust['street']) . ', ' . $echo((string)($cust['city'] ?? '')) . '.';
-  if (!empty($o['note'])) $t[] = 'Vaša napomena: ' . $echo((string)$o['note']); /* v100 (recenzija): „naplata.ba danas” prolazi filtar (kratki nastavci-riječi), ali se u e-mailu ne ponavlja */
+  elseif (!empty($cust['street'])) {
+    /* zajednička maska vrijedi samo kad skriva VIŠE od zasebnih (broj podijeljen na dva polja); inače bi telefon na kraju ulice progutao poštanski broj */
+    $sa = sj_unlink_addr((string)$cust['street']); $ca = sj_unlink_addr((string)($cust['city'] ?? ''));
+    $sep = sj_mask_numbers($sa) . ', ' . sj_mask_numbers($ca); $joint = sj_mask_numbers($sa . ', ' . $ca);
+    $t[] = 'Adresa za dostavu: ' . (substr_count($joint, ' skriven]') > substr_count($sep, ' skriven]') ? $joint : $sep) . '.';
+  }
+  /* recenzija v102 (sigurnost N1): napomena je JEDAN odlomak u navodnicima — redovi se spajaju kosom crtom, pa tekst kupca ne može izgledati kao
+     zaseban odlomak trgovine („VAŽNA OBAVIJEST — PROMJENA RAČUNA”) iznad podataka za uplatu */
+  if (!empty($o['note'])) $t[] = 'Vaša napomena: „' . trim((string)preg_replace('~\s*[\r\n]+\s*~u', ' / ', str_replace(['„', '”', '“'], '"', $echo((string)$o['note'])))) . '”'; /* v100 (recenzija): „naplata.ba danas” prolazi filtar (kratki nastavci-riječi), ali se u e-mailu ne ponavlja */
   $t[] = '';
   $t[] = 'PODACI ZA UPLATU';
   $t[] = '- Primatelj: ' . $p['recipient'] . ', ' . $p['address'];

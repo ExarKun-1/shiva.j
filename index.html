@@ -3851,9 +3851,9 @@ function ibanPretty(iban){ return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$
 function fmtDateTime(iso){
   /* v98 (recenzija vijeća v97, dizajn): jedan oblik datuma na cijeloj stranici i u e-mailovima — „8. 1. 2026. u 08:05” (bez vodećih nula u danu i mjesecu) */
   try { const pp = {}; new Intl.DateTimeFormat("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)).forEach(x => { pp[x.type] = x.value; });
-    if(!pp.year) return iso || "";
+    if(!pp.year) return escHtml(String(iso || "")); /* recenzija v102 (sigurnost N6): neispravan datum ide u innerHTML — nikad sirov */
     return (Number(pp.day) + ".\u00a0" + Number(pp.month) + ".\u00a0" + pp.year + ".\u00a0u\u00a0" + pp.hour + ":" + pp.minute); }
-  catch(e){ return iso || ""; }
+  catch(e){ return escHtml(String(iso || "")); }
 }
 
 /* v69 (vijeće na v68, D68-5): rok na ploči jednom i čitljivo — „do ponedjeljka, 26. 10. u 19:26” */

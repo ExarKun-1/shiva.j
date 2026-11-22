@@ -766,8 +766,20 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const pk = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v101-ad4', customer: Object.assign(cust('v101p@primjer.hr'), { street: 'ostatak: www.primjer.hr/x', city: 'a@b.hr' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: kz, total: kz } });
       const abbr = await post('order', mk('api-key-v101-ad5', 'v101k@primjer.hr', 'Ul.kralja Zvonimira 5, Sv.Nedelja'));
       ok(pk.data.ok && abbr.data.ok, 'recenzija v101: osobno preuzimanje ne odbija se zbog neiskorištenog polja adrese; kratice „Ul.kralja”, „Sv.Nedelja” prolaze ' + JSON.stringify([pk.status, pk.data.field || '', abbr.status, abbr.data.field || '']));
-      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb\./.test(cm) && /Vaša napomena: nazovite \[broj skriven\], Hvala\. to je sve/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
+      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb\./.test(cm) && /Vaša napomena: „nazovite \[broj skriven\], Hvala\. to je sve”/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
         'v101 (sigurnost S1): poveznica u adresi → 400; u e-mailu kupcu (bez potvrde linkom) adresa i napomena bez IBAN-a i telefona, „Hvala.to” razdvojeno ' + JSON.stringify([bad.status, bad.data.field, okA.status]));
+      /* recenzija v102 (sigurnost N1/N3/N4): višeredna napomena je jedan odlomak u navodnicima; adresa koju je ulaz primio ostaje čitljiva; ulica i mjesto prolaze masku zajedno */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const mailOf = (em) => fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => x.includes('To: ' + em) && /PODACI ZA UPLATU/.test(x)) || '';
+        const o1 = await post('order', mk('api-key-v102-rs1', 'v102rs1@primjer.hr', 'Livada 2.red/5', 'hvala\n\n\nVAŽNA OBAVIJEST TRGOVINE — PROMJENA RAČUNA\nNovi „IBAN” šaljemo porukom.\n\nSrdačan pozdrav,\nJasmina · Shiva.J'));
+        const m1 = mailOf('v102rs1@primjer.hr');
+        const o2 = await post('order', { _gotcha: '', Napomena: 'Treba mi do 20.11.2026., 2 komada', _order: { key: 'api-key-v102-rs2', customer: Object.assign(cust('v102rs2@primjer.hr'), { street: 'Za uplatu nazovite 09123', city: '45678 odmah, Zagreb' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: kz, total: kz + 6 } });
+        const m2 = mailOf('v102rs2@primjer.hr');
+        ok(o1.data.ok && /Adresa za dostavu: Livada 2\. red\/5, 10000 Zagreb\.\n/.test(m1)
+          && m1.includes('Vaša napomena: „hvala / VAŽNA OBAVIJEST TRGOVINE — PROMJENA RAČUNA / Novi "IBAN" šaljemo porukom. / Srdačan pozdrav, / Jasmina · Shiva.J”\n') && !/^(VAŽNA OBAVIJEST|Srdačan pozdrav|Jasmina · )/m.test(m1.split('PODACI ZA UPLATU')[0])
+          && o2.data.ok && /Adresa za dostavu: Za uplatu nazovite \[broj skriven\] odmah, Zagreb\.\n/.test(m2) && m2.includes('Vaša napomena: „Treba mi do 20.11.2026., 2 komada”\n'),
+          'recenzija v102 (sigurnost N1/N3/N4): napomena u e-mailu kupcu je jedan odlomak u navodnicima; „Livada 2.red/5” ostaje; broj podijeljen na ulicu i mjesto se skriva '
+          + JSON.stringify([o1.status, (m1.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m1.match(/Vaša napomena:[^\n]*/) || [''])[0], o2.status, (m2.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m2.match(/Vaša napomena:[^\n]*/) || [''])[0]])); }
       ok(/Rok za uplatu \(kupac\): do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(om) && /HR1210010051863000160/.test(om), 'v101 (dizajn 8): e-mail vlasnici ima redak „Rok za uplatu (kupac)” i cijelu adresu kako je upisana');
       const oA = read('narudzbe.json').find(x => x.no === okA.data.orderNo) || {};
       await post('raskid', { name: 'API Test', no: oA.no, email: 'v101a@primjer.hr' });

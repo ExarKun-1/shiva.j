@@ -191,7 +191,8 @@ function sjConfirm(env, b) {
   var list = env.pending(), e = null;
   list.forEach(function (x) { if (x.id === pid) e = x; });
   var expired = sjOut(410, { ok: false, expired: true, error: 'Link za potvrdu je istekao, pa narudžba nije zaprimljena i torba nije rezervirana. Pošaljite narudžbu ponovno.' });
-  if (!e) return expired;
+  /* recenzija v102 (sigurnost N7): zapisa više nema — poruka ne tvrdi da narudžba nije zaprimljena */
+  if (!e) return sjOut(410, { ok: false, expired: true, error: 'Ovaj link više ne vrijedi. Ako ste narudžbu već potvrdili, podaci za uplatu su u e-mailu s potvrdom narudžbe. Ako niste, narudžba nije zaprimljena i torba nije rezervirana — pošaljite je ponovno.' });
   if (env.sha256(sec) !== e.h) return sjOut(403, { ok: false, error: 'Neispravan link za potvrdu. Otvorite najnoviji e-mail „Potvrdite narudžbu”.' });
   var orders = env.orders();
   if (e.no) { for (var i = 0; i < orders.length; i++) if (orders[i].no === e.no) return sjRepeat(orders[i]); }

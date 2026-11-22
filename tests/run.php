@@ -472,6 +472,24 @@ $ok(sj_mask_numbers('od 6-14 h.') === 'od 6-14 h.' && sj_mask_numbers('20.11.202
   && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
   && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && str_contains(sj_mask_numbers('Ulica 91-23, 45678 Zagreb'), '[broj skriven]') /* silazni raspon bez kose crte */ && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
   'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
+/* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
+$kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
+  'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];
+$bR = array_values(array_filter($kR, fn($x) => sj_mask_numbers($x) !== $x));
+$hR = ["tel. 091\u{3161}234\u{3161}5678", "091\u{4E00}234\u{4E00}5678", "091\u{01C0}234\u{01C0}5678", "HR98 2360\u{3161}0001 1027\u{3161}9044 2", 'Nazovite ⓪⑨①234⑤⑥⑦8', '⓪⑨①②③④5678', '⁰⁹¹ 234 ⁵⁶⁷⁸',
+  'Za uplatu nazovite 09123, 45678 odmah, Zagreb', '09:12-3:45, 67', '09.12., 3.4., 5.6., 7.8.', '09.12.3.4.5.6.7.8.', 'Telegram 385/91, 23456 (ID 78)', '8:00-16:00, 123', '20.11.2026., 123',
+  '09.12., 34.56., 78.90.', '09:00-1:23, 45', '09-12 13-14 5-6', 'Ulica 9123, 45678 Zagreb', 'Ulica 0912, 34567 Zagreb', 'Ulica 12345, 10000 Zagreb'];
+$vR = array_values(array_filter($hR, fn($x) => !str_contains(sj_mask_numbers($x), ' skriven]')));
+$ok(!$bR && !$vR, 'recenzija v102 (sigurnost N1/N2/N4): datum s godinom, broj narudžbe i vrijeme od–do uz količinu ili kat ostaju, popis datuma ostaje; dvojnici crtice i miješane „znamenke” se skrivaju ' . json_encode([$bR, $vR], JSON_UNESCAPED_UNICODE));
+$ok(sj_unlink_addr('Livada 2.red/5') === 'Livada 2. red/5' && sj_unlink_addr('Kneza Branimira 4, k.br/2') === 'Kneza Branimira 4, k. br/2' && sj_unlink_addr('Ul.hr branitelja 12') === 'Ul. hr branitelja 12'
+  && sj_unlink_addr('Ilica 1, t.ly/abc') === 'Ilica 1, [uklonjeno]' && sj_unlink_addr('Ilica 1, www.zlo.example') === 'Ilica 1, [uklonjeno]' && sj_unlink('Livada 2.red/5') === 'Livada 2. red/5'
+  && sj_unlink('Uplata preko x.de ili ž.to ili a.top ili t.me ili q.pro ili 1.at') === 'Uplata preko x. de ili ž. to ili a. top ili t. me ili q. pro ili 1. at'
+  && sj_unlink('d.o.o. i j.d.o.o.') === 'd.o.o. i j.d.o.o.' && sj_unlink('A.Šenoe 5') === 'A. Šenoe 5' && sj_unlink('Naplata.Com') === '[uklonjeno]' && sj_unlink('pisite na bit.ly/abc') === 'pisite na [uklonjeno]'
+  && !str_contains(sj_unlink("naplata.c\u{1BC9D}om"), 'naplata.c') && !str_contains(sj_unlink("racun.\u{2D7F}hr"), 'racun.' . "\u{2D7F}" . 'hr'),
+  'recenzija v102 (sigurnost N3/N5): adresa koju je ulaz primio u e-mailu ostaje („Livada 2. red/5”); jednoslovna oznaka uz nastavak dobiva razmak („x. de”, „t. me”)');
+$ok(sj_has_link(sj_clean("shivaj-uplata.\u{2065}com", 200)) && sj_has_link("uplata\u{2E3C}com") && sj_has_link('uplata★.com') && sj_has_link("shivaj-uplata\u{1F4B3}.ws")
+  && !sj_has_link('Hvala 👍. Top ste!') && !sj_has_link('Lijepo 😊.Hvala') && !sj_has_link('Super ❤ torba.') && sj_no_digit(0x2468) === 9 && sj_no_digit(0x24EA) === 0 && sj_no_digit(0x2079) === 9 && sj_no_digit(0x00BD) === null,
+  'recenzija v102 (sigurnost N5): nevidljivi nedodijeljeni znak, točka U+2E3C i simbol pred točkom ne skrivaju domenu; rečenice s emojijem prolaze');
 /* v102 (sigurnost N4): zaglavlje Host s dijelom iza dvotočke koji nije port ne ulazi u link e-maila */
 { $h0 = $_SERVER['HTTP_HOST'] ?? null; $cfgH = sj_config();
   $_SERVER['HTTP_HOST'] = '127.0.0.1:8404@zlo.example'; $u1 = sj_site_url_trusted();

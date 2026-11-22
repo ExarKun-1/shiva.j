@@ -253,7 +253,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
         'v102 (sigurnost N1): otvaranje linka (peek) vraća sažetak i NE potvrđuje narudžbu; e-mail upućuje na gumb ' + JSON.stringify([pk.status, pk.data.peek, n0, n1, badPk.status]));
       const c = await post('confirm', { id: L.id, t: L.t });
       const cm = mailLog().split(/^=== /m).find(x => /To: v102p@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
-      ok(c.data.ok && read('narudzbe.json', []).length === n0 + 1 && /Vaša napomena: nazovite \[broj skriven\], IBAN \[IBAN skriven\]/.test(cm) && !/091 234 5678|HR1210010051863000160/.test(cm.split('PODACI ZA UPLATU')[0]),
+      ok(c.data.ok && read('narudzbe.json', []).length === n0 + 1 && /Vaša napomena: „nazovite \[broj skriven\], IBAN \[IBAN skriven\]”/.test(cm) && !/091 234 5678|HR1210010051863000160/.test(cm.split('PODACI ZA UPLATU')[0]),
         'v102 (sigurnost N1): potvrda bez peek stvara narudžbu; napomena u e-mailu kupcu maskirana i nakon potvrde linkom ' + JSON.stringify((cm.match(/Vaša napomena:[^\n]*/) || [''])[0]));
       const pk2 = await post('confirm', { id: L.id, t: L.t, peek: true }), c2 = await post('confirm', { id: L.id, t: L.t });
       ok([pk2, c2].every(x => x.data.ok && x.data.repeated && x.data.orderNo === c.data.orderNo && x.data.claimLink === c.data.claimLink && x.data.raskidLink === c.data.raskidLink && x.data.claimUntil === c.data.claimUntil && x.data.claimAtLeast === c.data.claimAtLeast)
@@ -267,6 +267,22 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       ok(c3.status === 409 && /stornirana jer nije uplaćena u roku/.test(c3.data.error || '') && /Novu narudžbu istih artikala s ove e-adrese možemo primiti od (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(c3.data.error || '') && !/pošaljite novu narudžbu/.test(c3.data.error || '')
         && c4.status === 409 && /pošaljite novu narudžbu/.test(c4.data.error || ''),
         'v102 (kupac N3): stari link nakon storna zbog neplaćanja kaže od kada je nova narudžba moguća; nakon drugog storna poziva na novu ' + JSON.stringify([c3.data.error, c4.status]));
+      /* recenzija v102 (sigurnost N7): zapis potvrđene narudžbe ostaje 30 dana bez podataka kupca — stari link i dalje vodi na narudžbu; kad zapisa više nema, poruka ne tvrdi da narudžba nije zaprimljena */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        await post('order', order('potvrda-v102-stari-1', 'v102s1@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const Ls = lastLink();
+        const cs = await post('confirm', { id: Ls.id, t: Ls.t });
+        await post('order', order('potvrda-v102-stari-2', 'v102s2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const Lu = lastLink(); /* nepotvrđena */
+        const age = (days) => { const pl = read('narudzbe-na-cekanju.json', []); pl.forEach(x => { if (x.id === Ls.id || x.id === Lu.id) x.until = new Date(Date.now() - days * 86400000).toISOString(); }); write('narudzbe-na-cekanju.json', pl); };
+        age(2); await post('order', order('potvrda-v102-stari-3', 'v102s3@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); /* nova narudžba čisti stare zapise */
+        const pl2 = read('narudzbe-na-cekanju.json', []); const stub = pl2.find(x => x.id === Ls.id), goneU = !pl2.some(x => x.id === Lu.id);
+        const again = await post('confirm', { id: Ls.id, t: Ls.t, peek: true }), unconf = await post('confirm', { id: Lu.id, t: Lu.t, peek: true });
+        age(31); await post('order', order('potvrda-v102-stari-4', 'v102s4@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20));
+        const gone = !read('narudzbe-na-cekanju.json', []).some(x => x.id === Ls.id), late = await post('confirm', { id: Ls.id, t: Ls.t, peek: true });
+        ok(cs.data.ok && stub && stub.no === cs.data.orderNo && !stub.P && !stub.ek && !stub.key && Object.keys(stub).sort().join() === 'confirmedAt,h,id,no,until' && goneU
+          && again.data.ok && again.data.repeated && again.data.orderNo === cs.data.orderNo && unconf.status === 410
+          && gone && late.status === 410 && late.data.expired && /Ovaj link više ne vrijedi\. Ako ste narudžbu već potvrdili/.test(late.data.error || '') && !/^Link za potvrdu je istekao, pa narudžba nije zaprimljena/.test(late.data.error || ''),
+          'recenzija v102 (sigurnost N7): stari link potvrđene narudžbe vodi na narudžbu još 30 dana (zapis bez podataka kupca); nakon toga poruka ne tvrdi da narudžba nije zaprimljena '
+          + JSON.stringify([stub && Object.keys(stub).sort().join(), goneU, again.status, again.data.orderNo === cs.data.orderNo, unconf.status, gone, late.status, late.data.error])); }
       /* provjera v102 (krug 1): provjera linka ima svoju kvotu; vidi prodanu torbu i torbu koju je naručio drugi kupac; nakon „Uplatio/la sam” ponovljeni odgovor ne nudi klik */
       { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} });
         await post('order', order('potvrda-v102-kvota-1', 'v102q@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const Lq = lastLink();
