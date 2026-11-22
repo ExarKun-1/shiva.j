@@ -689,9 +689,11 @@ if ($a === 'raskid') {
      briše se nakon 2 mjeseca), pa odgovor — put do odgovora više ne ovisi o tome podudara li se izjava s narudžbom (usporedba,
      granice, glavni popis, izmjena narudžbe i e-mailovi idu tek nakon odgovora) */
   $jr = sj_raskid_journal_path($now); clearstatcache(true, $jr);
-  $jOk = !(is_file($jr) && filesize($jr) > SJ_RASKID_OVERFLOW_MAX) && @file_put_contents($jr, json_encode($r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'))], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX) !== false;
+  $jFull = is_file($jr) && filesize($jr) > SJ_RASKID_OVERFLOW_MAX;
+  $jOk = !$jFull && @file_put_contents($jr, json_encode($r + ['id' => $id, 'at' => $at, 'ip' => sj_short_ip((string)($_SERVER['REMOTE_ADDR'] ?? '?'))], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX) !== false;
   /* v100 (recenzija vijeća v99, softver N5): rani odgovor samo kad je izjava stvarno u dnevniku — inače se obrađuje do kraja prije odgovora */
-  if ($jOk) sj_json_respond_now(['ok' => true, 'at' => $when]);
+  /* recenzija v100: pun dnevnik (napadač ga može napuniti) i dalje daje rani odgovor — inače bi vrijeme odgovora opet otkrivalo podudaranje */
+  if ($jOk || $jFull) sj_json_respond_now(['ok' => true, 'at' => $when]);
   if (function_exists('set_time_limit')) @set_time_limit(120); /* v99 (recenzija vijeća v98, L2): SMTP nakon odgovora ne smije prekinuti istek vremena */
   /* broj narudžbe: „2026-0007”, „SJ-2026-0007” ili slobodan opis */
   $match = null;
@@ -1575,7 +1577,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
     $pI = $byIdC[(string)($it['id'] ?? '')] ?? []; $fl = fn($v) => sj_val_filled($v) ? trim((string)$v) : ''; /* v83: isto pravilo kao stranica i admin */
     $mat = $pI ? ($fl($pI['material'] ?? '') ?: ((string)($pI['cat'] ?? 'torbe') === 'torbe' ? 'kvalitetna umjetna koža' : '')) : ''; /* vijeće V77-4 */ $dim = $fl($pI['dims'] ?? '');
     $spec = implode(', ', array_filter([$mat, $dim]));
-    $lines[] = '- ' . $n . ($q > 1 ? " × $q" : '') . (!empty($it['note']) ? ' (' . $it['note'] . ')' : '') . ' — ' . sj_fmt_eur((float)($it['price'] ?? 0) * $q) . ($spec !== '' ? "\n  " . $spec : '');
+    $lines[] = '- ' . $n . ($q > 1 ? " × $q" : '') . (!empty($it['note']) ? ' (' . sj_unlink((string)$it['note']) . ')' : '') . ' — ' . sj_fmt_eur((float)($it['price'] ?? 0) * $q) . ($spec !== '' ? "\n  " . $spec : ''); /* v100 (recenzija): tekst kupca bez poveznica i u e-mailu kupcu */
     if (!empty($it['made'])) { $anyMade = true; if (!empty($it['lead'])) $leads[] = (string)$it['lead']; } else { $anyUnique = true; $nUnique++; }
   }
   $torbu = $nUnique > 1 ? 'torbe' : 'torbu';
@@ -1600,10 +1602,10 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   $t[] = 'Ukupno za uplatu: ' . sj_fmt_eur($total);
   $t[] = '';
   $sid = (string)($ship['id'] ?? '');
-  if (!empty($ship['locker'])) $t[] = 'Paketomat: ' . $ship['locker'] . '. Kod za preuzimanje dobit ćete SMS-om ili e-mailom od BOX NOW-a kad paket stigne.';
+  if (!empty($ship['locker'])) $t[] = 'Paketomat: ' . sj_unlink((string)$ship['locker']) . '. Kod za preuzimanje dobit ćete SMS-om ili e-mailom od BOX NOW-a kad paket stigne.';
   elseif ($sid === 'pickup') $t[] = 'Preuzimanje u radionici: ' . rtrim((string)$c['pickup_info'], '.') . '.';
   elseif (!empty($cust['street'])) $t[] = 'Adresa za dostavu: ' . $cust['street'] . ', ' . ($cust['city'] ?? '') . '.';
-  if (!empty($o['note'])) $t[] = 'Vaša napomena: ' . $o['note'];
+  if (!empty($o['note'])) $t[] = 'Vaša napomena: ' . sj_unlink((string)$o['note']); /* v100 (recenzija): „naplata.ba danas” prolazi filtar (kratki nastavci-riječi), ali se u e-mailu ne ponavlja */
   $t[] = '';
   $t[] = 'PODACI ZA UPLATU';
   $t[] = '- Primatelj: ' . $p['recipient'] . ', ' . $p['address'];

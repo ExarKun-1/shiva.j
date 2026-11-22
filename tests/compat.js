@@ -18,7 +18,7 @@ const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/scri
 const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
 
 /* 1) sintaksa do ES2021 (iOS 15.0 ima ES2021; ES2022 tek djelomično) i zabranjene novije značajke */
-const banProps = [['Object', 'hasOwn'], ['Object', 'groupBy'], ['Map', 'groupBy'], ['Promise', 'withResolvers'], ['Array', 'fromAsync'], ['RegExp', 'escape']]
+const banProps = [['window', 'structuredClone'], ['self', 'structuredClone'], ['globalThis', 'structuredClone'], ['Object', 'hasOwn'], ['Object', 'groupBy'], ['Map', 'groupBy'], ['Promise', 'withResolvers'], ['Array', 'fromAsync'], ['RegExp', 'escape']]
   .map(([object, property]) => ({ object, property, message: 'novije od iOS 15.0 / Chrome 119' }));
 /* metode se zabranjuju samo kao poziv (polje narudžbe „at” je obično svojstvo, ne Array.prototype.at) */
 const banMethods = ['at', 'findLast', 'findLastIndex', 'toSorted', 'toReversed', 'toSpliced', 'isWellFormed', 'toWellFormed',
@@ -29,6 +29,7 @@ const config = [{
   rules: {
     'no-restricted-properties': ['error', ...banProps],
     'no-restricted-globals': ['error', { name: 'structuredClone', message: 'iOS 15.4' }],
+    /* recenzija v100: i window./self./globalThis.structuredClone */
     'no-restricted-syntax': ['error',
       { selector: 'Literal[regex.pattern=/\\(\\?<[=!]/]', message: 'regex lookbehind: Safari 16.4' },
       { selector: 'Literal[regex.flags=/v/]', message: 'regex zastavica v: Safari 17' },
@@ -65,6 +66,13 @@ ok(badSel.length === 0, 'CSS: :focus-visible i :has u zasebnim pravilima ' + JSO
 /* :not(:focus-visible) unutar bitnog pravila isto ga ruši u starijem Safariju */
 const badNot = rules.filter(sel => /:not\([^)]*:focus-visible/.test(sel));
 ok(badNot.length === 0, 'CSS: bitna pravila ne ovise o :not(:focus-visible) ' + JSON.stringify(badNot.slice(0, 4)));
+
+/* recenzija v100: :has( i :focus-visible u nizovima za querySelector (iOS < 15.4 baci SyntaxError i prekine funkciju) */
+const qsHas = scripts.join('\n').split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /querySelector(All)?\([^)]*:(has|focus-visible)\(?/.test(l) || /\.(matches|closest)\([^)]*:(has|focus-visible)/.test(l));
+ok(qsHas.length === 0, 'JS: bez :has / :focus-visible u querySelector, matches i closest ' + JSON.stringify(qsHas.map(([n]) => n).slice(0, 5)));
+/* recenzija v100: overflow-wrap:anywhere (Safari 15.4) samo uz prethodni break-word */
+const badOw = decls.filter(b => /overflow-wrap:\s*anywhere/.test(b) && !/overflow-wrap:\s*break-word[^;]*;[^}]*overflow-wrap:\s*anywhere/.test(b)).map(b => b.trim().slice(0, 60));
+ok(badOw.length === 0, 'CSS: overflow-wrap:anywhere uz prethodni break-word ' + JSON.stringify(badOw));
 
 /* 4) obavijest za prestare preglednike: postoji, skriva je html.js-ok, a skripta tu klasu postavlja */
 ok(/class="old-browser"/.test(html) && /\.js-ok\s+\.old-browser\s*\{[^}]*display:\s*none/.test(styles) && scripts.some(s => /classList\.add\(["']js-ok["']\)/.test(s)),

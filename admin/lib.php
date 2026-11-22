@@ -445,7 +445,7 @@ const SJ_RASKID_OVERFLOW_MAX = 20 * 1024 * 1024;
    ponovno pokretanje poslužitelja), izjava je samo u dnevniku (raskidi-ulaz). Svakih 10 minuta (api/status, admin) izjave iz dnevnika
    starije od 15 minuta kojih nema ni u glavnom ni u dodatnom popisu upisuju se u glavni popis („obnovljeno”) i vlasnica dobiva e-mail
    da kupcu sama pošalje potvrdu. Mjesec s punim dodatnim popisom (zlouporaba) se preskače; najviše 20 izjava po prolazu. */
-function sj_raskid_reconcile(bool $force = false): array {
+function sj_raskid_reconcile(bool $force = false, array $extraJournals = []): array {
   /* v100 (recenzija vijeća v99, softver N2/N4): čita redak po redak (fgets) i pamti samo id-ove i mjesta u datoteci, pa i dnevnik od
      20 MB stane u malo memorije; za svaki dnevnik pamti do kojeg je mjesta sve već usklađeno (raskidi-provjera.json → off); e-mail
      vlasnici koji nije prošao ponavlja se pri sljedećem prolazu (→ notify) */
@@ -457,8 +457,11 @@ function sj_raskid_reconcile(bool $force = false): array {
   if (!is_array($st)) return [];
   $months = [$now, gmmktime(0, 0, 0, (int)gmdate('n', $now) - 1, 1, (int)gmdate('Y', $now))];
   $cand = []; $newOff = (array)($st['off'] ?? []);
-  foreach ($months as $t) {
-    $jf = sj_raskid_journal_path($t); $of = sj_raskid_overflow_path($t); $bn = basename($jf);
+  /* parovi dnevnik → dodatni popis istog mjeseca; recenzija v100: i stari dnevnik koji dnevna kopija upravo briše */
+  $pairs = array_map(fn($t) => [sj_raskid_journal_path($t), sj_raskid_overflow_path($t)], $months);
+  foreach ($extraJournals as $xj) $pairs[] = [$xj, SJ_DATA . '/' . str_replace('raskidi-ulaz-', 'raskidi-visak-', basename($xj))];
+  foreach ($pairs as [$jf, $of]) {
+    $bn = basename($jf);
     if (!is_file($jf) || (is_file($of) && filesize($of) > SJ_RASKID_OVERFLOW_MAX)) continue;
     $fh = @fopen($jf, 'rb'); if (!$fh) continue;
     $off = (int)($newOff[$bn] ?? 0); if ($off > 0 && $off <= filesize($jf)) fseek($fh, $off); else $off = 0;
@@ -475,7 +478,7 @@ function sj_raskid_reconcile(bool $force = false): array {
   $missing = [];
   if ($cand) {
     foreach ((array)sj_read_json(SJ_DATA . '/raskidi.json', []) as $x) unset($cand[(string)($x['id'] ?? '')]);
-    foreach ($months as $t) { $of = sj_raskid_overflow_path($t); if (!$cand || !is_file($of)) continue; $fh = @fopen($of, 'rb'); if (!$fh) continue;
+    foreach ($pairs as [, $of]) { if (!$cand || !is_file($of)) continue; $fh = @fopen($of, 'rb'); if (!$fh) continue;
       while (($ln = fgets($fh)) !== false) { if (preg_match('/"id":"([0-9a-f]{8,64})"/', $ln, $mm)) unset($cand[$mm[1]]); } fclose($fh); }
     /* najviše 20 po prolazu; mjesto u dnevniku ne prelazi prvu izjavu koja je ostala neobnovljena */
     $k = 0;
@@ -560,7 +563,7 @@ function sj_mask_numbers(string $s): string {
     $s = preg_replace_callback($re, function ($m) use (&$keep, $subj, $valid) {
       [$txt, $off] = $m[0]; $end = $off + strlen($txt);
       $near = substr($subj, max(0, $off - 3), $off - max(0, $off - 3)) . substr($subj, $end, 3);
-      if (preg_match('~\d~', $near) || ($valid && !$valid($m))) return $txt;
+      if (preg_match('~\d~', $near) || ($valid && !$valid($m, $subj))) return $txt;
       $keep[] = $txt; return "\x01" . (count($keep) - 1) . "\x02";
     }, $s, -1, $cnt, PREG_OFFSET_CAPTURE) ?? '';
   };
@@ -568,7 +571,7 @@ function sj_mask_numbers(string $s): string {
   $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
   $protect('~(?<!\d)\d{1,2}:\d{2}(?!\d)~');
   /* v100: kućni broj i poštanski broj („Ilica 123/4, 10000 Zagreb”) — zarez i razmak, pa pet znamenki i naziv mjesta */
-  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,3})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u'); /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
+  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,3})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u', fn($m, $subj) => (bool)preg_match('~\p{L}{3,}\.?\s$~u', substr($subj, max(0, $m[0][1] - 40), min(40, $m[0][1]))) && !preg_match('~(tel|mob|nazov|zov|broj|kontakt|poziv|whats|viber|sms)~iu', substr($subj, max(0, $m[0][1] - 40), min(40, $m[0][1])))); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */
   /* v99: razdjelnik je bilo što osim slova, znamenke i oznake valute (zarez, točka-zarez, |, *, ~, crtice, novi red, više razmaka) */
   $s = preg_replace('~\b[A-Za-z]{2}[^\p{L}\d\p{Sc}\x01\x02]{0,3}\d{2}(?:[^\p{L}\d\p{Sc}\x01\x02]{0,4}\d){11,30}(?!\d)~u', '[IBAN skriven]', $s) ?? '';
@@ -1294,7 +1297,7 @@ function sj_daily_backup(int $keepDays = 14): ?string {
     foreach (glob(SJ_DATA . '/*.tmp-*') ?: [] as $tf) if (is_file($tf) && filemtime($tf) < time() - 3600) @unlink($tf);
     $keepJ = [basename(sj_raskid_journal_path(time())), basename(sj_raskid_journal_path(gmmktime(0, 0, 0, (int)gmdate('n') - 1, 1, (int)gmdate('Y'))))];
     $oldJ = array_filter(glob(SJ_DATA . '/raskidi-ulaz-*.jsonl') ?: [], fn($jf) => !in_array(basename($jf), $keepJ, true));
-    if ($oldJ) { try { sj_raskid_reconcile(true); } catch (Throwable $e) {} } /* recenzija v99: prije brisanja starog dnevnika još jedna provjera; v100: samo tada */
+    if ($oldJ) { try { sj_raskid_reconcile(true, array_values($oldJ)); } catch (Throwable $e) {} } /* recenzija v99: prije brisanja starog dnevnika još jedna provjera; v100: samo tada */
     foreach (glob(SJ_DATA . '/raskidi-ulaz-*.jsonl') ?: [] as $jf) if (!in_array(basename($jf), $keepJ, true)) @unlink($jf);
     foreach (glob($root . '/????-??-??', GLOB_ONLYDIR) ?: [] as $old) {
       if (strtotime(basename($old)) < strtotime($day) - $keepDays * 86400) { foreach (array_merge(glob($old . '/*') ?: [], [$old . '/.gotovo']) as $x) if (is_file($x)) @unlink($x); @rmdir($old); }
@@ -1679,7 +1682,7 @@ const SJ_TLDS = 'ai|gg|sh|tv|cn|ml|cf|dev|page|zip|mov|icu|lol|sbs|cfd|gq|cyou|m
 const SJ_TLDS_WORDS = 'to|su|me|si|ga|it|ba|de|in|at|us';
 const SJ_TLDS_PATH = SJ_TLDS . '|' . SJ_TLDS_WORDS . '|do|red|al|im|br'; /* s putanjom („bit.do/x”) ipak poveznica */
 define('SJ_LINK_RE', '~(https?:|www\\s*[.．。]|[\\p{L}\\p{N}-]{2,}[.．。](?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\\p{L}\\p{N}])'
-  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website|hr)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}[.．。](?:ru|eu|pw|io|biz|cn|' . SJ_TLDS_WORDS . ')(?=/|\\s*$)|[\\p{L}\\p{N}-]{2,}[.．。](?:рф|рус|срб|укр|бг|мкд|бел)(?![\\p{L}\\p{N}])|(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}][.．。](?:com|net|org|co)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}\\s+[.．。](?:hr|com)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{2,}[.．。]xn--[a-z0-9-]{2,}|[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_PATH . ')/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
+  . '|[\\p{L}\\p{N}-]{3,}[.．。](?:com|net|org|info|xyz|online|site|shop|store|app|link|click|help|support|top|pay|bank|cloud|website|hr)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}[.．。](?:ru|eu|pw|io|biz|cn|' . SJ_TLDS_WORDS . ')(?=/|\\s*$)|[\\p{L}\\p{N}]+-[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_WORDS . ')(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{2,}[.．。](?:рф|рус|срб|укр|бг|мкд|бел)(?![\\p{L}\\p{N}])|(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}][.．。](?:com|net|org|co)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{3,}\\s+[.．。](?:hr|com)(?![\\p{L}\\p{N}])|[\\p{L}\\p{N}-]{2,}[.．。]xn--[a-z0-9-]{2,}|[\\p{L}\\p{N}-]+[.．。](?:' . SJ_TLDS_PATH . ')/[^\\s]|(?<![\\d.])\\d{1,3}(?:[.．。]\\d{1,3}){3}[/:]|\\S+@\\S+\\.\\S+)~iu');
 function sj_link_norm(string $s): string {
   /* v94 (recenzija): „(.)”, „[.]”, „ dot ”, „ točka ” postaju točka samo kad iza njih stoji vršna domena („primjer točka hr”),
      da obična „točka 2 Uvjeta” ostane netaknuta */
