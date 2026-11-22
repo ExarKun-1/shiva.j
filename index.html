@@ -636,6 +636,7 @@
     background:var(--paper);
     padding:8px 24px 20px;
     flex-direction:column;gap:14px;
+    max-height:calc(100vh - 64px);max-height:calc(100dvh - 64px);overflow-y:auto; /* recenzija v102 (mobitel 6): na položenom mobitelu izbornik je viši od zaslona */
   }
   .mobile-menu a{
     font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;
@@ -1128,7 +1129,7 @@
   .order-form input[aria-invalid="true"],.order-form textarea[aria-invalid="true"]{border-color:#9B2C1F}
   .order-form .consent input[aria-invalid="true"]{outline:2px solid #9B2C1F;outline-offset:2px}
   .strap-sel[aria-invalid="true"]{border-color:#9B2C1F;box-shadow:0 0 0 1px #9B2C1F}
-  .strap-err{display:block;margin-top:6px;font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px;text-transform:none;letter-spacing:0}
+  .strap-err{display:block;grid-column:1/-1;margin-top:6px;font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px;text-transform:none;letter-spacing:0}
   /* način dostave */
   .ship-field{border:0;padding:0;margin:0;min-width:0}
   .ship-field legend{padding:0;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
@@ -1185,9 +1186,9 @@
      animacije (uz „smanjeno kretanje” se nije vidjela, a na sporoj mreži se vidjela i kad stranica radi) — pokazuje je klasa html.js-fail,
      koju postavlja druga, mala skripta iza glavne kad glavna nije stigla do kraja (npr. sintaksa koju preglednik ne zna) */
   .old-browser{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--ink);color:var(--paper);padding:14px 16px;font-size:.9rem;line-height:1.5;text-align:center}
-  .old-browser a{color:var(--paper);text-decoration:underline;display:inline-block;padding:14px 0;margin:-14px 0} /* v102: cilj dodira 44 px */
+  .old-browser a{color:var(--paper);text-decoration:underline;display:inline-block;padding:13px 0} /* v102: cilj dodira 44 px; recenzija v102 (mobitel 1): bez negativne margine — poveznice u susjednim recima se ne preklapaju */
   .js-fail .old-browser{display:block}
-  .js-fail body{padding-bottom:150px} /* v102 (recenzija vijeća v101, dizajn 9): traka ne prekriva podnožje */
+  .js-fail body{padding-bottom:240px} /* v102 (recenzija vijeća v101, dizajn 9): traka ne prekriva podnožje */
   .pay-title{
     font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
     color:var(--thread);margin-bottom:12px;display:flex;align-items:center;gap:10px;
@@ -2392,7 +2393,7 @@ function openLightbox(id){
   if(!pL || !visibleCats().some(c => c.id === catOf(pL))) return; /* v63: artikl iz skrivene rubrike (Ostalo) se ne otvara */
   lbCurrent = pL;
   lbReturnFocus = document.activeElement;
-  lbIndex = 0; { const lbP = lightbox.querySelector(".lb-panel"); if(lbP) lbP.classList.remove("lb-scrolled"); }
+  lbIndex = 0; { const lbP = lightbox.querySelector(".lb-panel"); if(lbP){ lbP.classList.remove("lb-scrolled"); lbP.scrollTop = 0; } const lbI = lightbox.querySelector(".lb-info"); if(lbI) lbI.scrollTop = 0; } /* recenzija v102 (mobitel 2): svaki prikaz počinje od fotografije i naziva */
   document.getElementById("lbName").textContent = lbCurrent.name;
   document.getElementById("lbPrice").textContent = fmt(lbCurrent.price);
   document.getElementById("lbDesc").textContent = lbCurrent.desc;
@@ -3351,7 +3352,9 @@ function zipCheck(){
   const zEl = document.getElementById("fZip"), so = shipSel();
   if(!(so && so.address)){ zEl.setCustomValidity(""); return true; }
   const okZ = /^\d{5}\s+\S/.test(cityVal());
-  zEl.setCustomValidity(okZ ? "" : (zEl.value.trim() ? "Poštanski broj ima 5 znamenki, npr. 10000." : "Upišite poštanski broj (5 znamenki), npr. 10000."));
+  /* recenzija v102 (mobitel 5): poruka na polju „Poštanski broj” samo kad je baš on neispravan (prazno mjesto javlja polje „Mjesto”) */
+  const zipOnlyOk = /^\d{5}$/.test(zEl.value.replace(/\s+/g, "")) || /^\s*\d{5}\s+\S/.test(document.getElementById("fCity").value);
+  zEl.setCustomValidity(okZ || zipOnlyOk ? "" : (zEl.value.trim() ? "Poštanski broj ima 5 znamenki, npr. 10000." : "Upišite poštanski broj (5 znamenki), npr. 10000."));
   return okZ;
 }
 /* v48: popis svih polja za ispravak iznad gumba (preglednik inače pokazuje jedno po jedno) */
@@ -3453,13 +3456,13 @@ function showOrderPending(srv, email, note = ""){
   }
 }
 /* v53: natrag/osvježavanje nakon slanja — obrazac je prazan, ali narudžba čeka potvrdu iz e-maila */
-function showPendingAfterReload(){
+function showPendingAfterReload(force){
   const pd = storeGet("pend");
   if(!pd){ pendFormClear(); return; } /* v92 (recenzija): narudžba potvrđena u drugoj kartici */
   const until = pd.until ? Date.parse(pd.until) : 0;
   /* v102 (recenzija vijeća v101, softver N7): istekla oznaka briše se i uz praznu košaricu (inače dalje šalje pt= i pokazuje obavijest) */
   if(!cart.length && (!until || until < Date.now())){ storeSet("pend", null); pendFormClear(); return; }
-  if(!cart.length || /potvrda=/.test(location.search)) return;
+  if(!cart.length || (!force && /potvrda=/.test(location.search))) return; /* recenzija v102 (mobitel 4): nakon „Zatvori” u okviru za potvrdu napomena se ipak pokaže */
   /* v99 (recenzija vijeća v98, kupac N1): promijenjena košarica — „pend” ostaje dok api/status?pt= ne kaže je li narudžba potvrđena
      na drugom uređaju (refreshReservations); tek ako nije, briše se kao prije */
   if(until && until >= Date.now() && pd.sig !== cartSig() && /^[0-9a-f]{24}$/.test(pd.pt || "")){ storeSet("pend", { ...pd, stale: true }); return; }
@@ -3485,7 +3488,7 @@ function confirmAskSync(){
   if(cart.length && !bx.querySelector(".claim-close")){
     db.classList.add("confirm-ask");
     bx.insertAdjacentHTML("beforeend", `<button type="button" class="edit-order claim-close">Zatvori</button>`);
-    bx.querySelector(".claim-close").addEventListener("click", () => { bx.remove(); db.classList.remove("confirm-ask"); document.getElementById("emptyCart").classList.remove("under-claim"); });
+    bx.querySelector(".claim-close").addEventListener("click", () => { bx.remove(); db.classList.remove("confirm-ask"); document.getElementById("emptyCart").classList.remove("under-claim"); showPendingAfterReload(true); });
   }
 }
 async function confirmFromLink(statusP){
@@ -3549,7 +3552,7 @@ async function confirmFromLink(statusP){
         <button type="button" class="order-btn claim-btn" id="confirmBtn">Potvrdi narudžbu</button>
         <span class="field-hint" id="confirmHint">Niste vi poslali ovu narudžbu? Nemojte je potvrditi: bez potvrde narudžba ne vrijedi.</span>`, true);
       document.getElementById("confirmBtn").addEventListener("click", e => send(e.currentTarget));
-      { const cl = document.querySelector("#claimBox .claim-close"); if(cl){ if(cart.length) cl.addEventListener("click", () => document.querySelector(".drawer-body").classList.remove("confirm-ask")); else cl.remove(); } } /* provjera v102 (kupac N6): bez košarice „Zatvori” bi ostavio praznu košaricu bez gumba */
+      { const cl = document.querySelector("#claimBox .claim-close"); if(cl){ if(cart.length) cl.addEventListener("click", () => { document.querySelector(".drawer-body").classList.remove("confirm-ask"); showPendingAfterReload(true); }); else cl.remove(); } } /* provjera v102 (kupac N6): bez košarice „Zatvori” bi ostavio praznu košaricu bez gumba */
       return; /* adresa s oznakom ostaje do klika — osvježavanje ne gubi link */
     }
     /* krug 2 (kupac): privremeno odbijanje (previše pokušaja, smetnja) — link ostaje u adresi, pa osvježavanje pokušava ponovno */
@@ -4095,7 +4098,12 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
       else if (data.field === "street" || data.field === "phone") {
         /* v101 (recenzija vijeća v100, sigurnost S1): poslužitelj je odbio adresu ili telefon — poruka i fokus na to polje */
         showOrderError(`<b>${data.field === "phone" ? "Provjerite telefon." : "Provjerite adresu."}</b> ${escHtml(noHyBreak(data.error || ""))}`);
-        const ff = document.getElementById(data.field === "phone" ? "fPhone" : "fAddr"); if(ff && ff.offsetParent !== null) ff.focus();
+        /* recenzija v102 (mobitel 3): poruka i na samom polju (okvir s greškom je na mobitelu izvan zaslona) */
+        const ff = document.getElementById(data.field === "phone" ? "fPhone" : "fAddr"); if(ff && ff.offsetParent !== null){ ff.setCustomValidity(data.field === "phone" ? "Upišite samo broj telefona." : "Upišite samo ulicu i kućni broj, bez poveznica i e-adresa."); ff.focus(); ff.reportValidity && ff.reportValidity(); }
+      }
+      else if (data.field === "locker") {
+        showOrderError(`<b>Provjerite paketomat.</b> ${escHtml(noHyBreak(data.error || ""))}`);
+        const fl = document.getElementById("fLocker"); if(fl && fl.offsetParent !== null){ fl.setCustomValidity("Upišite samo naziv ili adresu paketomata, ili ga odaberite na karti."); fl.focus(); fl.reportValidity && fl.reportValidity(); }
       }
       else if (data.field === "city") {
         /* v99 (recenzija vijeća v98, L6): poštanski broj — poruka i fokus na polje „Poštanski broj” (ili „Mjesto” ako je broj ispravan) */
