@@ -456,7 +456,7 @@ function sj_raskid_reconcile(bool $force = false, array $extraJournals = []): ar
   }, []);
   if (!is_array($st)) return [];
   $months = [$now, gmmktime(0, 0, 0, (int)gmdate('n', $now) - 1, 1, (int)gmdate('Y', $now))];
-  $cand = []; $newOff = (array)($st['off'] ?? []);
+  $cand = []; $newOff = (array)($st['off'] ?? []); $GLOBALS['sj_reconcile_read'] = [];
   /* parovi dnevnik → dodatni popis istog mjeseca; recenzija v100: i stari dnevnik koji dnevna kopija upravo briše */
   $pairs = array_map(fn($t) => [sj_raskid_journal_path($t), sj_raskid_overflow_path($t)], $months);
   foreach ($extraJournals as $xj) $pairs[] = [$xj, SJ_DATA . '/' . str_replace('raskidi-ulaz-', 'raskidi-visak-', basename($xj))];
@@ -474,6 +474,7 @@ function sj_raskid_reconcile(bool $force = false, array $extraJournals = []): ar
       $off = ftell($fh);
     }
     fclose($fh); $newOff[$bn] = $off;
+    clearstatcache(true, $jf); if ($off >= filesize($jf)) $GLOBALS['sj_reconcile_read'][] = $bn; /* recenzija v101: pročitan do kraja (dnevna kopija smije brisati samo takve) */
   }
   $missing = [];
   if ($cand) {
@@ -571,9 +572,9 @@ function sj_mask_numbers(string $s): string {
   $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?\d{4}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
   $protect('~(?<!\d)\d{1,2}:\d{2}(?!\d)~');
   /* v100: kućni broj i poštanski broj („Ilica 123/4, 10000 Zagreb”) — zarez i razmak, pa pet znamenki i naziv mjesta */
-  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,3})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u', function ($m, $subj) { $bf = mb_strcut($subj, max(0, $m[0][1] - 40), min(40, $m[0][1]), 'UTF-8');
+  $protect('~(?<![\d/])[1-9]\d{0,2}(?:/\d{1,2})?[a-zA-Z]?,\s?[1-5]\d{4}(?=\s\p{L})~u', /* recenzija v101: iza kose crte najviše dvije znamenke („385/912, 34567” nije kućni broj) */ function ($m, $subj) { $bf = mb_strcut($subj, max(0, $m[0][1] - 40), min(40, $m[0][1]), 'UTF-8');
     /* v101 (recenzija vijeća v100, sigurnost): riječi samo na početku riječi i u cijelom obliku — „Hrvatskih branitelja 123/4”, „Trg Ivana Zovka 5” ostaju adrese */
-    return (bool)preg_match('~\p{L}{3,}\.?\s$~u', $bf) && !preg_match('~(?<!\p{L})(?:tel(?:efon\p{L}*)?|mob(?:itel\p{L}*)?|nazov\p{L}*|zovi\p{L}*|zove\p{L}*|poziv\p{L}*|whats\p{L}*|viber|sms)(?!\p{L})~iu', $bf); }); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
+    return (bool)preg_match('~\p{L}{3,}\.?\s$~u', $bf) && !preg_match('~(?<!\p{L})(?:tel(?:efon\p{L}*)?|mob(?:itel\p{L}*|iln\p{L}*)?|broj\p{L}*|kontakt(?!\s+adres)\p{L}*|nazov\p{L}*|zovi\p{L}*|zove\p{L}*|poziv\p{L}*|whats\p{L}*|viber|sms)(?!\p{L})~iu', $bf); }); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */
   /* v99: razdjelnik je bilo što osim slova, znamenke i oznake valute (zarez, točka-zarez, |, *, ~, crtice, novi red, više razmaka) */
   $s = preg_replace('~\b[A-Za-z]{2}[^\p{L}\d\p{Sc}\x01\x02]{0,3}\d{2}(?:[^\p{L}\d\p{Sc}\x01\x02]{0,4}\d){11,30}(?!\d)~u', '[IBAN skriven]', $s) ?? '';
@@ -1303,7 +1304,7 @@ function sj_daily_backup(int $keepDays = 14): ?string {
        briše se samo kad je provjera prošla do kraja (manje od 20 obnovljenih, bez iznimke) — inače čeka sljedeći dan */
     $recOk = !$oldJ;
     if ($oldJ) { try { $recOk = count(sj_raskid_reconcile(true, array_values($oldJ))) < 20; } catch (Throwable $e) { $recOk = false; } }
-    if ($recOk) foreach ($oldJ as $jf) @unlink($jf);
+    if ($recOk) foreach ($oldJ as $jf) if (in_array(basename($jf), (array)($GLOBALS['sj_reconcile_read'] ?? []), true)) @unlink($jf); /* recenzija v101: samo dnevnik koji je provjera stvarno pročitala do kraja */
     foreach (glob($root . '/????-??-??', GLOB_ONLYDIR) ?: [] as $old) {
       if (strtotime(basename($old)) < strtotime($day) - $keepDays * 86400) { foreach (array_merge(glob($old . '/*') ?: [], [$old . '/.gotovo']) as $x) if (is_file($x)) @unlink($x); @rmdir($old); }
     }

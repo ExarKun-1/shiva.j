@@ -423,6 +423,17 @@ $n1 = count(array_filter((array)json_decode((string)file_get_contents(SJ_DATA . 
 @unlink($td . '/.gotovo'); sj_daily_backup();
 $n2 = count(array_filter((array)json_decode((string)file_get_contents(SJ_DATA . '/raskidi.json'), true), fn($x) => str_starts_with((string)($x['name'] ?? ''), 'Stari '))); $left2 = is_file($oj);
 $ok($n1 === 20 && $left1 && $n2 === 25 && !$left2, 'v101 (softver F): stari dnevnik izjava ostaje dok provjera ne obnovi sve (20 po prolazu), tek tada se briše ' . json_encode([$n1, $left1, $n2, $left2]));
+/* recenzija v101: dnevnik koji provjera NIJE pročitala (dodatni popis istog mjeseca je prevelik, pa se preskače) ne smije se obrisati */
+@unlink($oj); @unlink(SJ_DATA . '/raskidi-provjera.json'); file_put_contents($oj, json_encode(['name' => 'Preskočen', 'no' => '2020-0900', 'email' => 'p@primjer.hr', 'id' => sprintf('%032x', 78000), 'at' => '2020-01-15T10:00:00Z']) . "\n");
+$ovOld = SJ_DATA . '/raskidi-visak-2020-01.jsonl'; $fo = fopen($ovOld, 'w'); ftruncate($fo, SJ_RASKID_OVERFLOW_MAX + 200000); fclose($fo);
+@unlink($td . '/.gotovo'); sj_daily_backup(); clearstatcache(); $leftSkip = is_file($oj);
+@unlink($ovOld); @unlink($td . '/.gotovo'); @unlink(SJ_DATA . '/raskidi-provjera.json'); sj_daily_backup(); clearstatcache(); $leftRead = is_file($oj);
+$ok($leftSkip && !$leftRead, 'recenzija v101: stari dnevnik koji provjera nije mogla pročitati ostaje; briše se tek kad je pročitan do kraja ' . json_encode([$leftSkip, $leftRead]));
+/* recenzija v101: maska — „broj”, „kontakt”, „mobilni” ispred brojeva nisu adresa; iza kose crte kućnog broja najviše dvije znamenke */
+$ok(sj_mask_numbers('broj Ivana 385/912, 34567 Zadar') === 'broj Ivana [broj skriven] Zadar' && sj_mask_numbers('Uplatite Ivanu 385/912, 34567 hitno') === 'Uplatite Ivanu [broj skriven] hitno'
+  && sj_mask_numbers('mobilni 98/12, 34567 Ivana') === 'mobilni [broj skriven] Ivana' && sj_mask_numbers('kontakt 98/12, 34567 Ivana') === 'kontakt [broj skriven] Ivana'
+  && sj_mask_numbers('Kontakt adresa: Ilica 123/4, 10000 Zagreb') === 'Kontakt adresa: Ilica 123/4, 10000 Zagreb' && sj_mask_numbers('Ilica 123/45, 10000 Zagreb') === 'Ilica 123/45, 10000 Zagreb',
+  'recenzija v101: maska — „broj/kontakt/mobilni” ispred brojeva skriva; „Kontakt adresa: …” i kućni broj „123/45” ostaju');
 @unlink($oj); file_put_contents(SJ_DATA . '/raskidi.json', $rb101 === '' ? '[]' : $rb101); @unlink(SJ_DATA . '/raskidi-provjera.json');
 /* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
 $kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");

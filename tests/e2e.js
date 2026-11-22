@@ -440,6 +440,26 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const gone = await pg.evaluate(L => { storeSet('last', L); openCart(); renderPaymentPanel(L); const before = /Uplatite/.test(document.getElementById('emptyCart').textContent);
       const l = storeGet('last'); l.withdrawn = true; storeSet('last', l); lastStateChanged(); const t = document.getElementById('emptyCart').textContent; closeCart(false); return [before, /Uplatite/.test(t), /izjavu o raskidu ugovora; ne trebate je platiti/.test(t)]; }, mkLast('SJ-2026-0104', 'luna', 'Luna'));
     ok(gone[0] && !gone[1] && gone[2], 'v101 (dizajn 6): izjava o raskidu dok je ploča na zaslonu — „Uplatite” nestaje bez osvježavanja ' + JSON.stringify(gone));
+    /* recenzija v101: ploča na zaslonu kad stigne „izjava bez poveznice” (okvir se pojavi) i kad stigne „plaćeno” (ploča nestaje) */
+    const st2 = await pg.evaluate(L => { storeSet('last', L); openCart(); renderPaymentPanel(L); const e = document.getElementById('emptyCart'); const a = !!e.querySelector('.pay-wdu');
+      let l = storeGet('last'); l.wdU = true; storeSet('last', l); lastStateChanged(); const b = !!e.querySelector('.pay-wdu') && e.classList.contains('pay-mode');
+      l = storeGet('last'); l.paid = true; storeSet('last', l); lastStateChanged(); const c = e.classList.contains('pay-mode') || /Uplatite/.test(e.textContent); closeCart(false); return [a, b, c]; }, mkLast('SJ-2026-0105', 'luna', 'Luna'));
+    ok(!st2[0] && st2[1] && !st2[2], 'recenzija v101: ploča na zaslonu — okvir „izjava bez poveznice” se pojavi, a nakon „plaćeno” ploča nestaje ' + JSON.stringify(st2));
+    /* recenzija v101: „vaša” torba samo dok narudžba traje — ne nakon izjave o raskidu ni nakon isteka roka starije narudžbe */
+    const own3 = await pg.evaluate(([L, P]) => { const r = []; storeSet('lastPrev', null); storeSet('own', null); storeSet('last', L); r.push(ownOrderOf('luna'));
+      const l = storeGet('last'); l.withdrawn = true; storeSet('last', l); r.push(ownOrderOf('luna'));
+      storeSet('own', { at: Date.now(), ids: ['luna'], no: L.srv.orderNo }); r.push(ownOrderOf('luna')); storeSet('own', null); storeSet('last', null);
+      storeSet('lastPrev', [P]); r.push(ownOrderOf('tara'));
+      P.at = Date.now() - 2 * 86400e3; P.srv.payUntil = new Date(Date.now() - 3600e3).toISOString(); storeSet('lastPrev', [P]); r.push(ownOrderOf('tara'));
+      P.at = Date.now(); P.withdrawn = true; storeSet('lastPrev', [P]); r.push(ownOrderOf('tara')); storeSet('lastPrev', null); return r; }, [mkLast('SJ-2026-0106', 'luna', 'Luna'), mkLast('SJ-2026-0107', 'tara', 'Tara')]);
+    ok(JSON.stringify(own3) === JSON.stringify(['SJ-2026-0106', '', '', 'SJ-2026-0107', '', '']), 'recenzija v101: torba je „vaša” samo dok narudžba traje (raskid, istek roka starije narudžbe → nije) ' + JSON.stringify(own3));
+    /* recenzija v101: ista narudžba potvrđena ponovno — ploča zadržava što već zna; druga narudžba ne nasljeđuje ništa */
+    const carry = await pg.evaluate(L => { Object.assign(L, { claimed: true, claimedUntil: new Date(Date.now() + 3 * 86400e3).toISOString(), claimMsg: 'Torbu čuvamo za vas.', wdU: true }); storeSet('last', L);
+      const srv = no => ({ ok: true, orderNo: no, reference: no.replace('SJ-', ''), total: 65, until: L.srv.until, payUntil: L.srv.payUntil, items: [{ id: 'luna', name: 'Luna', qty: 1, price: 65, made: false }], ship: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0 } });
+      showOrderSuccess(srv(L.srv.orderNo)); const a = storeGet('last'); const r = [a.claimed === true, a.claimMsg, a.wdU === true, a.srv.claimLink === L.srv.claimLink, a.srv.raskidLink === L.srv.raskidLink, a.srv.check === L.srv.check, (storeGet('lastPrev') || []).length];
+      showOrderSuccess(srv('SJ-2026-0109')); const b = storeGet('last'); r.push(b.claimed === undefined && b.wdU === undefined && !b.srv.claimLink, (storeGet('lastPrev') || []).map(x => x.srv.orderNo).join());
+      PRODUCTS.find(x => x.id === 'luna').reserved = false; storeSet('last', null); storeSet('lastPrev', null); document.getElementById('emptyCart').classList.remove('pay-mode'); renderCart(); closeCart(false); return r; }, mkLast('SJ-2026-0108', 'luna', 'Luna'));
+    ok(JSON.stringify(carry) === JSON.stringify([true, 'Torbu čuvamo za vas.', true, true, true, true, 0, true, 'SJ-2026-0108']), 'recenzija v101: ponovljena potvrda iste narudžbe zadržava „Uplatio/la sam”, izjavu bez poveznice i poveznice; nova narudžba ne nasljeđuje ' + JSON.stringify(carry));
     /* 2) servis javi „paid” za zadnju i „cancelled” za stariju narudžbu — ploča više ne nudi uplatu; vlastita starija narudžba nije „drugog kupca” */
     await pg.evaluate(([L, P]) => { storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); }, [mkLast('SJ-2026-0102', 'luna', 'Luna'), mkLast('SJ-2026-0103', 'tara', 'Tara')]);
     const ownPrev = await pg.evaluate(() => { const p = PRODUCTS.find(x => x.id === 'tara'); p.srvReserved = true; openLightbox('tara'); const t = document.getElementById('lbGoneText').textContent; closeLightbox(); p.srvReserved = false; return t; });
@@ -450,6 +470,12 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.paid; }, null, { timeout: 5000 }).catch(() => {});
     const paid = await pg.evaluate(() => { openCart(); const e = document.getElementById('emptyCart'); return { paid: !!(storeGet('last') || {}).paid, prev: (storeGet('lastPrev') || []).length, btn: !!e.querySelector('#showLast, .last-order'), text: e.textContent.slice(0, 80) }; });
     ok(paid.paid && paid.prev === 0 && !paid.btn && /stanje=SJ-2026-0102/.test(sawPrev) && /prev=SJ-2026-0103:/.test(sawPrev), 'v101 (softver A): plaćena zadnja i stornirana starija narudžba — bez gumba „Podaci za uplatu” ' + JSON.stringify(paid));
+    /* recenzija v101: oznaka „plaćeno” nije trajna — servis javi „open” (vlasnica poništila evidentiranu uplatu), ploča opet nudi podatke za uplatu */
+    await pg.unroute('**/api/status*');
+    await pg.route('**/api/status*', async route => { const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'open' }) }); });
+    await pg.goto(URL + '?v101=2', { waitUntil: 'networkidle' });
+    await pg.waitForFunction(() => { const l = storeGet('last'); return l && !l.paid; }, null, { timeout: 5000 }).catch(() => {});
+    ok(await pg.evaluate(() => { const l = storeGet('last'); return !!l && !l.paid && !!lastValid(); }), 'recenzija v101: nakon „open” oznaka plaćeno se briše, podaci za uplatu su opet dostupni');
     await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); closeCart(false); });
     /* 3) stari link za potvrdu: raskid → obavijest; „mine” → torba izlazi iz košarice */
     await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'withdrawn', error: 'Za ovu narudžbu primili smo vašu izjavu o raskidu ugovora, pa je ne trebate platiti.' }) }));
