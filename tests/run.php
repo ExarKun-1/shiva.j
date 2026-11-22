@@ -470,7 +470,7 @@ $ok(!$v2 && !$b2 && sj_mask_numbers("HR98\u{3164}2360\u{3164}0001\u{3164}1027\u{
 /* provjera v102 (krug 2, softver N3): točka na kraju rečenice ne kvari „sate od–do”; širi razmak ne skriva broj iza zaštićenog dijela; datum s količinom ostaje */
 $ok(sj_mask_numbers('od 6-14 h.') === 'od 6-14 h.' && sj_mask_numbers('20.11.2026. — 5 kom') === '20.11.2026. — 5 kom'
   && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
-  && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
+  && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && str_contains(sj_mask_numbers('Ulica 91-23, 45678 Zagreb'), '[broj skriven]') /* silazni raspon bez kose crte */ && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
   'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
 /* v102 (sigurnost N4): zaglavlje Host s dijelom iza dvotočke koji nije port ne ulazi u link e-maila */
 { $h0 = $_SERVER['HTTP_HOST'] ?? null; $cfgH = sj_config();

@@ -260,7 +260,7 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false): void {
   if (sj_withdrawn($prev))
     sj_json_out(['ok' => false, 'code' => 'withdrawn', 'error' => 'Za ovu narudžbu zaprimili smo vašu izjavu o raskidu ugovora, pa je ne trebate platiti. Ako ste je već platili, novac vraćamo kako piše u Uvjetima kupnje, točka 7.5.'], 409);
   if (!empty($prev['paidAt']))
-    sj_json_out(['ok' => false, 'code' => 'paid', 'error' => 'Uplatu za ovu narudžbu već smo zabilježili; ne uplaćujte je ponovno.'], 409);
+    sj_json_out(['ok' => false, 'code' => 'paid', 'error' => 'Uplatu za ovu narudžbu već smo zabilježili; nemojte plaćati ponovno.'], 409);
   if (!empty($prev['cancelledAt']) || !empty($prev['anonymizedAt']))
   {
     /* v102 (recenzija vijeća v101, kupac N3): nakon storna zbog neplaćanja ista e-adresa iste artikle ne može naručiti SJ_REORDER_BLOCK_DAYS dana
@@ -275,9 +275,9 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false): void {
   /* v102 (recenzija vijeća v101, mobitel 3 / softver N2): ponovljeni odgovor nosi i „Uplatio/la sam” i poveznicu za raskid, kao prvi */
   /* provjera v102 (krug 1, kupac N2): „Uplatio/la sam” je već iskorišten — ploča (i na drugom uređaju) to zna i ne obećava novi rok */
   $claimedBefore = !empty($prev['claimedAt']) || !empty($prev['proofAt']);
-  $claimOk = !$claimedBefore && sj_claim_url($prev) !== '';
+  $claimOk = !$claimedBefore && sj_claim_url($prev) !== '' && sj_claim_until($prev) > time(); /* recenzija v102 (softver 3): rok je prošao — bez datuma u prošlosti (kao GET paidclaim „late”) */
   $extra = ['claimed' => $claimedBefore && $viaLink, 'claimMsg' => ($claimedBefore && $viaLink) ? sj_already_text($prev) : null, 'claimUntil' => $claimOk ? sj_iso(sj_claim_until($prev)) : null,
-    'claimAtLeast' => !$claimedBefore && !empty($prev['payUntil']) && sj_claim_until($prev) < sj_next_workday_end((int)strtotime((string)$prev['payUntil'])),
+    'claimAtLeast' => $claimOk && !empty($prev['payUntil']) && sj_claim_until($prev) < sj_next_workday_end((int)strtotime((string)$prev['payUntil'])),
     'claimLink' => ($viaLink && !$claimedBefore && preg_match('/^[a-f0-9]{32}$/', (string)($prev['claim'] ?? ''))) ? '?uplata=' . rawurlencode((string)$prev['no']) . '&t=' . (string)$prev['claim'] : null,
     'raskidLink' => ($viaLink && sj_raskid_token($prev) !== '') ? '#raskid?no=' . sj_payment_ref((string)$prev['no']) . '&t=' . sj_raskid_token($prev) : null];
   sj_json_out(['ok' => true, 'orderNo' => $prev['no'], 'reference' => sj_payment_ref((string)$prev['no']), 'total' => (float)($prev['order']['total'] ?? 0),
@@ -564,7 +564,7 @@ if ($a === 'order') {
   /* v102 (recenzija vijeća v101): ista uska provjera poveznica kao za ulicu („BOX NOW Konzum, Ul.hr.branitelja 12” prolazi), a brojeve
      procjenjuje maska (i znamenke pune širine, razmaknute crticama ili zarezima) — u e-mailu kupcu paketomat ionako prolazi filtar i masku */
   /* provjera v102 (krug 2, softver N5): „Livada 2.red/5” i „…, k.br/2” su adrese — jednoslovna oznaka je poveznica samo uz pravi nastavak („t.ly/x”, „v.gd/x”) */
-  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|(?=[\p{N}\p{M}-]*\p{L})' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]' . SJ_DOT . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S~iu', $x);
+  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS . ')/\S|(?=[\p{N}\p{M}-]*\p{L})' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]' . SJ_DOT . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S~iu', $x);
   if ($locker !== '' && (!preg_match("~^[\\p{L}\\p{N}\\p{M} ,.:\\-–—/()#'’&„”\"]+$~u", $locker) || str_contains(sj_mask_numbers($locker), ' skriven]') || $addrLink($locker) || sj_has_link($locker)))
     sj_json_out(['ok' => false, 'error' => 'Za paketomat upišite samo naziv ili adresu (bez poveznica, e-adresa i brojeva telefona), ili ga odaberite na karti.', 'field' => 'locker'], 400);
   if ($ship && $ship['address'] && ($cust['street'] === '' || $cust['city'] === '')) sj_json_out(['ok' => false, 'error' => 'Upišite adresu za dostavu.'], 400);
@@ -880,7 +880,7 @@ if ($a === 'raskid') {
   $own = ['Kupac je putem stranice („Raskid ugovora”) poslao izjavu o jednostranom raskidu ugovora, ' . $when . '.', ''];
   foreach ($body as $l) $own[] = $l;
   $own[] = '';
-  $own[] = $match ? ('Narudžba ' . $match['no'] . ($match['email'] ? ' (e-adresa se podudara).' : ' — PAŽNJA: e-adresa se NE podudara s narudžbom; provjerite s kupcem. Neplaćenu narudžbu tada ne storniramo automatski: ako kupac potvrdi raskid s e-adrese iz narudžbe, stornirajte je u adminu.')) : 'Broj narudžbe nije pronađen u sustavu — izjava ipak vrijedi; pronađite narudžbu po imenu ili e-mailu.';
+  $own[] = $match ? ('Narudžba ' . $match['no'] . ($match['email'] ? ' (e-adresa se podudara).' : ' — PAŽNJA: e-adresa se NE podudara s narudžbom; provjerite s kupcem. Neplaćenu narudžbu tada ne storniramo automatski: ako kupac potvrdi raskid s e-adrese iz narudžbe, stornirajte je u adminu.')) : 'Broj narudžbe nije pronađen u sustavu — izjava ipak vrijedi; pronađite narudžbu po imenu ili e-adresi.';
   if ($match && $match['email'] && empty($match['tok']) && !$storno && empty($match['gone'])) $own[] = 'Izjava nije poslana preko poveznice iz e-maila, pa narudžba nije odmah stornirana. Ako nije plaćena, provjerite i stornirajte je u adminu (razlog: kupac odustao). Ako ništa ne učinite, kupac i dalje dobiva podsjetnik i e-mail o roku, uz napomenu da narudžbu ne treba platiti ako je izjavu poslao on, a neplaćena narudžba automatski se stornira po isteku roka (kupcu tada ide e-mail o stornu s povratom kao kod raskida).'; /* v93; recenzija v98; v99 */
   if ($storno) $own[] = 'Narudžba nije bila plaćena (ni javljena uplata), pa je automatski stornirana (razlog: kupac odustao); sve što je bilo rezervirano vraćeno je u prodaju. Ništa ne šaljete. Ako uplata ipak stigne (kupac je možda platio, a nije javio), vratite je najkasnije 14 dana od danas na račun s kojeg je plaćeno (Uvjeti t. 7.5.).';
   if ($postErr !== '') $own[] = 'PAŽNJA: ' . $postErr . '. Provjerite narudžbu u adminu.'; /* v98 */
@@ -1222,7 +1222,7 @@ function sj_order_open_mail(array $P, string $openNo, string $why, bool $overSof
   $ekC = sj_email_key((string)$cust['email']); $rk = 'mailto-' . substr(hash('sha256', $ekC), 0, 20);
   $sent = false;
   { /* granice su već provjerene u sj_order_pending (isti odgovori 429/503 kao za svaku narudžbu) */
-    $t = [sj_hi((string)$cust['name']), '', 'na stranici je upravo poslana nova narudžba s vašom e-adresom, ali je nismo zaprimili: ' . $why . ($openNo !== '' ? ' (prethodna narudžba: ' . $openNo . ')' : ''), '',
+    $t = [sj_hi((string)$cust['name']), '', 'na stranici je upravo poslana nova narudžba s vašom e-adresom, ali je nismo zaprimili.', '', $why . ($openNo !== '' ? ' Prethodna narudžba: ' . $openNo . '.' : ''), '', /* recenzija v102 (lektura): razlog kao zasebna rečenica */
           'Ako je niste poslali vi, zanemarite ovaj e-mail: ništa nije naručeno ni rezervirano.', '', 'Srdačan pozdrav,', sj_signature()];
     $sent = sj_send_mail((string)$cust['email'], $c['shop'] . ' — nova narudžba nije zaprimljena', implode("\n", $t), null, (string)$c['owner_email']);
     if ($sent) { sj_rate_limit('confirm', SJ_CONFIRM_PER_IP, 3600); sj_rate_limit($rk, 3, 3600); sj_global_limit($rk, 5, 3600); sj_global_limit(sj_day_key((string)$cust['email']), SJ_MAIL_PER_DAY, 86400); sj_global_limit('confirm', SJ_CONFIRM_HARD, 3600);
@@ -1504,7 +1504,7 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
                           : 'Stalna kolekcija: „' . $pm['name'] . '” — zauzeto ' . $um . ' od ' . $lm . ' mjesta.'; }
   if ($note !== '') { $lines[] = ''; $lines[] = 'Napomena: ' . $note; }
   $lines[] = '';
-  $lines[] = 'Kupac je prihvatio Uvjete kupnje (narudžba s obvezom plaćanja)' . ($confirmed ? ' i potvrdio narudžbu linkom iz e-maila.' : '.');
+  $lines[] = 'Kupac je prihvatio Uvjete kupnje (narudžba s obvezom plaćanja)' . ($confirmed ? ' i potvrdio narudžbu preko linka iz e-maila.' : '.');
   if (!empty($done['entry']['payUntil'])) $lines[] = 'Rok za uplatu (kupac): do ' . sj_fmt_deadline((string)$done['entry']['payUntil']); /* v100 (recenzija vijeća v99, dizajn N8): isti rok koji je dobio kupac */
   if ($res) {
     $lines[] = 'Rezervacija vrijedi do: ' . sj_fmt_hr($res['until']);

@@ -746,7 +746,8 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const s1 = await post('order', mk('api-key-v102-st1', 'v102s1@primjer.hr', { street: 'Ilica 1, t.ly/abc' }));
       const s2 = await post('order', mk('api-key-v102-st2', 'v102s2@primjer.hr', { street: 'Livada 2.red/5' }));
       const s3 = await post('order', mk('api-key-v102-st3', 'v102s3@primjer.hr', { street: 'Kneza Branimira 4, k.br/2' }));
-      ok(s1.status === 400 && s1.data.field === 'street' && s2.data.ok && s3.data.ok, 'provjera v102 (krug 2, softver N5): „Ilica 1, t.ly/abc” → 400; „Livada 2.red/5” i „…, k.br/2” su adrese ' + JSON.stringify([s1.status, s2.status, s3.status]));
+      const s4 = await post('order', mk('api-key-v102-st4', 'v102s4@primjer.hr', { street: 'Ilica 1, 163.com/abc' }));
+      ok(s1.status === 400 && s1.data.field === 'street' && s2.data.ok && s3.data.ok && s4.status === 400 && s4.data.field === 'street', 'provjera v102 (krug 2, softver N5): „Ilica 1, t.ly/abc” → 400; „Livada 2.red/5” i „…, k.br/2” su adrese ' + JSON.stringify([s1.status, s2.status, s3.status]));
       clearLimits(); clearRes(); }
     // v101 (recenzija vijeća v100): adresa bez poveznica i (bez potvrde linkom) bez dugih brojeva u e-mailu kupcu; rok za uplatu u e-mailu vlasnici;
     //      izjava bez poveznice u statusu (wdUnverified, prevStates open-wdu); pt ograničen → 'limited'; pun dnevnik izjava

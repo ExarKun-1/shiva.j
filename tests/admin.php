@@ -1,17 +1,18 @@
 <?php
 /* Testovi admina (Plaćeno za narudžbu, Rezervacije):  php tests/admin.php */
 $site = getenv('SHIVAJ_ADMIN_SITE') ?: sys_get_temp_dir() . '/shivaj-admin';
-passthru('SHIVAJ_NO_SERVE=1 sh ' . escapeshellarg(__DIR__ . '/serve.sh') . ' ' . escapeshellarg($site) . ' >/dev/null', $rc);
-if ($rc !== 0) { fwrite(STDERR, "serve.sh nije uspio\n"); exit(2); }
-$D = $site . '/data';
-$c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('proba-lozinka-123', PASSWORD_DEFAULT);
-file_put_contents($D . '/config.json', json_encode($c));
 /* pravi poslužitelj na 8091 i prava prijava (kolačić, CSRF iz stranice), da se vide i poruke iz preusmjeravanja */
 /* v99 (C9): portovi iz okoline (SHIVAJ_ADMIN_PORT, drugi = +1), čekanje dok port ne prima veze umjesto fiksne pauze */
 $port = (int)(getenv('SHIVAJ_ADMIN_PORT') ?: 8091); $jar = tempnam(sys_get_temp_dir(), 'sjck');
 /* v100 (recenzija vijeća v99, softver 6): zauzet port ili poslužitelj koji se ne pokrene — test staje (inače bi radio protiv tuđe stranice) */
 $portBusy = function (int $p): bool { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return true; } return false; };
 if ($portBusy($port) || $portBusy($port + 1)) { fwrite(STDERR, "port $port ili " . ($port + 1) . " je zauzet — postavite SHIVAJ_ADMIN_PORT\n"); exit(2); }
+/* recenzija v102 (softver 6): mapa se slaže tek NAKON provjere porta (ne briše se stranica živog poslužitelja) */
+passthru('SHIVAJ_NO_SERVE=1 sh ' . escapeshellarg(__DIR__ . '/serve.sh') . ' ' . escapeshellarg($site) . ' >/dev/null', $rc);
+if ($rc !== 0) { fwrite(STDERR, "serve.sh nije uspio\n"); exit(2); }
+$D = $site . '/data';
+$c = json_decode(file_get_contents($D . '/config.json'), true); $c['password_hash'] = password_hash('proba-lozinka-123', PASSWORD_DEFAULT);
+file_put_contents($D . '/config.json', json_encode($c));
 $srv = proc_open(['php', '-S', "127.0.0.1:$port", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
 $waitPort = function (int $p): void { for ($i = 0; $i < 100; $i++) { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return; } usleep(50000); } fwrite(STDERR, "poslužitelj na $p se nije pokrenuo\n"); exit(2); };
 $waitPort($port);
