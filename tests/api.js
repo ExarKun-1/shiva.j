@@ -692,12 +692,16 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       await post('raskid', { name: 'Ivana Kupac', no: 'IBAN stiže SMS-om, rok 1.12.2026., hitno', email: 'v102r1@primjer.hr' });
       await post('raskid', { name: 'Ivana Kupac', no: 'torba Luna 3. 10. 2026.', email: 'v102r2@primjer.hr' });
       await post('raskid', { name: 'Ivana Kupac', no: '0912-345678', email: 'v102r4@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: new Date().getFullYear() + '-091234', email: 'v102r5@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: 'torba 09.12.3456.', email: 'v102r6@primjer.hr' });
       const mr = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /potvrda primitka izjave o raskidu/.test(x));
       const r1 = mr.find(x => x.includes('v102r1@')) || '', r2 = mr.find(x => x.includes('v102r2@')) || '', r4 = mr.find(x => x.includes('v102r4@')) || '';
-      ok(/Broj narudžbe: \[navedeno u izjavi\]/.test(r1) && !/IBAN stiže/.test(r1) && /torba Luna 3\. 10\. 2026\./.test(r2) && /Broj narudžbe: \[navedeno u izjavi\]/.test(r4) && !/0912-345678/.test(r4), 'v102 (sigurnost N6): slobodan tekst u broju narudžbe ne ide u potvrdu izjave; „torba Luna” s datumom ostaje');
+      ok(/Broj narudžbe: \[navedeno u izjavi\]/.test(r1) && !/IBAN stiže/.test(r1) && /torba Luna 3\. 10\. 2026\./.test(r2) && /Broj narudžbe: \[navedeno u izjavi\]/.test(r4) && !/0912-345678/.test(r4)
+        && ['v102r5@', 'v102r6@'].every(a => /Broj narudžbe: \[navedeno u izjavi\]/.test(mr.find(x => x.includes(a)) || '')), 'v102 (sigurnost N6): slobodan tekst u broju narudžbe ne ide u potvrdu izjave; „torba Luna” s datumom ostaje');
       /* krnji zadnji redak dnevnika (prekinut zapis) ne proguta sljedeću izjavu */
       const jf = D + fs.readdirSync(D).filter(f => /^raskidi-ulaz-\d{4}-\d{2}\.jsonl$/.test(f)).sort().pop();
       fs.appendFileSync(jf, '{"name":"Krnji","no":"2020-00');
+      clearLimits(); /* prethodne probne izjave ne smiju potrošiti kvotu */
       await post('raskid', { name: 'Iza Krnjeg', no: '2031-0001', email: 'v102r3@primjer.hr' });
       const jl = fs.readFileSync(jf, 'utf8').split('\n').filter(Boolean); let lastOk = null; try { lastOk = JSON.parse(jl[jl.length - 1]); } catch (e) {}
       ok(lastOk && lastOk.name === 'Iza Krnjeg' && jl[jl.length - 2] === '{"name":"Krnji","no":"2020-00', 'v102 (softver N6): izjava iza krnjeg retka dnevnika zapisana je u vlastitom retku ' + JSON.stringify(jl.slice(-2).map(x => x.slice(0, 40))));

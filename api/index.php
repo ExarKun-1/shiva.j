@@ -702,10 +702,10 @@ function sj_raskid_no_echo(string $no): string {
      („IBAN stiže SMS-om, rok 1.12., hitno”) ide samo vlasnici */
   $no = trim($no);
   /* provjera v102: godina iz broja mora biti stvarna (prošla, tekuća ili sljedeća) — „0912-345678” nije broj narudžbe */
-  if (preg_match('/^(?:SJ-)?(\d{4})-\d{4,6}$/i', $no, $ym) && abs((int)$ym[1] - (int)date('Y')) <= 1) return $no;
+  if (preg_match('/^(?:SJ-)?(\d{4})-\d{4}$/i', $no, $ym) && abs((int)$ym[1] - (int)date('Y')) <= 1) return $no; /* krug 2: četiri znamenke iza godine (kao stvarni brojevi) */
   if (preg_match('/\d{4}-\d{4}/', $no)) return '[navedeno u izjavi]';
   if (mb_strlen($no) > 40 || !preg_match('/\p{L}/u', $no) || sj_has_link($no)) return '[navedeno u izjavi]';
-  $rest = preg_replace('/(?<!\d)\d{1,2}\.\s?\d{1,2}\.(?:\s?\d{4}\.?)?(?!\d)/', ' ', $no, 1) ?? $no;
+  $rest = preg_replace('/(?<!\d)\d{1,2}\.\s?\d{1,2}\.(?:\s?(?:19|20)\d{2}\.?)?(?!\d)/', ' ', $no, 1) ?? $no; /* krug 2: godina 19xx/20xx */
   if (!preg_match('/^[\p{L} ,\-]*$/u', $rest)) return '[navedeno u izjavi]';
   $allow = array_fill_keys(['torba', 'torbu', 'torbe', 'torbica', 'torbicu', 'narudžba', 'narudžbu', 'narudzba', 'narudzbu', 'od', 'iz', 'dana', 'kupljena', 'kupljeno', 'naručena', 'naručeno', 'model', 'remen', 'i', 'za'], true);
   try { foreach (sj_products_by_id_all() as $p) foreach (preg_split('/[^\p{L}]+/u', mb_strtolower((string)($p['name'] ?? ''), 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY) as $w) $allow[$w] = true; } catch (Throwable $ex) {}

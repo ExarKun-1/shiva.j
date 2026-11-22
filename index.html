@@ -3715,7 +3715,7 @@ function showOrderSuccess(srv){
   /* v101 (recenzija vijeća v100, dizajn H): ista narudžba otvorena ponovno (stari link za potvrdu) — ploča ne zaboravlja što već zna */
   { const oL = storeGet("last"), oP = (storeGet("lastPrev") || []).find(x => x && x.srv && x.srv.orderNo === last.srv.orderNo);
     const src = (oL && oL.srv && oL.srv.orderNo === last.srv.orderNo) ? oL : oP;
-    if(srv.claimed === true){ last.claimed = true; if(srv.payUntil) last.claimedUntil = srv.payUntil; last.claimMsg = String(srv.claimMsg || "").slice(0, 600); } /* provjera v102 (kupac N2): „Uplatio/la sam” već iskorišten (i na drugom uređaju) */
+    if(srv.claimed === true){ last.claimed = true; if(srv.payUntil) last.claimedUntil = srv.payUntil; last.claimMsg = String(srv.claimMsg || "").replace(/^Već ste nam javili da ste uplatili[;,.]?\s*/, "").replace(/^./, c => c.toUpperCase()).slice(0, 600); } /* krug 2: bez ponavljanja „javili ste” iza naslova */ /* provjera v102 (kupac N2): „Uplatio/la sam” već iskorišten (i na drugom uređaju) */
     if(src){ ["claimed", "claimedUntil", "claimMsg", "wdU", "withdrawn", "paid"].forEach(k => { if(src[k] !== undefined) last[k] = src[k]; });
       ["claimLink", "raskidLink", "check", "claimUntil", "claimAtLeast"].forEach(k => { if(!last.srv[k] && src.srv[k]) last.srv[k] = src.srv[k]; }); } } /* v102 (recenzija vijeća v101, mobitel 3): i rok „Uplatio/la sam” — bez njega poveznica nestaje s ploče */
   { const pv = lastValid(); if(pv && pv.srv.orderNo !== last.srv.orderNo){ const lp = (storeGet("lastPrev") || []).filter(x => x && x.srv && x.srv.orderNo !== pv.srv.orderNo); lp.unshift({ ...pv, open: true }); storeSet("lastPrev", lp.slice(0, 2)); } } /* v100 (kupac N9) */
