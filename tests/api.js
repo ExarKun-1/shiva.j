@@ -717,18 +717,36 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const u2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-un2', series: 'serija-v102-aaaaaaaa', customer: cust('v102u@primjer.hr'), items: [{ id: 'tara', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: 55, total: 55 } });
       ok(u1.data.ok && pc.data.ok && wd.data.ok && !eo2.cancelledAt && u2.status === 409 && u2.data.code === 'open_order' && /zaprimili smo vašu izjavu o raskidu ugovora i još je obrađujemo/.test(u2.data.error || '') && !/čeka vašu uplatu/.test(u2.data.error || ''),
         'v102 (mobitel 1): raskid nakon „Uplatio/la sam” — nova narudžba ne dobiva „čeka vašu uplatu”, nego poruku o obradi izjave ' + JSON.stringify([pc.data.state, u2.status, (u2.data.error || '').slice(0, 60)]));
-      /* provjera v102 (krug 1, softver N2): izjava za DRUGU narudžbu iste e-adrese ne mijenja poruku — torbu drži narudžba koja čeka uplatu */
+      /* provjera v102 (krug 1/2, softver N2/N7): izjava za DRUGU (noviju) narudžbu iste e-adrese ne mijenja poruku — torbu drži narudžba koja čeka uplatu.
+         Redoslijed je bitan: narudžba s izjavom je NOVIJA od one s unikatom, pa test pada ako se torba ne gleda. */
       clearLimits(); clearRes();
       const pkp = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, ser3 = 'serija-v102-cccccccc';
+      const w2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn2', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'luna', qty: 1 }], shipping: pkp, goods: 65, total: 65 } });
       const w1 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn1', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'kozmeticka', qty: 1 }], shipping: pkp, goods: kz, total: kz } });
       const ew = read('narudzbe.json').find(x => x.no === w1.data.orderNo) || {};
       await post('paidclaim', { no: w1.data.orderNo, t: ew.claim });
       await post('raskid', { name: 'Kupac Test', no: w1.data.orderNo, email: 'v102w@primjer.hr', tok: sha('raskid|' + ew.claim).slice(0, 24) });
       await new Promise(z => setTimeout(z, 500));
-      const w2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn2', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'luna', qty: 1 }], shipping: pkp, goods: 65, total: 65 } });
       const w3 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn3', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'tara', qty: 1 }], shipping: pkp, goods: 55, total: 55 } });
       ok(w1.data.ok && w2.data.ok && w3.status === 409 && /čeka vašu uplatu/.test(w3.data.error || '') && !/izjavu o raskidu/.test(w3.data.error || ''),
         'provjera v102 (softver N2): izjava o raskidu za drugu narudžbu — unikat i dalje „čeka vašu uplatu” ' + JSON.stringify([w2.status, w3.status, (w3.data.error || '').slice(0, 50)]));
+      /* krug 2: ista poruka i za Stalnu kolekciju; ulica — jednoslovna oznaka samo uz pravi nastavak */
+      clearLimits(); clearRes();
+      const kl = read('proizvodi.json').find(x => x.id === 'klasik').price, ser4 = 'serija-v102-dddddddd';
+      const k1 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn1', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      const ek1 = read('narudzbe.json').find(x => x.no === k1.data.orderNo) || {};
+      const k2a = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn2', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      await post('paidclaim', { no: k1.data.orderNo, t: ek1.claim });
+      await post('raskid', { name: 'Kupac Test', no: k1.data.orderNo, email: 'v102kk@primjer.hr', tok: sha('raskid|' + ek1.claim).slice(0, 24) });
+      await new Promise(z => setTimeout(z, 500));
+      const k2b = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn3', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      ok(k1.data.ok && k2a.status === 409 && /iz Stalne kolekcije čeka vašu uplatu/.test(k2a.data.error || '') && k2b.status === 409 && /iz Stalne kolekcije zaprimili smo vašu izjavu o raskidu ugovora i još je obrađujemo/.test(k2b.data.error || ''),
+        'provjera v102 (krug 2): Stalna kolekcija — prije izjave „čeka vašu uplatu”, nakon „Uplatio/la sam” i izjave „još je obrađujemo” ' + JSON.stringify([k2a.status, k2b.status, (k2b.data.error || '').slice(0, 60)]));
+      clearLimits(); clearRes();
+      const s1 = await post('order', mk('api-key-v102-st1', 'v102s1@primjer.hr', { street: 'Ilica 1, t.ly/abc' }));
+      const s2 = await post('order', mk('api-key-v102-st2', 'v102s2@primjer.hr', { street: 'Livada 2.red/5' }));
+      const s3 = await post('order', mk('api-key-v102-st3', 'v102s3@primjer.hr', { street: 'Kneza Branimira 4, k.br/2' }));
+      ok(s1.status === 400 && s1.data.field === 'street' && s2.data.ok && s3.data.ok, 'provjera v102 (krug 2, softver N5): „Ilica 1, t.ly/abc” → 400; „Livada 2.red/5” i „…, k.br/2” su adrese ' + JSON.stringify([s1.status, s2.status, s3.status]));
       clearLimits(); clearRes(); }
     // v101 (recenzija vijeća v100): adresa bez poveznica i (bez potvrde linkom) bez dugih brojeva u e-mailu kupcu; rok za uplatu u e-mailu vlasnici;
     //      izjava bez poveznice u statusu (wdUnverified, prevStates open-wdu); pt ograničen → 'limited'; pun dnevnik izjava

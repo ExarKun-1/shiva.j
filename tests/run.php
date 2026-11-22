@@ -467,6 +467,11 @@ $b2 = array_values(array_filter($k2, fn($x) => sj_mask_numbers($x) !== $x));
 $ok(!$v2 && !$b2 && sj_mask_numbers("HR98\u{3164}2360\u{3164}0001\u{3164}1027\u{3164}9044\u{3164}2") === '[IBAN skriven]'
   && sj_clean("091\u{3164}234\u{3164}5678", 60) === '0912345678' && sj_clean("naplata.c\u{17B4}om", 60) === 'naplata.com' && sj_has_link("racun.\u{180F}hr") && sj_has_link("naplata.c\u{17B5}om"),
   'provjera v102 (krug 2, sigurnost N1/N2/P1): „vremena” i silazni raspon ne prenose broj; nevidljiva slova se brišu pri unosu i u maski ' . json_encode([$v2, $b2], JSON_UNESCAPED_UNICODE));
+/* provjera v102 (krug 2, softver N3): točka na kraju rečenice ne kvari „sate od–do”; širi razmak ne skriva broj iza zaštićenog dijela; datum s količinom ostaje */
+$ok(sj_mask_numbers('Radim u smjenama: 6-14, 14-22, 22-6.') === 'Radim u smjenama: 6-14, 14-22, 22-6.' && sj_mask_numbers('20.11.2026. — 5 kom') === '20.11.2026. — 5 kom'
+  && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
+  && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
+  'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
 /* v102 (sigurnost N4): zaglavlje Host s dijelom iza dvotočke koji nije port ne ulazi u link e-maila */
 { $h0 = $_SERVER['HTTP_HOST'] ?? null; $cfgH = sj_config();
   $_SERVER['HTTP_HOST'] = '127.0.0.1:8404@zlo.example'; $u1 = sj_site_url_trusted();

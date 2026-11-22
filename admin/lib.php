@@ -586,7 +586,7 @@ function sj_mask_numbers(string $s): string {
     /* v101 (recenzija vijeća v100, sigurnost): riječi samo na početku riječi i u cijelom obliku — „Hrvatskih branitelja 123/4”, „Trg Ivana Zovka 5” ostaju adrese */
     return (bool)preg_match('~\p{L}{3,}\.?\s$~u', $bf) && !preg_match('~(?<!\p{L})(?:tel(?:efon\p{L}*)?|mob(?:itel\p{L}*|iln\p{L}*)?|broj\p{L}*|kontakt(?!\s+adres)\p{L}*|nazov\p{L}*|zovi\p{L}*|zove\p{L}*|poziv\p{L}*|whats\p{L}*|viber|sms)(?!\p{L})~iu', $bf); }); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
   /* provjera v102 (sigurnost N4): sati od–do („6-14, 14-22, 22-6”) */
-  $protect('~(?<![\d:.,/\x01-])(?:[01]?\d|2[0-4])\s?[-–]\s?(?:[01]?\d|2[0-4])(?![\d:./\x02])(?!\s?[-–]\s?\d)~u');
+  $protect('~(?<![\d:.,/\x01-])(?:[01]?\d|2[0-4])\s?[-–]\s?(?:[01]?\d|2[0-4])(?![\d:/\x02]|\.\d)(?!\s?[-–]\s?\d)~u'); /* krug 2: točka na kraju rečenice ne smeta */
   /* provjera v102 (sigurnost N3/N4): zaštićeni dijelovi procjenjuju se po SKUPINAMA (znamenke i zaštićeni dijelovi na najviše dva znaka razmaka).
      Skupina samo od zaštićenih dijelova (najviše tri: „8:00-16:00, 20.11.-25.11.2026.”) ostaje. Čim uz zaštićeni dio stoje i druge znamenke, a
      zajedno ih je devet ili više, zaštita se skida i cijela skupina ide pod masku („09:12 345 678”, „091 2345-6789”) — kao dosadašnje pravilo
@@ -599,6 +599,16 @@ function sj_mask_numbers(string $s): string {
     /* provjera v102 (krug 2, sigurnost N1): tri ili više samih „vremena” zaredom („09:12 3:45 6:07”) nije raspored, nego broj */
     $nTime = 0; foreach ($mm[1] as $i) if (preg_match('~^\d{1,2}:\d{2}$~', (string)($keep[(int)$i] ?? ''))) $nTime++;
     if (($left === 0 && $nTok <= 3 && $nTime <= 2) || ($left > 0 && $left + $tokDigits < 9)) return $run;
+    return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
+  }, $s) ?? $s;
+  /* provjera v102 (krug 2, softver N3): isto i za šire razmake (do šest znakova, koliko premošćuje pravilo za telefon) — „09:12 345   678”, „09:12 345 / 678”;
+     ovdje zaštita pada tek uz tri ili više drugih znamenki, da „20.11.2026. — 5 kom” ostane */
+  $s = preg_replace_callback('~(?:\x01\d+\x02|\d)(?:[^\p{L}\d\p{Sc}\x01\x02]{0,6}(?:\x01\d+\x02|\d))+~u', function ($m) use (&$keep) {
+    $run = $m[0]; $nTok = preg_match_all('~\x01(\d+)\x02~', $run, $mm);
+    if (!$nTok) return $run;
+    $left = preg_match_all('~\d~', (string)preg_replace('~\x01\d+\x02~', '', $run));
+    $tokDigits = 0; foreach ($mm[1] as $i) $tokDigits += preg_match_all('~\d~', (string)($keep[(int)$i] ?? ''));
+    if ($left < 3 || $left + $tokDigits < 9) return $run;
     return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
   }, $s) ?? $s;
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */

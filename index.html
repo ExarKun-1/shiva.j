@@ -1990,6 +1990,14 @@ function mergeCarry(){
   storeSet("cart", cur.concat(cy.filter(x => x && !cur.some(y => y && y.id === x.id)))); storeSet("carry", null);
   return true;
 }
+/* krug 2 (kupac 3a): košarica je jedna za sve kartice istog preglednika — kartica koja se vraća u prvi plan (ili primi događaj pohrane) preuzima
+   spremljenu košaricu umjesto da je prepiše svojom starom */
+function cartStoreSig(list){ return JSON.stringify((Array.isArray(list) ? list : []).map(c => [String(c && c.id), Number(c && c.qty) || 1, (c && c.note) || "", (c && c.sc) || "", (c && c.sl) || ""])); }
+function syncCartFromStore(){
+  if(!cartRestored || submitting) return false;
+  if(cartStoreSig(storeGet("cart")) === cartStoreSig(cart.map(c => ({ id: c.id, qty: qtyOf(c), note: c.note || "", sc: c.sc || "", sl: c.sl || "" })))) return false;
+  cart = []; restoreCart(); renderGrid(); return true;
+}
 function restoreCart(){
   mergeCarry();
   const saved = storeGet("cart");
@@ -2667,6 +2675,7 @@ function renderCart(){
   const form = document.getElementById("orderForm");
   document.getElementById("cartCount").textContent = cart.reduce((n, p) => n + qtyOf(p), 0); /* v47: komadi, ne retci */
   saveCart();
+  confirmAskSync();
   box.innerHTML = ""; box.hidden = false;
   if(cart.length === 0){
     if(!empty.classList.contains("pay-mode")){ empty.innerHTML = emptyHtml(); emptyGoFix(); }
@@ -3006,6 +3015,7 @@ async function refreshReservations(first = false){
 }
 /* v96 (recenzija vijeća v95): narudžba koju ovaj preglednik čeka potvrđena je na drugom uređaju — bez „drugi kupac”, uz uputu gdje su podaci */
 function pendConfirmedElsewhere(no){
+  { const bx = document.getElementById("claimBox"); if(bx && bx.querySelector("#confirmBtn")){ bx.remove(); document.getElementById("emptyCart").classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask"); if(/[?&]potvrda=/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); } } /* krug 2 (kupac 3c): narudžba je potvrđena drugdje — gumb više nema što potvrditi */
   const pd = storeGet("pend");
   if(pd && Array.isArray(pd.ids) && pd.ids.length) storeSet("own", { at: Date.now(), no: no || "", ids: pd.ids.map(String) }); /* v98 (recenzija vijeća v97, mobitel M1) */
   storeSet("pend", null); storeSet("hold", null); heldRes = null; pendFormClear(); formDraftClear();
@@ -3467,6 +3477,17 @@ function confirmError(html, info = false){ /* v99 (recenzija vijeća v98, kupac 
   empty.hidden = false;
 }
 /* link iz e-maila: ?potvrda=<id>.<tajna> → poslužitelj potvrđuje narudžbu, a stranica pokazuje podatke za uplatu */
+let confirmAskNames = []; /* nazivi artikala narudžbe koja čeka klik „Potvrdi narudžbu” (za prepoznavanje potvrde u drugoj kartici) */
+/* krug 2 (softver N4): okvir s gumbom i košarica — dok okvir stoji, a košarica nije prazna, obrazac je skriven i okvir ima „Zatvori”; kad okvira nema, razred se miče */
+function confirmAskSync(){
+  const bx = document.getElementById("claimBox"), db = document.querySelector(".drawer-body");
+  if(!bx || !bx.querySelector("#confirmBtn")){ db.classList.remove("confirm-ask"); return; }
+  if(cart.length && !bx.querySelector(".claim-close")){
+    db.classList.add("confirm-ask");
+    bx.insertAdjacentHTML("beforeend", `<button type="button" class="edit-order claim-close">Zatvori</button>`);
+    bx.querySelector(".claim-close").addEventListener("click", () => { bx.remove(); db.classList.remove("confirm-ask"); document.getElementById("emptyCart").classList.remove("under-claim"); });
+  }
+}
 async function confirmFromLink(statusP){
   /* v102 (odluka korisnika; recenzija vijeća v101, sigurnost N1): otvaranje linka narudžbu samo PROVJERI (peek); potvrđuje je tek gumb
      „Potvrdi narudžbu”. Zaštita pošte koja poveznice otvara u pregledniku tako ne potvrđuje narudžbu umjesto vlasnika adrese.
@@ -3482,7 +3503,10 @@ async function confirmFromLink(statusP){
   if(!m){ clearUrl(); confirmError(`<b>Link za potvrdu nije potpun.</b> Kopirajte cijeli link iz <span class="nw">e-maila</span> „Shiva.J — potvrdite narudžbu” ili ga otvorite izravno iz poruke.`); return; }
   const finish = (resOk, data) => {
     if(resOk && data.ok){ showOrderSuccess(data); refreshReservations(); return; }
-    if(Array.isArray(data.taken) || data.code === "mine" || data.code === "withdrawn" || data.code === "paid" || data.expired){ storeSet("pend", null); pendFormClear(); } /* provjera v102 (kupac N5): narudžba se više ne može potvrditi — ne „link je i dalje potvrđuje” */
+    { const pd = storeGet("pend"), hit = (Array.isArray(data.taken) ? data.taken : data.code === "mine" && Array.isArray(data.mine) ? data.mine : []).map(String);
+      /* krug 2 (softver N2): samo kad su „zauzete” ili „već vaše” baš torbe narudžbe koja čeka — stari (istekli, zamijenjeni) link ne dira noviju narudžbu */
+      const same = pd && typeof data.pt === "string" && data.pt && pd.pt === data.pt && !(resOk && data.ok); /* isti link kao narudžba koja čeka: zauzeto, promijenjena ponuda, istekao */
+      if(pd && (same || (hit.length && (pd.ids || pd.all || []).some(id => hit.includes(String(id)))))){ storeSet("pend", null); pendFormClear(); } } /* provjera v102 (kupac N5): narudžba se više ne može potvrditi — ne „link je i dalje potvrđuje” */
     if(Array.isArray(data.taken)){ markTaken(data.taken); confirmError(`<b>Narudžba nije potvrđena.</b> Torbu je u međuvremenu naručio ili kupio drugi kupac${cart.length ? ", pa smo je uklonili iz košarice. Ostatak narudžbe možete poslati ponovno" : ""}. Pitanja: ${escHtml(OWNER_EMAIL)}.`); return; }
     /* v100 (recenzija vijeća v99): stari link nakon raskida ili uplate — obavijest, ne „Uplatite …” ni greška */
     if(data.code === "withdrawn" || data.code === "paid"){ confirmError(`<b>${data.code === "paid" ? "Uplata je već zabilježena." : "Izjava o raskidu je zaprimljena."}</b> ${escHtml(noHyBreak(data.error || ""))}`, true); return; }
@@ -3499,7 +3523,7 @@ async function confirmFromLink(statusP){
       const res = await fetch(apiUrl("confirm"), { method: "POST", headers: POST_JSON, body: JSON.stringify({ id: m[1], t: m[2] }) });
       const { ok: resOk, data } = await apiRead(res);
       /* provjera v102 (kupac N7): privremeno odbijanje (previše pokušaja, smetnja na poslužitelju) — gumb i link ostaju za novi pokušaj */
-      if(res.status === 429 || res.status >= 500){ btn.disabled = false; btn.textContent = "Potvrdi narudžbu"; const h = document.getElementById("confirmHint"); if(h){ h.textContent = (data && typeof data.error === "string" && data.error) || "Potvrda trenutačno nije uspjela. Pokušajte ponovno za minutu."; h.setAttribute("role", "alert"); } return; }
+      if(res.status === 429 || res.status >= 500){ btn.disabled = false; btn.textContent = "Potvrdi narudžbu"; const h = document.getElementById("confirmHint"); if(h){ h.textContent = (data && typeof data.error === "string" && data.error) || "Potvrda trenutačno nije uspjela. Pokušajte ponovno za minutu."; h.setAttribute("role", "alert"); } btn.focus({ preventScroll: true }); return; }
       clearUrl();
       const box = document.getElementById("claimBox"); if(box) box.remove(); em.classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask");
       finish(resOk, data);
@@ -3515,6 +3539,7 @@ async function confirmFromLink(statusP){
     /* v61/v62: podaci za uplatu stižu i uz potvrdu; status (dostava, rok) čeka se najviše 4 s */
     if(statusP) await Promise.race([statusP.catch(() => {}), new Promise(r => setTimeout(r, 4000))]);
     if(resOk && data.ok && data.peek === "waiting"){
+      confirmAskNames = (Array.isArray(data.items) ? data.items : []).map(i => String(i.name || ""));
       const items = (Array.isArray(data.items) ? data.items : []).map(i => `„${escHtml(i.name || "")}”${Number(i.qty) > 1 ? " × " + Number(i.qty) : ""}`);
       if(!cart.length){ em.classList.remove("pay-mode"); renderCart(); }
       /* provjera v102 (softver N6): u pregledniku u kojem je narudžba poslana ispod okvira ne stoji obrazac s „Naruči s obvezom plaćanja” (zbunjuje); „Zatvori” ga vraća */
@@ -3527,6 +3552,8 @@ async function confirmFromLink(statusP){
       { const cl = document.querySelector("#claimBox .claim-close"); if(cl){ if(cart.length) cl.addEventListener("click", () => document.querySelector(".drawer-body").classList.remove("confirm-ask")); else cl.remove(); } } /* provjera v102 (kupac N6): bez košarice „Zatvori” bi ostavio praznu košaricu bez gumba */
       return; /* adresa s oznakom ostaje do klika — osvježavanje ne gubi link */
     }
+    /* krug 2 (kupac): privremeno odbijanje (previše pokušaja, smetnja) — link ostaje u adresi, pa osvježavanje pokušava ponovno */
+    if(res.status === 429 || res.status >= 500){ confirmError(`<b>Potvrda trenutačno nije moguća.</b> ${escHtml((data && typeof data.error === "string" && data.error) || "Pokušajte ponovno za nekoliko minuta.")} Zatim osvježite ovu stranicu.`); return; }
     clearUrl();
     finish(resOk, data);
   } catch(err){
@@ -3615,7 +3642,10 @@ const EMAIL_RE = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,
     if(!pre) return;
     raskidReset();
     raskidLastHash = location.hash;
-    const q = new URLSearchParams(pre[1]); if(q.get("no")){ const n = q.get("no").slice(0, 40); $("rNo").value = (/^\d{4}-\d{4,6}$/.test(n) ? "SJ-" : "") + n; } /* v101 (dizajn E): broj u istom obliku kao svugdje („SJ-2026-0002”) */ if(/^[0-9a-f]{24}$/.test(q.get("t") || "")){ rTok = q.get("t"); rTokNo = $("rNo").value.trim(); }
+    const noBefore = $("rNo").value.trim();
+    const q = new URLSearchParams(pre[1]); if(q.get("no")){ const n = q.get("no").slice(0, 40); $("rNo").value = (/^\d{4}-\d{4,6}$/.test(n) ? "SJ-" : "") + n; }
+    /* krug 2 (kupac 3b): druga narudžba — pregled izjave se zatvara (pokazivao bi staru), a IBAN i napomena prve ne prelaze na drugu */
+    if($("rNo").value.trim() !== noBefore){ if(noBefore){ $("rIban").value = ""; $("rNote").value = ""; } if(!s2.hidden){ s2.hidden = true; s1.hidden = false; } } /* v101 (dizajn E): broj u istom obliku kao svugdje („SJ-2026-0002”) */ if(/^[0-9a-f]{24}$/.test(q.get("t") || "")){ rTok = q.get("t"); rTokNo = $("rNo").value.trim(); }
     const go = () => document.getElementById("raskid").scrollIntoView(); setTimeout(go, 0);
     if(onLoad) addEventListener("load", () => { go(); setTimeout(go, 600); }, { once: true });
   };
@@ -4150,12 +4180,16 @@ loadProducts().then(() => {
   claimFromLink();
   showPendingAfterReload();
 });
-document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ if(Date.now() - stateAsked >= 120000) stateForce = true; refreshReservations(); } });
+addEventListener("storage", e => { if(e.key === STORE_KEY + ".cart") setTimeout(syncCartFromStore, 40); });
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ syncCartFromStore(); if(Date.now() - stateAsked >= 120000) stateForce = true; refreshReservations(); } });
 /* v102: druga kartica promijenila stanje narudžbe (raskid, uplata javljena) — ploča u ovoj se osvježi */
 addEventListener("storage", e => { if(e.key !== STORE_KEY + ".last" && e.key !== STORE_KEY + ".lastPrev") return;
   setTimeout(() => { if(submitting) return;
     /* provjera v102 (softver N4): narudžba je potvrđena u drugoj kartici — gumb „Potvrdi narudžbu” ovdje više nema što potvrditi */
-    if(e.key === STORE_KEY + ".last" && e.newValue && document.getElementById("confirmBtn")){ const bx = document.getElementById("claimBox"); if(bx) bx.remove(); document.getElementById("emptyCart").classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask"); if(/[?&]potvrda=/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); }
+    let prevAt = 0; try { prevAt = Number((JSON.parse(e.oldValue || "null") || {}).at || 0); } catch(x){}
+    const nl = e.key === STORE_KEY + ".last" && e.newValue ? storeGet("last") : null;
+    /* krug 2 (softver N1): samo NOVA potvrda (noviji „at”) s artiklima iz ovog okvira — promjena stanja neke druge narudžbe ne dira gumb */
+    if(nl && Number(nl.at || 0) > prevAt && confirmAskNames.length && confirmAskNames.every(n => (nl.items || []).some(i => i.name === n)) && document.getElementById("confirmBtn")){ const bx = document.getElementById("claimBox"); if(bx) bx.remove(); document.getElementById("emptyCart").classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask"); if(/[?&]potvrda=/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); }
     skipCartSave = true; try { lastStateChanged(); } finally { skipCartSave = false; } }, 60); });
 /* v100: skripta se pokrenula do kraja — obavijest za prestare preglednike (.old-browser) se ne prikazuje */
 document.documentElement.classList.add("js-ok");
