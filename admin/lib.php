@@ -574,6 +574,7 @@ function sj_mask_numbers(string $s): string {
   /* v102: raspon datuma („20.11.-25.11.2026.”, „20. 11. – 25. 11.”) kao cjelina */
   $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?20\d{2}\.?)?\s?[-–]\s?(\d{1,2})\.\s?(\d{1,2})\.(?:\s?20\d{2}\.?)?(?!\d)~u', /* provjera v102: godina samo 20xx („09.12.3456.-7.8.” nije raspon datuma) */ fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12 && (int)$m[3][0] >= 1 && (int)$m[3][0] <= 31 && (int)$m[4][0] >= 1 && (int)$m[4][0] <= 12);
   $protect('~(?<!\d)(\d{1,2})\.\s?(\d{1,2})\.(?:\s?(?:19|20)\d{2}\.?)?(?:,?\s?(?:u\s)?\d{1,2}:\d{2})?(?!\d)~', /* provjera v102: godina 19xx/20xx („09.12.3456.” nije datum) */ fn($m) => (int)$m[1][0] >= 1 && (int)$m[1][0] <= 31 && (int)$m[2][0] >= 1 && (int)$m[2][0] <= 12); /* datum */
+  $protect('~(?<!\d)(?:[01]?\d|2[0-4]):[0-5]\d\s?[-–]\s?(?:[01]?\d|2[0-4]):[0-5]\d(?!\d)~u'); /* krug 3: vrijeme od–do kao cjelina („8:00-16:00”) */
   $protect('~(?<!\d)(?:[01]?\d|2[0-4]):[0-5]\d(?!\d)~'); /* provjera v102 (krug 2, sigurnost N1): samo stvarno vrijeme („38:59” nije) */
   /* v102 (recenzija vijeća v101, sigurnost N5): mjere („22 × 14 × 6, 28 × 22 × 8 cm”) — najviše dvoznamenkasti brojevi bez vodeće nule */
   $dim = '[1-9]\d?(?:[.,]\d)?(?:\s?[×x]\s?[1-9]\d?(?:[.,]\d)?){1,2}';
@@ -587,30 +588,29 @@ function sj_mask_numbers(string $s): string {
     return (bool)preg_match('~\p{L}{3,}\.?\s$~u', $bf) && !preg_match('~(?<!\p{L})(?:tel(?:efon\p{L}*)?|mob(?:itel\p{L}*|iln\p{L}*)?|broj\p{L}*|kontakt(?!\s+adres)\p{L}*|nazov\p{L}*|zovi\p{L}*|zove\p{L}*|poziv\p{L}*|whats\p{L}*|viber|sms)(?!\p{L})~iu', $bf); }); /* recenzija v100: ispred mora biti naziv ulice, a ne „nazovite”, „tel”, „broj” */ /* kućni broj ne počinje nulom, poštanski broj u RH 1xxxx–5xxxx — „0912, 34567 Zagreb” se ipak skriva */                                                                     /* vrijeme */
   /* provjera v102 (sigurnost N4): sati od–do („6-14, 14-22, 22-6”) */
   $protect('~(?<![\d:.,/\x01-])(?:[01]?\d|2[0-4])\s?[-–]\s?(?:[01]?\d|2[0-4])(?![\d:/\x02]|\.\d)(?!\s?[-–]\s?\d)~u'); /* krug 2: točka na kraju rečenice ne smeta */
-  /* provjera v102 (sigurnost N3/N4): zaštićeni dijelovi procjenjuju se po SKUPINAMA (znamenke i zaštićeni dijelovi na najviše dva znaka razmaka).
-     Skupina samo od zaštićenih dijelova (najviše tri: „8:00-16:00, 20.11.-25.11.2026.”) ostaje. Čim uz zaštićeni dio stoje i druge znamenke, a
-     zajedno ih je devet ili više, zaštita se skida i cijela skupina ide pod masku („09:12 345 678”, „091 2345-6789”) — kao dosadašnje pravilo
-     „znamenka u tri znaka”, ali bez kvarenja običnih napomena. */
-  $s = preg_replace_callback('~(?:\x01\d+\x02|\d)(?:[^\p{L}\d\p{Sc}\x01\x02]{0,2}(?:\x01\d+\x02|\d))+~u', function ($m) use (&$keep) {
-    $run = $m[0]; $nTok = preg_match_all('~\x01(\d+)\x02~', $run, $mm);
-    if (!$nTok) return $run;
-    $left = preg_match_all('~\d~', (string)preg_replace('~\x01\d+\x02~', '', $run));
-    $tokDigits = 0; foreach ($mm[1] as $i) $tokDigits += preg_match_all('~\d~', (string)($keep[(int)$i] ?? ''));
-    /* provjera v102 (krug 2, sigurnost N1): tri ili više samih „vremena” zaredom („09:12 3:45 6:07”) nije raspored, nego broj */
-    $nTime = 0; foreach ($mm[1] as $i) if (preg_match('~^\d{1,2}:\d{2}$~', (string)($keep[(int)$i] ?? ''))) $nTime++;
-    if (($left === 0 && $nTok <= 3 && $nTime <= 2) || ($left > 0 && $left + $tokDigits < 9)) return $run;
-    return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
-  }, $s) ?? $s;
-  /* provjera v102 (krug 2, softver N3): isto i za šire razmake (do šest znakova, koliko premošćuje pravilo za telefon) — „09:12 345   678”, „09:12 345 / 678”;
-     ovdje zaštita pada tek uz tri ili više drugih znamenki, da „20.11.2026. — 5 kom” ostane */
-  $s = preg_replace_callback('~(?:\x01\d+\x02|\d)(?:[^\p{L}\d\p{Sc}\x01\x02]{0,6}(?:\x01\d+\x02|\d))+~u', function ($m) use (&$keep) {
-    $run = $m[0]; $nTok = preg_match_all('~\x01(\d+)\x02~', $run, $mm);
-    if (!$nTok) return $run;
-    $left = preg_match_all('~\d~', (string)preg_replace('~\x01\d+\x02~', '', $run));
-    $tokDigits = 0; foreach ($mm[1] as $i) $tokDigits += preg_match_all('~\d~', (string)($keep[(int)$i] ?? ''));
-    if ($left < 3 || $left + $tokDigits < 9) return $run;
-    return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
-  }, $s) ?? $s;
+  /* provjera v102 (krugovi 1–3): zaštićeni dijelovi procjenjuju se po SKUPINAMA — znamenke i zaštićeni dijelovi na najviše dva znaka razmaka,
+     zatim i na šest (koliko premošćuje pravilo za telefon). Maska pritom ne smije biti slabija od v101 („znamenka u tri znaka skida zaštitu”):
+     - skupina s manje od devet znamenki ostaje (premalo za telefon);
+     - jedan zaštićeni dio sam ostaje; uz širi razmak smiju uz datum s godinom ili broj narudžbe stajati do dvije druge znamenke („20.11.2026. — 5 kom”);
+     - dva zaštićena dijela ostaju samo kao termin: vrijeme (ili od–do) uz datum (ili raspon) s godinom („8:00-16:00, 20.11.-25.11.2026.”);
+     - sve ostalo (tri „raspona sati”, „vremena” ili „datuma” zaredom, zaštićeni dio uz druge znamenke) ide pod masku — tako se telefon
+       ne može složiti od zaštićenih dijelova („09-8 12-3 14-5”, „09:12 3:45 6:07”, „09:12 345 678”). */
+  $isTime = fn(string $t): bool => (bool)preg_match('~^\d{1,2}:\d{2}(?:\s?[-–]\s?\d{1,2}:\d{2})?$~u', $t);
+  $isDateY = fn(string $t): bool => (bool)preg_match('~^\d{1,2}\.\s?\d{1,2}\.(?:\s?(?:19|20)\d{2}\.?)?(?:\s?[-–]\s?\d{1,2}\.\s?\d{1,2}\.(?:\s?(?:19|20)\d{2}\.?)?)?$~u', $t) && (bool)preg_match('~(?:19|20)\d{2}~', $t);
+  foreach ([2, 6] as $gap) {
+    $s = preg_replace_callback('~(?:\x01\d+\x02|\d)(?:[^\p{L}\d\p{Sc}\x01\x02]{0,' . $gap . '}(?:\x01\d+\x02|\d))+~u', function ($m) use (&$keep, $gap, $isTime, $isDateY) {
+      $run = $m[0]; $nTok = preg_match_all('~\x01(\d+)\x02~', $run, $mm);
+      if (!$nTok) return $run;
+      $left = preg_match_all('~\d~', (string)preg_replace('~\x01\d+\x02~', '', $run));
+      $toks = array_map(fn($i) => (string)($keep[(int)$i] ?? ''), $mm[1]);
+      $tokDigits = 0; foreach ($toks as $t) $tokDigits += preg_match_all('~\d~', $t);
+      if ($left + $tokDigits < 9) return $run;
+      /* uz širi razmak do dvije druge znamenke smiju stajati samo uz datum s godinom ili broj narudžbe („20.11.2026. — 5 kom”), ne uz vrijeme („09:12-3:45 - 67”) */
+      if ($nTok === 1 && ($left === 0 || ($gap > 2 && $left < 3 && ($isDateY($toks[0]) || preg_match('~^(?:SJ-)?20\d{2}-\d{4,6}~i', $toks[0]))))) return $run;
+      if ($nTok === 2 && $left === 0 && (($isTime($toks[0]) && $isDateY($toks[1])) || ($isDateY($toks[0]) && $isTime($toks[1])))) return $run;
+      return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
+    }, $s) ?? $s;
+  }
   /* IBAN: oznaka zemlje + kontrolni broj + znamenke (HR), ili skupine po 4 (i malim slovima, uz barem 6 znamenki) */
   /* v99: razdjelnik je bilo što osim slova, znamenke i oznake valute (zarez, točka-zarez, |, *, ~, crtice, novi red, više razmaka) */
   $s = preg_replace('~\b[A-Za-z]{2}[^\p{L}\d\p{Sc}\x01\x02]{0,3}\d{2}(?:[^\p{L}\d\p{Sc}\x01\x02]{0,4}\d){11,30}(?!\d)~u', '[IBAN skriven]', $s) ?? '';

@@ -454,9 +454,9 @@ $ok(sj_has_link('Novi podaci: v.gd/abc123') && sj_has_link('j.mp/abc') && sj_has
   && sj_has_link("naplata.c\u{034F}om") && sj_has_link("racun.\u{FE0F}hr") && sj_unlink("Uplata na naplata.c\u{034F}om odmah") === 'Uplata na [uklonjeno] odmah'
   && !sj_has_link('Viber:isti broj kao gore') && !sj_has_link('Kontakt viber:isti broj kao gore') && sj_has_link('skype:shivaj') && sj_has_link('viber://pa?chatURI=x') && !sj_has_link('Zvono.ne/radi') && !sj_has_link('12.kat/stan 45'),
   'provjera v102 (sigurnost N1, N5): „v.gd/x”, „j.mp/x” i nevidljivi znak iza točke su poveznice; „Viber:isti broj”, „Zvono.ne/radi” nisu');
-$m102 = ['BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)', 'BOX NOW Ilica — Ilica 12-14, 10000 (ID 4051)', 'Tisak, Ilica 12-14, 10000 Zagreb', 'Doma sam 8:00-16:00, 20.11.-25.11.2026.', 'Dostava između 8:00 i 16:00, 20.11.2026.', 'Radim u smjenama: 6-14, 14-22, 22-6', '20.11.2026. — 5 kom', 'u 14:30 5 kom'];
+$m102 = ['BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)', 'BOX NOW Ilica — Ilica 12-14, 10000 (ID 4051)', 'Tisak, Ilica 12-14, 10000 Zagreb', 'Doma sam 8:00-16:00, 20.11.-25.11.2026.', 'Dostava između 8:00 i 16:00, 20.11.2026.', 'od 8-16 h, 20.11.2026.', '25.11. u 9:00 ili 26.11. u 14:00', '20.11.2026. — 5 kom', 'u 14:30 5 kom']; /* krug 3: popis smjena „6-14, 14-22, 22-6” opet se skriva (kao v101) — tri raspona sati mogu nositi broj telefona */
 $bad102 = array_values(array_filter($m102, fn($x) => sj_mask_numbers($x) !== $x));
-$h102 = ['Novi broj (bez točaka): 09.12.3456.-7.8.', '3.8.5912.-3.4.5678', '09:12 345 678', '091 2345-6789', '09:12, 345 678', '09-12, 3-4, 5-6, 7-8', '09.12., 3.4., 5.6., 7.8.', 'Nazovi 091 234 5678 u 14:30', 'Tel. 98/12, 34567'];
+$h102 = ['09-8 12-3 14-5', '09-1   23-4   5-6   7-8', '09:12-3:45, 6.7.-8.9.', '09-8 12:34-5:56', 'Radim u smjenama: 6-14, 14-22, 22-6', 'Novi broj (bez točaka): 09.12.3456.-7.8.', '3.8.5912.-3.4.5678', '09:12 345 678', '091 2345-6789', '09:12, 345 678', '09-12, 3-4, 5-6, 7-8', '09.12., 3.4., 5.6., 7.8.', 'Nazovi 091 234 5678 u 14:30', 'Tel. 98/12, 34567'];
 $vis102 = array_values(array_filter($h102, fn($x) => !str_contains(sj_mask_numbers($x), '[broj skriven]')));
 $ok(!$bad102 && !$vis102 && sj_mask_numbers('Nazovi 091 234 5678 u 14:30') === 'Nazovi [broj skriven] u 14:30', 'provjera v102 (sigurnost N2–N4): paketomat s karte, raspon kućnih brojeva i obične napomene s vremenom ostaju; brojevi skriveni u „datumima” se skrivaju ' . json_encode([$bad102, $vis102], JSON_UNESCAPED_UNICODE));
 /* provjera v102 (krug 2, sigurnost): tri „vremena” i silazni „raspon kućnih brojeva” ne prenose broj; nevidljiva slova (U+3164 …) ne skrivaju telefon, IBAN ni domenu */
@@ -468,7 +468,7 @@ $ok(!$v2 && !$b2 && sj_mask_numbers("HR98\u{3164}2360\u{3164}0001\u{3164}1027\u{
   && sj_clean("091\u{3164}234\u{3164}5678", 60) === '0912345678' && sj_clean("naplata.c\u{17B4}om", 60) === 'naplata.com' && sj_has_link("racun.\u{180F}hr") && sj_has_link("naplata.c\u{17B5}om"),
   'provjera v102 (krug 2, sigurnost N1/N2/P1): „vremena” i silazni raspon ne prenose broj; nevidljiva slova se brišu pri unosu i u maski ' . json_encode([$v2, $b2], JSON_UNESCAPED_UNICODE));
 /* provjera v102 (krug 2, softver N3): točka na kraju rečenice ne kvari „sate od–do”; širi razmak ne skriva broj iza zaštićenog dijela; datum s količinom ostaje */
-$ok(sj_mask_numbers('Radim u smjenama: 6-14, 14-22, 22-6.') === 'Radim u smjenama: 6-14, 14-22, 22-6.' && sj_mask_numbers('20.11.2026. — 5 kom') === '20.11.2026. — 5 kom'
+$ok(sj_mask_numbers('od 6-14 h.') === 'od 6-14 h.' && sj_mask_numbers('20.11.2026. — 5 kom') === '20.11.2026. — 5 kom'
   && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
   && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
   'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
