@@ -34,13 +34,13 @@ ok(v in first.read('PROCITAJ.txt').decode() and 'NEMA' in upd.read('PROCITAJ.txt
 ok(f'<meta name="shivaj-verzija" content="{v}">' in pg and f'Verzija stranice: {v}' in upd.read('PROCITAJ.txt').decode() and 'podnožju' not in upd.read('PROCITAJ.txt').decode(), 'v95 (L4): verzija ostaje u paketu (meta), upute za nadogradnju upućuju na admin')
 ok(all(((first.getinfo(n).external_attr >> 16) & 0o444) == 0o444 for n in ('torbe.json', 'PROCITAJ.txt', 'data/PRVA-PRIJAVA.php')), 'v58: datoteke napisane u paketu čitljive su poslužitelju (0644)')
 
-# v96 (recenzija): .htaccess u oba paketa nosi otisak ugrađene skripte iz istog index.html; admin prepoznaje nepodudaranje
+# v96 (recenzija): .htaccess u oba paketa nosi otisak svake ugrađene skripte iz istog index.html (v101: dvije — glavna i mala za obavijest starim preglednicima); admin prepoznaje nepodudaranje
 import base64, hashlib
 for zf in (first, upd):
     hp = zf.read('index.html').decode(); ht = zf.read('.htaccess').decode()
     bodies = [m.group(2) for m in re.finditer(r'<script\b([^>]*)>(.*?)</script>', hp, re.S | re.I) if not re.search(r'\bsrc\s*=|ld\+json', m.group(1), re.I)]
     hs = ["'sha256-" + base64.b64encode(hashlib.sha256(b.encode()).digest()).decode() + "'" for b in bodies]
-    ok(len(hs) == 1 and all(h in ht for h in hs) and not re.search(r'\son[a-z]+\s*=\s*["\']', re.sub(r'<script\b.*?</script>', '', hp, flags=re.S | re.I)), 'v96: CSP otisak skripte u .htaccess paketa ' + zf.filename.split('/')[-1] + ', bez ugrađenih rukovatelja on…=')
+    ok(len(hs) == 2 and all(h in ht for h in hs) and not re.search(r'\son[a-z]+\s*=\s*["\']', re.sub(r'<script\b.*?</script>', '', hp, flags=re.S | re.I)), 'v96: CSP otisak skripte u .htaccess paketa ' + zf.filename.split('/')[-1] + ', bez ugrađenih rukovatelja on…=')
 with tempfile.TemporaryDirectory() as td:
     for n in ('index.html', '.htaccess'): open(os.path.join(td, n), 'wb').write(upd.read(n))
     php = "require '%s/admin/lib.php'; echo sj_csp_hash_problem($argv[1]) === '' ? 'A' : 'B';" % ROOT.replace("'", "")

@@ -52,7 +52,7 @@ const api = http.createServer((q, s) => {
     const mm = /\?potvrda=([a-f0-9.]+)/.exec(mails[0].body);
     await p.goto(SITE + '/?potvrda=' + (mm && mm[1]), { waitUntil: 'networkidle' }); await p.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
     const pay = await p.textContent('.pay').catch(() => '');
-    ok(/SJ-2026-0001|SJ-\d{4}-0001/.test(pay) && /Torba „Luna” je rezervirana/.test(pay) && rows.length === 1, 'link: podaci za uplatu, Luna rezervirana, red u tablici');
+    ok(/SJ-2026-0001|SJ-\d{4}-0001/.test(pay) && /Torba „Luna” rezervirana je/.test(pay) && rows.length === 1, 'link: podaci za uplatu, Luna rezervirana, red u tablici');
     const p2 = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
     await p2.goto(SITE + '/', { waitUntil: 'networkidle' }); await p2.waitForTimeout(500);
     ok(/Rezervirano/i.test(await p2.textContent('.card:has(h3:has(.card-name:text-is("Luna")))')), 'drugi posjetitelj vidi Lunu kao rezerviranu');
