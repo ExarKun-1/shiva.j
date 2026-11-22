@@ -9,8 +9,11 @@ file_put_contents($D . '/config.json', json_encode($c));
 /* pravi poslužitelj na 8091 i prava prijava (kolačić, CSRF iz stranice), da se vide i poruke iz preusmjeravanja */
 /* v99 (C9): portovi iz okoline (SHIVAJ_ADMIN_PORT, drugi = +1), čekanje dok port ne prima veze umjesto fiksne pauze */
 $port = (int)(getenv('SHIVAJ_ADMIN_PORT') ?: 8091); $jar = tempnam(sys_get_temp_dir(), 'sjck');
+/* v100 (recenzija vijeća v99, softver 6): zauzet port ili poslužitelj koji se ne pokrene — test staje (inače bi radio protiv tuđe stranice) */
+$portBusy = function (int $p): bool { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return true; } return false; };
+if ($portBusy($port) || $portBusy($port + 1)) { fwrite(STDERR, "port $port ili " . ($port + 1) . " je zauzet — postavite SHIVAJ_ADMIN_PORT\n"); exit(2); }
 $srv = proc_open(['php', '-S', "127.0.0.1:$port", '-t', $site, "$site/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
-$waitPort = function (int $p): void { for ($i = 0; $i < 100; $i++) { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return; } usleep(50000); } fwrite(STDERR, "poslužitelj na $p se nije pokrenuo\n"); };
+$waitPort = function (int $p): void { for ($i = 0; $i < 100; $i++) { $fp = @fsockopen('127.0.0.1', $p, $en, $es, 0.2); if ($fp) { fclose($fp); return; } usleep(50000); } fwrite(STDERR, "poslužitelj na $p se nije pokrenuo\n"); exit(2); };
 $waitPort($port);
 $curl = fn(array $args) => (string)shell_exec('curl -s -i -c ' . escapeshellarg($jar) . ' -b ' . escapeshellarg($jar) . ' ' . implode(' ', array_map('escapeshellarg', $args)));
 $curl(['-d', 'password=proba-lozinka-123', "http://127.0.0.1:$port/admin/"]);
@@ -246,7 +249,7 @@ file_put_contents($D . '/raskidi.json', json_encode([
   ['name' => 'Rok <script>R</script>', 'no' => '2026-0901', 'email' => 'rok@p.hr', 'iban' => 'HR1210010051863000160', 'note' => 'boja', 'at' => $isoAgo(3), 'order' => 'SJ-2026-0901', 'emailMatch' => true],
 ]));
 $v = $req('GET', ['s' => 'narudzbe']);
-$ok(str_contains($v, 'Izjave o raskidu, zadnjih 30 dana (1)') && str_contains($v, '→ SJ-2026-0901 (e-mail se podudara)') && str_contains($v, 'IBAN HR1210010051863000160') && str_contains($v, 'Rok &lt;script&gt;R&lt;/script&gt;') && !str_contains($v, 'Stara &lt;b&gt;'), 'v73 (vijeće N73-4): izjave o raskidu zadnjih 30 dana na vrhu Narudžbi, s narudžbom i IBAN-om, escapirano');
+$ok(str_contains($v, 'Izjave o raskidu, zadnjih 30 dana (1)') && str_contains($v, '→ SJ-2026-0901 (e-adresa se podudara)') && str_contains($v, 'IBAN HR1210010051863000160') && str_contains($v, 'Rok &lt;script&gt;R&lt;/script&gt;') && !str_contains($v, 'Stara &lt;b&gt;'), 'v73 (vijeće N73-4): izjave o raskidu zadnjih 30 dana na vrhu Narudžbi, s narudžbom i IBAN-om, escapirano');
 @unlink($D . '/raskidi.json');
 $rokSeg = preg_match('#id="rok"(.*?)<div class="tablewrap">#s', $v, $mr) ? $mr[1] : '';
 $ok(str_contains($v, 'Rok istekao (1)') && preg_match('#SJ-2026-0901.*?komad slobodan.*?2026-0901#s', $rokSeg) === 1 && !str_contains($rokSeg, 'SJ-2026-0902') && str_contains($v, 'Narudžbe (1)') && str_contains($rokSeg, '· Luna — 65,00 €, Remen — 15,00 €'), 'v68: Rok istekao — samo narudžba kojoj je prošao rok, s pozivom na broj, „komad slobodan”, artiklima bez crtica i brojem uz Narudžbe');

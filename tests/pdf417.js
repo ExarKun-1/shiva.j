@@ -69,7 +69,7 @@ cases.forEach((c, i) => {
 ok(php('try { sj_hub3_text(["amount"=>0,"iban"=>"HR1210010051863000160"]); echo "0"; } catch (RangeException $e) { echo "1"; }') === '1'
   && php('try { sj_hub3_text(["amount"=>1e14,"iban"=>"HR1210010051863000160"]); echo "0"; } catch (RangeException $e) { echo "1"; }') === '1',
   'iznos 0 ili predug baca RangeException (e-mail tada šalje opći barkod)');
-const png = path.join(require('os').tmpdir(), 'sj-pdf417-test.png');
+const png = path.join(require('os').tmpdir(), 'sj-pdf417-test-' + process.pid + '.png'); /* v100: jedinstvena datoteka (usporedno pokretanje) */
 ok(php('echo sj_pdf417_png(sj_hub3_text(["amount"=>69,"iban"=>"HR1210010051863000160","ref"=>"2026-0001"]), "' + png + '") ? "1" : "0";') === '1' && fs.readFileSync(png).slice(1, 4).toString() === 'PNG', 'PNG barkoda nastaje (GD)');
 
 console.log(R.join('\n'));

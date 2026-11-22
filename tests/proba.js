@@ -4,8 +4,10 @@
 const { chromium } = require('playwright');
 const fs = require('fs'), vm = require('vm'), http = require('http'), path = require('path'), crypto = require('crypto'), cp = require('child_process');
 const R = []; const ok = (c, m) => R.push((c ? 'PASS ' : 'FAIL ') + m);
-const ROOT = path.join(__dirname, '..'), OUT = '/tmp/shivaj-proba';
-const SITE = 'http://127.0.0.1:8092', API = 'http://127.0.0.1:8093/macros/s/TEST/exec';
+/* v100: portovi i mapa iz okoline (SHIVAJ_PROBA_PORT = stranica, +1 = Apps Script, SHIVAJ_PROBA_DIR) */
+const PP = Number(process.env.SHIVAJ_PROBA_PORT) || 8092;
+const ROOT = path.join(__dirname, '..'), OUT = process.env.SHIVAJ_PROBA_DIR || '/tmp/shivaj-proba';
+const SITE = 'http://127.0.0.1:' + PP, API = 'http://127.0.0.1:' + (PP + 1) + '/macros/s/TEST/exec';
 cp.execFileSync('python3', [path.join(ROOT, 'proba', 'build.py'), OUT], { env: Object.assign({}, process.env, { PROBA_API_URL: 'https://script.google.com/macros/s/TEST/exec' }) });
 /* u ispitu stranica zove lokalni lažni Apps Script umjesto Googlea */
 fs.writeFileSync(OUT + '/index.html', fs.readFileSync(OUT + '/index.html', 'utf8').replace('https://script.google.com/macros/s/TEST/exec', API));
@@ -20,7 +22,7 @@ const env = { cfg: { SITE_URL: SITE, OWNER_EMAIL: 'vlasnica@primjer.hr', CONFIRM
   nextNo: () => ++seq, rate: () => true, mail: (to, subject, body) => { mails.push({ to, subject, body }); return true; } };
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg' };
 const posts = [];
-const site = http.createServer((q, s) => { const f = path.join(OUT, decodeURIComponent(new URL(q.url, SITE).pathname).replace(/\/$/, '/index.html')); fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); s.end(); return; } s.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); s.end(b); }); }).listen(8092);
+const site = http.createServer((q, s) => { const f = path.join(OUT, decodeURIComponent(new URL(q.url, SITE).pathname).replace(/\/$/, '/index.html')); fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); s.end(); return; } s.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); s.end(b); }); }).listen(PP);
 const api = http.createServer((q, s) => {
   let body = ''; q.on('data', c => body += c); q.on('end', () => {
     const u = new URL(q.url, API);
@@ -30,7 +32,7 @@ const api = http.createServer((q, s) => {
     const out = ctx.sjHandle(env, u.searchParams.get('r') || 'status', b);
     s.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); s.end(JSON.stringify(out));
   });
-}).listen(8093);
+}).listen(PP + 1);
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });

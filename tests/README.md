@@ -17,6 +17,7 @@ Svi testovi rade nad zasebnom probnom stranicom, složenom iz repozitorija i isp
 | `node tests/objava.js [proizvodi.json]` | **prije objave, ručno** (ne u CI-ju): stranica bez vidljivih `{OZNAKA}` (npr. `{NAPOMENA O PDV-u}`), proizvodi bez djelomičnih oznaka; upozorenja za torbe bez mjera i unikate bez fotografije. Pada dok vlasnica ne upiše podatke | Node 18+ |
 | `python3 tests/paket.py` | paket za prijenos (`tools/paket.py`): nadogradnja bez `data/`, `img/` i `torbe.json`; prvi paket s praznom ponudom i prvom prijavom; bez uputa i testova | Python 3 |
 | `node tests/pdf417.js` | barkod za e-mail (`admin/pdf417.php`): isti tekst naloga kao stranica, matrica se dekodira (indikatori, Reed–Solomon, UTF-8), isto rezanje NBSP i emojija, iznos izvan raspona, PNG nastaje | Node 18+, PHP s GD |
+| `node tests/compat.js` | v100: podrška starijim preglednicima bez poslužitelja — skripta stranice do ES2021 i bez značajki novijih od Safarija na iOS-u 15.0 i Chromea 119 (lookbehind, `.at()`, `Object.hasOwn`, `structuredClone` …), CSS s `vh` prije `dvh`, `:focus-visible` i `:has` u zasebnim pravilima, obavijest za prestare preglednike | Node 18+, ESLint (globalni) |
 | `node tests/e2e.js` | stranica u pregledniku (Playwright): prvi ekran, košarica, narudžba, ploča za uplatu, HUB-3 barkod, prekid veze, mobitel 360 i 390 px | Node 18+, Playwright s Chromiumom, **svježe** pokrenut `serve.sh` |
 
 `api.js` i `e2e.js` mijenjaju podatke probne stranice, pa prije svakog pokretanja ponovno pokrenite `serve.sh`

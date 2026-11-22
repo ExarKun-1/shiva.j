@@ -127,6 +127,9 @@ uključujući e-mail s podacima za uplatu. Zato:
 
   Zatim u adminu probnu narudžbu **stornirajte**.
 - [ ] Ako e-mail ne stiže, pogledajte neželjenu poštu i odjeljak E.
+- [ ] **Stariji mobitel (v100):** stranica radi u Safariju na iOS-u 15 i novijem (svi iPhonei od 6s/SE iz 2015.) i u Chromeu 119 i
+  novijem (Android 7 i noviji). Ako imate stariji iPhone (iOS 15 ili 16), otvorite stranicu i dodajte torbu u košaricu. Na još starijim
+  uređajima (iPhone 5s/6) stranica ne radi do kraja, pa se nakon 4 sekunde pri dnu pojavi obavijest s e-adresom i Instagramom.
 
 ### 9. Nakon objave
 - [ ] Link na domenu stavite u Instagram bio.
