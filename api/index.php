@@ -1032,7 +1032,8 @@ function sj_confirm_unavailable(): void {
 }
 /* recenzija v102 (sigurnost N7): zapis POTVRĐENE narudžbe ostaje još SJ_PENDING_STUB_DAYS dana, ali bez podataka kupca (samo oznaka linka, njegov
    otisak i broj narudžbe) — stari link tako i dalje vodi na podatke za uplatu, umjesto poruke da narudžba nije zaprimljena. true = zapis se briše */
-function sj_pending_old(array &$x, int $now): bool {
+function sj_pending_old(&$x, int $now): bool {
+  if (!is_array($x)) return true; /* provjera v102 (krug 4, N4): oštećen element se briše, ne ruši narudžbu */
   $u = (int)strtotime((string)($x['until'] ?? ''));
   if ($u >= $now - 86400) return false;
   if (empty($x['no']) || $u < $now - SJ_PENDING_STUB_DAYS * 86400) return true;

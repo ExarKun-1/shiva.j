@@ -2451,6 +2451,7 @@ function openLightbox(id){
   document.getElementById("lbTag").textContent = statusLabel(lbCurrent);
   renderLbPhoto(); updateLbButton();
   lightbox.classList.add("open"); document.body.classList.add("lb-open");
+  { const lbP = lightbox.querySelector(".lb-panel"), lbI = lightbox.querySelector(".lb-info"); if(lbP) lbP.scrollTop = 0; if(lbI) lbI.scrollTop = 0; } /* provjera v102 (krug 4, N1): tek kad je prikaz vidljiv — prije, uz display:none, pomak se nije brisao */
   sjPushView("lb", { id: lbCurrent ? lbCurrent.id : "" });
   document.body.style.overflow = "hidden";
   document.getElementById("lbClose").focus();
@@ -3503,6 +3504,7 @@ function confirmAskClosed(){
     document.querySelector(".drawer-body").insertAdjacentHTML("afterbegin", `<p class="last-line" id="confirmBack"><button type="button" class="last-order">Narudžba iz e-maila još čeka potvrdu — prikaži gumb „Potvrdi narudžbu”</button></p>`);
     document.querySelector("#confirmBack button").addEventListener("click", () => { const cb = document.getElementById("confirmBack"); if(cb) cb.remove(); confirmFromLink(); });
   }
+  { const cb = document.getElementById("confirmBack"); if(cb) setTimeout(() => cb.scrollIntoView({ block: "nearest" }), 60); } /* provjera v102 (krug 4, N2): redak je vidljiv, ne napomena na dnu obrasca */
   const dt = document.getElementById("drawerTitle"); if(dt && document.activeElement === document.body) dt.focus({ preventScroll: true });
 }
 async function confirmFromLink(statusP){
@@ -3533,6 +3535,7 @@ async function confirmFromLink(statusP){
       storeSet("own", owLive ? { at: Number(ow.at), no: ids.every(id => ow.ids.includes(id)) ? (ow.no || "") : "", ids: [...new Set([...ow.ids, ...ids])] } : { at: Date.now(), no: "", ids }); /* recenzija v100: bez tuđeg broja narudžbe, stari rok ostaje */
       if(cart.some(c => ids.includes(String(c.id)))){ cart = cart.filter(c => !ids.includes(String(c.id))); saveCart(); renderGrid(); renderCart(); }
       confirmError(`<b>${ids.length > 1 ? "Ove su torbe već vaše." : "Ova je torba već vaša."}</b> ${escHtml(noHyBreak(data.error || ""))}`, true); return; } /* v102 (dizajn 1): množina */
+    if(/^Ovaj link više ne vrijedi\./.test(data.error || "")){ confirmError(`<b>Ovaj link više ne vrijedi.</b> ${escHtml(noHyBreak(String(data.error).replace(/^Ovaj link više ne vrijedi\.\s*/, "")))}`); return; } /* provjera v102 (krug 4, N3): bez „nije potvrđena” — ne znamo */
     confirmError(`<b>Narudžba nije potvrđena.</b> ${escHtml(data.error || "Pokušajte ponovno za minutu.")}`);
   };
   const send = async btn => {
@@ -3645,6 +3648,9 @@ function claimFromLink(){
 const EMAIL_RE = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;
 (function raskidInit(){
   const f = document.getElementById("raskidForm"); if(!f) return;
+  f.addEventListener("input", e => { const el = e.target; if(!el || el.getAttribute("aria-invalid") !== "true") return; const v = (el.value || "").trim();
+    const fine = el.id === "rEmail" ? EMAIL_RE.test(v) : el.id === "rIban" ? (!v || /^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(v.replace(/\s+/g, "").toUpperCase())) : !!v;
+    if(fine) el.removeAttribute("aria-invalid"); }); /* provjera v102 (krug 4, N5): crveni obrub nestaje čim je polje ispravno */
   const $ = id => document.getElementById(id);
   const s1 = $("raskidStep1"), s2 = $("raskidStep2"), done = $("raskidDone");
   let rTok = "", rTokNo = ""; /* v93: oznaka iz poveznice u e-mailu (samo uz isti broj narudžbe) */
