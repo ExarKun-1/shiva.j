@@ -472,6 +472,13 @@ $ok(sj_mask_numbers('od 6-14 h.') === 'od 6-14 h.' && sj_mask_numbers('20.11.202
   && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
   && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && str_contains(sj_mask_numbers('Ulica 91-23, 45678 Zagreb'), '[broj skriven]') /* silazni raspon bez kose crte */ && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
   'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
+/* provjera v102 (krug 4, sigurnost N1–N3, S1): kućni brojevi uz poštanski broj ostaju; telefon u obliku broja narudžbe se skriva; široki razmaci postaju jedan */
+$adrOk = [['Ulica grada Vukovara 222/104', '10000 Zagreb'], ['Vukovarska 230 - 18', '10000 Zagreb'], ['Ilica 26 / 32', '10000 Zagreb'], ['Vukovarska 265-2', '10000 Zagreb'], ['Ilica 9', '10000 Zagreb']];
+$adrBad = array_values(array_filter($adrOk, fn($x) => sj_echo_street_city($x[0], $x[1]) !== $x[0] . ', ' . $x[1]));
+$telV = array_values(array_filter(['nazovite +44 2071-234567', 'WhatsApp +1 2025-550123', 'mob +36 2012-34567', 'Tel: (0)2012-3456', '09 2012-3456'], fn($x) => !str_contains(sj_echo_text($x), '[broj skriven]')));
+$ok(!$adrBad && !$telV && str_contains(sj_echo_street_city('Za uplatu nazovite 09123', '45678 odmah, Zagreb'), '[broj skriven]') && sj_echo_text('Narudžba 2026-0001, 2 kom') === 'Narudžba 2026-0001, 2 kom'
+  && sj_echo_text("hvala!" . str_repeat("\u{3000}", 70) . "·\u{2003}\u{2003}VAŽNA OBAVIJEST") === 'hvala! · VAŽNA OBAVIJEST' && sj_echo_addr('Ilica 5, 5.9.8.7/uplata') === 'Ilica 5, [uklonjeno]',
+  'provjera v102 (krug 4, sigurnost): kućni brojevi ostaju; telefon kao „broj narudžbe” skriven; široki razmaci jedan razmak; IP s putanjom uklonjen ' . json_encode([$adrBad, $telV], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
 $kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
   'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];

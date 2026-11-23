@@ -564,7 +564,7 @@ if ($a === 'order') {
   /* v102 (recenzija vijeća v101): ista uska provjera poveznica kao za ulicu („BOX NOW Konzum, Ul.hr.branitelja 12” prolazi), a brojeve
      procjenjuje maska (i znamenke pune širine, razmaknute crticama ili zarezima) — u e-mailu kupcu paketomat ionako prolazi filtar i masku */
   /* provjera v102 (krug 2, softver N5): „Livada 2.red/5” i „…, k.br/2” su adrese — jednoslovna oznaka je poveznica samo uz pravi nastavak („t.ly/x”, „v.gd/x”) */
-  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS . ')/\S|(?=[\p{N}\p{M}-]*\p{L})' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]' . SJ_DOT . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S~iu', $x);
+  $addrLink = fn(string $x): bool => (bool)preg_match('~https?:|(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):(?=[^\s\d+])|www\s*' . SJ_DOT . '|@|' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS . ')/\S|(?=[\p{N}\p{M}-]*\p{L})' . SJ_LBL . '{2,}' . SJ_DOT . '(?:' . SJ_TLDS_PATH . ')/\S|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]' . SJ_DOT . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S|(?<![\d.])\d{1,3}(?:' . SJ_DOT . '\d{1,3}){3}[/:]~iu', $x);
   if ($locker !== '' && (!preg_match("~^[\\p{L}\\p{N}\\p{M} ,.:\\-–—/()#'’&„”\"]+$~u", $locker) || str_contains(sj_mask_numbers($locker), ' skriven]') || $addrLink($locker) || sj_has_link($locker)))
     sj_json_out(['ok' => false, 'error' => 'Za paketomat upišite samo naziv ili adresu (bez poveznica, e-adresa i brojeva telefona), ili ga odaberite na karti.', 'field' => 'locker'], 400);
   if ($ship && $ship['address'] && ($cust['street'] === '' || $cust['city'] === '')) sj_json_out(['ok' => false, 'error' => 'Upišite adresu za dostavu.'], 400);
@@ -1586,11 +1586,13 @@ function sj_finish_order(array $done, array $P, bool $confirmed = false): void {
 /* stavke i dostava za ploču s podacima za uplatu (kupac može potvrditi na drugom uređaju, bez košarice) */
 function sj_order_view(array $o): array {
   $items = [];
-  foreach ((array)($o['items'] ?? []) as $it) $items[] = ['id' => (string)($it['id'] ?? ''), 'name' => (string)($it['name'] ?? ''), 'qty' => (int)($it['qty'] ?? 1), 'price' => (float)($it['price'] ?? 0), 'made' => !empty($it['made']), 'lead' => (string)($it['lead'] ?? ''), 'note' => (string)($it['note'] ?? '')];
+  /* provjera v102 (krug 4, sigurnost): ploča na stranici pokazuje tekst kupca kao e-mail — bez poveznica i dugih brojeva (vidi je i vlasnik e-adrese koji je kliknuo link) */
+  foreach ((array)($o['items'] ?? []) as $it) $items[] = ['id' => (string)($it['id'] ?? ''), 'name' => (string)($it['name'] ?? ''), 'qty' => (int)($it['qty'] ?? 1), 'price' => (float)($it['price'] ?? 0), 'made' => !empty($it['made']), 'lead' => (string)($it['lead'] ?? ''), 'note' => sj_echo_text((string)($it['note'] ?? ''))];
   $s = is_array($o['shipping'] ?? null) ? $o['shipping'] : null;
   /* v95 (recenzija vijeća v94, kupac 3): i adresa za dostavu, da je kupac provjeri prije uplate (samo u odgovoru, ne sprema se u preglednik) */
-  $addr = trim((string)($o['customer']['street'] ?? '') . ', ' . (string)($o['customer']['city'] ?? ''), ', ');
-  return ['items' => $items, 'ship' => $s ? ['id' => (string)$s['id'], 'label' => (string)$s['label'], 'price' => (float)$s['price'], 'locker' => (string)($s['locker'] ?? '')] + ($addr !== '' ? ['address' => $addr] : []) : null];
+  $st = (string)($o['customer']['street'] ?? ''); $ct = (string)($o['customer']['city'] ?? '');
+  $addr = ($st !== '' && $ct !== '') ? sj_echo_street_city($st, $ct) : trim(sj_echo_addr($st . $ct));
+  return ['items' => $items, 'ship' => $s ? ['id' => (string)$s['id'], 'label' => (string)$s['label'], 'price' => (float)$s['price'], 'locker' => sj_echo_addr((string)($s['locker'] ?? ''))] + ($addr !== '' ? ['address' => $addr] : []) : null];
 }
 
 /* ---------- storno / plaćeno (link iz e-maila vlasnici; radnje samo uz prijavu u admin) ---------- */
@@ -1669,10 +1671,10 @@ exit;
 function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic', array $entry = []): string {
   /* v101 (recenzija vijeća v100, sigurnost S1): tekst koji je upisao kupac — bez poveznica; kad narudžba nije potvrđena linkom iz e-maila
      (require_confirm isključen), e-adresa nije provjerena, pa se skrivaju i dugi brojevi (lažni IBAN ili telefon uz podatke za uplatu) */
-  $echo = fn(string $x): string => sj_mask_numbers(sj_unlink($x)); /* v102 (recenzija vijeća v101, sigurnost N1/N3): maska uvijek, i nakon potvrde linkom, i za paketomat */
+  $echo = fn(string $x): string => sj_echo_text($x); /* v102 (recenzija vijeća v101, sigurnost N1/N3): maska uvijek, i nakon potvrde linkom, i za paketomat */
   /* recenzija v102 (sigurnost N3/N4): adresa (ulica, mjesto, paketomat) — ono što je ulaz primio ne briše se („Livada 2.red/5”), a ulica i mjesto
      prolaze masku ZAJEDNO (broj podijeljen na dva polja, „…nazovite 09123” + „45678 odmah, Zagreb”, više nije čitljiv) */
-  $echoAddr = fn(string $x): string => sj_mask_numbers(sj_unlink_addr($x));
+  $echoAddr = fn(string $x): string => sj_echo_addr($x);
   $cust = $o['customer'] ?? [];
   $items = is_array($o['items'] ?? null) ? $o['items'] : [];
   $ship = is_array($o['shipping'] ?? null) ? $o['shipping'] : [];
@@ -1719,9 +1721,7 @@ function sj_customer_mail(array $o, string $no, array $c, string $bar = 'generic
   elseif ($sid === 'pickup') $t[] = 'Preuzimanje u radionici: ' . rtrim((string)$c['pickup_info'], '.') . '.';
   elseif (!empty($cust['street'])) {
     /* zajednička maska vrijedi samo kad skriva VIŠE od zasebnih (broj podijeljen na dva polja); inače bi telefon na kraju ulice progutao poštanski broj */
-    $sa = sj_unlink_addr((string)$cust['street']); $ca = sj_unlink_addr((string)($cust['city'] ?? ''));
-    $sep = sj_mask_numbers($sa) . ', ' . sj_mask_numbers($ca); $joint = sj_mask_numbers($sa . ', ' . $ca);
-    $t[] = 'Adresa za dostavu: ' . (substr_count($joint, ' skriven]') > substr_count($sep, ' skriven]') ? $joint : $sep) . '.';
+    $t[] = 'Adresa za dostavu: ' . sj_echo_street_city((string)$cust['street'], (string)($cust['city'] ?? '')) . '.';
   }
   /* recenzija v102 (sigurnost N1): napomena je JEDAN odlomak u navodnicima — redovi se spajaju kosom crtom, pa tekst kupca ne može izgledati kao
      zaseban odlomak trgovine („VAŽNA OBAVIJEST — PROMJENA RAČUNA”) iznad podataka za uplatu */

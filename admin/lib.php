@@ -624,7 +624,7 @@ function sj_mask_numbers(string $s): string {
      broj narudžbe ili vrijeme od–do na četvrt sata — telefon u takav oblik stane samo iznimno (godina 19xx/20xx na 5.–8. mjestu, odnosno minute 00/15/30/45
      na dva mjesta). Popis tri ili četiri datuma „dd.mm.” odvojenih zarezom i razmakom ostaje („23.11., 24.11., 25.11., 26.11.”): 12 ili 16 znamenki s
      ispravnim danom i mjesecem nije zapis telefona (385…, 00385… i 09… ne daju ispravne datume te duljine). */
-  $isOrd = fn(string $t): bool => (bool)preg_match('~^(?:SJ-)?20\d{2}-\d{4,6}~i', $t);
+  $isOrd = fn(string $t): bool => (bool)preg_match('~^(?:SJ-)?20[2-4]\d-\d{4,6}~i', $t); /* krug 4 (sigurnost N2): godina trgovine, ne „2071-234567” */
   $isQRange = fn(string $t): bool => (bool)preg_match('~^\d{1,2}:(?:00|15|30|45)\s?[-–]\s?\d{1,2}:(?:00|15|30|45)$~u', $t);
   $isDM = fn(string $t): bool => (bool)preg_match('~^\d{2}\.\d{2}\.$~', $t);
   foreach ([2, 6] as $gap) {
@@ -636,7 +636,8 @@ function sj_mask_numbers(string $s): string {
       $tokDigits = 0; foreach ($toks as $t) $tokDigits += preg_match_all('~\d~', $t);
       if ($left + $tokDigits < 9) return $run;
       /* do dvije druge znamenke smiju stajati samo uz datum s godinom, broj narudžbe ili vrijeme od–do na četvrt sata, ne uz svako vrijeme („09:12-3:45 - 67”) */
-      if ($nTok === 1 && ($left === 0 || ($left < 3 && ($isDateY($toks[0]) || $isOrd($toks[0]) || $isQRange($toks[0]))))) return $run;
+      /* krug 4 (sigurnost N2): uz broj narudžbe druge znamenke smiju stajati samo IZA njega („Narudžba 2026-0001, 2 kom”), ne ispred („+44 2025-550123”, „09 2012-3456”) */
+      if ($nTok === 1 && ($left === 0 || ($left < 3 && ($isDateY($toks[0]) || ($isOrd($toks[0]) && str_starts_with($run, "\x01")) || $isQRange($toks[0]))))) return $run;
       if ($nTok >= 3 && $nTok <= 4 && $left === 0 && count(array_filter($toks, $isDM)) === $nTok && preg_match('~^\x01\d+\x02(?:, \x01\d+\x02)+$~', $run)) return $run;
       if ($nTok === 2 && $left === 0 && (($isTime($toks[0]) && $isDateY($toks[1])) || ($isDateY($toks[0]) && $isTime($toks[1])))) return $run;
       return (string)preg_replace_callback('~\x01(\d+)\x02~', fn($x) => $keep[(int)$x[1]] ?? '', $run);
@@ -1811,7 +1812,7 @@ function sj_unlink_raw(string $s, bool $soft = false): string {
      dobiva razmak iza točke umjesto brisanja */
   $hard = '(?<![\p{L}\p{N}])[a-z][a-z0-9+.-]{1,15}://\S+|(?<![\p{L}\p{N}])(?-i:' . SJ_SCHEMES . '):[^\s\d+]\S*|www\s*' . $d . '\S+|[^\s@]+@[^\s@]+\.[^\s@]+'
     . '|' . $L . '{2,}' . $d . '(?:' . SJ_TLDS . ')/\S*|(?=[\p{N}\p{M}-]*\p{L})' . $L . '{2,}' . $d . '(?:' . SJ_TLDS_PATH . ')/\S*'
-    . '|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]\p{M}*' . $d . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S*';
+    . '|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]\p{M}*' . $d . '(?:' . SJ_TLDS . '|gd|mp|gy|ae|tt|cl|to|me)/\S*|(?<![\d.])\d{1,3}(?:' . $d . '\d{1,3}){3}[/:]\S*'; /* krug 4 (sigurnost N3): i IP s putanjom */
   $bare = '\d{1,3}(?:' . $d . '\d{1,3}){3}\S*'
     . '|' . $L . '{2,}' . $d . '(?:' . SJ_TLDS . ')(?![\p{L}]|' . $d . '\p{L})\S*|(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}]\p{M}*' . $d . '(?-i:' . SJ_TLDS . '|' . strtoupper(SJ_TLDS) . ')(?![\p{L}\p{N}]|' . $d . '\p{L})\S*'
     . '|(?=' . $L . '*[\p{N}-])' . $L . '{3,}' . $d . '(?:' . SJ_TLDS_WORDS2 . ')(?![\p{L}\p{N}])\S*|' . $L . '{2,}' . $d . 'xn--[a-z0-9-]{2,}\S*|' . $L . '{2,}' . $d . '\p{Cyrillic}{2,}(?![\p{L}])\S*';
@@ -1824,6 +1825,21 @@ function sj_unlink_raw(string $s, bool $soft = false): string {
 }
 /* recenzija v102 (sigurnost N3): adresa u e-mailu kupcu — bez brisanja onoga što je ulaz primio */
 function sj_unlink_addr(string $s): string { return sj_unlink_raw(sj_link_norm($s), true); }
+/* provjera v102 (krug 4, sigurnost S1): široki i višestruki razmaci (U+3000, U+2003…) postaju jedan običan razmak — inače bi niz takvih znakova
+   tekst kupca prelomio u zaseban redak koji izgleda kao obavijest trgovine */
+function sj_echo_spaces(string $s): string { return trim((string)preg_replace('~[\p{Zs}\t]+~u', ' ', $s)); }
+/* tekst kupca kakav se ponavlja kupcu (e-mail, ploča na stranici): bez poveznica, dugih brojeva i širokih razmaka */
+function sj_echo_text(string $s): string { return sj_mask_numbers(sj_unlink(sj_echo_spaces($s))); }
+function sj_echo_addr(string $s): string { return sj_mask_numbers(sj_unlink_addr(sj_echo_spaces($s))); }
+/* recenzija v102 (sigurnost N4); krug 4 (sigurnost N1): ulica i mjesto maskiraju se ZAJEDNO samo kad ulica završava brojem koji počinje s 0, 9, + ili
+   zagradom (početak telefona: „…nazovite 09123” + „45678 odmah, Zagreb”); kućni brojevi („Vukovara 222/104”, „Ilica 26 / 32”) ostaju */
+function sj_echo_street_city(string $street, string $city): string {
+  $sa = sj_unlink_addr(sj_echo_spaces($street)); $ca = sj_unlink_addr(sj_echo_spaces($city));
+  $sep = sj_mask_numbers($sa) . ', ' . sj_mask_numbers($ca);
+  if (!preg_match('~(?<![\d])[+(09][\d\s()/.\-]*$~u', $sa)) return $sep;
+  $joint = sj_mask_numbers($sa . ', ' . $ca);
+  return substr_count($joint, ' skriven]') > substr_count($sep, ' skriven]') ? $joint : $sep;
+}
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */
 const SJ_STRAP_COLORS = ['crna', 'smeđa', 'crvena', 'bež', 'plava', 'tamno zelena', 'bordo', 'siva'];
 const SJ_STRAP_LENGTHS = ['140 cm', '100 cm'];
