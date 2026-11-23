@@ -1050,7 +1050,7 @@ function sj_view_withdrawals(): string {
   $ov = sj_raskid_overflow_read(2, 100, $rp * 100);
   if (!$l && !$ov['n']) return '';
   $oix = sj_orders_index(); /* v96 (N4): narudžbe pročitane jednom, ne po kartici; v98: tek kad ima izjava */
-  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-poštom (kad se izjava ne podudara s narudžbom, samo uz provjeru „niste robot”; inače mu je pošaljite sami). Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
+  $h = '<h3 id="raskidi">Izjave o raskidu, zadnjih 30 dana (' . count($l) . ')</h3><p class="muted">Kupac je dobio potvrdu e-mailom (kad se izjava ne podudara s narudžbom, samo uz provjeru „niste robot”; inače mu je pošaljite sami). Novac vratite najkasnije 14 dana od izjave, na račun s kojeg je uplaćeno. Ako je torba već poslana, smijete pričekati da vam stigne ili da dobijete dokaz da je poslana natrag; ako nije poslana, ne šaljite je.</p><div class="rokl">';
   /* v95 (sigurnost 4): sve izjave iz 30 dana (ne samo zadnjih 50) — prvo one koje se podudaraju s narudžbom */
   usort($l, fn($a, $b) => [!empty($b['order']) && !empty($b['emailMatch']), (string)($b['at'] ?? '')] <=> [!empty($a['order']) && !empty($a['emailMatch']), (string)($a['at'] ?? '')]);
   $card = function (array $x) use ($oix): string {
@@ -1172,7 +1172,7 @@ function sj_view_settings(array $c): string {
   $h .= '<label>Potpis e-mailova kupcima <input name="signature" maxlength="60" value="' . e((string)($c['signature'] ?? '')) . '" placeholder="npr. Jasmina · Shiva.J"></label>';
   $h .= '</div><div class="stack">';
   $h .= '<label>Provjera „niste robot” pri narudžbi (jačina, 0 = isključeno) <input name="pow_bits" type="number" min="0" max="20" value="' . e((string)(int)($c['pow_bits'] ?? 16)) . '"></label><p class="muted">Preglednik kupca prije slanja narudžbe sam nešto izračuna (obično ispod sekunde, kupac ništa ne klika). Tko šalje stotine lažnih narudžbi, troši puno vremena. Preporučeno 16; više od 18 usporava starije mobitele.</p>';
-  $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi linkom iz e-maila (zaštita od robota i lažnih narudžbi)</label><p class="muted">Preporučeno uključeno. Bez potvrde svatko može tuđu e-adresu upisati u narudžbu, pa trgovina toj adresi šalje e-mail s vašim IBAN-om, a lažne narudžbe odmah drže torbe.</p>';
+  $h .= '<input type="hidden" name="has_require_confirm" value="1"><label class="check"><input type="checkbox" name="require_confirm" value="1"' . (!empty($c['require_confirm']) ? ' checked' : '') . '> Narudžba vrijedi tek kad je kupac potvrdi preko linka iz e-maila (link, zatim gumb „Potvrdi narudžbu”) (zaštita od robota i lažnih narudžbi)</label><p class="muted">Preporučeno uključeno. Bez potvrde svatko može tuđu e-adresu upisati u narudžbu, pa trgovina toj adresi šalje e-mail s vašim IBAN-om, a lažne narudžbe odmah drže torbe.</p>';
   $h .= '<label class="check"><input type="checkbox" name="confirm_customer" value="1"' . (!empty($c['confirm_customer']) ? ' checked' : '') . '> Automatski pošalji kupcu potvrdu narudžbe s podacima za uplatu i barkodom</label>';
   $h .= '<label class="check"><input type="checkbox" name="show_ostalo" value="1"' . (!empty($c['show_ostalo']) ? ' checked' : '') . '> Prikaži rubriku „Ostalo” (remeni, torbice, platnene torbe po narudžbi) na stranici</label>';
   $h .= '</div>';
@@ -1193,7 +1193,7 @@ function sj_view_settings(array $c): string {
   /* V79-11: zadnji pad slanja već pokazuje upozorenje na vrhu stranice; ovdje samo nepotpune postavke */
   if ($mm === 'smtp' && ($ms = sj_smtp_missing($c)) !== '')
     $h .= '<p class="muted" style="color:#9B2C1F">Pažnja: ' . e('za SMTP nedostaje: ' . $ms . '.') . ' Dok se to ne popravi, kupci ne dobivaju e-mailove.</p>';
-  $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impressum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite osobi koja održava stranicu da ih uskladi i u tekstu stranice.</p><div class="grid2">';
+  $h .= '<h3>Podaci za uplatu</h3><p class="muted">Ploča za uplatu i e-mailovi čitaju podatke odavde. Uvjeti kupnje i Impresum na stranici imaju OIB, IBAN i e-mail upisane u tekstu: kad ih mijenjate ovdje, javite osobi koja održava stranicu da ih uskladi i u tekstu stranice.</p><div class="grid2">';
   $h .= '<label>Primatelj <input name="recipient" value="' . e($p['recipient']) . '"></label>';
   $h .= '<label>Adresa primatelja <input name="address" value="' . e($p['address']) . '"></label>';
   $h .= '<label>IBAN <input name="iban" value="' . e($p['iban']) . '"></label>';
@@ -1294,17 +1294,17 @@ function sj_layout(string $title, string $content, array $c, string $msg, string
   td.acts{white-space:nowrap}td.acts form{margin-bottom:4px}td.acts button{padding:5px 9px;font-size:.72rem}tr.dim td{opacity:.55}
   /* v65 */
   .t-nar td.mono,.t-tor td.mono,.nw{white-space:nowrap}
-  .t-nar tr.is-cancelled td{color:#8a887f}.t-nar tr.is-cancelled .badge{color:#5C5A53;border-color:#5C5A53;border-style:solid}
+  .t-nar tr.is-cancelled td{color:#6B6962}.t-nar tr.is-cancelled .badge{color:#5C5A53;border-color:#5C5A53;border-style:solid}.t-nar tr.is-cancelled .badge.ink{color:#fff;background:#5C5A53} /* v102 (recenzija vijeća v101, dizajn 9): kontrast 4,5:1 i u storniranom retku */
   .t-nar td:nth-child(2){white-space:nowrap}
   button.alt.danger{margin-left:8px}.arrow-gap{display:inline-block;width:32px}
   /* v67: gumbi u Torbama smiju u drugi redak — tablica ne smije biti šira od stranice („Obriši” je bio odrezan) */
   @media (min-width:701px){.t-tor td.acts{white-space:normal;width:300px}.t-tor td.acts form{display:inline-block;margin:0 4px 6px 0}}
-  .t-nar .badge{white-space:normal}.t-nar tr.is-cancelled .muted,.t-nar tr.is-cancelled a{color:#8a887f}
+  .t-nar .badge{white-space:normal}.t-nar tr.is-cancelled .muted,.t-nar tr.is-cancelled a{color:#6B6962}
   @media (min-width:701px){.t-tor td:nth-child(5){min-width:180px}}
   button.alt.danger{color:#9B2C1F;border-color:#9B2C1F}
   a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
   @media (min-width:701px){.t-tor td:nth-child(2){min-width:220px}}
-  .badge{display:inline-block;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1.5px dashed var(--thread);color:var(--thread);border-radius:2px;margin:0 3px 3px 0}.badge.ink{border-style:solid;background:var(--ink);color:var(--paper);border-color:var(--ink)}.badge.grey{border-color:#A8A69C;color:#7a786f}.badge.green{background:#E4EAE5}
+  .badge{display:inline-block;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1.5px dashed var(--thread);color:var(--thread);border-radius:2px;margin:0 3px 3px 0}.badge.ink{border-style:solid;background:var(--ink);color:var(--paper);border-color:var(--ink)}.badge.grey{border-color:#A8A69C;color:#6B6962}.badge.green{background:#E4EAE5}
   .muted{color:var(--soft);font-size:.85rem}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem}pre{margin:0;white-space:pre-wrap;font:inherit;font-size:.85rem}
   /* v68: Rok istekao, storno s razlogom, kućice s mjerama */
   .rokl{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}.card.rok{margin:0;display:flex;flex-direction:column;gap:6px;border-left:3px solid #9B2C1F}

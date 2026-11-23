@@ -660,6 +660,95 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       fs.writeFileSync(D + 'config.json', cfB); try { fs.unlinkSync(D + 'ostecene-datoteke.json'); } catch (e) {}
       ok(br.status === 503 && /tehničke smetnje/.test(br.data.error || ''), 'v100 (softver N3): nečitljiv config.json — narudžba odmah 503 s porukom kupcu ' + br.status);
       clearLimits(); clearRes(); }
+    // v102 (recenzija vijeća v101): adresa s katom prolazi, telefon i paketomat bez poveznica i brojeva; paketomat maskiran u e-mailu; izjava bez
+    //      narudžbe ne ponavlja slobodan tekst; krnji redak dnevnika ne guta sljedeću izjavu; raskid nakon „Uplatio/la sam” — poruka nove narudžbe
+    { clearLimits(); clearRes(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
+      const kz = read('proizvodi.json').find(x => x.id === 'kozmeticka').price;
+      const gls = { id: 'gls', label: 'GLS', price: 6, locker: '' }, box = l => ({ id: 'boxnow', label: 'BOX NOW paketomat', price: 4, locker: l });
+      const mk = (key, email, extra, ship) => ({ _gotcha: '', Napomena: '', _order: { key, customer: Object.assign(cust(email), { street: 'Ilica 1', city: '10000 Zagreb' }, extra || {}), items: [{ id: 'kozmeticka', qty: 1 }], shipping: ship || gls, goods: kz, total: kz + (ship || gls).price } });
+      const a1 = await post('order', mk('api-key-v102-ad1', 'v102a@primjer.hr', { street: 'Ulica grada Vukovara 269, 12.kat/stan 45' }));
+      const a2 = await post('order', mk('api-key-v102-ad2', 'v102b@primjer.hr', { street: 'Naselje Sv.Duh/Novaki 4' }));
+      const a3 = await post('order', mk('api-key-v102-ad3', 'v102c@primjer.hr', { street: 'Ilica 1, bit.ly/racun' }));
+      const a4 = await post('order', mk('api-key-v102-ad4', 'v102d@primjer.hr', { phone: '091 234 567 www.zlo.hr' }));
+      const a5 = await post('order', mk('api-key-v102-ad5', 'v102e@primjer.hr', { street: 'Ilica 1, tg://resolve?domain=shivaj' }));
+      ok(a1.data.ok && a2.data.ok && a3.status === 400 && a3.data.field === 'street' && a4.status === 400 && a4.data.field === 'phone' && a5.status === 400 && a5.data.field === 'street',
+        'v102 (kupac N5): „12.kat/stan 45” i „Sv.Duh/Novaki 4” prolaze; „bit.ly/racun”, „tg://…” i poveznica u telefonu → 400 s poljem ' + JSON.stringify([a1.status, a2.status, a3.data.field, a4.data.field, a5.data.field]));
+      const l1 = await post('order', mk('api-key-v102-lk1', 'v102f@primjer.hr', null, box('BOX NOW Konzum, Ul.hr.branitelja 12, 10000 Zagreb')));
+      const l2 = await post('order', mk('api-key-v102-lk2', 'v102g@primjer.hr', null, box('Zagreb, zovite ０９１ ２３４ ５６７８')));
+      const l3 = await post('order', mk('api-key-v102-lk3', 'v102h@primjer.hr', null, box('Uplata na HR12, 1001, 0051, 8630, 0016, 0 (novi racun)')));
+      const l4 = await post('order', mk('api-key-v102-lk4', 'v102i@primjer.hr', null, box('Ilica 1 skype:shivaj-uplata')));
+      const lm = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102f@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
+      ok(l1.data.ok && /Paketomat: BOX NOW Konzum, Ul\. hr\. branitelja 12, 10000 Zagreb\./.test(lm) && [l2, l3, l4].every(x => x.status === 400 && x.data.field === 'locker'),
+        'v102 (sigurnost N3/N5): paketomat „Ul.hr.branitelja 12” prolazi (u e-mailu razdvojen razmakom); znamenke pune širine, IBAN sa zarezima i „skype:” → 400 ' + JSON.stringify([l1.status, l2.status, l3.status, l4.status, (lm.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
+      /* provjera v102 (krug 1, sigurnost N2): paketomat kakav stranica sastavi s karte i ručno upisan raspon kućnih brojeva prolaze i ostaju cijeli u e-mailu */
+      const l5 = await post('order', mk('api-key-v102-lk5', 'v102j@primjer.hr', null, box('BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)')));
+      const l6 = await post('order', mk('api-key-v102-lk6', 'v102k@primjer.hr', null, box('Tisak, Ilica 12-14, 10000 Zagreb')));
+      const l7 = await post('order', mk('api-key-v102-lk7', 'v102l@primjer.hr', null, box('BOX NOW v.gd/abc123')));
+      const lm5 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102j@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
+      ok(l5.data.ok && l6.data.ok && l7.status === 400 && l7.data.field === 'locker' && /Paketomat: BOX NOW Savska — Savska cesta 106\/1, 10000 \(ID 4051\)\./.test(lm5),
+        'provjera v102 (sigurnost N1/N2): paketomat s karte „…106/1, 10000 (ID 4051)” i „Ilica 12-14, 10000 Zagreb” prolaze i ostaju cijeli; „v.gd/abc123” → 400 ' + JSON.stringify([l5.status, l6.status, l7.status, (lm5.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
+      /* izjava bez narudžbe: slobodan tekst u „Broj narudžbe” ne ponavlja se */
+      fs.writeFileSync(D + 'mail-log.txt', '');
+      await post('raskid', { name: 'Ivana Kupac', no: 'IBAN stiže SMS-om, rok 1.12.2026., hitno', email: 'v102r1@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: 'torba Luna 3. 10. 2026.', email: 'v102r2@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: '0912-345678', email: 'v102r4@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: new Date().getFullYear() + '-091234', email: 'v102r5@primjer.hr' });
+      await post('raskid', { name: 'Ivana Kupac', no: 'torba 09.12.3456.', email: 'v102r6@primjer.hr' });
+      const mr = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).filter(x => /potvrda primitka izjave o raskidu/.test(x));
+      const r1 = mr.find(x => x.includes('v102r1@')) || '', r2 = mr.find(x => x.includes('v102r2@')) || '', r4 = mr.find(x => x.includes('v102r4@')) || '';
+      ok(/Broj narudžbe: \[navedeno u izjavi\]/.test(r1) && !/IBAN stiže/.test(r1) && /torba Luna 3\. 10\. 2026\./.test(r2) && /Broj narudžbe: \[navedeno u izjavi\]/.test(r4) && !/0912-345678/.test(r4)
+        && ['v102r5@', 'v102r6@'].every(a => /Broj narudžbe: \[navedeno u izjavi\]/.test(mr.find(x => x.includes(a)) || '')), 'v102 (sigurnost N6): slobodan tekst u broju narudžbe ne ide u potvrdu izjave; „torba Luna” s datumom ostaje');
+      /* krnji zadnji redak dnevnika (prekinut zapis) ne proguta sljedeću izjavu */
+      const jf = D + fs.readdirSync(D).filter(f => /^raskidi-ulaz-\d{4}-\d{2}\.jsonl$/.test(f)).sort().pop();
+      fs.appendFileSync(jf, '{"name":"Krnji","no":"2020-00');
+      clearLimits(); /* prethodne probne izjave ne smiju potrošiti kvotu */
+      await post('raskid', { name: 'Iza Krnjeg', no: '2031-0001', email: 'v102r3@primjer.hr' });
+      const jl = fs.readFileSync(jf, 'utf8').split('\n').filter(Boolean); let lastOk = null; try { lastOk = JSON.parse(jl[jl.length - 1]); } catch (e) {}
+      ok(lastOk && lastOk.name === 'Iza Krnjeg' && jl[jl.length - 2] === '{"name":"Krnji","no":"2020-00', 'v102 (softver N6): izjava iza krnjeg retka dnevnika zapisana je u vlastitom retku ' + JSON.stringify(jl.slice(-2).map(x => x.slice(0, 40))));
+      /* „Uplatio/la sam” pa raskid preko poveznice: narudžba ostaje otvorena (povrat rješava vlasnica), a nova ne dobiva „čeka vašu uplatu” */
+      clearLimits(); clearRes();
+      const sha = x => require('crypto').createHash('sha256').update(x).digest('hex');
+      const u1 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-un1', series: 'serija-v102-aaaaaaaa', customer: cust('v102u@primjer.hr'), items: [{ id: 'luna', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: 65, total: 65 } });
+      const eo = read('narudzbe.json').find(x => x.no === u1.data.orderNo) || {};
+      const pc = await post('paidclaim', { no: u1.data.orderNo, t: eo.claim });
+      const wd = await post('raskid', { name: 'Kupac Test', no: u1.data.orderNo, email: 'v102u@primjer.hr', tok: sha('raskid|' + eo.claim).slice(0, 24) });
+      await new Promise(z => setTimeout(z, 500));
+      const eo2 = read('narudzbe.json').find(x => x.no === u1.data.orderNo) || {};
+      const u2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-un2', series: 'serija-v102-aaaaaaaa', customer: cust('v102u@primjer.hr'), items: [{ id: 'tara', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: 55, total: 55 } });
+      ok(u1.data.ok && pc.data.ok && wd.data.ok && !eo2.cancelledAt && u2.status === 409 && u2.data.code === 'open_order' && /zaprimili smo vašu izjavu o raskidu ugovora i još je obrađujemo/.test(u2.data.error || '') && !/čeka vašu uplatu/.test(u2.data.error || ''),
+        'v102 (mobitel 1): raskid nakon „Uplatio/la sam” — nova narudžba ne dobiva „čeka vašu uplatu”, nego poruku o obradi izjave ' + JSON.stringify([pc.data.state, u2.status, (u2.data.error || '').slice(0, 60)]));
+      /* provjera v102 (krug 1/2, softver N2/N7): izjava za DRUGU (noviju) narudžbu iste e-adrese ne mijenja poruku — torbu drži narudžba koja čeka uplatu.
+         Redoslijed je bitan: narudžba s izjavom je NOVIJA od one s unikatom, pa test pada ako se torba ne gleda. */
+      clearLimits(); clearRes();
+      const pkp = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, ser3 = 'serija-v102-cccccccc';
+      const w2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn2', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'luna', qty: 1 }], shipping: pkp, goods: 65, total: 65 } });
+      const w1 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn1', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'kozmeticka', qty: 1 }], shipping: pkp, goods: kz, total: kz } });
+      const ew = read('narudzbe.json').find(x => x.no === w1.data.orderNo) || {};
+      await post('paidclaim', { no: w1.data.orderNo, t: ew.claim });
+      await post('raskid', { name: 'Kupac Test', no: w1.data.orderNo, email: 'v102w@primjer.hr', tok: sha('raskid|' + ew.claim).slice(0, 24) });
+      await new Promise(z => setTimeout(z, 500));
+      const w3 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-wn3', series: ser3, customer: cust('v102w@primjer.hr'), items: [{ id: 'tara', qty: 1 }], shipping: pkp, goods: 55, total: 55 } });
+      ok(w1.data.ok && w2.data.ok && w3.status === 409 && /čeka vašu uplatu/.test(w3.data.error || '') && !/izjavu o raskidu/.test(w3.data.error || ''),
+        'provjera v102 (softver N2): izjava o raskidu za drugu narudžbu — unikat i dalje „čeka vašu uplatu” ' + JSON.stringify([w2.status, w3.status, (w3.data.error || '').slice(0, 50)]));
+      /* krug 2: ista poruka i za Stalnu kolekciju; ulica — jednoslovna oznaka samo uz pravi nastavak */
+      clearLimits(); clearRes();
+      const kl = read('proizvodi.json').find(x => x.id === 'klasik').price, ser4 = 'serija-v102-dddddddd';
+      const k1 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn1', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      const ek1 = read('narudzbe.json').find(x => x.no === k1.data.orderNo) || {};
+      const k2a = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn2', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      await post('paidclaim', { no: k1.data.orderNo, t: ek1.claim });
+      await post('raskid', { name: 'Kupac Test', no: k1.data.orderNo, email: 'v102kk@primjer.hr', tok: sha('raskid|' + ek1.claim).slice(0, 24) });
+      await new Promise(z => setTimeout(z, 500));
+      const k2b = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v102-kn3', series: ser4, customer: cust('v102kk@primjer.hr'), items: [{ id: 'klasik', qty: 1, note: 'remen: crna, 140 cm' }], shipping: pkp, goods: kl, total: kl } });
+      ok(k1.data.ok && k2a.status === 409 && /iz Stalne kolekcije čeka vašu uplatu/.test(k2a.data.error || '') && k2b.status === 409 && /iz Stalne kolekcije zaprimili smo vašu izjavu o raskidu ugovora i još je obrađujemo/.test(k2b.data.error || ''),
+        'provjera v102 (krug 2): Stalna kolekcija — prije izjave „čeka vašu uplatu”, nakon „Uplatio/la sam” i izjave „još je obrađujemo” ' + JSON.stringify([k2a.status, k2b.status, (k2b.data.error || '').slice(0, 60)]));
+      clearLimits(); clearRes();
+      const s1 = await post('order', mk('api-key-v102-st1', 'v102s1@primjer.hr', { street: 'Ilica 1, t.ly/abc' }));
+      const s2 = await post('order', mk('api-key-v102-st2', 'v102s2@primjer.hr', { street: 'Livada 2.red/5' }));
+      const s3 = await post('order', mk('api-key-v102-st3', 'v102s3@primjer.hr', { street: 'Kneza Branimira 4, k.br/2' }));
+      const s4 = await post('order', mk('api-key-v102-st4', 'v102s4@primjer.hr', { street: 'Ilica 1, 163.com/abc' }));
+      ok(s1.status === 400 && s1.data.field === 'street' && s2.data.ok && s3.data.ok && s4.status === 400 && s4.data.field === 'street', 'provjera v102 (krug 2, softver N5): „Ilica 1, t.ly/abc” → 400; „Livada 2.red/5” i „…, k.br/2” su adrese ' + JSON.stringify([s1.status, s2.status, s3.status]));
+      clearLimits(); clearRes(); }
     // v101 (recenzija vijeća v100): adresa bez poveznica i (bez potvrde linkom) bez dugih brojeva u e-mailu kupcu; rok za uplatu u e-mailu vlasnici;
     //      izjava bez poveznice u statusu (wdUnverified, prevStates open-wdu); pt ograničen → 'limited'; pun dnevnik izjava
     { clearLimits(); clearRes(); setLimits({ orders_per_ip: 500 }); fs.writeFileSync(D + 'mail-log.txt', '');
@@ -677,9 +766,21 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const pk = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v101-ad4', customer: Object.assign(cust('v101p@primjer.hr'), { street: 'ostatak: www.primjer.hr/x', city: 'a@b.hr' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: kz, total: kz } });
       const abbr = await post('order', mk('api-key-v101-ad5', 'v101k@primjer.hr', 'Ul.kralja Zvonimira 5, Sv.Nedelja'));
       ok(pk.data.ok && abbr.data.ok, 'recenzija v101: osobno preuzimanje ne odbija se zbog neiskorištenog polja adrese; kratice „Ul.kralja”, „Sv.Nedelja” prolaze ' + JSON.stringify([pk.status, pk.data.field || '', abbr.status, abbr.data.field || '']));
-      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb\./.test(cm) && /Vaša napomena: nazovite \[broj skriven\], Hvala\. to je sve/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
+      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb\./.test(cm) && /Vaša napomena: „nazovite \[broj skriven\], Hvala\. to je sve”/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
         'v101 (sigurnost S1): poveznica u adresi → 400; u e-mailu kupcu (bez potvrde linkom) adresa i napomena bez IBAN-a i telefona, „Hvala.to” razdvojeno ' + JSON.stringify([bad.status, bad.data.field, okA.status]));
-      ok(/Rok za uplatu \(kupac\): (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(om) && /HR1210010051863000160/.test(om), 'v101 (dizajn 8): e-mail vlasnici ima redak „Rok za uplatu (kupac)” i cijelu adresu kako je upisana');
+      /* recenzija v102 (sigurnost N1/N3/N4): višeredna napomena je jedan odlomak u navodnicima; adresa koju je ulaz primio ostaje čitljiva; ulica i mjesto prolaze masku zajedno */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const mailOf = (em) => fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => x.includes('To: ' + em) && /PODACI ZA UPLATU/.test(x)) || '';
+        const o1 = await post('order', mk('api-key-v102-rs1', 'v102rs1@primjer.hr', 'Livada 2.red/5', 'hvala\n\n\nVAŽNA OBAVIJEST TRGOVINE — PROMJENA RAČUNA\nNovi „IBAN” šaljemo porukom.\n\nSrdačan pozdrav,\nJasmina · Shiva.J'));
+        const m1 = mailOf('v102rs1@primjer.hr');
+        const o2 = await post('order', { _gotcha: '', Napomena: 'Treba mi do 20.11.2026., 2 komada', _order: { key: 'api-key-v102-rs2', customer: Object.assign(cust('v102rs2@primjer.hr'), { street: 'Za uplatu nazovite 09123', city: '45678 odmah, Zagreb' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: kz, total: kz + 6 } });
+        const m2 = mailOf('v102rs2@primjer.hr');
+        ok(o1.data.ok && /Adresa za dostavu: Livada 2\. red\/5, 10000 Zagreb\.\n/.test(m1)
+          && m1.includes('Vaša napomena: „hvala / VAŽNA OBAVIJEST TRGOVINE — PROMJENA RAČUNA / Novi "IBAN" šaljemo porukom. / Srdačan pozdrav, / Jasmina · Shiva.J”\n') && !/^(VAŽNA OBAVIJEST|Srdačan pozdrav|Jasmina · )/m.test(m1.split('PODACI ZA UPLATU')[0])
+          && o2.data.ok && /Adresa za dostavu: Za uplatu nazovite \[broj skriven\] odmah, Zagreb\.\n/.test(m2) && m2.includes('Vaša napomena: „Treba mi do 20.11.2026., 2 komada”\n'),
+          'recenzija v102 (sigurnost N1/N3/N4): napomena u e-mailu kupcu je jedan odlomak u navodnicima; „Livada 2.red/5” ostaje; broj podijeljen na ulicu i mjesto se skriva '
+          + JSON.stringify([o1.status, (m1.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m1.match(/Vaša napomena:[^\n]*/) || [''])[0], o2.status, (m2.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m2.match(/Vaša napomena:[^\n]*/) || [''])[0]])); }
+      ok(/Rok za uplatu \(kupac\): do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(om) && /HR1210010051863000160/.test(om), 'v101 (dizajn 8): e-mail vlasnici ima redak „Rok za uplatu (kupac)” i cijelu adresu kako je upisana');
       const oA = read('narudzbe.json').find(x => x.no === okA.data.orderNo) || {};
       await post('raskid', { name: 'API Test', no: oA.no, email: 'v101a@primjer.hr' });
       const stU = await (await fetch(U + 'status?stanje=' + encodeURIComponent(oA.no) + '&t=' + okA.data.check + '&prev=' + encodeURIComponent(oA.no + ':' + okA.data.check))).json();
@@ -699,7 +800,7 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         'v101 (softver 5): pun dnevnik — izjava se prima i sprema, vlasnica dobiva jedno upozorenje dnevno ' + JSON.stringify([f1.status, read('raskidi.json').length - rr0]));
       const stW = await (await fetch(U + 'status?stanje=' + encodeURIComponent(oA.no) + '&t=' + okA.data.check)).json();
       const cmW = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /potvrda primitka izjave/.test(x)) || '';
-      ok(stW.orderState === 'withdrawn' && /Artikli u narudžbi SJ-\d{4}-\d{4,6}: „Kozmetička torbica”\./.test(cmW),
+      ok(stW.orderState === 'withdrawn' && /\n\nArtikl u narudžbi SJ-\d{4}-\d{4,6}: „Kozmetička torbica”\./.test(cmW),
         'v101 (dizajn A): nakon raskida neplaćene narudžbe (koja se time stornira) status kaže „withdrawn”, ne „stornirana”; potvrda navodi artikle ' + JSON.stringify([stW.orderState]));
       clearLimits(); clearRes(); }
   } finally { fs.writeFileSync(D + 'proizvodi.json', orig); }

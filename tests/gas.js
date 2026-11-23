@@ -41,6 +41,9 @@ const bad = H(env, 'order', order('gas-key-00002', 'ana@primjer.hr', [{ id: 'lun
 ok(bad._status === 409 && /Cijene/.test(bad.error), 'kriva cijena iz preglednika → 409');
 const L = link(env);
 ok(H(env, 'confirm', { id: L.id, t: 'f'.repeat(32) })._status === 403, 'kriva tajna → 403');
+/* v102: otvaranje linka samo provjerava (peek) — bez upisa narudžbe; e-mail upućuje na gumb */
+const pk = H(env, 'confirm', { id: L.id, t: L.t, peek: true });
+ok(pk.ok && pk.peek === 'waiting' && pk.items[0].name === 'Luna' && pk.total === 65 && env.rows.length === 0 && /kliknite „Potvrdi narudžbu”/.test(env.mails[0].body), 'v102: peek vraća sažetak i ne potvrđuje narudžbu');
 const c1 = H(env, 'confirm', L);
 ok(c1.ok && c1.orderNo === 'SJ-2026-0001' && c1.until && env.rows.length === 1 && env.mails.some(m => m.to === 'vlasnica@primjer.hr' && /Narudžba SJ-2026-0001/.test(m.subject)), 'potvrda: broj, rezervacija, e-mail vlasnici');
 ok(c1.items[0].id === 'luna' && c1.ship.id === 'pickup' && env.mails.some(m => m.to === 'ana@primjer.hr' && /PODACI ZA UPLATU/.test(m.body)), 'odgovor sa stavkama; kupac dobiva podatke za uplatu');

@@ -10,7 +10,7 @@ Probna stranica služi da se potvrda narudžbe e-mailom isproba **s pravim mailo
 
 Tok narudžbe je isti kao na pravoj stranici:
 1. Kupac pošalje narudžbu i dobije e-mail „Potvrdite narudžbu” s linkom.
-2. Tek kad klikne link, narudžba dobiva broj, a torba se rezervira.
+2. Tek kad otvori link i na stranici klikne „Potvrdi narudžbu”, narudžba dobiva broj, a torba se rezervira.
 3. Kupac tada vidi podatke za uplatu, a obje strane dobivaju e-mail.
 
 ## 1. Google tablica i skripta (račun shivaj.handmade@gmail.com)
@@ -41,7 +41,7 @@ Tok narudžbe je isti kao na pravoj stranici:
 ## 3. Proba
 1. Na probnoj stranici naručite torbu sa svojom e-mail adresom.
 2. Stiže mail „Shiva.J — potvrdite narudžbu”. Ako ga nema, pogledajte i neželjenu poštu.
-3. Kliknite link. Otvaraju se podaci za uplatu s brojem narudžbe, a na `OWNER_EMAIL` stiže „Narudžba SJ-…”.
+3. Kliknite link i na stranici gumb „Potvrdi narudžbu”. Otvaraju se podaci za uplatu s brojem narudžbe, a na `OWNER_EMAIL` stiže „Narudžba SJ-…”.
 4. U tablici, na kartici **Narudžbe**, je novi red. Torba je na stranici „Rezervirano” do isteka.
 5. Kad stigne uplata, upišite datum u stupac **Plaćeno**. Torba je tada na stranici prodana.
 

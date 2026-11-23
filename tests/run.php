@@ -409,7 +409,7 @@ $l101 = ['shivaj-pay.me/racun', 'naplata.онлайн', 'plati.москва', 'n
 $ok(!array_filter($f101, 'sj_has_link') && count(array_filter($l101, 'sj_has_link')) === count($l101),
   'v101: filtar — imena s crticom, „pohvale. Top”, „Hvala.Me” prolaze; putanja, ćirilica i točka U+FF61 se hvataju ' . json_encode([array_values(array_filter($f101, 'sj_has_link')), array_values(array_filter($l101, fn($t) => !sj_has_link($t)))], JSON_UNESCAPED_UNICODE));
 $u101 = ['naplata.ba danas' => 'naplata. ba danas', 'Hvala.to je sve' => 'Hvala. to je sve', 'Konzum Sv.Nedelja' => 'Konzum Sv. Nedelja', 'Ul.kralja Zvonimira 5' => 'Ul. kralja Zvonimira 5', 'shivaj-pay.me prije slanja' => 'shivaj-pay. me prije slanja',
-  'cijena 5.50 eura' => 'cijena 5.50 eura', '3.kat/lijevo' => '3.kat/lijevo', 'Naplata.Com odmah' => '[uklonjeno] odmah', 'idi na http://zlo.example sad' => 'idi na [uklonjeno] sad', 'Bit.Ly/x' => '[uklonjeno]', 'pisi na a@b.hr' => 'pisi na [uklonjeno]', 'molim naplata.рф/x hvala' => 'molim [uklonjeno] hvala'];
+  'cijena 5.50 eura' => 'cijena 5.50 eura', '3.kat/lijevo' => '3. kat/lijevo' /* v102: i jednoslovna oznaka pred kosom crtom dobiva razmak */, 'Naplata.Com odmah' => '[uklonjeno] odmah', 'idi na http://zlo.example sad' => 'idi na [uklonjeno] sad', 'Bit.Ly/x' => '[uklonjeno]', 'pisi na a@b.hr' => 'pisi na [uklonjeno]', 'molim naplata.рф/x hvala' => 'molim [uklonjeno] hvala'];
 $bad101 = []; foreach ($u101 as $in => $want) if (sj_unlink($in) !== $want) $bad101[$in] = sj_unlink($in);
 $ok(!$bad101, 'v101: sj_unlink uklanja samo prave poveznice, a „riječ.riječ” razdvaja razmakom (ništa klikabilno, ništa izbrisano) ' . json_encode($bad101, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 $ok(sj_mask_numbers('Hrvatskih branitelja 123/4, 10000 Zagreb') === 'Hrvatskih branitelja 123/4, 10000 Zagreb' && sj_mask_numbers('Trg Ivana Zovka 12/3, 10000 Zagreb') === 'Trg Ivana Zovka 12/3, 10000 Zagreb'
@@ -434,6 +434,75 @@ $ok(sj_mask_numbers('broj Ivana 385/912, 34567 Zadar') === 'broj Ivana [broj skr
   && sj_mask_numbers('mobilni 98/12, 34567 Ivana') === 'mobilni [broj skriven] Ivana' && sj_mask_numbers('kontakt 98/12, 34567 Ivana') === 'kontakt [broj skriven] Ivana'
   && sj_mask_numbers('Kontakt adresa: Ilica 123/4, 10000 Zagreb') === 'Kontakt adresa: Ilica 123/4, 10000 Zagreb' && sj_mask_numbers('Ilica 123/45, 10000 Zagreb') === 'Ilica 123/45, 10000 Zagreb',
   'recenzija v101: maska — „broj/kontakt/mobilni” ispred brojeva skriva; „Kontakt adresa: …” i kućni broj „123/45” ostaju');
+/* v102 (recenzija vijeća v101, sigurnost N2/N5): filtar — kombinirajući i nevidljivi znakovi ispred točke, jednoslovna oznaka, točke-dvojnici, druge sheme;
+   riječi mom/plus/one/top/pro nisu poveznica u rečenici, jesu uz crticu, znamenku ili putanju */
+$v102pos = ["uplata\u{0301}.com", "racun\u{FE0F}.hr", "naplata\u{034F}.com", 't.ly', 'shivaj-uplata.a.bg', "uplata\u{2024}com", "uplata\u{A4F8}com", 'tg://resolve?domain=x', 'viber://pa?chatURI=x', 'skype:shivaj-uplata', 'secure-pay.top', 'pay2.one', 'prevara.top/x', 'naplata.plus/racun'];
+$v102neg = ['Poklon za mamu.mom bratu', 'Molim crnu.plus zlatni detalj', 'Super su vam torbe.one crne', 'Hvala.Top ste', 'hvala.pro račun molim', 'BOX NOW Konzum, Ul.hr.branitelja 12', 'viber: 091 234 567', 'viber:0912345678', 'Konzum: Ilica 1', 'npr. crna', 'd.o.o. Zabok', 'tel:091'];
+$miss = array_values(array_filter($v102pos, fn($x) => !sj_has_link($x))); $false = array_values(array_filter($v102neg, fn($x) => sj_has_link($x)));
+$ok(!$miss && !$false, 'v102 (sigurnost N2/N5): filtar hvata prikrivene domene i sheme, a ne odbija hrvatske rečenice ' . json_encode([$miss, $false], JSON_UNESCAPED_UNICODE));
+$ok(sj_unlink('Sv.Duh/Novaki 4') === 'Sv. Duh/Novaki 4' && !str_contains(sj_unlink('Vukovarska 269, 12.kat/stan 45'), 'uklonjeno') && sj_unlink('Poklon za mamu.mom bratu') === 'Poklon za mamu. mom bratu'
+  && sj_unlink('pisi na tg://resolve?domain=x odmah') === 'pisi na [uklonjeno] odmah' && sj_unlink("idi na uplata\u{0301}.com sad") === 'idi na [uklonjeno] sad' && sj_unlink('skype:shivaj-uplata') === '[uklonjeno]',
+  'v102: sj_unlink — adrese s kosom crtom i riječi-nastavci dobivaju razmak, sheme i prikrivene domene se uklanjaju');
+/* v102 (sigurnost N3/N5): maska — raspon datuma i mjere ostaju, „brojevi” koji nisu znamenke se skrivaju */
+$ok(sj_mask_numbers('dostava 20.11.-25.11.2026. ako može') === 'dostava 20.11.-25.11.2026. ako može' && sj_mask_numbers('mjere 22 × 14 × 6, 28 × 22 × 8 cm') === 'mjere 22 × 14 × 6, 28 × 22 × 8 cm'
+  && sj_mask_numbers('zovi ⓪⑨① ②③④ ⑤⑥⑦⑧') === 'zovi [broj skriven]' && sj_mask_numbers('zovi ⁰⁹¹ ²³⁴ ⁵⁶⁷⁸') === 'zovi [broj skriven]' && sj_mask_numbers('površina 12 m²') === 'površina 12 m²'
+  && sj_mask_numbers('091 234 5678 × 2') !== '091 234 5678 × 2' && sj_mask_numbers('rok 20.11.-0912345678') !== 'rok 20.11.-0912345678',
+  'v102: maska — raspon datuma i mjere torbe ostaju; ⓪⑨①… i ⁰⁹¹… se skrivaju; telefon uz „×” ili datum i dalje se skriva');
+/* provjera v102 (krug 1, sigurnost N1–N5): kratke poveznice s jednoslovnom oznakom; nevidljivi znak iza točke ili u nastavku; „Viber:” kao riječ;
+   paketomat s karte i raspon kućnih brojeva; obične napomene s vremenom i datumom; raspon „datuma” kao skrovište broja */
+$ok(sj_has_link('Novi podaci: v.gd/abc123') && sj_has_link('j.mp/abc') && sj_has_link('rb.gy/x1') && sj_unlink('Novi podaci: v.gd/abc123') === 'Novi podaci: [uklonjeno]' && sj_unlink('v.xyzq/abc') === 'v. xyzq/abc'
+  && sj_has_link("naplata.c\u{034F}om") && sj_has_link("racun.\u{FE0F}hr") && sj_unlink("Uplata na naplata.c\u{034F}om odmah") === 'Uplata na [uklonjeno] odmah'
+  && !sj_has_link('Viber:isti broj kao gore') && !sj_has_link('Kontakt viber:isti broj kao gore') && sj_has_link('skype:shivaj') && sj_has_link('viber://pa?chatURI=x') && !sj_has_link('Zvono.ne/radi') && !sj_has_link('12.kat/stan 45'),
+  'provjera v102 (sigurnost N1, N5): „v.gd/x”, „j.mp/x” i nevidljivi znak iza točke su poveznice; „Viber:isti broj”, „Zvono.ne/radi” nisu');
+$m102 = ['BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)', 'BOX NOW Ilica — Ilica 12-14, 10000 (ID 4051)', 'Tisak, Ilica 12-14, 10000 Zagreb', 'Doma sam 8:00-16:00, 20.11.-25.11.2026.', 'Dostava između 8:00 i 16:00, 20.11.2026.', 'od 8-16 h, 20.11.2026.', '25.11. u 9:00 ili 26.11. u 14:00', '20.11.2026. — 5 kom', 'u 14:30 5 kom']; /* krug 3: popis smjena „6-14, 14-22, 22-6” opet se skriva (kao v101) — tri raspona sati mogu nositi broj telefona */
+$bad102 = array_values(array_filter($m102, fn($x) => sj_mask_numbers($x) !== $x));
+$h102 = ['09-8 12-3 14-5', '09-1   23-4   5-6   7-8', '09:12-3:45, 6.7.-8.9.', '09-8 12:34-5:56', 'Radim u smjenama: 6-14, 14-22, 22-6', 'Novi broj (bez točaka): 09.12.3456.-7.8.', '3.8.5912.-3.4.5678', '09:12 345 678', '091 2345-6789', '09:12, 345 678', '09-12, 3-4, 5-6, 7-8', '09.12., 3.4., 5.6., 7.8.', 'Nazovi 091 234 5678 u 14:30', 'Tel. 98/12, 34567'];
+$vis102 = array_values(array_filter($h102, fn($x) => !str_contains(sj_mask_numbers($x), '[broj skriven]')));
+$ok(!$bad102 && !$vis102 && sj_mask_numbers('Nazovi 091 234 5678 u 14:30') === 'Nazovi [broj skriven] u 14:30', 'provjera v102 (sigurnost N2–N4): paketomat s karte, raspon kućnih brojeva i obične napomene s vremenom ostaju; brojevi skriveni u „datumima” se skrivaju ' . json_encode([$bad102, $vis102], JSON_UNESCAPED_UNICODE));
+/* provjera v102 (krug 2, sigurnost): tri „vremena” i silazni „raspon kućnih brojeva” ne prenose broj; nevidljiva slova (U+3164 …) ne skrivaju telefon, IBAN ni domenu */
+$h2 = ['+38:59 12:34 56:78', '09:12 3:45 6:07', 'Hitno: Signal 385-91/23, 45678', "091\u{3164}234\u{3164}5678", "091\u{115F}234\u{FFA0}5678", "091\u{2800}234\u{2800}5678"];
+$v2 = array_values(array_filter($h2, fn($x) => !str_contains(sj_mask_numbers($x), '[broj skriven]')));
+$k2 = ['8:00, 12:00', 'u 9:30 ili 14:45', 'Tisak, Ilica 12-14, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)', 'Ilica 123/4, 10000 Zagreb'];
+$b2 = array_values(array_filter($k2, fn($x) => sj_mask_numbers($x) !== $x));
+$ok(!$v2 && !$b2 && sj_mask_numbers("HR98\u{3164}2360\u{3164}0001\u{3164}1027\u{3164}9044\u{3164}2") === '[IBAN skriven]'
+  && sj_clean("091\u{3164}234\u{3164}5678", 60) === '0912345678' && sj_clean("naplata.c\u{17B4}om", 60) === 'naplata.com' && sj_has_link("racun.\u{180F}hr") && sj_has_link("naplata.c\u{17B5}om"),
+  'provjera v102 (krug 2, sigurnost N1/N2/P1): „vremena” i silazni raspon ne prenose broj; nevidljiva slova se brišu pri unosu i u maski ' . json_encode([$v2, $b2], JSON_UNESCAPED_UNICODE));
+/* provjera v102 (krug 2, softver N3): točka na kraju rečenice ne kvari „sate od–do”; širi razmak ne skriva broj iza zaštićenog dijela; datum s količinom ostaje */
+$ok(sj_mask_numbers('od 6-14 h.') === 'od 6-14 h.' && sj_mask_numbers('20.11.2026. — 5 kom') === '20.11.2026. — 5 kom'
+  && str_contains(sj_mask_numbers('09:12 345   678'), '[broj skriven]') && str_contains(sj_mask_numbers('09:12 345 / 678'), '[broj skriven]') && str_contains(sj_mask_numbers('nazovi 0:91 23:45 6:78'), '[broj skriven]')
+  && str_contains(sj_mask_numbers('Ulica 385-91/23, 45678 Zagreb'), '[broj skriven]') && str_contains(sj_mask_numbers('Ulica 91-23, 45678 Zagreb'), '[broj skriven]') /* silazni raspon bez kose crte */ && sj_mask_numbers('HR 12:10 01:00 51:86   30:00 1:60') === '[IBAN skriven]',
+  'provjera v102 (krug 2, softver N3): maska — rečenica s točkom i datum s količinom ostaju; broj iza zaštićenog dijela skriva se i uz širi razmak');
+/* provjera v102 (krug 4, sigurnost N1–N3, S1): kućni brojevi uz poštanski broj ostaju; telefon u obliku broja narudžbe se skriva; široki razmaci postaju jedan */
+$adrOk = [['Ulica grada Vukovara 222/104', '10000 Zagreb'], ['Vukovarska 230 - 18', '10000 Zagreb'], ['Ilica 26 / 32', '10000 Zagreb'], ['Vukovarska 265-2', '10000 Zagreb'], ['Ilica 9', '10000 Zagreb']];
+$adrBad = array_values(array_filter($adrOk, fn($x) => sj_echo_street_city($x[0], $x[1]) !== $x[0] . ', ' . $x[1]));
+$telV = array_values(array_filter(['nazovite +44 2071-234567', 'WhatsApp +1 2025-550123', 'mob +36 2012-34567', 'Tel: (0)2012-3456', '09 2012-3456'], fn($x) => !str_contains(sj_echo_text($x), '[broj skriven]')));
+$ok(!$adrBad && !$telV && str_contains(sj_echo_street_city('Za uplatu nazovite 09123', '45678 odmah, Zagreb'), '[broj skriven]') && sj_echo_text('Narudžba 2026-0001, 2 kom') === 'Narudžba 2026-0001, 2 kom'
+  && sj_echo_text("hvala!" . str_repeat("\u{3000}", 70) . "·\u{2003}\u{2003}VAŽNA OBAVIJEST") === 'hvala! · VAŽNA OBAVIJEST' && sj_echo_addr('Ilica 5, 5.9.8.7/uplata') === 'Ilica 5, [uklonjeno]',
+  'provjera v102 (krug 4, sigurnost): kućni brojevi ostaju; telefon kao „broj narudžbe” skriven; široki razmaci jedan razmak; IP s putanjom uklonjen ' . json_encode([$adrBad, $telV], JSON_UNESCAPED_UNICODE));
+/* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
+$kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
+  'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];
+$bR = array_values(array_filter($kR, fn($x) => sj_mask_numbers($x) !== $x));
+$hR = ["tel. 091\u{3161}234\u{3161}5678", "091\u{4E00}234\u{4E00}5678", "091\u{01C0}234\u{01C0}5678", "HR98 2360\u{3161}0001 1027\u{3161}9044 2", 'Nazovite ⓪⑨①234⑤⑥⑦8', '⓪⑨①②③④5678', '⁰⁹¹ 234 ⁵⁶⁷⁸',
+  'Za uplatu nazovite 09123, 45678 odmah, Zagreb', '09:12-3:45, 67', '09.12., 3.4., 5.6., 7.8.', '09.12.3.4.5.6.7.8.', 'Telegram 385/91, 23456 (ID 78)', '8:00-16:00, 123', '20.11.2026., 123',
+  '09.12., 34.56., 78.90.', '09:00-1:23, 45', '09-12 13-14 5-6', 'Ulica 9123, 45678 Zagreb', 'Ulica 0912, 34567 Zagreb', 'Ulica 12345, 10000 Zagreb'];
+$vR = array_values(array_filter($hR, fn($x) => !str_contains(sj_mask_numbers($x), ' skriven]')));
+$ok(!$bR && !$vR, 'recenzija v102 (sigurnost N1/N2/N4): datum s godinom, broj narudžbe i vrijeme od–do uz količinu ili kat ostaju, popis datuma ostaje; dvojnici crtice i miješane „znamenke” se skrivaju ' . json_encode([$bR, $vR], JSON_UNESCAPED_UNICODE));
+$ok(sj_unlink_addr('Livada 2.red/5') === 'Livada 2. red/5' && sj_unlink_addr('Kneza Branimira 4, k.br/2') === 'Kneza Branimira 4, k. br/2' && sj_unlink_addr('Ul.hr branitelja 12') === 'Ul. hr branitelja 12'
+  && sj_unlink_addr('Ilica 1, t.ly/abc') === 'Ilica 1, [uklonjeno]' && sj_unlink_addr('Ilica 1, www.zlo.example') === 'Ilica 1, [uklonjeno]' && sj_unlink('Livada 2.red/5') === 'Livada 2. red/5'
+  && sj_unlink('Uplata preko x.de ili ž.to ili a.top ili t.me ili q.pro ili 1.at') === 'Uplata preko x. de ili ž. to ili a. top ili t. me ili q. pro ili 1. at'
+  && sj_unlink('d.o.o. i j.d.o.o.') === 'd.o.o. i j.d.o.o.' && sj_unlink('A.Šenoe 5') === 'A. Šenoe 5' && sj_unlink('Naplata.Com') === '[uklonjeno]' && sj_unlink('pisite na bit.ly/abc') === 'pisite na [uklonjeno]'
+  && !str_contains(sj_unlink("naplata.c\u{1BC9D}om"), 'naplata.c') && !str_contains(sj_unlink("racun.\u{2D7F}hr"), 'racun.' . "\u{2D7F}" . 'hr'),
+  'recenzija v102 (sigurnost N3/N5): adresa koju je ulaz primio u e-mailu ostaje („Livada 2. red/5”); jednoslovna oznaka uz nastavak dobiva razmak („x. de”, „t. me”)');
+$ok(sj_has_link(sj_clean("shivaj-uplata.\u{2065}com", 200)) && sj_has_link("uplata\u{2E3C}com") && sj_has_link('uplata★.com') && sj_has_link("shivaj-uplata\u{1F4B3}.ws")
+  && !sj_has_link('Hvala 👍. Top ste!') && !sj_has_link('Lijepo 😊.Hvala') && !sj_has_link('Super ❤ torba.') && sj_no_digit(0x2468) === 9 && sj_no_digit(0x24EA) === 0 && sj_no_digit(0x2079) === 9 && sj_no_digit(0x00BD) === null,
+  'recenzija v102 (sigurnost N5): nevidljivi nedodijeljeni znak, točka U+2E3C i simbol pred točkom ne skrivaju domenu; rečenice s emojijem prolaze');
+/* v102 (sigurnost N4): zaglavlje Host s dijelom iza dvotočke koji nije port ne ulazi u link e-maila */
+{ $h0 = $_SERVER['HTTP_HOST'] ?? null; $cfgH = sj_config();
+  $_SERVER['HTTP_HOST'] = '127.0.0.1:8404@zlo.example'; $u1 = sj_site_url_trusted();
+  $_SERVER['HTTP_HOST'] = '127.0.0.1:8404'; $u2 = sj_site_url_trusted();
+  if ($h0 === null) unset($_SERVER['HTTP_HOST']); else $_SERVER['HTTP_HOST'] = $h0;
+  $ok(!empty($cfgH['site_url']) || ($u1 === '' && $u2 === 'http://127.0.0.1:8404'), 'v102 (sigurnost N4): Host „127.0.0.1:8404@zlo.example” ne daje adresu stranice; „127.0.0.1:8404” daje ' . json_encode([$u1, $u2])); }
 @unlink($oj); file_put_contents(SJ_DATA . '/raskidi.json', $rb101 === '' ? '[]' : $rb101); @unlink(SJ_DATA . '/raskidi-provjera.json');
 /* v99 (L4/L5): kopija dodatnog popisa izjava uspoređuje se s najnovijom kopijom koja ga sadrži; stare privremene datoteke se brišu */
 $kr = SJ_DATA . '/kopije'; $ovf = sj_raskid_overflow_path(time()); file_put_contents($ovf, json_encode(['name' => 'Ov99']) . "\n");

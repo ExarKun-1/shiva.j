@@ -57,7 +57,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Šarena se dogodi/.test(await pd.textContent('.about-quote')) && /Jasmina/.test(await pd.textContent('.about-quote small')) && !/po narudžbi: šarena se dogodi/.test(await pd.textContent('#radionica')), 'citat samo lijevo, s potpisom');
   ok(/modele iz Stalne kolekcije šijemo po narudžbi/.test(await pd.getAttribute('meta[property="og:description"]', 'content')) && /ni raspored boja/.test(await pd.textContent('#hero')) && /možete je vratiti u roku 14 dana od preuzimanja\. Detalji/.test(await pd.textContent('#uvjeti')) && !/posebn\S* želj|Kada pravo na raskid nemate/.test(await pd.textContent('#uvjeti')), 'og opis, hero „raspored boja”, Ukratko bez iznimke (v78: bez posebnih želja)');
   ok(/Ručno šivane torbe iz Zaboka/.test(await pd.title()) && /Ručno šivane torbe iz Zaboka/.test(await pd.textContent('footer')), 'slogan u naslovu i podnožju');
-  ok(/potvrdite narudžbu linkom iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite linkom iz e-maila, imate 24 sata za uplatu \(rok koji istječe vikendom ili blagdanom traje do 23:59 prvoga sljedećeg radnog dana\)\. Do tada je unikat rezerviran samo za vas\./.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
+  ok(/potvrdite narudžbu preko linka iz e-maila; tada unikatnu torbu odmah rezerviramo/.test(await pd.textContent('#uvjeti')) && /potvrdite je preko linka iz e-maila, imate 24 sata za uplatu \(rok koji istječe vikendom ili blagdanom traje do 23:59 prvoga sljedećeg radnog dana\)\. Do tada je unikat rezerviran samo za vas\./.test(await pd.textContent('#kako')) && !/Time je unikatna torba/.test(await pd.textContent('#uvjeti')) && /Artikli po narudžbi ne rezerviraju se/.test(await pd.textContent('#uvjeti')), 'Uvjeti: Ukratko i t. 4 usklađeni');
   ok(!/šaren/i.test(await pd.evaluate(() => [...document.querySelectorAll('#kako, #torbe, #emptyCart, #orderForm, meta')].map(e => e.textContent + (e.getAttribute('content') || '')).join(' '))), 'v62: bez riječi „šarena” u tekstovima kupnje');
   ok((await pd.getAttribute('#radionica a[href^="mailto:"]', 'href')) === 'mailto:shivaj.handmade@gmail.com', 'e-mail kao mailto');
   ok(!/Svaka torba postoji/.test(await pd.getAttribute('meta[name="description"]', 'content')), 'opis za tražilice bez „svaka torba”');
@@ -86,7 +86,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await pd.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
   const stepsM = await pd.textContent('.pay-steps').catch(() => '');
   ok(/Narudžba je zaprimljena — mjesto za „Klasik crna” je vaše\./.test(await pd.textContent('.pay-thanks').catch(() => '')), 'v66: ploča samo za kolekciju — „mjesto za „Klasik crna” je vaše”');
-  ok(!/rezervacij/i.test(stepsM) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti kupnje, točka\u00a07\.\)/.test(stepsM) && /Vašu torbu šijemo u roku od 5 radnih dana, zatim narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se/.test(stepsM) && /Čim uplata bude vidljiva, krećemo s izradom\./.test(stepsM) && !/snimku zaslona/.test(stepsM), 'narudžba bez unikata + preuzimanje: rok iz podatka, preuzimanje, 14 dana s ogradom; v65: bez traženja snimke uplate');
+  ok(!/rezervacij/i.test(stepsM) && /Ugovor možete raskinuti od narudžbe pa do isteka 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti kupnje, točka\u00a07\.\)/.test(stepsM) && /Vašu torbu šijemo u roku od 5 radnih dana, zatim narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se/.test(stepsM) && /Čim uplata bude vidljiva, krećemo s izradom\./.test(stepsM) && !/snimku zaslona/.test(stepsM), 'narudžba bez unikata + preuzimanje: rok iz podatka, preuzimanje, 14 dana s ogradom; v65: bez traženja snimke uplate');
   const noteM = await pd.textContent('.pay-note').catch(() => '');
   ok(!/pripremamo za preuzimanje/.test(noteM) && !/pošaljite nam potvrdu/.test(noteM), 'napomena ispod uplate samo o e-mailu');
   const shareTxt = await pd.getAttribute('.copy-btn[data-label="Podaci za uplatu"]', 'data-copy').catch(() => '');
@@ -225,6 +225,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   { const pu = await d.newPage(); await pu.goto(URL + '#uvjeti', { waitUntil: 'load' }); await pu.waitForTimeout(1200);
     const uv = await pu.evaluate(() => Math.round(document.getElementById('uvjeti').getBoundingClientRect().top));
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
+    { const raw = await pu.evaluate(() => [fmtDeadline('<i>nije datum</i>'), fmtDateTime('<b>x</b>'), fmtDeadline('')]);
+      ok(!/[<>]/.test(raw[0]) && /&lt;i&gt;/.test(raw[0]) && !/[<>]/.test(raw[1]) && raw[2] === '', 'recenzija v102 (sigurnost N6): neispravan datum ne ulazi sirov u HTML ' + JSON.stringify(raw)); }
     ok(uv >= 0 && uv < 160 && /12\.\s11\.\s2026\.\su\s00:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
   { /* v96 (recenzija vijeća v95, hitno): na računalu fotografija u povećanom prikazu ne prekriva tekst */
     const ov = [];
@@ -348,7 +350,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/bez „SJ-”/.test(await pm.textContent('.pay-data')) && /neželjenu poštu/.test(await pm.textContent('.pay-note')) && /istom mobitelu/.test(await pm.textContent('.pay-barcode figcaption')), 'poziv na broj bez SJ-, neželjena pošta, barkod na istom mobitelu');
   ok(/Uplaćujete izravno obrtu/.test(await pm.textContent('.pay-who')) && await pm.locator('.copy-btn[data-label="Primatelj"]').count() === 1, 'redak o uplati i Kopiraj uz primatelja');
   const stepsU = (await pm.textContent('.pay-sum')) + ' ' + await pm.textContent('.pay-steps');
-  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa najkasnije 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
+  ok(/[Dd]o (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/Sada/.test(stepsU) && /instant uplatu/.test(stepsU) && /Ugovor možete raskinuti od narudžbe pa do isteka 14 dana od preuzimanja, i to ovdje na stranici; trošak povrata snosite vi \(Uvjeti/.test(stepsU) && !/osim ako/.test(stepsU) && /kliknite „Uplatio\/la sam”: više vam ne šaljemo podsjetnike, a rok za uplatu produljujemo do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje),\s\d{1,2}\.\s\d{1,2}\.\s\d{4}\.\su\s\d{2}:\d{2}/.test(stepsU) && !/nakon isteka roka/.test(stepsU), 'unikat + preuzimanje: bez dvostrukog koraka, v70: jedno obećanje „Uplatio/la sam” s točnim datumom, 14 dana bez ograde');
     ok(!(await pm.locator('#toast.show').count()), 'nakon narudžbe nema obavijesti preko ploče');
   const prim = await pm.locator('.pay-data div:has(dt:text-is("Primatelj")) dd').innerHTML();
   ok(prim.indexOf('Matije Gupca') < prim.indexOf('copy-btn'), 'Kopiraj primatelja ispod adrese');
@@ -465,14 +467,14 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const ownPrev = await pg.evaluate(() => { const p = PRODUCTS.find(x => x.id === 'tara'); p.srvReserved = true; openLightbox('tara'); const t = document.getElementById('lbGoneText').textContent; closeLightbox(); p.srvReserved = false; return t; });
     ok(/rezervirana za vas \(narudžba SJ-2026-0103\)/.test(ownPrev) && !/drugog kupca/.test(ownPrev), 'v101 (kupac N1): torba iz starije vlastite narudžbe — „rezervirana za vas”, ne „za drugog kupca” ' + ownPrev.slice(0, 70));
     let sawPrev = '';
-    await pg.route('**/api/status*', async route => { const u = route.request().url(); if (/prev=/.test(u)) sawPrev = decodeURIComponent(u); const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'paid', prevStates: { 'SJ-2026-0103': 'cancelled' } }) }); });
+    await pg.route('**/api/status*', async route => { try { const u = route.request().url(); if (/prev=/.test(u)) sawPrev = decodeURIComponent(u); const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'paid', prevStates: { 'SJ-2026-0103': 'cancelled' } }) }); } catch (e) { /* stranica je otišla dalje */ } });
     await pg.goto(URL + '?v101=1', { waitUntil: 'networkidle' }); /* pravo učitavanje (promjena samo sidra ne pita servis) */
     await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.paid; }, null, { timeout: 5000 }).catch(() => {});
     const paid = await pg.evaluate(() => { openCart(); const e = document.getElementById('emptyCart'); return { paid: !!(storeGet('last') || {}).paid, prev: (storeGet('lastPrev') || []).length, btn: !!e.querySelector('#showLast, .last-order'), text: e.textContent.slice(0, 80) }; });
     ok(paid.paid && paid.prev === 0 && !paid.btn && /stanje=SJ-2026-0102/.test(sawPrev) && /prev=SJ-2026-0103:/.test(sawPrev), 'v101 (softver A): plaćena zadnja i stornirana starija narudžba — bez gumba „Podaci za uplatu” ' + JSON.stringify(paid));
     /* recenzija v101: oznaka „plaćeno” nije trajna — servis javi „open” (vlasnica poništila evidentiranu uplatu), ploča opet nudi podatke za uplatu */
     await pg.unroute('**/api/status*');
-    await pg.route('**/api/status*', async route => { const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'open' }) }); });
+    await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'open' }) }); } catch (e) { /* stranica je otišla dalje */ } });
     await pg.goto(URL + '?v101=2', { waitUntil: 'networkidle' });
     await pg.waitForFunction(() => { const l = storeGet('last'); return l && !l.paid; }, null, { timeout: 5000 }).catch(() => {});
     ok(await pg.evaluate(() => { const l = storeGet('last'); return !!l && !l.paid && !!lastValid(); }), 'recenzija v101: nakon „open” oznaka plaćeno se briše, podaci za uplatu su opet dostupni');
@@ -488,23 +490,339 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const freeId = await pg.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); storeSet('cart', [{ id: p.id, qty: 1, note: '' }]); return p.id; });
     await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'mine', mine: [freeId], error: 'Torba „X” već je u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' }) }));
     await pg.goto(URL + '?potvrda=' + 'c'.repeat(32) + '.' + 'd'.repeat(32), { waitUntil: 'networkidle' });
-    await pg.waitForFunction(() => /Ova torba je već vaša/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 6000 }).catch(() => {});
-    const mine = await pg.evaluate(id => ({ inCart: cart.some(c => c.id === id), txt: /Ova torba je već vaša/.test(document.querySelector('.drawer-body').textContent) }), freeId);
+    await pg.waitForFunction(() => /Ova je torba već vaša/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 6000 }).catch(() => {});
+    const mine = await pg.evaluate(id => ({ inCart: cart.some(c => c.id === id), txt: /Ova je torba već vaša/.test(document.querySelector('.drawer-body').textContent) }), freeId);
     ok(!mine.inCart && mine.txt, 'v100/v101 (kupac 6): „mine” — torba izlazi iz košarice uz „Ova torba je već vaša” ' + JSON.stringify(mine));
     await pg.unroute('**/api/confirm'); await pg.evaluate(() => { storeSet('own', null); });
     /* 4) prazna košarica dok narudžba čeka potvrdu */
     const pendTxt = await pg.evaluate(() => { cart = []; saveCart(); document.getElementById('emptyCart').classList.remove('pay-mode'); /* obavijest od „mine” je u načinu ploče */ storeSet('pend', { until: new Date(Date.now() + 3600e3).toISOString(), sig: 'x', ids: [], all: [] }); renderCart(); const t = document.getElementById('emptyCart').textContent; storeSet('pend', null); renderCart(); return [t, document.getElementById('emptyCart').textContent]; });
-    ok(/Narudžba koju ste poslali nije otkazana\./.test(pendTxt[0]) && /nemojte kliknuti link/.test(pendTxt[0]) && !/nije otkazana/.test(pendTxt[1]), 'v101 (kupac N3): prazna košarica dok narudžba čeka potvrdu — obavijest da link i dalje vrijedi');
+    ok(/Narudžba koju ste poslali nije otkazana\./.test(pendTxt[0]) && /nemojte je potvrditi/.test(pendTxt[0]) && !/nije otkazana/.test(pendTxt[1]), 'v101 (kupac N3): prazna košarica dok narudžba čeka potvrdu — obavijest da link i dalje vrijedi');
     /* 5) jednoslovna riječ ispred postojećeg span.nw; e-adresa u okviru kao inline-block */
     const glue = await pg.evaluate(async () => { const el = document.createElement('p'); el.innerHTML = 'poveznica je i u <span class="nw">e-mailu</span>, a <span class="nw">e-mailom</span> šaljemo'; document.body.appendChild(el); await new Promise(r => setTimeout(r, 60));
       const out = [...el.querySelectorAll('span.nw')].filter(x => /^e-mail/.test(x.textContent)).map(x => (x.previousSibling.nodeValue || '').slice(-1)); el.remove();
-      const b = document.createElement('div'); b.className = 'order-error'; b.innerHTML = '<b class="inline addr">marija.horvat-kovacevic@primjer.hr</b>'; document.body.appendChild(b); const d = getComputedStyle(b.firstChild).display; b.remove(); return [out, d]; });
-    ok(glue[0].length === 2 && glue[0].every(c => c === '\u00a0') && glue[1] === 'inline-block', 'v101 (dizajn 3 i 9): jednoslovna riječ ostaje uz „e-mailu”; e-adresa u okviru je inline-block ' + JSON.stringify(glue));
+      /* v102 (recenzija vijeća v101, dizajn 3 / mobitel 5): adresa od dva neprelomiva dijela, prijelom samo ispred „@”, točka ostaje uz adresu (uski okvir) */
+      const b = document.createElement('div'); b.className = 'order-error'; b.style.cssText = 'width:200px;font-size:16px'; b.innerHTML = 'Poslali smo e-mail na ' + addrHtml('marija.horvat-kovacevic@primjer.hr', '.') + ' Otvorite ga.'; document.body.appendChild(b);
+      const sp = [...b.querySelectorAll('.addr .nw')], rc = sp.map(x => x.getClientRects().length), wb = !!b.querySelector('.addr wbr'), lastTxt = sp.length ? sp[sp.length - 1].textContent : '';
+      const long = addrHtml('a'.repeat(30) + '@primjer.hr'); b.remove(); return [out, [sp.length, rc.join(), wb, lastTxt, /class="nw"/.test(long)]]; });
+    ok(glue[0].length === 2 && glue[0].every(c => c === '\u00a0') && JSON.stringify(glue[1]) === JSON.stringify([2, '1,1', true, '@primjer.hr.', false]), 'v101/v102 (dizajn 3 i 9): jednoslovna riječ ostaje uz „e-mailu”; e-adresa se lomi samo ispred „@”, točka ostaje uz nju ' + JSON.stringify(glue));
     /* 6) bez slobodnih unikata: gumb i poziv na naslovnici vode u Stalnu kolekciju */
     const noFree = await pg.evaluate(() => { const un = PRODUCTS.filter(x => !x.made); un.forEach(p => { p.srvReserved = true; }); renderHero(); openLightbox(un[0].id); const mb = document.getElementById('lbMore'), cta = document.querySelector('.hero-cta');
       const out = [mb.textContent, mb.dataset.go, cta.textContent, cta.getAttribute('href')]; closeLightbox(); un.forEach(p => { p.srvReserved = false; }); renderHero(); return out.concat([document.querySelector('.hero-cta').getAttribute('href')]); });
     ok(noFree[0] === 'Pogledaj Stalnu kolekciju' && noFree[1] === 'kolekcija' && /Stalnu kolekciju/.test(noFree[2]) && noFree[3] === '#kolekcija' && noFree[4] === '#torbe', 'v101 (kupac N6): bez slobodnih unikata gumb i poziv vode u Stalnu kolekciju ' + JSON.stringify(noFree));
     await c1.close(); }
+
+  { /* v102 (recenzija vijeća v101): polje s greškom vidljivo na mobitelu; starije ploče prate raskid; obavijest za plaćenu narudžbu; oznaka storna
+       nije trajna; stanje i pri otvaranju košarice; druga izjava o raskidu u istoj kartici; 503/429 dok narudžba čeka; „mine” u množini; greška na
+       izboru remena; broj narudžbe se ne lomi; okrnjen link za potvrdu; istekla oznaka čekanja; prazna košarica bez slobodnih unikata */
+    const mkLast = (no, id, name) => ({ at: Date.now(), items: [{ id, name, qty: 1, price: 65, made: false, cat: 'torbe' }], ship: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0 }, pay: null,
+      srv: { orderNo: no, reference: no.replace('SJ-', ''), total: 65, until: new Date(Date.now() + 2 * 86400e3).toISOString(), payUntil: new Date(Date.now() + 86400e3).toISOString(), claimUntil: new Date(Date.now() + 2 * 86400e3).toISOString(),
+        claimLink: '?uplata=' + no + '&t=' + 'a'.repeat(32), raskidLink: '#raskid?no=' + no.replace('SJ-', '') + '&t=' + 'b'.repeat(24), check: 'c'.repeat(24) } });
+    /* A) mobitel: nakon slanja s greškom polje koje treba ispraviti je u vidnom polju košarice (v101 ga je odnosio izvan zaslona) */
+    const vis = [];
+    for (const [w, h] of [[390, 844], [320, 568], [844, 390]]) {
+      const cx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true }); const pm = await cx.newPage(); watch(pm);
+      await pm.goto(URL, { waitUntil: 'networkidle' });
+      await pm.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); toggleCartItem(p.id); openCart(); });
+      await pm.waitForSelector('#fName', { state: 'visible', timeout: 5000 }).catch(() => {});
+      await pm.check('#shipOptions input[value="gls"]');
+      await pm.fill('#fName', 'Mob Kupac'); await pm.fill('#fEmail', 'mob102@primjer.hr'); await pm.fill('#fPhone', '091 234 5678');
+      const inView = id => pm.evaluate(i => { const sc = document.querySelector('.drawer-body').getBoundingClientRect(), r = document.getElementById(i).getBoundingClientRect(); return r.top >= sc.top - 1 && r.bottom <= sc.bottom + 1; }, id);
+      await pm.evaluate(() => { document.querySelector('.drawer-body').scrollTop = 99999; }); await pm.click('#orderBtn'); await pm.waitForTimeout(500);
+      const addrIn = await inView('fAddr'), fixTxt = await pm.textContent('#orderFix');
+      await pm.fill('#fAddr', 'Ilica 1'); await pm.fill('#fZip', '10000'); await pm.fill('#fCity', 'Zagreb');
+      await pm.evaluate(() => { document.querySelector('.drawer-body').scrollTop = 99999; }); await pm.click('#orderBtn'); await pm.waitForTimeout(500);
+      vis.push([w, addrIn, await inView('fConsent'), /ulica i broj/.test(fixTxt)]);
+      await cx.close();
+    }
+    ok(vis.every(v => v[1] && v[2] && v[3]), 'v102 (mobitel 2): nakon slanja s greškom polje adrese, pa privola, ostaju u vidnom polju košarice (390×844, 320×568, položeno) ' + JSON.stringify(vis));
+    const c2 = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const pg = await c2.newPage(); watch(pg);
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(300);
+    /* B) ploča STARIJE narudžbe na zaslonu: izjava bez poveznice → okvir; izjava preko poveznice → ploča nestaje */
+    const prevP = await pg.evaluate(([L, P]) => { storeSet('cart', null); cart = []; storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); openCart(); renderCart();
+      document.querySelector('.last-order[data-prev="SJ-2026-0202"]').click(); const e = document.getElementById('emptyCart'); const r = [(e.querySelector('.pay-no') || {}).textContent || ''];
+      let lp = storeGet('lastPrev'); lp[0].wdU = true; storeSet('lastPrev', lp); lastStateChanged(); r.push(!!e.querySelector('.pay-wdu') && /SJ-2026-0202/.test((e.querySelector('.pay-no') || {}).textContent || ''));
+      lp = storeGet('lastPrev'); lp[0].withdrawn = true; storeSet('lastPrev', lp); lastStateChanged(); r.push(e.classList.contains('pay-mode'), /Uplatite/.test(e.textContent), !!e.querySelector('#showLast')); closeCart(false); return r; },
+      [mkLast('SJ-2026-0201', 'luna', 'Luna'), mkLast('SJ-2026-0202', 'tara', 'Tara')]);
+    ok(/SJ-2026-0202/.test(prevP[0]) && prevP[1] && !prevP[2] && !prevP[3] && prevP[4], 'v102 (kupac N4): ploča starije narudžbe — okvir „izjava bez poveznice” se pojavi, nakon raskida ploča nestaje, zadnja narudžba ostaje ' + JSON.stringify(prevP));
+    /* C) cijeli put: izjava o raskidu za stariju narudžbu u istoj kartici označi je u lastPrev; druga izjava vraća obrazac na prvi korak */
+    await pg.evaluate(([L, P]) => { storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); }, [mkLast('SJ-2026-0203', 'luna', 'Luna'), mkLast('SJ-2026-0204', 'tara', 'Tara')]);
+    await pg.route('**/api/raskid', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, at: '22. 11. 2026. u 20:00' }) }));
+    await pg.evaluate(() => { PRODUCTS.find(x => x.id === 'tara').reserved = true; location.hash = '#raskid?no=2026-0204&t=' + 'b'.repeat(24); }); await pg.waitForTimeout(300);
+    await pg.fill('#rName', 'Ana Kupac'); await pg.fill('#rEmail', 'ana102@primjer.hr'); await pg.click('#raskidNext'); await pg.waitForTimeout(200);
+    await pg.locator('#raskidStep2 button[type="button"]:not(#raskidBack), #raskidStep2 button[type="submit"]').first().click(); await pg.waitForFunction(() => !document.getElementById('raskidDone').hidden, null, { timeout: 5000 }).catch(() => {});
+    await pg.waitForTimeout(200);
+    const rk1 = await pg.evaluate(() => ({ done: !document.getElementById('raskidDone').hidden, wd: !!((storeGet('lastPrev') || [])[0] || {}).withdrawn, lastWd: !!(storeGet('last') || {}).withdrawn, semi: /@primjer\.hr;$/.test((document.querySelector('#raskidDone .addr .nw:last-child') || {}).textContent || '') }));
+    await pg.evaluate(() => { location.hash = '#raskid?no=2026-0203&t=' + 'b'.repeat(24); }); await pg.waitForTimeout(300);
+    const rk2 = await pg.evaluate(() => ({ done: !document.getElementById('raskidDone').hidden, s1: !document.getElementById('raskidStep1').hidden, no: document.getElementById('rNo').value, name: document.getElementById('rName').value, email: document.getElementById('rEmail').value, resv: !!PRODUCTS.find(x => x.id === 'tara').reserved }));
+    /* provjera v102 (krug 1, kupac N1): druga izjava se stvarno može poslati (gumb nije ostao onemogućen) */
+    await pg.click('#raskidNext'); await pg.waitForTimeout(200);
+    const btn2 = await pg.evaluate(() => document.getElementById('raskidConfirm').disabled);
+    await pg.click('#raskidConfirm').catch(() => {}); await pg.waitForFunction(() => !document.getElementById('raskidDone').hidden, null, { timeout: 5000 }).catch(() => {});
+    const rk3 = await pg.evaluate(() => ({ done: !document.getElementById('raskidDone').hidden, lastWd: !!(storeGet('last') || {}).withdrawn }));
+    ok(!btn2 && rk3.done && rk3.lastWd && !rk2.resv, 'provjera v102 (kupac N1, softver N4): druga izjava o raskidu u istoj kartici se šalje; torba prve više nije lokalno „rezervirana” ' + JSON.stringify([btn2, rk3, rk2.resv]));
+    await pg.unroute('**/api/raskid');
+    ok(rk1.done && rk1.wd && !rk1.lastWd && rk1.semi && !rk2.done && rk2.s1 && rk2.no === 'SJ-2026-0203' && rk2.name === 'Ana Kupac' && rk2.email === 'ana102@primjer.hr',
+      'v102 (kupac N1/N4): izjava za stariju narudžbu označi nju (ne zadnju); druga poveznica za raskid vraća obrazac na prvi korak s novim brojem ' + JSON.stringify([rk1, rk2]));
+    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); storeSet('last', null); storeSet('lastPrev', null); window.scrollTo(0, 0); });
+    /* D) plaćena narudžba: obavijest umjesto tihog nestanka; E) oznaka storna nije trajna; F) stanje se pita i pri otvaranju košarice (najviše jednom u minuti) */
+    const paidN = await pg.evaluate(L => { L.paid = true; storeSet('last', L); openCart(); renderCart(); const t = document.getElementById('emptyCart').textContent; closeCart(false); return t; }, mkLast('SJ-2026-0205', 'luna', 'Luna'));
+    ok(/Uplatu za narudžbu SJ-2026-0205 već smo zabilježili; nemojte plaćati ponovno\./.test(paidN) && !/Podaci za uplatu narudžbe SJ-2026-0205/.test(paidN), 'v102 (mobitel 4): plaćena narudžba — obavijest u košarici, bez gumba za uplatu ' + paidN.slice(0, 80));
+    await pg.evaluate(L => { L.cancelled = true; storeSet('last', L); }, mkLast('SJ-2026-0206', 'luna', 'Luna'));
+    let asked = [];
+    await pg.route('**/api/status*', async route => { try { const u = decodeURIComponent(route.request().url()); asked.push(/stanje=SJ-2026-0206/.test(u)); const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'paid' }) }); } catch (e) { /* stranica je otišla dalje */ } });
+    await pg.goto(URL + '?v102=1', { waitUntil: 'networkidle' });
+    await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.paid && !l.cancelled; }, null, { timeout: 5000 }).catch(() => {});
+    const unc = await pg.evaluate(() => { const l = storeGet('last') || {}; return [!!l.paid, !!l.cancelled]; });
+    ok(asked.some(Boolean) && unc[0] && !unc[1], 'v102 (softver N1): stornirana ploča i dalje pita stanje; nakon „paid” oznaka storna se briše ' + JSON.stringify([asked, unc]));
+    asked = [];
+    await pg.evaluate(() => { const l = storeGet('last'); delete l.paid; storeSet('last', l); stateAsked = 0; openCart(); }); await pg.waitForTimeout(700);
+    const a1 = asked.slice(); asked = [];
+    await pg.evaluate(() => { closeCart(false); openCart(); }); await pg.waitForTimeout(700);
+    const a2 = asked.slice(); await pg.evaluate(() => closeCart(false));
+    ok(a1.some(Boolean) && a2.length > 0 && !a2.some(Boolean), 'v102 (softver N3): otvaranje košarice pita i stanje narudžbe, ali najviše jednom u minuti ' + JSON.stringify([a1, a2]));
+    await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); });
+    /* G) „mine” za dvije torbe: naslov u množini */
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'mine', mine: ['vela', 'nera'], error: 'Torbe „Vela” i „Nera” već su u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' }) }));
+    await pg.goto(URL + '?potvrda=' + 'e'.repeat(32) + '.' + 'f'.repeat(32), { waitUntil: 'networkidle' });
+    await pg.waitForFunction(() => /već vaš/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 6000 }).catch(() => {});
+    const mine2 = await pg.textContent('.drawer-body');
+    await pg.unroute('**/api/confirm'); await pg.evaluate(() => { storeSet('own', null); });
+    /* H) okrnjen link za potvrdu daje poruku */
+    await pg.goto(URL + '?potvrda=abc', { waitUntil: 'networkidle' }); await pg.waitForTimeout(300);
+    const trunc = await pg.evaluate(() => [document.querySelector('.drawer-body').textContent, location.search]);
+    ok(/Ove su torbe već vaše\./.test(mine2) && /Link za potvrdu nije potpun\./.test(trunc[0]) && trunc[1] === '', 'v102 (dizajn 1, kupac N8): „Ove torbe su već vaše.” za dvije torbe; okrnjen link za potvrdu daje jasnu poruku ' + JSON.stringify([/Ove torbe/.test(mine2), trunc[1]]));
+    /* I) izbor remena: greška na samom izboru (aria-invalid, poruka), nestaje nakon odabira */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    await pg.evaluate(() => { document.getElementById('emptyCart').classList.remove('pay-mode'); const p = PRODUCTS.find(x => x.made && catOf(x) === 'kolekcija' && !isGone(x)); cart = []; saveCart(); toggleCartItem(p.id); openCart(); });
+    await pg.waitForSelector('.strap-sel', { timeout: 4000 }).catch(() => {});
+    await pg.check('#shipOptions input[value="pickup"]'); await pg.fill('#fName', 'Remen Test'); await pg.fill('#fEmail', 'remen102@primjer.hr'); await pg.fill('#fPhone', '091 234 5678'); await pg.check('#fConsent');
+    await pg.click('#orderBtn'); await pg.waitForTimeout(400);
+    const st1 = await pg.evaluate(() => { const s = [...document.querySelectorAll('.strap-sel')]; return [s.map(x => x.getAttribute('aria-invalid')), !!document.querySelector('.strap-row .strap-err'), getComputedStyle(s[0]).borderTopColor]; });
+    await pickStrap(pg); await pg.waitForTimeout(200);
+    const st2 = await pg.evaluate(() => [...document.querySelectorAll('.strap-sel')].map(x => x.getAttribute('aria-invalid')).concat(document.querySelector('.strap-err') ? ['poruka ostala'] : []));
+    ok(st1[0].every(x => x === 'true') && st1[1] && st1[2] === 'rgb(155, 44, 31)' && st2.every(x => x === null), 'v102 (dizajn 8): bez odabranog remena — crveni obrub, aria-invalid i poruka na samom izboru; nakon odabira oznaka nestaje ' + JSON.stringify([st1, st2]));
+    /* J) privola: vidljivo stanje greške */
+    await pg.uncheck('#fConsent'); await pg.click('#orderBtn'); await pg.waitForTimeout(300);
+    const cons = await pg.evaluate(() => { const c = document.getElementById('fConsent'); return [c.getAttribute('aria-invalid'), getComputedStyle(c).outlineColor, getComputedStyle(c).outlineStyle]; });
+    ok(cons[0] === 'true' && cons[1] === 'rgb(155, 44, 31)' && cons[2] === 'solid', 'v102 (dizajn 8): neoznačena privola ima vidljiv crveni obrub ' + JSON.stringify(cons));
+    /* J2) ključ narudžbe bez crypto.randomUUID (iOS < 15.4): 32 heksadekadske znamenke iz getRandomValues */
+    let sentKey = '';
+    await pg.route('**/api/order', route => { try { sentKey = JSON.parse(route.request().postData() || '{}')._order.key; } catch (e) {} route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'proba' }) }); });
+    await pg.evaluate(() => { Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true }); storeSet('okey', null); });
+    await pg.check('#fConsent'); await pg.click('#orderBtn'); await pg.waitForFunction(() => !document.getElementById('orderError').hidden, null, { timeout: 8000 }).catch(() => {});
+    await pg.unroute('**/api/order');
+    ok(/^[0-9a-f]{32}$/.test(sentKey), 'v101/v102 (sigurnost S3): bez crypto.randomUUID ključ narudžbe je 32 heksadekadske znamenke ' + JSON.stringify(sentKey));
+    /* J3) grane koje dosad nisu imale test: markClaimed za „withdrawn”/„paid”, prevStates „open-wdu”, pendState „limited” */
+    const mc = await pg.evaluate(([L, P]) => { storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); markClaimed(L.srv.orderNo, { state: 'withdrawn' }); markClaimed(P.srv.orderNo, { state: 'paid' });
+      const a = storeGet('last'), b = storeGet('lastPrev')[0]; return [a.withdrawn === true, a.claimed === undefined, b.paid === true, b.claimed === undefined]; }, [mkLast('SJ-2026-0207', 'luna', 'Luna'), mkLast('SJ-2026-0208', 'tara', 'Tara')]);
+    await pg.evaluate(([L, P]) => { storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); storeSet('pend', { until: new Date(Date.now() + 3600e3).toISOString(), sig: 'x', ids: [], all: [], pt: 'a'.repeat(24), stale: true }); }, [mkLast('SJ-2026-0209', 'luna', 'Luna'), mkLast('SJ-2026-0210', 'tara', 'Tara')]);
+    let pendState = 'limited';
+    await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'open', prevStates: { 'SJ-2026-0210': 'open-wdu' }, pendState }) }); } catch (e) { /* stranica je otišla dalje */ } });
+    await pg.goto(URL + '?v102=3', { waitUntil: 'networkidle' }); await pg.waitForFunction(() => ((storeGet('lastPrev') || [])[0] || {}).wdU === true, null, { timeout: 5000 }).catch(() => {});
+    const lim = await pg.evaluate(() => [((storeGet('lastPrev') || [])[0] || {}).wdU === true, !!storeGet('pend')]);
+    pendState = 'waiting';
+    await pg.goto(URL + '?v102=4', { waitUntil: 'networkidle' }); await pg.waitForFunction(() => !storeGet('pend'), null, { timeout: 5000 }).catch(() => {});
+    const lim2 = await pg.evaluate(() => !storeGet('pend'));
+    await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); storeSet('pend', null); });
+    ok(mc.every(Boolean) && lim[0] && lim[1] && lim2, 'v102 (softver N8): markClaimed za „withdrawn”/„paid” ne bilježi klik; „open-wdu” označi stariju ploču; oznaka čekanja ostaje uz „limited”, briše se uz „waiting” ' + JSON.stringify([mc, lim, lim2]));
+    await pg.evaluate(() => { cart = []; saveCart(); renderCart(); closeCart(false); });
+    /* K) broj narudžbe se ne lomi; podcrta poveznica zasebnim svojstvima; istekla oznaka čekanja; prazna košarica bez slobodnih unikata */
+    const misc = await pg.evaluate(async () => { const el = document.createElement('p'); el.textContent = 'Torba je rezervirana za vas (narudžba SJ-2026-0002).'; document.body.appendChild(el); await new Promise(r => setTimeout(r, 80));
+      const nw = [...el.querySelectorAll('span.nw')].map(x => x.textContent); el.remove();
+      const a = document.querySelector('.foot-links a'), cs = getComputedStyle(a);
+      storeSet('pend', { until: new Date(Date.now() - 3 * 86400e3).toISOString(), sig: 'x', ids: [], all: [], pt: 'a'.repeat(24) }); showPendingAfterReload(); const pendGone = storeGet('pend') === null || storeGet('pend') === undefined;
+      const keep = PRODUCTS.filter(x => !x.made).map(x => [x, x.sold]); keep.forEach(([x]) => { x.sold = true; }); renderHero(); renderCart(); openCart();
+      const eg = document.querySelector('#emptyCart .empty-go'), r1 = [eg.textContent, eg.getAttribute('href')];
+      keep.forEach(([x, s]) => { x.sold = s; }); renderHero(); renderCart(); const r2 = [eg.isConnected ? eg.textContent : document.querySelector('#emptyCart .empty-go').textContent, document.querySelector('#emptyCart .empty-go').getAttribute('href')]; closeCart(false);
+      return [nw, cs.textDecorationLine, cs.textDecorationStyle, pendGone, r1, r2]; });
+    ok(misc[0].includes('SJ-2026-0002') && misc[1] === 'underline' && misc[2] === 'dashed' && misc[3] && misc[4].join() === 'Pogledaj Stalnu kolekciju,#kolekcija' && misc[5].join() === 'Pogledaj torbe,#torbe',
+      'v102: broj narudžbe u neprelomivom rasponu; podcrta poveznica isprekidana; istekla oznaka čekanja briše se i uz praznu košaricu; prazna košarica bez slobodnih unikata vodi na Stalnu kolekciju ' + JSON.stringify(misc));
+    /* L) provjera v102, krug 1: potvrda gumbom — rubovi; druga kartica; povratak u karticu; „već javljeno” na drugom uređaju */
+    await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); storeSet('pend', { until: new Date(Date.now() + 3600e3).toISOString(), sig: 'x', ids: [], all: [], pt: 'a'.repeat(24) }); });
+    let mode = 'peek-ok', posts = 0;
+    const until1 = new Date(Date.now() + 3600e3).toISOString();
+    await pg.route('**/api/confirm', route => { let b = {}; try { b = JSON.parse(route.request().postData() || '{}'); } catch (e) {}
+      if (b.peek) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, peek: 'waiting', items: [{ name: 'Luna', qty: 1 }], total: 65, until: until1 }) });
+      posts++;
+      if (mode === 'peek-ok') { mode = 'taken'; return route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Previše pokušaja. Pokušajte ponovno za sat vremena.' }) }); }
+      return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, taken: ['luna'], pt: 'a'.repeat(24) }) }); });
+    await pg.goto(URL + '?potvrda=' + '1'.repeat(32) + '.' + '2'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {});
+    const noClose = await pg.evaluate(() => !document.querySelector('#claimBox .claim-close'));
+    await pg.click('#confirmBtn', { timeout: 5000 }).catch(() => {}); await pg.waitForFunction(() => { const h = document.getElementById('confirmHint'); return h && /Previše pokušaja/.test(h.textContent); }, null, { timeout: 5000 }).catch(() => {});
+    const after429 = await pg.evaluate(() => { const b = document.getElementById('confirmBtn'); return [!!b && !b.disabled, b ? b.textContent : '', /potvrda=/.test(location.search), (document.getElementById('confirmHint') || {}).textContent || '']; });
+    await pg.click('#confirmBtn', { timeout: 5000 }).catch(() => {}); await pg.waitForFunction(() => /Narudžba nije potvrđena/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 5000 }).catch(() => {});
+    const afterTaken = await pg.evaluate(() => [!document.getElementById('confirmBtn'), !/potvrda=/.test(location.search), !storeGet('pend'), /drugi kupac/.test(document.querySelector('.drawer-body').textContent)]);
+    await pg.unroute('**/api/confirm');
+    ok(noClose && after429[0] && after429[1] === 'Potvrdi narudžbu' && after429[2] && /Previše pokušaja/.test(after429[3]) && posts === 2 && afterTaken.every(Boolean),
+      'provjera v102 (kupac N5–N7): bez košarice okvir nema „Zatvori”; 429 pri kliku ostavlja gumb i link; „torbu je uzeo drugi kupac” briše oznaku čekanja ' + JSON.stringify([noClose, after429, posts, afterTaken]));
+    /* isti preglednik (košarica puna): ispod okvira nema obrasca; „Zatvori” ga vraća */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    await pg.evaluate(() => { document.getElementById('emptyCart').classList.remove('pay-mode'); const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); cart = []; saveCart(); toggleCartItem(p.id); });
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, peek: 'waiting', items: [{ name: 'Luna', qty: 1 }], total: 65, until: until1 }) }));
+    await pg.goto(URL + '?potvrda=' + '3'.repeat(32) + '.' + '4'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {});
+    await pg.waitForTimeout(600); /* i nakon odgovora o stanju (renderCart) obrazac ostaje skriven */
+    const full1 = await pg.evaluate(() => [document.getElementById('orderForm').offsetParent === null, document.getElementById('cartItems').offsetParent === null, !!document.querySelector('#claimBox .claim-close')]);
+    await pg.click('#claimBox .claim-close', { timeout: 5000 }).catch(() => {}); await pg.waitForTimeout(200);
+    const full2 = await pg.evaluate(() => [document.getElementById('orderForm').offsetParent === null, document.getElementById('cartItems').offsetParent === null, !!document.getElementById('claimBox')]);
+    ok(full1.every(Boolean) && !full2[0] && !full2[1] && !full2[2], 'provjera v102 (softver N6): u pregledniku s košaricom ispod okvira za potvrdu nema obrasca; „Zatvori” vraća košaricu ' + JSON.stringify([full1, full2]));
+    /* druga kartica: narudžba potvrđena drugdje → gumb ovdje nestaje; košarica ove kartice se NE prepisuje u pohranu */
+    await pg.goto(URL + '?potvrda=' + '3'.repeat(32) + '.' + '4'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {});
+    const pgB = await c2.newPage(); watch(pgB); await pgB.goto(URL, { waitUntil: 'networkidle' });
+    /* krug 2 (softver/kupac N1): u drugoj kartici promijeni se stanje DRUGE narudžbe (druga torba) — gumb ovdje ostaje */
+    await pgB.evaluate(L => { storeSet('last', L); }, mkLast('SJ-2026-0210', 'tara', 'Tara')); await pg.waitForTimeout(400);
+    await pgB.evaluate(() => { const l = storeGet('last'); l.claimed = true; storeSet('last', l); }); await pg.waitForTimeout(400);
+    const keepBtn = await pg.evaluate(() => [!!document.getElementById('confirmBtn'), /potvrda=/.test(location.search)]);
+    ok(keepBtn[0] && keepBtn[1], 'provjera v102 (krug 2, N1): promjena druge narudžbe u drugoj kartici ne miče gumb „Potvrdi narudžbu” ni link ' + JSON.stringify(keepBtn));
+    await pgB.evaluate(L => { storeSet('last', L); }, mkLast('SJ-2026-0211', 'luna', 'Luna'));
+    await pg.waitForFunction(() => !document.getElementById('confirmBtn'), null, { timeout: 4000 }).catch(() => {}); await pg.waitForTimeout(200);
+    /* zatim druga kartica doda u košaricu i promijeni stanje iste narudžbe (raskid) — ova kartica osvježi ploču, ali NE sprema svoju košaricu */
+    await pgB.evaluate(() => { storeSet('cart', [{ id: 'kozmeticka', qty: 2, note: '', sc: '', sl: '' }]); const l = storeGet('last'); l.withdrawn = true; storeSet('last', l); });
+    await pg.waitForTimeout(400);
+    const tabA = await pg.evaluate(() => [!document.getElementById('confirmBtn'), !/potvrda=/.test(location.search), JSON.stringify(storeGet('cart'))]);
+    await pg.unroute('**/api/confirm');
+    ok(tabA[0] && tabA[1] && /kozmeticka/.test(tabA[2]) && /"qty":2/.test(tabA[2]), 'provjera v102 (softver N3/N4): potvrda u drugoj kartici miče gumb ovdje, a spremljena košarica druge kartice ostaje netaknuta ' + JSON.stringify(tabA));
+    await pgB.close();
+    /* krug 2: stari (zamijenjeni ili istekli) link ne briše oznaku čekanja novije narudžbe; promijenjena ponuda iste narudžbe (isti pt) je briše */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    await pg.evaluate(() => { cart = []; storeSet('cart', null); storeSet('last', null); storeSet('pend', { until: new Date(Date.now() + 3600e3).toISOString(), sig: 'x', ids: ['tara'], all: ['tara'], pt: 'a'.repeat(24) }); });
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 410, contentType: 'application/json', body: JSON.stringify({ ok: false, expired: true, replaced: true, error: 'Ovaj link je zamijenjen novijim.' }) }));
+    await pg.goto(URL + '?potvrda=' + '5'.repeat(32) + '.' + '6'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForFunction(() => /zamijenjen/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 5000 }).catch(() => {});
+    const pendOld = await pg.evaluate(() => !!storeGet('pend'));
+    await pg.unroute('**/api/confirm');
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'changed', pt: 'a'.repeat(24), error: 'Cijene su se u međuvremenu promijenile, pa narudžba nije potvrđena.' }) }));
+    await pg.goto(URL + '?potvrda=' + '7'.repeat(32) + '.' + '8'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForFunction(() => /Cijene su se/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 5000 }).catch(() => {});
+    const pendSame = await pg.evaluate(() => !!storeGet('pend'));
+    await pg.unroute('**/api/confirm');
+    /* 429 pri OTVARANJU linka: link ostaje u adresi */
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Previše pokušaja. Pokušajte ponovno za sat vremena.' }) }));
+    await pg.goto(URL + '?potvrda=' + '9'.repeat(32) + '.' + '0'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForFunction(() => /Previše pokušaja/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 5000 }).catch(() => {});
+    const keepUrl = await pg.evaluate(() => /potvrda=/.test(location.search));
+    await pg.unroute('**/api/confirm');
+    ok(pendOld && !pendSame && keepUrl, 'provjera v102 (krug 2, N2): stari link ne briše oznaku čekanja novije narudžbe; odbijanje iste narudžbe (isti pt) je briše; 429 pri otvaranju ostavlja link ' + JSON.stringify([pendOld, pendSame, keepUrl]));
+    /* krug 2 (softver N4): okvir otvoren bez košarice, kupac zatim doda torbu — obrazac je skriven, okvir dobiva „Zatvori” */
+    await pg.evaluate(() => { storeSet('pend', null); });
+    await pg.route('**/api/confirm', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, peek: 'waiting', pt: 'b'.repeat(24), items: [{ name: 'Luna', qty: 1 }], total: 65, until: until1 }) }));
+    await pg.goto(URL + '?potvrda=' + '3'.repeat(32) + '.' + '4'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {});
+    const late = await pg.evaluate(() => { const r = [!document.querySelector('#claimBox .claim-close')]; const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); toggleCartItem(p.id);
+      r.push(!!document.querySelector('#claimBox .claim-close'), document.getElementById('orderForm').offsetParent === null); { const cl = document.querySelector('#claimBox .claim-close'); if (cl) cl.click(); }
+      r.push(!document.getElementById('claimBox'), document.getElementById('orderForm').offsetParent !== null); cart = []; saveCart(); renderCart(); return r; });
+    await pg.unroute('**/api/confirm');
+    ok(late.every(Boolean), 'provjera v102 (krug 2, softver N4): torba dodana dok je okvir otvoren — obrazac skriven, „Zatvori” vraća košaricu ' + JSON.stringify(late));
+    /* krug 3 (zamjenjuje zajedničku košaricu): kartica u pozadini ne prepisuje košaricu koju je promijenila druga kartica, i ne briše joj torbu;
+       svoje promjene sprema; nakon osvježavanja preuzima spremljenu */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    const pgC = await c2.newPage(); watch(pgC); await pgC.goto(URL, { waitUntil: 'networkidle' });
+    const addId = await pgC.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); toggleCartItem(p.id); return p.id; });
+    await pg.waitForTimeout(300);
+    /* stara kartica „ne poznaje” tu torbu (kao nova torba u ponudi ili torba koja je u njoj još „rezervirana”) i vraća se u prvi plan */
+    const bg = await pg.evaluate(id => { const p = PRODUCTS.find(x => x.id === id); p.srvReserved = true; document.dispatchEvent(new Event('visibilitychange')); renderCart(); p.srvReserved = false; return [cart.length, JSON.stringify(storeGet('cart') || []).includes(id)]; }, addId);
+    await pgC.waitForTimeout(300);
+    const stillC = await pgC.evaluate(id => [cart.some(c => c.id === id), JSON.stringify(storeGet('cart') || []).includes(id)], addId);
+    await pg.reload({ waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    const afterReload = await pg.evaluate(id => cart.some(c => c.id === id), addId);
+    /* vlastita promjena se sprema kao i dosad */
+    const own = await pg.evaluate(() => { cart = []; saveCart(); return (storeGet('cart') || []).length; });
+    await pgC.close();
+    ok(bg[0] === 0 && bg[1] && stillC[0] && stillC[1] && afterReload && own === 0, 'provjera v102 (krug 3, N1; kupac 3a): kartica u pozadini ne briše ni ne prepisuje torbu dodanu u drugoj kartici; nakon osvježavanja je preuzima; vlastitu promjenu sprema ' + JSON.stringify([bg, stillC, afterReload, own]));
+    /* krug 2 (kupac 3b): nova poveznica za raskid dok je otvoren pregled izjave — natrag na prvi korak, IBAN i napomena prve ne prelaze */
+    await pg.evaluate(() => { location.hash = '#raskid?no=2026-0301&t=' + 'b'.repeat(24); }); await pg.waitForTimeout(300);
+    await pg.fill('#rName', 'Ana Kupac'); await pg.fill('#rEmail', 'ana102@primjer.hr'); await pg.fill('#rIban', 'HR1210010051863000160'); await pg.fill('#rNote', 'napomena prve');
+    await pg.click('#raskidNext'); await pg.waitForTimeout(200);
+    const stepA = await pg.evaluate(() => !document.getElementById('raskidStep2').hidden);
+    await pg.evaluate(() => { location.hash = '#raskid?no=2026-0302&t=' + 'c'.repeat(24); }); await pg.waitForTimeout(300);
+    const stepB = await pg.evaluate(() => [document.getElementById('raskidStep2').hidden, !document.getElementById('raskidStep1').hidden, document.getElementById('rNo').value, document.getElementById('rIban').value, document.getElementById('rNote').value, document.getElementById('rName').value]);
+    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
+    ok(stepA && stepB[0] && stepB[1] && stepB[2] === 'SJ-2026-0302' && stepB[3] === '' && stepB[4] === '' && stepB[5] === 'Ana Kupac', 'provjera v102 (krug 2, kupac 3b): druga poveznica za raskid zatvara pregled prve izjave; IBAN i napomena se ne prenose ' + JSON.stringify(stepB));
+    /* krug 2 (K10): stanje najviše jednom u dvije minute */
+    await pg.evaluate(L => { storeSet('last', L); }, mkLast('SJ-2026-0215', 'luna', 'Luna'));
+    let nState = 0;
+    await pg.route('**/api/status*', async route => { try { if (/stanje=SJ-2026-0215/.test(decodeURIComponent(route.request().url()))) nState++; await route.continue(); } catch (e) {} });
+    await pg.evaluate(() => { stateAsked = Date.now() - 119000; document.dispatchEvent(new Event('visibilitychange')); }); await pg.waitForTimeout(600); const n119 = nState;
+    await pg.evaluate(() => { stateAsked = Date.now() - 121000; document.dispatchEvent(new Event('visibilitychange')); }); await pg.waitForTimeout(800); const n121 = nState;
+    await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); });
+    ok(n119 === 0 && n121 === 1, 'provjera v102 (krug 2, K10): stanje narudžbe pita se tek nakon dvije minute ' + JSON.stringify([n119, n121]));
+    /* recenzija v102 (kupac N1, softver 1): druga kartica istog preglednika mijenja košaricu — ploča za uplatu na zaslonu ostaje */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    const pan1 = await pg.evaluate(L => { cart = []; storeSet('cart', null); storeSet('last', L); openCart(); renderPaymentPanel(L); return /SJ-2026-0220/.test((document.querySelector('#emptyCart .pay-no') || {}).textContent || ''); }, mkLast('SJ-2026-0220', 'luna', 'Luna'));
+    const pgD = await c2.newPage(); watch(pgD); await pgD.goto(URL, { waitUntil: 'networkidle' });
+    await pgD.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x) && x.id !== 'luna'); cart = []; toggleCartItem(p.id); });
+    await pg.waitForTimeout(500);
+    const pan2 = await pg.evaluate(() => { const e = document.getElementById('emptyCart'); document.dispatchEvent(new Event('visibilitychange')); return [e.classList.contains('pay-mode') && /SJ-2026-0220/.test((e.querySelector('.pay-no') || {}).textContent || ''), document.getElementById('orderForm').hidden, (storeGet('cart') || []).length]; });
+    await pgD.evaluate(() => { cart = []; saveCart(); }); await pgD.close(); await pg.evaluate(() => { storeSet('cart', null); storeSet('last', null); document.getElementById('emptyCart').classList.remove('pay-mode'); renderCart(); closeCart(false); });
+    ok(pan1 && pan2[0] && pan2[1] && pan2[2] === 1, 'recenzija v102 (kupac N1): torba dodana u drugoj kartici ne miče ploču za uplatu i ostaje spremljena ' + JSON.stringify([pan1, pan2]));
+    /* recenzija v102 (kupac N2, mobitel 4): „Zatvori” u okviru za potvrdu ostavlja redak koji vraća gumb; greška pri kliku ima stil greške */
+    await pg.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); toggleCartItem(p.id); storeSet('pend', { until: new Date(Date.now() + 3600e3).toISOString(), sig: cartSig(), ids: [p.id], all: [p.id], pt: 'c'.repeat(24) }); });
+    let failOnce = true;
+    await pg.route('**/api/confirm', route => { let b = {}; try { b = JSON.parse(route.request().postData() || '{}'); } catch (e) {}
+      if (b.peek) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, peek: 'waiting', pt: 'c'.repeat(24), items: [{ name: 'Luna', qty: 1 }], total: 65, until: until1 }) });
+      return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Zbog tehničke smetnje narudžbe trenutačno ne primamo.' }) }); });
+    await pg.goto(URL + '?potvrda=' + '3'.repeat(32) + '.' + '4'.repeat(32), { waitUntil: 'networkidle' }); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {}); await pg.waitForTimeout(150);
+    const foc = await pg.evaluate(() => document.activeElement && document.activeElement.id);
+    await pg.click('#confirmBtn', { timeout: 5000 }).catch(() => {}); await pg.waitForFunction(() => { const h = document.getElementById('confirmHint'); return h && h.classList.contains('is-error'); }, null, { timeout: 5000 }).catch(() => {});
+    const errSt = await pg.evaluate(() => { const h = document.getElementById('confirmHint'); return [h.classList.contains('is-error'), getComputedStyle(h).color, document.activeElement && document.activeElement.id]; });
+    await pg.click('#claimBox .claim-close', { timeout: 5000 }).catch(() => {}); await pg.waitForTimeout(400);
+    const closed = await pg.evaluate(() => { const cb = document.getElementById('confirmBack'), r = cb && cb.getBoundingClientRect();
+      return [!document.getElementById('claimBox'), !!cb && r.top >= 0 && r.bottom <= innerHeight, /Ovu narudžbu ste već poslali/.test(document.getElementById('orderError').textContent), /potvrda=/.test(location.search)]; }); /* krug 4, N2: redak je na zaslonu */
+    await pg.click('#confirmBack button', { timeout: 5000 }).catch(() => {}); await pg.waitForSelector('#confirmBtn', { timeout: 6000 }).catch(() => {});
+    const back = await pg.evaluate(() => [!!document.getElementById('confirmBtn'), !document.getElementById('confirmBack')]);
+    await pg.unroute('**/api/confirm'); await pg.evaluate(() => { storeSet('pend', null); cart = []; saveCart(); });
+    ok(foc === 'claimBox' && errSt[0] && errSt[1] === 'rgb(122, 36, 24)' && errSt[2] === 'confirmBtn' && closed.every(Boolean) && back.every(Boolean),
+      'recenzija v102 (kupac N2, dizajn N2/N5): fokus na okviru; greška pri kliku crvena, fokus na gumbu; „Zatvori” pokazuje napomenu i redak koji vraća gumb ' + JSON.stringify([foc, errSt, closed, back]));
+    /* recenzija v102 (mobitel 2, 5, 7; dizajn N4, N6): povećani prikaz počinje od vrha; poštanski broj; poruka uz remen preko cijele širine; raskid — crveni obrub; „Rezervirane i prodane” */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    /* provjera v102 (krug 4, N1): pomak se zadaje i čita kad je prikaz stvarno otvoren (prije je test prolazio i bez učinka ispravka) */
+    await pg.evaluate(() => openLightbox(PRODUCTS.filter(x => !x.made)[0].id)); await pg.waitForTimeout(400);
+    await pg.evaluate(() => { lightbox.querySelector('.lb-panel').scrollTop = 400; lightbox.querySelector('.lb-info').scrollTop = 400; }); await pg.waitForTimeout(200);
+    await pg.keyboard.press('Escape'); await pg.waitForTimeout(400); /* zatvaranje ide kroz povijest preglednika — čekamo da završi */
+    await pg.evaluate(() => openLightbox(PRODUCTS.filter(x => !x.made)[1].id)); await pg.waitForTimeout(400);
+    const lbTop = await pg.evaluate(() => lightbox.querySelector('.lb-panel').scrollTop === 0 && lightbox.querySelector('.lb-info').scrollTop === 0);
+    await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
+    const misc2 = [lbTop];
+    await pg.evaluate(() => { const kp = PRODUCTS.find(x => x.made && catOf(x) === 'kolekcija' && !isGone(x)); cart = []; toggleCartItem(kp.id); openCart(); });
+    await pg.check('#shipOptions input[value="gls"]'); await pg.fill('#fName', 'Proba Kupac'); await pg.fill('#fEmail', 'proba102@primjer.hr'); await pg.fill('#fPhone', '091 234 5678'); await pg.fill('#fAddr', 'Ilica 1'); await pg.fill('#fZip', '10000'); await pg.fill('#fCity', ''); await pg.check('#fConsent');
+    const zipMsg = await pg.evaluate(() => { zipCheck(); return [document.getElementById('fZip').validationMessage, document.getElementById('fZip').checkValidity()]; });
+    await pg.fill('#fCity', 'Zagreb'); await pg.click('#orderBtn'); await pg.waitForSelector('.strap-err', { timeout: 4000 }).catch(() => {});
+    const strapW = await pg.evaluate(() => { const e = document.querySelector('.strap-err'), row = e && e.closest('.strap-row'); return e ? [Math.round(e.getBoundingClientRect().width), Math.round(row.getBoundingClientRect().width)] : [0, 1]; });
+    await pg.evaluate(() => { cart = []; saveCart(); renderCart(); closeCart(false); location.hash = '#raskid'; }); await pg.waitForTimeout(200);
+    await pg.click('#raskidNext'); await pg.waitForTimeout(200);
+    const rsk = await pg.evaluate(() => { const n = document.getElementById('rName'); const g = [...document.querySelectorAll('.grid-sub > span')].map(x => x.getClientRects().length); return [n.getAttribute('aria-invalid'), getComputedStyle(n).borderTopColor, g.length === 0 || g.every(x => x === 1)]; });
+    await pg.fill('#rName', 'Ana Anić'); await pg.fill('#rEmail', 'nije-adresa'); await pg.waitForTimeout(100);
+    rsk.push(await pg.evaluate(() => [document.getElementById('rName').getAttribute('aria-invalid'), document.getElementById('rEmail').getAttribute('aria-invalid')])); /* krug 4, N5: ispravljeno polje bez obruba, neispravno ga zadržava */
+    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
+    ok(misc2[0] && zipMsg[0] === '' && zipMsg[1] && strapW[0] >= strapW[1] - 2 && rsk[0] === 'true' && rsk[1] === 'rgb(155, 44, 31)' && rsk[2] && rsk[3][0] === null && rsk[3][1] === 'true',
+      'recenzija v102 (mobitel 2/5/7, dizajn N4/N6): prikaz počinje od vrha; ispravan poštanski broj nema poruku; poruka uz remen preko cijele širine; raskid ima crveni obrub ' + JSON.stringify([misc2, zipMsg, strapW, rsk]));
+    /* povratak u karticu pita stanje; ploča STARIJE narudžbe na zaslonu nestaje kad servis javi storno */
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200);
+    await pg.evaluate(([L, P]) => { document.getElementById('emptyCart').classList.remove('pay-mode'); cart = []; storeSet('cart', null); storeSet('last', L); storeSet('lastPrev', [Object.assign(P, { open: true })]); openCart(); renderCart(); document.querySelector('.last-order[data-prev="SJ-2026-0213"]').click(); }, [mkLast('SJ-2026-0212', 'luna', 'Luna'), mkLast('SJ-2026-0213', 'tara', 'Tara')]);
+    let sawState = false;
+    await pg.route('**/api/status*', async route => { try { if (/stanje=SJ-2026-0212/.test(decodeURIComponent(route.request().url()))) sawState = true; const rsp = await route.fetch(); const j = await rsp.json(); await route.fulfill({ response: rsp, json: Object.assign(j, { orderState: 'open', prevStates: { 'SJ-2026-0213': 'cancelled' } }) }); } catch (e) {} });
+    const before = await pg.evaluate(() => { const t = (document.querySelector('#emptyCart .pay-no') || {}).textContent || ''; stateAsked = 0; document.dispatchEvent(new Event('visibilitychange')); return t; });
+    await pg.waitForFunction(() => !(storeGet('lastPrev') || []).length, null, { timeout: 5000 }).catch(() => {}); await pg.waitForTimeout(150);
+    const vis2 = await pg.evaluate(() => { const e = document.getElementById('emptyCart'); return [(storeGet('lastPrev') || []).length, e.classList.contains('pay-mode'), !!e.querySelector('#showLast')]; });
+    await pg.unroute('**/api/status*');
+    ok(/SJ-2026-0213/.test(before) && sawState && vis2[0] === 0 && !vis2[1] && vis2[2], 'provjera v102 (softver, grane bez testa): povratak u karticu pita stanje; ploča starije narudžbe nestaje nakon storna, zadnja ostaje ' + JSON.stringify([before, sawState, vis2]));
+    /* ponovljena potvrda na drugom uređaju nakon „Uplatio/la sam”: ploča zna da je već javljeno; rok „Uplatio/la sam” se prenosi iz stare ploče; „i u košarici” samo uz ploču */
+    const rep = await pg.evaluate(L => { storeSet('lastPrev', null); storeSet('last', null);
+      const srv = extra => Object.assign({ ok: true, repeated: true, orderNo: L.srv.orderNo, reference: L.srv.reference, total: 65, until: L.srv.until, payUntil: L.srv.payUntil, items: [{ id: 'luna', name: 'Luna', qty: 1, price: 65, made: false }], ship: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0 } }, extra);
+      showOrderSuccess(srv({ claimed: true, claimMsg: 'Već ste nam javili da ste uplatili; torbu čuvamo.', claimLink: null, claimUntil: null })); const a = storeGet('last'); const e = document.getElementById('emptyCart');
+      const r = [a.claimed === true, a.claimMsg, !e.querySelector('.claim-link'), /Javili ste nam da ste uplatili\./.test(e.textContent)];
+      storeSet('last', L); showOrderSuccess(srv({})); const b = storeGet('last'); r.push(b.srv.claimUntil === L.srv.claimUntil, b.srv.claimLink === L.srv.claimLink);
+      const p = PRODUCTS.find(x => x.id === 'luna'); p.srvReserved = true; openLightbox('luna'); r.push(/i u košarici\./.test(document.getElementById('lbGoneText').textContent)); closeLightbox();
+      storeSet('last', null); storeSet('own', { at: Date.now(), ids: ['luna'], no: 'SJ-2026-0214' }); openLightbox('luna'); r.push(/rezervirana za vas/.test(document.getElementById('lbGoneText').textContent) && !/i u košarici/.test(document.getElementById('lbGoneText').textContent)); closeLightbox();
+      p.srvReserved = false; p.reserved = false; storeSet('own', null); document.getElementById('emptyCart').classList.remove('pay-mode'); renderCart(); closeCart(false); return r; }, mkLast('SJ-2026-0214', 'luna', 'Luna'));
+    ok(rep[0] && rep[1] === 'Torbu čuvamo.' /* krug 2: bez ponavljanja „Već ste nam javili…” iza naslova */ && rep[2] && rep[3] && rep[4] && rep[5] && rep[6] && rep[7], 'provjera v102 (kupac N2; grane bez testa): „Uplatio/la sam” već iskorišten — ploča ga ne nudi ponovno; rok i poveznica prenose se iz stare ploče; „i u košarici” samo kad ploča postoji ' + JSON.stringify(rep));
+    /* poruka nove narudžbe kad prethodna čeka obradu izjave o raskidu (naslov bez „čeka uplatu”) */
+    await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); storeSet('cart', null); storeSet('pend', null); });
+    await pg.goto(URL, { waitUntil: 'networkidle' }); await pg.waitForTimeout(200); /* svježa stranica: bez ostataka ploče iz prethodnog koraka */
+    await pg.evaluate(() => { const p = PRODUCTS.find(x => !x.made && !isGone(x) && !noPhoto(x)); toggleCartItem(p.id); openCart(); });
+    await pg.waitForSelector('#fName', { state: 'visible', timeout: 4000 }).catch(() => {});
+    await pg.check('#shipOptions input[value="pickup"]'); await pg.fill('#fName', 'Raskid Test'); await pg.fill('#fEmail', 'wd102@primjer.hr'); await pg.fill('#fPhone', '091 234 5678'); await pg.check('#fConsent');
+    await pg.route('**/api/order', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'open_order', kind: 'unique', error: 'Za prethodnu narudžbu s unikatnom torbom zaprimili smo vašu izjavu o raskidu ugovora i još je obrađujemo. Za novu narudžbu javite nam se e-mailom ili na Instagramu.' }) }));
+    await pg.click('#orderBtn'); await pg.waitForFunction(() => !document.getElementById('orderError').hidden, null, { timeout: 8000 }).catch(() => {});
+    const wdTxt = await pg.textContent('#orderError').catch(() => '');
+    await pg.unroute('**/api/order'); await pg.evaluate(() => { cart = []; saveCart(); renderCart(); closeCart(false); });
+    ok(/Prethodnu narudžbu još obrađujemo\./.test(wdTxt) && /zaprimili smo vašu izjavu o raskidu/.test(wdTxt) && !/čeka uplatu/.test(wdTxt), 'provjera v102 (kupac N3): prethodna narudžba u obradi zbog izjave — naslov i tekst bez „čeka uplatu” ' + wdTxt.slice(0, 70));
+    await c2.close(); }
 
   // ---------- v29: prekid veze, osvježavanje, ponovno slanje = ista narudžba ----------
   const pk = await d.newPage(); watch(pk);
@@ -637,6 +955,18 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(/Poslali smo novi e-mail\. Link iz ranijeg e-maila više ne vrijedi/.test(await p7.textContent('#orderError')) , 'v95: ponovno poslan e-mail — okvir kaže da stari link više ne vrijedi');
   await p7.click('#retrySend'); await p7.waitForTimeout(1500);
   ok(await p7.isVisible('.pend-note') && /već smo poslali više puta/.test(await p7.textContent('#orderError')) && !/nije prihvaćena/.test(await p7.textContent('#orderError')) && await p7.isVisible('#editOrder'), 'v53 G: ponovno slanje u čekanju (429) — okvir ostaje, zadnji link vrijedi');
+  /* v102 (recenzija vijeća v101, kupac N2): 503 dok narudžba čeka potvrdu — okvir „Još jedan korak” ostaje (ne „Narudžba nije prihvaćena”); isto za 429 bez razloga mail_rate */
+  { await p7.route('**/api/order', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Trenutačno primamo previše narudžbi odjednom. Pokušajte ponovno za sat vremena.' }) }));
+    await p7.click('#retrySend', { timeout: 5000 }).catch(() => {}); await p7.waitForTimeout(800);
+    const t503 = await p7.textContent('#orderError').catch(() => ''), v503 = await p7.isVisible('#editOrder').catch(() => false);
+    await p7.unroute('**/api/order');
+    await p7.route('**/api/order', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Previše pokušaja s ove veze. Pokušajte ponovno za sat vremena.' }) }));
+    await p7.click('#retrySend', { timeout: 5000 }).catch(() => {}); await p7.waitForTimeout(800);
+    const t429 = await p7.textContent('#orderError').catch(() => '');
+    await p7.unroute('**/api/order');
+    ok(/Ovo slanje nismo mogli primiti\./.test(t503) && /previše narudžbi odjednom/.test(t503) && /i dalje vrijedi/.test(t503) && !/nije prihvaćena/.test(t503) && v503
+      && /Ovo slanje nismo mogli primiti\./.test(t429) && /Previše pokušaja s ove veze/.test(t429) && !/već smo poslali više puta/.test(t429),
+      'v102 (kupac N2): 503 i 429 bez razloga dok narudžba čeka — okvir ostaje, poruka poslužitelja, zadnji link vrijedi ' + JSON.stringify([t503.slice(0, 60), t429.slice(0, 60)])); }
   // v53 H: nova kartica / osvježavanje s istom košaricom — napomena da narudžba čeka potvrdu
   const p7b = await m7.newPage(); watch(p7b);
   await p7b.goto(URL, { waitUntil: 'networkidle' }); await p7b.waitForTimeout(400); await p7b.click('#openCart'); await p7b.waitForTimeout(300);
@@ -654,12 +984,22 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const link = links.length ? links[links.length - 1][1] : '';
   const m8 = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const p8 = await m8.newPage(); watch(p8);
-  await p8.goto(URL + '?potvrda=' + link, { waitUntil: 'networkidle' }); await p8.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
+  /* v102: otvaranje linka samo provjerava — narudžba nastaje tek klikom na „Potvrdi narudžbu” */
+  const ordBefore8 = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length;
+  await p8.goto(URL + '?potvrda=' + link, { waitUntil: 'networkidle' }); await p8.waitForSelector('#confirmBtn', { timeout: 8000 }).catch(() => {});
+  const ask8 = await p8.evaluate(() => ({ txt: (document.getElementById('claimBox') || {}).textContent || '', pay: !!document.querySelector('.pay-steps'), url: location.search }));
+  const ordMid8 = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length;
+  await p8.reload({ waitUntil: 'networkidle' }); await p8.waitForSelector('#confirmBtn', { timeout: 8000 }).catch(() => {});
+  ok(/Još jedan klik: potvrdite narudžbu\./.test(ask8.txt) && /„Klasik crna”/.test(ask8.txt) && /ukupno 60,00/.test(ask8.txt) && /Nemojte je potvrditi/.test(ask8.txt) && !ask8.pay && /potvrda=/.test(ask8.url) && ordMid8 === ordBefore8 && await p8.isVisible('#confirmBtn'),
+    'v102 (odluka korisnika; sigurnost N1): otvaranje linka NE potvrđuje narudžbu — sažetak i gumb „Potvrdi narudžbu”; link preživi osvježavanje ' + JSON.stringify([ask8.txt.slice(0, 90), ordBefore8, ordMid8]));
+  await p8.click('#confirmBtn', { timeout: 5000 }).catch(() => {}); await p8.waitForSelector('.pay-steps', { timeout: 8000 }).catch(() => {});
+  ok(JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length === ordBefore8 + 1 && !(await p8.$('#claimBox')), 'v102: tek klik na gumb potvrđuje narudžbu; okvir s gumbom nestaje');
   const pay8 = await p8.textContent('.pay').catch(() => '');
   ok(/Narudžba SJ-/.test(await p8.textContent('.pay-hello').catch(() => '')) && !/Broj narudžbe/.test(await p8.textContent('.pay-data').catch(() => '')) && /Naručeno/.test(pay8) && /Klasik crna/.test(await p8.textContent('.pay-data').catch(() => '')), 'v53: ploča za uplatu navodi stavke narudžbe');
   ok(link && /SJ-\d{4}-\d{4}/.test(pay8) && /Iznos: 60,00/.test(await p8.getAttribute('.copy-btn[data-label="Podaci za uplatu"]', 'data-copy').catch(() => '')) && !/potvrda=/.test(p8.url()), 'link na drugom uređaju: podaci za uplatu s brojem narudžbe, adresa očišćena');
   await p8.goto(URL + '?potvrda=' + 'a'.repeat(32) + '.' + 'b'.repeat(32), { waitUntil: 'networkidle' }); await p8.waitForTimeout(600);
-  ok(/nije potvrđena/.test(await p8.textContent('#emptyCart').catch(() => '')), 'nepostojeći link: jasna poruka u praznoj košarici');
+  { const t8 = await p8.textContent('#emptyCart').catch(() => '');
+    ok(/Ovaj link više ne vrijedi\./.test(t8) && /Ako ste narudžbu već potvrdili/.test(t8) && !/nije potvrđena/.test(t8), 'nepostojeći link: jasna poruka u praznoj košarici, bez tvrdnje da narudžba nije potvrđena (krug 4, N3) ' + JSON.stringify(t8.slice(0, 160))); }
   await m7.close(); await m8.close();
   fs.writeFileSync(cfgPath, cfg0);
 
@@ -690,7 +1030,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p10.evaluate(() => document.getElementById('lightbox').classList.contains('open')), 'v48: klik na ime torbe otvara prikaz');
   await p10.keyboard.press('Escape');
   await p10.click('#openCart'); await p10.waitForTimeout(300);
-  ok(/1\skom · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.strap-sel') && (await p10.locator('.strap-wish, .cart-note').count()) === 0 && /Odaberite boju i duljinu remena iz ponude — i za takvu torbu imate pravo na raskid ugovora u roku 14 dana\./.test(await p10.textContent('#cartItems')) && !/želj/.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
+  ok(/1\skom\. · najviše jedan po narudžbi/.test(await p10.textContent('#cartItems')) && !(await p10.isVisible('#cartItems .q')) && await p10.isVisible('.strap-sel') && (await p10.locator('.strap-wish, .cart-note').count()) === 0 && /Odaberite boju i duljinu remena iz ponude — i za takvu torbu imate pravo na raskid ugovora u roku 14 dana\./.test(await p10.textContent('#cartItems')) && !/želj/.test(await p10.textContent('#cartItems')) && /Zatvori/.test(await p10.textContent('#closeCart')), 'v48/v64: model kolekcije u košarici — „1 kom”, bez +/−; oznaka napomene i „ako želju ne možemo ispuniti”; „Zatvori ×”');
   await p10.fill('#fEmail', 'ana.probic@primjer');
   await pickStrap(p10); await p10.click('#orderBtn'); await p10.waitForTimeout(300);
   const fix = await p10.textContent('#orderFix');
@@ -767,9 +1107,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await p14.route('**/api/confirm*', async r => { await new Promise(z => setTimeout(z, 800)); await r.continue(); });
     await p14.goto(URL + '?potvrda=' + (l13 ? l13[1] : 'x'), { waitUntil: 'domcontentloaded' }); await p14.waitForTimeout(300);
     const wait14 = await p14.textContent('#emptyCart').catch(() => '');
+    await p14.waitForSelector('#confirmBtn', { timeout: 10000 }).catch(() => {}); await p14.click('#confirmBtn').catch(() => {}); /* v102: potvrda gumbom */
     await p14.waitForSelector('.pay-steps', { timeout: 10000 }).catch(() => {});
     const pay14 = await p14.textContent('.drawer-body').catch(() => '');
-    ok(/Potvrđujemo narudžbu/.test(wait14) && !/Košarica je prazna/.test(wait14), 'v62: dok se potvrđuje — „Potvrđujemo narudžbu…”');
+    ok(/Provjeravamo narudžbu/.test(wait14) && !/Košarica je prazna/.test(wait14), 'v62/v102: dok se link provjerava — „Provjeravamo narudžbu…”');
     ok(/vlasnica@drugi-e2e\.hr/.test(pay14) && /HR12 1001 0051 8630 0016 0/.test(pay14) && !/shivaj\.handmade@gmail\.com/.test(pay14), 'v62: api/status pada — ploča ipak s podacima iz Postavki (iz odgovora potvrde)');
     await m14.close(); await m13.close();
     fs.writeFileSync(cfgP, c62); fs.writeFileSync(pp, p62);
@@ -1014,7 +1355,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 20 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503): ' + JSON.stringify(cnt));
+  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 31 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503; v102: +11 košarica u testovima mobitela, remena, potvrde i kartica): ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

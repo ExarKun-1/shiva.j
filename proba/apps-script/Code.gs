@@ -4,7 +4,7 @@
      GET  ?r=status   rezervirane i prodane torbe, dostava, podaci za uplatu
      POST ?r=reserve  (proba ne drži košaricu; stranica tada samo šalje narudžbu)
      POST ?r=order    narudžba → e-mail kupcu s linkom „potvrdite narudžbu” (ništa se ne rezervira)
-     POST ?r=confirm  klik na link → broj narudžbe, rezervacija, e-mail vlasnici i kupcu
+     POST ?r=confirm  gumb „Potvrdi narudžbu” (uz peek samo provjera) → broj narudžbe, rezervacija, e-mail vlasnici i kupcu
    Podaci su u Google tablici na koju je skripta vezana:
      „Narudžbe”    jedna narudžba po retku; u stupac „Plaćeno” vlasnica upisuje datum kad stigne uplata
      „Na čekanju”  nepotvrđene narudžbe (brišu se dan nakon isteka linka)
@@ -175,7 +175,7 @@ function sjOrder(env, b) {
   env.savePending(keep.slice(0, 500));
   var link = env.cfg.SITE_URL + '/?potvrda=' + pid + '.' + sec;
   var t = ['Dobar dan, ' + P.cust.name + ',', '',
-    'hvala na narudžbi! Da bismo je zaprimili' + (P.uniqueIds.length ? ' i rezervirali torbu za vas' : '') + ', potvrdite je klikom na link:', '',
+    'hvala na narudžbi! Da bismo je zaprimili' + (P.uniqueIds.length ? ' i rezervirali torbu za vas' : '') + ', otvorite link i na stranici kliknite „Potvrdi narudžbu”:', '',
     link, '', 'Link vrijedi ' + sjForText(env.cfg.CONFIRM_MINUTES) + ' (do ' + sjHr(until) + '). Nakon potvrde otvara se stranica s podacima za uplatu, a iste podatke šaljemo vam i e-mailom.', '',
     'NARUDŽBA', sjItemsText(P), '- Dostava: ' + sjShipText(P), 'Ukupno: ' + sjEur(P.total), '',
     'Ako niste naručili vi, zanemarite ovaj e-mail: bez potvrde narudžba se ne zaprima i ništa se ne rezervira.', '',
@@ -191,13 +191,16 @@ function sjConfirm(env, b) {
   var list = env.pending(), e = null;
   list.forEach(function (x) { if (x.id === pid) e = x; });
   var expired = sjOut(410, { ok: false, expired: true, error: 'Link za potvrdu je istekao, pa narudžba nije zaprimljena i torba nije rezervirana. Pošaljite narudžbu ponovno.' });
-  if (!e) return expired;
+  /* recenzija v102 (sigurnost N7): zapisa više nema — poruka ne tvrdi da narudžba nije zaprimljena */
+  if (!e) return sjOut(410, { ok: false, expired: true, error: 'Ovaj link više ne vrijedi. Ako ste narudžbu već potvrdili, podaci za uplatu su u e-mailu s potvrdom narudžbe. Ako niste, narudžba nije zaprimljena i torba nije rezervirana — pošaljite je ponovno.' });
   if (env.sha256(sec) !== e.h) return sjOut(403, { ok: false, error: 'Neispravan link za potvrdu. Otvorite najnoviji e-mail „Potvrdite narudžbu”.' });
   var orders = env.orders();
   if (e.no) { for (var i = 0; i < orders.length; i++) if (orders[i].no === e.no) return sjRepeat(orders[i]); }
   if (Date.parse(e.until) < env.now()) return expired;
   var P = e.P, ek = sjEmailKey(P.cust.email);
   for (var j = 0; j < orders.length; j++) if (P.key && orders[j].key === P.key) return sjRepeat(orders[j]);
+  /* v102 (kao api/index.php): otvaranje linka samo provjerava (peek) — narudžbu potvrđuje tek gumb „Potvrdi narudžbu” na stranici */
+  if (b && b.peek) return sjOut(200, { ok: true, peek: 'waiting', items: P.items.map(function (x) { return { name: String(x.name || ''), qty: Number(x.qty) || 1 }; }), total: Number(P.total) || 0, until: e.until });
   var st = sjState(env), prods = sjProducts(env), taken = [], mine = [];
   /* od narudžbe je moglo proći do sat vremena: ponuda i cijene provjeravaju se ponovno */
   for (var k = 0; k < P.items.length; k++) {

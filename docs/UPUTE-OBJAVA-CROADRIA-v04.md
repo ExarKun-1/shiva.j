@@ -121,7 +121,7 @@ uključujući e-mail s podacima za uplatu. Zato:
 - [ ] **Probna narudžba do kraja**, na mobitelu i na računalu:
   1. naručite torbu sa svojim e-mailom;
   2. stiže e-mail „potvrdite narudžbu”;
-  3. kliknite link;
+  3. kliknite link i na stranici koja se otvori gumb „Potvrdi narudžbu”;
   4. otvaraju se podaci za uplatu;
   5. vlasnica dobiva e-mail „Narudžba SJ-…”.
 

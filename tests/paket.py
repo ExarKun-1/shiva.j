@@ -49,6 +49,14 @@ with tempfile.TemporaryDirectory() as td:
     b = subprocess.run(['php', '-r', php, td], capture_output=True, text=True).stdout
     ok(a.endswith('A') and b.endswith('B'), 'v96 (recenzija): admin prepoznaje index.html i .htaccess iz različitih paketa ' + repr((a[-80:], b[-80:])))
 ok('ZAJEDNO' in upd.read('PROCITAJ.txt').decode(), 'v96 (recenzija): upute za nadogradnju — index.html i .htaccess zajedno')
+# v102 (recenzija vijeća v101, softver N10): tests/serve.sh uz zauzet port staje PRIJE brisanja mape (stranica živog poslužitelja ostaje)
+import socket
+with tempfile.TemporaryDirectory() as td:
+    marker = os.path.join(td, 'ostaje.txt'); open(marker, 'w').write('x')
+    sk = socket.socket(); sk.bind(('127.0.0.1', 0)); sk.listen(1); port = sk.getsockname()[1]
+    rc = subprocess.run(['sh', os.path.join(ROOT, 'tests', 'serve.sh'), td], capture_output=True, text=True, env=dict(os.environ, SHIVAJ_PORT=str(port)))
+    sk.close()
+    ok(rc.returncode == 3 and os.path.isfile(marker) and 'zauzet' in rc.stderr, 'v102: serve.sh uz zauzet port izlazi s 3 i ne briše mapu ' + repr((rc.returncode, os.path.isfile(marker))))
 import shutil; shutil.rmtree(DIST, ignore_errors=True)
 print('\n'.join(R))
 f = sum(l.startswith('FAIL') for l in R)
