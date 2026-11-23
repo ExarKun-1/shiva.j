@@ -1186,6 +1186,7 @@
   .pay-late .said{font-weight:600;color:var(--ink)} /* v101 (dizajn C): obično isticanje, ne naslov koraka */
   .pay-wdu{margin:0 0 16px}
   .empty-cart > .order-error{margin:0 -12px 18px;text-align:left} /* v101 (dizajn 6): razmak između obavijesti i „Košarica je prazna.” */
+  .empty-cart.pay-mode > .order-error{margin-left:0;margin-right:0} /* v103 (recenzija kupca, računalo 5): uz ploču nema bočnog razmaka — okvir ne viri izvan ruba */
   .pay-late a,.claim-link,.pay-mode li a{color:var(--thread);text-decoration:underline;text-decoration-style:dashed;text-decoration-color:var(--thread);text-decoration-thickness:1.5px;text-underline-offset:3px;display:inline-block;padding:12px 0;margin:-12px 0}
   /* v100: obavijest za preglednike u kojima se skripta ne pokrene. v101 (recenzija vijeća v100, softver B, mobitel A): bez tajmera i
      animacije (uz „smanjeno kretanje” se nije vidjela, a na sporoj mreži se vidjela i kad stranica radi) — pokazuje je klasa html.js-fail,
@@ -1711,7 +1712,7 @@
         <div class="zip-row">
           <div>
             <label for="fZip">Poštanski broj</label>
-            <input id="fZip" inputmode="numeric" autocomplete="postal-code" placeholder="10000" maxlength="5" title="Poštanski broj, 5 znamenki">
+            <input id="fZip" inputmode="numeric" autocomplete="postal-code" placeholder="10000" maxlength="6" title="Poštanski broj, 5 znamenki"> <!-- v103 (recenzija kupca, mobitel 1): mjesta i za „10 000” (razmak se uklanja) -->
           </div>
           <div>
             <label for="fCity">Mjesto</label>
@@ -3052,6 +3053,9 @@ addEventListener("storage", e => {
   /* recenzija v96: samo nova potvrda (noviji „at”), ne kad druga kartica stari zapis označi storniranim */
   let prevAt = 0; try { prevAt = Number((JSON.parse(e.oldValue || "null") || {}).at || 0); } catch(x){}
   if(!(Number(last.at || 0) > prevAt)) return;
+  /* v103 (recenzija kupca v103, računalo 1): druga kartica je otvorila stari link STARIJE narudžbe, a ova čeka potvrdu novije — košarica, okvir
+     „Još jedan korak” i oznaka čekanja ostaju (inače bi ponovno slanje zamijenilo noviju narudžbu narudžbom bez zajedničkog artikla) */
+  if(last.op) return;
   const ids = last.items.map(i => String(i.id));
   cart = cart.filter(c => !ids.includes(c.id)); heldRes = null; pendFormClear(); formDraftClear();
   orderFormEl.classList.remove("is-pending"); clearOrderError();
@@ -3804,6 +3808,7 @@ function showOrderSuccess(srv){
       ["claimLink", "raskidLink", "check", "claimUntil", "claimAtLeast"].forEach(k => { if(!last.srv[k] && src.srv[k]) last.srv[k] = src.srv[k]; }); } } /* v102 (recenzija vijeća v101, mobitel 3): i rok „Uplatio/la sam” — bez njega poveznica nestaje s ploče */
   { const pv = lastValid(); if(pv && pv.srv.orderNo !== last.srv.orderNo){ const lp = (storeGet("lastPrev") || []).filter(x => x && x.srv && x.srv.orderNo !== pv.srv.orderNo); lp.unshift({ ...pv, open: true }); storeSet("lastPrev", lp.slice(0, 2)); } } /* v100 (kupac N9) */
   { const lp = storeGet("lastPrev"); if(Array.isArray(lp) && lp.some(x => x && x.srv && x.srv.orderNo === last.srv.orderNo)) storeSet("lastPrev", lp.filter(x => x && x.srv && x.srv.orderNo !== last.srv.orderNo)); } /* recenzija v100: ista narudžba nije i zadnja i starija */
+  if(paneOtherPending) last.op = true; else delete last.op; /* v103 (recenzija kupca, računalo 1): ploča starije narudžbe uz noviju na čekanju — druge kartice ne diraju košaricu */
   storeSet("last", last);
   renderGrid(); renderCart();
   renderPaymentPanel(last);
@@ -3993,12 +3998,14 @@ function paymentPanel(last){
       </figure>` : "";
   /* v42: na računalu (širok zaslon, miš) barkod je odmah ispod naslova — najbrže ga je skenirati mobitelom; na mobitelu na dnu */
   const barcodeFirst = !!(window.matchMedia && matchMedia("(min-width:768px) and (pointer:fine)").matches);
-  const mailSent = srv.mailCustomer === false
+  /* v103 (recenzija kupca, mobitel 2): rok je prošao — bez „Hvala vam!”, obećanja e-maila „za nekoliko minuta” i roka koji je prošao */
+  const mailSent = srv.lapsed ? `Podatke za uplatu imate i u <span class="nw">e-mailu</span> s potvrdom narudžbe.`
+    : srv.mailCustomer === false
     ? `Potvrdu narudžbe <span class="nw">e-mailom</span> nismo uspjeli poslati automatski; javit ćemo vam se sami <span class="nw">e-mailom</span>. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju do isteka roka za uplatu.`
     : `Potvrdu narudžbe s istim podacima šaljemo vam i <span class="nw">e-mailom</span>; ako ne stigne za nekoliko minuta, pogledajte neželjenu poštu. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju do isteka roka za uplatu.`;
   return `
     <div class="pay">
-      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">Hvala vam!${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p>${paneLeftover.length ? `<p class="pay-left"><small>${paneLeftover.length > 1 ? "Artikli" : "Artikl"} ${escHtml(paneLeftover.map(n => "„" + n + "”").join(" i "))} ${paneLeftover.length > 1 ? "nisu u ovoj narudžbi — ostali su" : "nije u ovoj narudžbi — ostao je"} u košarici; ${paneOtherPending ? `${paneLeftover.length > 1 ? "čekaju" : "čeka"} potvrdu vaše novije narudžbe (link iz najnovijeg <span class="nw">e-maila</span>)` : `naručite ${paneLeftover.length > 1 ? "ih" : "ga"} zasebno kad zatvorite ove podatke`}.</small></p>` : ""}</div>
+      <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">${srv.lapsed ? "Rok za uplatu je prošao" : "Hvala vam!"}${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p>${paneLeftover.length ? `<p class="pay-left"><small>${paneLeftover.length > 1 ? "Artikli" : "Artikl"} ${escHtml(paneLeftover.map(n => "„" + n + "”").join(" i "))} ${paneLeftover.length > 1 ? "nisu u ovoj narudžbi — ostali su" : "nije u ovoj narudžbi — ostao je"} u košarici; ${paneOtherPending ? `${paneLeftover.length > 1 ? "čekaju" : "čeka"} potvrdu vaše novije narudžbe (link iz najnovijeg <span class="nw">e-maila</span>)` : `naručite ${paneLeftover.length > 1 ? "ih" : "ga"} zasebno kad zatvorite ove podatke`}.</small></p>` : ""}</div>
       ${last.wdU ? `<div class="order-error order-info pay-wdu" role="status">Za ovu narudžbu zaprimili smo izjavu o raskidu ugovora poslanu bez poveznice iz <span class="nw">e-maila</span>. Ako ste je poslali vi, narudžbu ne trebate platiti. Ako je niste poslali vi, javite nam se na ${escHtml(OWNER_EMAIL)}; podaci za uplatu su niže.</div>` : "" /* v101 (recenzija vijeća v100, kupac 2): zaseban okvir iznad iznosa, ne usred koraka „Do roka” */}
       ${payIso || so ? `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso && !srv.lapsed ? " do " + fmtDeadline(payIso) : ""}.</p>` : ""}
       <h3 class="pay-title">Podaci za uplatu</h3>
@@ -4148,6 +4155,11 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
         /* v53: poslužitelj je odbio e-adresu — fokus na to polje, poruka kaže koje */
         showOrderError(`<b>Provjerite e-adresu.</b> ${escHtml(data.error)}`);
         const fe = document.getElementById("fEmail"); fe.setCustomValidity("Upišite ispravnu e-adresu, npr. ime@primjer.hr."); fe.focus(); fe.reportValidity && fe.reportValidity();
+      }
+      else if (data.field === "name") {
+        /* v103 (recenzija kupca, mobitel 3): i ime dobiva poruku i fokus na polju, kao adresa i telefon */
+        showOrderError(`<b>Provjerite ime.</b> ${escHtml(noHyBreak(data.error || ""))}`);
+        const fn = document.getElementById("fName"); if(fn){ fn.setCustomValidity("Upišite samo ime i prezime, bez poveznica i e-adresa."); fn.focus(); fn.reportValidity && fn.reportValidity(); }
       }
       else if (data.field === "street" || data.field === "phone") {
         /* v101 (recenzija vijeća v100, sigurnost S1): poslužitelj je odbio adresu ili telefon — poruka i fokus na to polje */

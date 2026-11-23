@@ -327,8 +327,15 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
         const rzL = read('rezervacije.json', {}); free.forEach(id => { if (rzL.res && rzL.res[id]) rzL.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rzL);
         try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
         const lA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
-        ok(lA.data.ok && lA.data.repeated && lA.data.reserved === false && lA.data.until === null && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo, pa su torbe ponovno u ponudi\./.test(lA.data.lapsed || '') && !lA.data.claimUntil,
+        ok(lA.data.ok && lA.data.repeated && lA.data.reserved === false && lA.data.until === null && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo, pa su torbe ponovno u ponudi\./.test(lA.data.lapsed || '') && !lA.data.claimUntil && !lA.data.claimLink /* recenzija kupca v103 (računalo 2): bez „Uplatio/la sam” i obećanja produljenja */,
           'v103 (recenzija v102, kupac N4): stari link nakon isteka roka i rezervacije — tekst „rok za uplatu je prošao”, bez rezervacije i roka u prošlosti ' + JSON.stringify([lA.status, lA.data.reserved, lA.data.until, (lA.data.lapsed || '').slice(0, 90)])); }
+        /* recenzija kupca v103 (računalo 3): rok je prošao, torba se još čuva — tekst kaže do kada, a „Uplatio/la sam” ostaje */
+        const rzH = read('rezervacije.json', {}); free.forEach(id => { if (rzH.res && rzH.res[id]) rzH.res[id].until = new Date(Date.now() + 20 * 3600e3).toISOString(); }); write('rezervacije.json', rzH);
+        const ordH = read('narudzbe.json', []); const oH = ordH.find(x => x.no === cA.data.orderNo); oH.payUntil = new Date(Date.now() - 26 * 3600e3).toISOString(); write('narudzbe.json', ordH);
+        try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const hA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+        ok(hA.data.ok && hA.data.repeated && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo\. Torbe .* i dalje čuvamo za vas do /.test(hA.data.lapsed || '') && /^\?uplata=/.test(hA.data.claimLink || ''),
+          'recenzija kupca v103 (računalo 3): rok prošao, torba se još čuva — ploča kaže do kada, bez roka u prošlosti; „Uplatio/la sam” ostaje ' + JSON.stringify([hA.status, (hA.data.lapsed || '').slice(0, 140), !!hA.data.claimLink]));
       try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));

@@ -277,15 +277,20 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
   /* v102 (recenzija vijeća v101, mobitel 3 / softver N2): ponovljeni odgovor nosi i „Uplatio/la sam” i poveznicu za raskid, kao prvi */
   /* provjera v102 (krug 1, kupac N2): „Uplatio/la sam” je već iskorišten — ploča (i na drugom uređaju) to zna i ne obećava novi rok */
   $claimedBefore = !empty($prev['claimedAt']) || !empty($prev['proofAt']);
-  $claimOk = !$claimedBefore && sj_claim_url($prev) !== '' && sj_claim_until($prev) > time(); /* recenzija v102 (softver 3): rok je prošao — bez datuma u prošlosti (kao GET paidclaim „late”) */
+  /* v103 (recenzija kupca v103, računalo 2/3): rok za uplatu je prošao — $gone: i čuvanje torbe je isteklo (bez obećanja produljenja i bez „Uplatio/la sam”
+     na ploči; odgovor na e-mail s potvrdom), inače torba se još čuva i ploča kaže do kada */
+  $payPassed = !$claimedBefore && (int)strtotime(sj_pay_until($prev)) <= time(); $gone = $payPassed && sj_held_until($prev) <= time();
+  $claimOk = !$claimedBefore && !$gone && sj_claim_url($prev) !== '' && sj_claim_until($prev) > time(); /* recenzija v102 (softver 3): rok je prošao — bez datuma u prošlosti (kao GET paidclaim „late”) */
   $extra = ['claimed' => $claimedBefore && $viaLink, 'claimMsg' => ($claimedBefore && $viaLink) ? sj_already_text($prev) : null, 'claimUntil' => $claimOk ? sj_iso(sj_claim_until($prev)) : null,
     'claimAtLeast' => $claimOk && !empty($prev['payUntil']) && sj_claim_until($prev) < sj_next_workday_end((int)strtotime((string)$prev['payUntil'])),
-    'claimLink' => ($viaLink && !$claimedBefore && preg_match('/^[a-f0-9]{32}$/', (string)($prev['claim'] ?? ''))) ? '?uplata=' . rawurlencode((string)$prev['no']) . '&t=' . (string)$prev['claim'] : null,
+    'claimLink' => ($viaLink && !$claimedBefore && !$gone && preg_match('/^[a-f0-9]{32}$/', (string)($prev['claim'] ?? ''))) ? '?uplata=' . rawurlencode((string)$prev['no']) . '&t=' . (string)$prev['claim'] : null,
     'raskidLink' => ($viaLink && sj_raskid_token($prev) !== '') ? '#raskid?no=' . sj_payment_ref((string)$prev['no']) . '&t=' . sj_raskid_token($prev) : null];
   /* v103 (recenzija v102, kupac N4): rok za uplatu je prošao i torba se više ne čuva (prije storna) — ploča ne piše „rezervirana je za vas … do <prošli datum>”,
      nego isto što i e-mail „rok za uplatu je prošao” */
-  $lapsed = !$claimedBefore && (int)strtotime(sj_pay_until($prev)) <= time() && sj_held_until($prev) <= time();
+  $lapsed = $gone;
   $extra += $more;
+  if ($payPassed && !$gone && ($hsP = sj_held_sentence(sj_held_info($prev))) !== '')
+    $extra['lapsed'] = 'Rok za uplatu ove narudžbe prošao je u ' . sj_fmt_deadline(sj_pay_until($prev), 'acc') . ', a uplatu još ne vidimo. ' . $hsP . ' Već ste platili? Kliknite „Uplatio/la sam” ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.';
   if ($lapsed) { $nU = sj_unique_count($prev);
     $extra['lapsed'] = 'Rok za uplatu ove narudžbe prošao je u ' . sj_fmt_deadline(sj_pay_until($prev), 'acc') . ', a uplatu još ne vidimo' . ($nU > 0 ? ', pa ' . ($nU > 1 ? 'su torbe' : 'je torba') . ' ponovno u ponudi' : '') . '.'
       . ' Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.'
