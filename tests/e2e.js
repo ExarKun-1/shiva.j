@@ -1352,6 +1352,91 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const pos = await p73.evaluate(() => { const t = document.querySelector('label[for=fConsent]'), b = document.getElementById('orderBtn'); return !!(t && b && (t.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); });
     ok(/Prihvaćam Uvjete kupnje, upoznat\/a sam s pravom na jednostrani raskid u roku 14 dana i s Izjavom o zaštiti osobnih podataka\./.test(terms) && pos && !(await p73.$('.order-terms')) && (await p73.textContent('#orderBtn')).trim() === 'Naruči s obvezom plaćanja', 'v73/v95: iznad gumba „Naruči s obvezom plaćanja” kvačica s Uvjetima i Izjavom (bez ponovljenog retka)');
     await m73.close(); }
+  { /* v103 (recenzija v102 i četvrti krug, kupac): dvije kartice; naslov košarice; skriveno polje; poruka paketomata; stari link uz istu stavku; fokus u obrascu za raskid */
+    const cv = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const q1 = await cv.newPage(); watch(q1);
+    await q1.goto(URL, { waitUntil: 'networkidle' }); await q1.waitForTimeout(300);
+    const q2 = await cv.newPage(); watch(q2); await q2.goto(URL, { waitUntil: 'networkidle' }); await q2.waitForTimeout(300);
+    const two = await q1.evaluate(() => PRODUCTS.filter(x => x.made && catOf(x) !== 'kolekcija' && !isGone(x) && !noPhoto(x)).slice(0, 2).map(x => x.id)); /* izrađuju se po narudžbi — rezervacije drugih testova ih ne diraju */
+    const add = (pg, id) => pg.evaluate(id => { const p = PRODUCTS.find(x => x.id === id); cart.push({ ...p, qty: 1, note: '' }); saveCart(); renderCart(); }, id);
+    const rm = (pg, id) => pg.evaluate(id => { cart = cart.filter(c => c.id !== id); saveCart(); renderCart(); }, id);
+    await add(q2, two[0]); await q1.bringToFront(); await add(q1, two[1]);
+    const st1 = await q1.evaluate(() => (storeGet('cart') || []).map(c => c.id));
+    await q2.bringToFront(); await rm(q2, two[0]);
+    const st2 = await q1.evaluate(() => (storeGet('cart') || []).map(c => c.id));
+    await q1.reload({ waitUntil: 'networkidle' }); await q1.waitForTimeout(300);
+    const afterReload = await q1.evaluate(() => cart.map(c => c.id));
+    ok(two.length === 2 && st1.slice().sort().join() === two.slice().sort().join() && st2.join() === two[1] && afterReload.join() === two[1],
+      'v103 (krug 4, kupac N7): dvije kartice — torba dodana u jednoj ne nestaje kad druga doda svoju; uklonjena se ne vraća ' + JSON.stringify([two, st1, st2, afterReload]));
+    /* recenzija kupca v103 (računalo 1): kartica koja čeka potvrdu novije narudžbe ne dira košaricu kad druga kartica pokaže ploču starije narudžbe (op) */
+    await q1.bringToFront(); await q1.evaluate(() => { const k = PRODUCTS.find(x => x.id === 'kozmeticka'); cart = [{ ...k, qty: 1, note: '' }]; saveCart(); renderCart(); });
+    await q2.evaluate(() => { const k = PRODUCTS.find(x => x.id === 'kozmeticka'); storeSet('last', { at: Date.now() + 5000, op: true, items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null, srv: { orderNo: 'SJ-2026-0994', total: 20 } }); });
+    await q1.waitForTimeout(400);
+    const opKeep = await q1.evaluate(() => cart.map(c => c.id).join());
+    await q1.evaluate(() => { storeSet('last', null); cart = []; saveCart(); renderCart(); });
+    ok(opKeep === 'kozmeticka', 'recenzija kupca v103 (računalo 1): ploča starije narudžbe u drugoj kartici ne miče artikl novije narudžbe na čekanju ' + JSON.stringify(opKeep));
+    await q2.close();
+    /* naslov „Vaša narudžba” ne ostaje iznad prazne košarice */
+    const title = await q1.evaluate(() => { cart = []; saveCart(); document.getElementById('emptyCart').classList.remove('pay-mode'); document.getElementById('drawerTitle').textContent = 'Vaša narudžba'; renderCart(); return document.getElementById('drawerTitle').textContent; });
+    /* poruka servisa o paketomatu nestaje pri promjeni dostave */
+    await add(q1, two[1]); await q1.click('#openCart'); await q1.waitForTimeout(300);
+    await q1.evaluate(() => showOrderError('<b>Provjerite paketomat.</b> Za paketomat upišite samo naziv.'));
+    await q1.check('#shipOptions input[value="pickup"]'); await q1.waitForTimeout(100);
+    const lockErr = await q1.evaluate(() => [document.getElementById('orderError').hidden, document.getElementById('orderError').textContent]);
+    /* skriveno polje koje je ispunio preglednik: poruka, polje prazno */
+    await q1.fill('#fName', 'Auto Popuna'); await q1.fill('#fEmail', 'auto@primjer.hr'); await q1.fill('#fPhone', '091 555 7777'); await q1.check('#fConsent');
+    await q1.evaluate(() => { document.getElementById('fWeb').value = 'https://primjer.hr'; });
+    const nB = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length;
+    await q1.click('#orderBtn'); await q1.waitForTimeout(400);
+    const hp = await q1.evaluate(() => [document.getElementById('fWeb').value, document.getElementById('orderError').hidden, document.getElementById('orderError').textContent]);
+    ok(title === 'Vaša košarica' && lockErr[0] === true && hp[0] === '' && hp[1] === false && /skriveno polje/.test(hp[2]) && JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length === nB,
+      'v103 (recenzija v102, kupac N6/N7/N8): prazna košarica bez „Vaša narudžba”; poruka o paketomatu nestaje pri promjeni dostave; ispunjeno skriveno polje daje poruku ' + JSON.stringify([title, lockErr, hp]));
+    /* stari link (druga oznaka narudžbe) uz istu stavku: oznaka čekanja novije narudžbe i njezina košarica ostaju */
+    const old = await q1.evaluate(() => { const fut = new Date(Date.now() + 3600e3).toISOString(); const k = PRODUCTS.find(x => x.id === 'kozmeticka');
+      cart = [{ ...k, qty: 1, note: '' }]; saveCart(); storeSet('pend', { until: fut, sig: cartSig(), ids: [], all: ['kozmeticka'], pt: 'a'.repeat(24) });
+      showOrderSuccess({ ok: true, repeated: true, linkPt: 'b'.repeat(24), orderNo: 'SJ-2026-0991', reference: '2026-0991', total: 20, payUntil: fut, items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null });
+      const r = [!!storeGet('pend'), (storeGet('carry') || []).map(c => c.id).join(), (document.querySelector('.pay-left') || {}).textContent || ''];
+      storeSet('last', null); storeSet('lastPrev', null); storeSet('carry', null); storeSet('pend', null); return r; });
+    const same = await q1.evaluate(() => { const fut = new Date(Date.now() + 3600e3).toISOString(); const k = PRODUCTS.find(x => x.id === 'kozmeticka');
+      cart = [{ ...k, qty: 1, note: '' }]; saveCart(); storeSet('pend', { until: fut, sig: cartSig(), ids: [], all: ['kozmeticka'], pt: 'c'.repeat(24) });
+      showOrderSuccess({ ok: true, repeated: true, linkPt: 'c'.repeat(24), orderNo: 'SJ-2026-0992', reference: '2026-0992', total: 20, payUntil: fut, items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null });
+      const r = [!!storeGet('pend'), (storeGet('carry') || []).length]; storeSet('last', null); storeSet('lastPrev', null); storeSet('carry', null); return r; });
+    const box = await q1.evaluate(() => { const e = document.getElementById('emptyCart'); e.classList.add('pay-mode'); e.innerHTML = '<div class="order-error order-info">Ova je torba već vaša.</div>'; e.hidden = false;
+      const b = e.firstElementChild.getBoundingClientRect(), db = document.querySelector('.drawer-body'), d = db.getBoundingClientRect(), cs = getComputedStyle(db); const r = [Math.round(b.left - d.left - parseFloat(cs.paddingLeft)), Math.round(d.right - b.right - parseFloat(cs.paddingRight) - (db.offsetWidth - db.clientWidth))]; e.classList.remove('pay-mode'); renderCart(); return r; });
+    ok(box[0] >= -1 && box[1] >= -1, 'recenzija kupca v103 (računalo 5): okvir obavijesti uz ploču ne viri izvan ruba košarice ' + JSON.stringify(box));
+    ok(old[0] === true && old[1] === 'kozmeticka' && /čeka potvrdu vaše novije narudžbe/.test(old[2]) && same[0] === false && same[1] === 0,
+      'v103 (krug 4, kupac N6): stari link uz istu stavku ne briše oznaku čekanja novije narudžbe ni njezinu košaricu; link iste narudžbe je briše ' + JSON.stringify([old, same]));
+    /* recenzija kupca v103 (mobitel 1–3): „10 000”; ploča nakon isteka roka; ime s poveznicom — poruka na polju */
+    await q1.evaluate(() => { storeSet('last', null); storeSet('pend', null); const e = document.getElementById('emptyCart'); e.classList.remove('pay-mode'); const k = PRODUCTS.find(x => x.id === 'kozmeticka'); cart = [{ ...k, qty: 1, note: '' }]; saveCart(); renderCart(); });
+    await q1.waitForTimeout(200);
+    const zip = await q1.evaluate(() => { const so = SHIPPING_OPTIONS.find(o => o.address); if(!so) return ['nema']; shipId = so.id; renderShipping();
+      const z = document.getElementById('fZip'), c = document.getElementById('fCity'); z.value = ''; z.focus(); return [so.id]; });
+    await q1.fill('#fZip', '10 000'); await q1.fill('#fCity', 'Zagreb');
+    const zipR = await q1.evaluate(() => [document.getElementById('fZip').value, cityVal(), zipCheck(), document.getElementById('fZip').validationMessage]);
+    const lap = await q1.evaluate(() => { const past = new Date(Date.now() - 80 * 3600e3).toISOString(); const k = PRODUCTS.find(x => x.id === 'kozmeticka'); cart = []; saveCart();
+      /* ploča iste narudžbe spremljena ranije (s „Uplatio/la sam”) — ne smije se vratiti */
+      storeSet('last', { at: Date.now() - 9e6, items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null, srv: { orderNo: 'SJ-2026-0993', total: 20, claimLink: '?uplata=SJ-2026-0993&t=' + 'd'.repeat(32), claimUntil: new Date(Date.now() + 9e7).toISOString() } });
+      showOrderSuccess({ ok: true, repeated: true, orderNo: 'SJ-2026-0993', reference: '2026-0993', total: 20, payUntil: past, until: null, reserved: false, lapsed: 'Rok za uplatu ove narudžbe prošao je u petak, a uplatu još ne vidimo.', items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null });
+      const t = document.querySelector('.pay').textContent, cl = !!document.querySelector('.pay .claim-link'); storeSet('last', null); storeSet('lastPrev', null); return [document.querySelector('.pay-hello').textContent, /za nekoliko minuta|do isteka roka za uplatu|Hvala vam!|produljujemo/.test(t) || cl, /Rok za uplatu ove narudžbe prošao je/.test(t)]; });
+    ok(zipR[0].replace(/\s+/g, '') === '10000' && zipR[1] === '10000 Zagreb' && zipR[2] === true && zipR[3] === '' && /^Rok za uplatu je prošao/.test(lap[0]) && lap[1] === false && lap[2] === true,
+      'recenzija kupca v103 (mobitel 1/2): „10 000” se prima; ploča nakon isteka roka bez „Hvala vam!”, „za nekoliko minuta” i roka u prošlosti ' + JSON.stringify([zip, zipR, lap]));
+    await cv.close();
+    { const cn = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const q4 = await cn.newPage(); watch(q4);
+      await q4.goto(URL, { waitUntil: 'networkidle' }); await q4.waitForTimeout(300);
+      await q4.evaluate(() => { const k = PRODUCTS.find(x => x.id === 'kozmeticka'); cart = [{ ...k, qty: 1, note: '' }]; saveCart(); renderCart(); });
+      await q4.route('**/api/order', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'U ime ne upisujte poveznice ni e-adrese.', field: 'name' }) }));
+      await q4.click('#openCart'); await q4.waitForTimeout(300); await q4.check('#shipOptions input[value="pickup"]');
+      await q4.fill('#fName', 'Ana Anić'); await q4.fill('#fEmail', 'ana.ime@primjer.hr'); await q4.fill('#fPhone', '091 555 8888'); await q4.check('#fConsent');
+      await q4.click('#orderBtn'); await q4.waitForTimeout(1500);
+      const nm = await q4.evaluate(() => { const a = document.activeElement, r = a && a.getBoundingClientRect(); return [a && a.id, a && a.validationMessage, !!r && r.top >= 0 && r.bottom <= innerHeight]; });
+      ok(nm[0] === 'fName' && /bez poveznica/.test(nm[1] || '') && nm[2], 'recenzija kupca v103 (mobitel 3): ime koje servis odbije — fokus i poruka na polju „Ime” ' + JSON.stringify(nm));
+      await cn.close(); }
+    /* mobitel: obrazac za raskid — fokus na prvo neispravno polje */
+    const mr = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const q3 = await mr.newPage(); watch(q3);
+    await q3.goto(URL + '#raskid', { waitUntil: 'networkidle' }); await q3.waitForTimeout(400);
+    await q3.click('#raskidNext'); await q3.waitForTimeout(300);
+    const rf = await q3.evaluate(() => { const a = document.activeElement, r = a && a.getBoundingClientRect(); return [a && a.id, !!r && r.top >= 0 && r.bottom <= innerHeight, !document.getElementById('raskidError').hidden]; });
+    ok(rf[0] === 'rName' && rf[1] && rf[2], 'v103 (krug 4, mobitel): obrazac za raskid — fokus na prvo neispravno polje, na zaslonu; poruka vidljiva ' + JSON.stringify(rf));
+    await mr.close(); }
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
