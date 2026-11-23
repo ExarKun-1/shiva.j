@@ -1413,8 +1413,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await q1.fill('#fZip', '10 000'); await q1.fill('#fCity', 'Zagreb');
     const zipR = await q1.evaluate(() => [document.getElementById('fZip').value, cityVal(), zipCheck(), document.getElementById('fZip').validationMessage]);
     const lap = await q1.evaluate(() => { const past = new Date(Date.now() - 80 * 3600e3).toISOString(); const k = PRODUCTS.find(x => x.id === 'kozmeticka'); cart = []; saveCart();
+      /* ploča iste narudžbe spremljena ranije (s „Uplatio/la sam”) — ne smije se vratiti */
+      storeSet('last', { at: Date.now() - 9e6, items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null, srv: { orderNo: 'SJ-2026-0993', total: 20, claimLink: '?uplata=SJ-2026-0993&t=' + 'd'.repeat(32), claimUntil: new Date(Date.now() + 9e7).toISOString() } });
       showOrderSuccess({ ok: true, repeated: true, orderNo: 'SJ-2026-0993', reference: '2026-0993', total: 20, payUntil: past, until: null, reserved: false, lapsed: 'Rok za uplatu ove narudžbe prošao je u petak, a uplatu još ne vidimo.', items: [{ id: 'kozmeticka', name: k.name, qty: 1, price: k.price, made: true }], ship: null });
-      const t = document.querySelector('.pay').textContent; storeSet('last', null); storeSet('lastPrev', null); return [document.querySelector('.pay-hello').textContent, /za nekoliko minuta|do isteka roka za uplatu|Hvala vam!/.test(t), /Rok za uplatu ove narudžbe prošao je/.test(t)]; });
+      const t = document.querySelector('.pay').textContent, cl = !!document.querySelector('.pay .claim-link'); storeSet('last', null); storeSet('lastPrev', null); return [document.querySelector('.pay-hello').textContent, /za nekoliko minuta|do isteka roka za uplatu|Hvala vam!|produljujemo/.test(t) || cl, /Rok za uplatu ove narudžbe prošao je/.test(t)]; });
     ok(zipR[0].replace(/\s+/g, '') === '10000' && zipR[1] === '10000 Zagreb' && zipR[2] === true && zipR[3] === '' && /^Rok za uplatu je prošao/.test(lap[0]) && lap[1] === false && lap[2] === true,
       'recenzija kupca v103 (mobitel 1/2): „10 000” se prima; ploča nakon isteka roka bez „Hvala vam!”, „za nekoliko minuta” i roka u prošlosti ' + JSON.stringify([zip, zipR, lap]));
     await cv.close();
