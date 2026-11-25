@@ -1388,7 +1388,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const nB = JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length;
     await q1.click('#orderBtn'); await q1.waitForTimeout(400);
     const hp = await q1.evaluate(() => [document.getElementById('fWeb').value, document.getElementById('orderError').hidden, document.getElementById('orderError').textContent]);
-    ok(title === 'Vaša košarica' && lockErr[0] === true && hp[0] === '' && hp[1] === false && /skriveno polje/.test(hp[2]) && JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length === nB,
+    ok(title === 'Vaša košarica' && lockErr[0] === true && hp[0] === '' && hp[1] === false && /sam popunio jedno polje obrasca/.test(hp[2]) && JSON.parse(fs.readFileSync(SITE + 'data/narudzbe.json', 'utf8')).length === nB,
       'v103 (recenzija v102, kupac N6/N7/N8): prazna košarica bez „Vaša narudžba”; poruka o paketomatu nestaje pri promjeni dostave; ispunjeno skriveno polje daje poruku ' + JSON.stringify([title, lockErr, hp]));
     /* stari link (druga oznaka narudžbe) uz istu stavku: oznaka čekanja novije narudžbe i njezina košarica ostaju */
     const old = await q1.evaluate(() => { const fut = new Date(Date.now() + 3600e3).toISOString(); const k = PRODUCTS.find(x => x.id === 'kozmeticka');
@@ -1437,10 +1437,76 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const rf = await q3.evaluate(() => { const a = document.activeElement, r = a && a.getBoundingClientRect(); return [a && a.id, !!r && r.top >= 0 && r.bottom <= innerHeight, !document.getElementById('raskidError').hidden]; });
     ok(rf[0] === 'rName' && rf[1] && rf[2], 'v103 (krug 4, mobitel): obrazac za raskid — fokus na prvo neispravno polje, na zaslonu; poruka vidljiva ' + JSON.stringify(rf));
     await mr.close(); }
+  { /* v104 (recenzija v103): ploča sa STVARNIM odgovorom servisa nakon isteka roka; remen na prvom kliku; telefon „091”; poruka uz polje u obrascu za raskid; e-adresa nakon osvježavanja */
+    const rd = f => { try { return JSON.parse(fs.readFileSync(SITE + 'data/' + f, 'utf8')); } catch (e) { return null; } };
+    const wr = (f, v) => fs.writeFileSync(SITE + 'data/' + f, JSON.stringify(v, null, 2));
+    const apiP = async (a, b) => { const r = await fetch(URL + 'api/' + a, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
+    const lastL = () => { const m = [...fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8').matchAll(/\?potvrda=([a-f0-9]{32})\.([a-f0-9]{32})/g)].pop(); return m ? { id: m[1], t: m[2] } : null; };
+    try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
+    const pl = rd('proizvodi.json') || [], rz0 = rd('rezervacije.json') || {};
+    const fq = ['zora', 'mira', 'nera', 'tara', 'luna', 'vela'].find(id => { const q = pl.find(x => x.id === id); return q && !q.sold && !q.reserved && !((rz0.res || {})[id]) && !((rz0.sold || {})[id]); });
+    const pq = (pl.find(x => x.id === fq) || {}).price;
+    const cu = em => ({ name: 'Ploča Isteklo', email: em, phone: '', street: '', city: '' }), pk = { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' };
+    { const o0 = rd('narudzbe.json') || []; o0.forEach(x => { if (!x.paidAt && !x.cancelledAt) x.paidAt = new Date().toISOString(); }); wr('narudzbe.json', o0); } /* ranije narudžbe ovog testa ne smiju zauzeti granicu narudžbi po vezi */
+    const cfgP4 = SITE + 'data/config.json', cfg4 = fs.readFileSync(cfgP4, 'utf8'); fs.writeFileSync(cfgP4, JSON.stringify(Object.assign(JSON.parse(cfg4), { require_confirm: true })));
+    /* narudžba preko stranice (stranica rješava zadatak „niste robot”) */
+    let oA = { data: {} };
+    { const co = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const po = await co.newPage(); watch(po);
+      await po.goto(URL, { waitUntil: 'networkidle' }); await po.waitForTimeout(300);
+      await po.evaluate(id => { const p = PRODUCTS.find(x => x.id === id); cart = [{ ...p, qty: 1, note: '' }]; saveCart(); renderCart(); }, fq);
+      await po.click('#openCart'); await po.waitForTimeout(300); await po.check('#shipOptions input[value="pickup"]');
+      await po.fill('#fName', 'Ploča Isteklo'); await po.fill('#fEmail', 'e2e104a@primjer.hr'); await po.fill('#fPhone', '091 555 1040'); await po.check('#fConsent');
+      await po.click('#orderBtn'); await po.waitForFunction(() => document.getElementById('orderForm').classList.contains('is-pending'), null, { timeout: 15000 }).catch(() => {});
+      oA = { data: { pending: /e2e104a@primjer\.hr/.test(fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8').split(/^=== /m).pop() || '') } };
+      await co.close(); }
+    const LA = lastL(); const cA = await apiP('confirm', { id: LA.id, t: LA.t });
+    fs.writeFileSync(cfgP4, cfg4);
+    const shift = (claimed) => { const o = rd('narudzbe.json'); const x = o.find(y => y.no === cA.data.orderNo); x.payUntil = new Date(Date.now() - 80 * 3600e3).toISOString(); if (claimed) x.claimedAt = new Date(Date.now() - 90 * 3600e3).toISOString(); else delete x.claimedAt; wr('narudzbe.json', o);
+      const r = rd('rezervacije.json'); if (r.res && r.res[fq]) r.res[fq].until = new Date(Date.now() - 30 * 3600e3).toISOString(); wr('rezervacije.json', r); };
+    const panel = async () => { const cx = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const pg = await cx.newPage(); watch(pg);
+      await pg.goto(URL + '?potvrda=' + LA.id + '.' + LA.t, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pay', { timeout: 8000 }).catch(() => {});
+      const r = await pg.evaluate(() => { const p = document.querySelector('.pay'); if (!p) return null; const t = p.textContent, lt = p.querySelector('.pay-lapsed-t');
+        return { hello: (p.querySelector('.pay-hello') || {}).textContent || '', reserved: /rezervirana je za vas/.test(t), claim: !!p.querySelector('.claim-link'), doRoka: /Do roka/.test(t), payData: !!p.querySelector('.pay-data .iban'),
+          font: lt ? getComputedStyle(lt).fontFamily : '', sum: (p.querySelector('.pay-sum') || {}).textContent || '', gone: /u međuvremenu je otišla drugom kupcu;/.test(t), txt: t.slice(0, 400), cond: /Ako torbu u međuvremenu nije kupio netko drugi/.test(t) }; });
+      await cx.close(); return r; };
+    shift(false); try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
+    const g1 = await panel();
+    shift(true); try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
+    const g2 = await panel();
+    shift(false); try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
+    /* drugi kupac je u međuvremenu naručio torbu (rezervacija njegove narudžbe; granica narudžbi po vezi u testu ne dopušta još jednu stvarnu narudžbu) */
+    { const r = rd('rezervacije.json'); const res = Array.isArray(r.res) ? {} : (r.res || {}); res[fq] = { token: 'e2e104drugikupac0000000000000000', email: 'e2e104b@primjer.hr', name: 'Drugi Kupac', ordered: true, since: new Date().toISOString(), at: new Date().toISOString(), until: new Date(Date.now() + 40 * 3600e3).toISOString(), id: fq }; r.res = res; wr('rezervacije.json', r); }
+    const cB = { data: { ok: true } };
+    try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
+    const g3 = await panel();
+    ok(!!fq && oA.data.pending && cA.data.ok && g1 && /^Rok za uplatu je prošao/.test(g1.hello) && !g1.reserved && !g1.claim && !g1.doRoka && !g1.gone && g1.cond && !/Marcellus/.test(g1.font) && !/ do /.test(g1.sum)
+      && g2 && !g2.reserved && !/ do /.test(g2.sum) && cB.data.ok && g3 && g3.gone && !g3.payData && !g3.claim,
+      'v104 (recenzija v103): stvarni odgovor servisa — rok prošao: bez „rezervirana”, „Uplatio/la sam” i „Do roka”, uvjet uz „Nakon uplate”, običan font; nakon „Uplatio/la sam” isto; torba drugog kupca: „otišla drugom kupcu”, bez podataka za uplatu '
+      + JSON.stringify([fq, cB.status, cB.data.error || '', g1 && { r: g1.reserved, c: g1.claim, d: g1.doRoka, cond: g1.cond, f: g1.font, s: g1.sum, gone: g1.gone }, g2 && { r: g2.reserved, s: g2.sum }, g3 && { gone: g3.gone, pay: g3.payData, t: g3.txt }]));
+    /* remen na prvom kliku; telefon „091” */
+    const cs = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const q5 = await cs.newPage(); watch(q5);
+    await q5.goto(URL, { waitUntil: 'networkidle' }); await q5.waitForTimeout(300);
+    await q5.evaluate(() => { const k = PRODUCTS.find(x => x.made && catOf(x) === 'kolekcija'); cart = [{ ...k, qty: 1, note: '', sc: '', sl: '' }]; saveCart(); renderCart(); });
+    await q5.click('#openCart'); await q5.waitForTimeout(300); await q5.fill('#fPhone', '091');
+    await q5.click('#orderBtn'); await q5.waitForTimeout(400);
+    const fx = await q5.evaluate(() => [document.getElementById('orderFix').textContent, document.getElementById('fPhone').validationMessage, !!document.querySelector('.strap-sel[aria-invalid="true"]')]);
+    const ls = await q5.evaluate(() => { cart = []; saveCart(); return true; });
+    ok(/boja i duljina remena/.test(fx[0]) && /prekratak/.test(fx[1]) && fx[2], 'v104 (recenzija v103, kupac N5, mobitel N3): remen u popisu „Ispravite” već na prvom kliku; „091” — broj je prekratak ' + JSON.stringify(fx));
+    /* e-adresa nakon osvježavanja: poslana adresa iz sessionStorage, ne trenutni sadržaj polja */
+    const em = await q5.evaluate(() => { sessionStorage.setItem('sj-pend-form', JSON.stringify({ fEmail: 'poslano@primjer.hr' })); document.getElementById('fEmail').value = 'novo@primjer.hr'; return pendSentEmail(); });
+    ok(em === 'poslano@primjer.hr', 'v104 (recenzija v103, kupac N2): nakon osvježavanja ploča navodi adresu na koju je e-mail poslan ' + JSON.stringify(em));
+    await cs.close();
+    /* obrazac za raskid na mobitelu: poruka uz polje */
+    const mr2 = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true }); const q6 = await mr2.newPage(); watch(q6);
+    await q6.goto(URL + '#raskid', { waitUntil: 'networkidle' }); await q6.waitForTimeout(400);
+    await q6.fill('#rName', 'Ana Anić'); await q6.tap('#raskidNext'); await q6.waitForTimeout(300);
+    const rv = await q6.evaluate(() => [document.activeElement && document.activeElement.id, document.activeElement && document.activeElement.validationMessage]);
+    ok(rv[0] === 'rNo' && /broj narudžbe/.test(rv[1] || ''), 'v104 (recenzija v103, mobitel N2): obrazac za raskid — poruka uz prvo neispravno polje ' + JSON.stringify(rv));
+    await mr2.close(); }
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 30 && day.ig === 1 && day.orders === 10 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 31 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503; v102: +11 košarica u testovima mobitela, remena, potvrde i kartica): ' + JSON.stringify(cnt));
+  ok(day.visits === 36 && day.ig === 1 && day.orders === 11 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 31 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503; v102: +11 košarica u testovima mobitela, remena, potvrde i kartica; v104: +1 narudžba i +6 posjeta u testu ploče nakon isteka): ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

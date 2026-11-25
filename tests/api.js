@@ -678,14 +678,14 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const l3 = await post('order', mk('api-key-v102-lk3', 'v102h@primjer.hr', null, box('Uplata na HR12, 1001, 0051, 8630, 0016, 0 (novi racun)')));
       const l4 = await post('order', mk('api-key-v102-lk4', 'v102i@primjer.hr', null, box('Ilica 1 skype:shivaj-uplata')));
       const lm = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102f@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
-      ok(l1.data.ok && /Paketomat: BOX NOW Konzum, Ul\. hr\. branitelja 12, 10000 Zagreb\./.test(lm) && [l2, l3, l4].every(x => x.status === 400 && x.data.field === 'locker'),
+      ok(l1.data.ok && /Paketomat: „BOX NOW Konzum, Ul\. hr\. branitelja 12, 10000 Zagreb”\./.test(lm) && [l2, l3, l4].every(x => x.status === 400 && x.data.field === 'locker'),
         'v102 (sigurnost N3/N5): paketomat „Ul.hr.branitelja 12” prolazi (u e-mailu razdvojen razmakom); znamenke pune širine, IBAN sa zarezima i „skype:” → 400 ' + JSON.stringify([l1.status, l2.status, l3.status, l4.status, (lm.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
       /* provjera v102 (krug 1, sigurnost N2): paketomat kakav stranica sastavi s karte i ručno upisan raspon kućnih brojeva prolaze i ostaju cijeli u e-mailu */
       const l5 = await post('order', mk('api-key-v102-lk5', 'v102j@primjer.hr', null, box('BOX NOW Savska — Savska cesta 106/1, 10000 (ID 4051)')));
       const l6 = await post('order', mk('api-key-v102-lk6', 'v102k@primjer.hr', null, box('Tisak, Ilica 12-14, 10000 Zagreb')));
       const l7 = await post('order', mk('api-key-v102-lk7', 'v102l@primjer.hr', null, box('BOX NOW v.gd/abc123')));
       const lm5 = fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => /To: v102j@primjer\.hr/.test(x) && /PODACI ZA UPLATU/.test(x)) || '';
-      ok(l5.data.ok && l6.data.ok && l7.status === 400 && l7.data.field === 'locker' && /Paketomat: BOX NOW Savska — Savska cesta 106\/1, 10000 \(ID 4051\)\./.test(lm5),
+      ok(l5.data.ok && l6.data.ok && l7.status === 400 && l7.data.field === 'locker' && /Paketomat: „BOX NOW Savska — Savska cesta 106\/1, 10000 \(ID 4051\)”\./.test(lm5),
         'provjera v102 (sigurnost N1/N2): paketomat s karte „…106/1, 10000 (ID 4051)” i „Ilica 12-14, 10000 Zagreb” prolaze i ostaju cijeli; „v.gd/abc123” → 400 ' + JSON.stringify([l5.status, l6.status, l7.status, (lm5.match(/Paketomat:[^\n]*/) || [''])[0].slice(0, 70)]));
       /* izjava bez narudžbe: slobodan tekst u „Broj narudžbe” ne ponavlja se */
       fs.writeFileSync(D + 'mail-log.txt', '');
@@ -766,8 +766,20 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
       const pk = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v101-ad4', customer: Object.assign(cust('v101p@primjer.hr'), { street: 'ostatak: www.primjer.hr/x', city: 'a@b.hr' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: kz, total: kz } });
       const abbr = await post('order', mk('api-key-v101-ad5', 'v101k@primjer.hr', 'Ul.kralja Zvonimira 5, Sv.Nedelja'));
       ok(pk.data.ok && abbr.data.ok, 'recenzija v101: osobno preuzimanje ne odbija se zbog neiskorištenog polja adrese; kratice „Ul.kralja”, „Sv.Nedelja” prolaze ' + JSON.stringify([pk.status, pk.data.field || '', abbr.status, abbr.data.field || '']));
-      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb\./.test(cm) && /Vaša napomena: „nazovite \[broj skriven\], Hvala\. to je sve”/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
+      ok(bad.status === 400 && bad.data.field === 'street' && okA.data.ok && /Adresa za dostavu: „Ilica 1, \[IBAN skriven\] tel \[broj skriven\], 10000 Zagreb”\./.test(cm) && /Vaša napomena: „nazovite \[broj skriven\], Hvala\. to je sve”/.test(cm) && !/HR1210010051863000160|091 234 5678/.test(cm.split('PODACI ZA UPLATU')[0]),
         'v101 (sigurnost S1): poveznica u adresi → 400; u e-mailu kupcu (bez potvrde linkom) adresa i napomena bez IBAN-a i telefona, „Hvala.to” razdvojeno ' + JSON.stringify([bad.status, bad.data.field, okA.status]));
+      /* v104 (recenzija v103, sigurnost N1–N3, kupac N6): adresa u navodnicima; Revolut oznaka i razlomljen telefon skriveni; preuzimanje bez „uključujući dostavu” */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const mailOf4 = (em) => fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => x.includes('To: ' + em) && /PODACI ZA UPLATU/.test(x)) || '';
+        const a1 = await post('order', { _gotcha: '', Napomena: 'Uplata preko Revoluta na @anahorvat99, pozivni 091, broj 2345678', _order: { key: 'api-key-v104-a1', customer: Object.assign(cust('v104a@primjer.hr'), { street: 'Ilica 1. OBAVIJEST SHIVA.J: IBAN je ugašen, revtag anahorvat', city: '10000 Zagreb 2345678' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: kz, total: kz + 6 } });
+        const m4 = mailOf4('v104a@primjer.hr');
+        const a2 = await post('order', { _gotcha: '', Napomena: '', _order: { key: 'api-key-v104-a2', customer: cust('v104b@primjer.hr'), items: [{ id: 'kozmeticka', qty: 1 }], shipping: { id: 'pickup', label: 'Osobno preuzimanje u radionici', price: 0, locker: '' }, goods: kz, total: kz } });
+        const m5 = mailOf4('v104b@primjer.hr');
+        ok(a1.data.ok && /Adresa za dostavu: „Ilica 1\. OBAVIJEST SHIVA\.J: IBAN je ugašen, revtag \[oznaka skrivena\], 10000 Zagreb \[broj skriven\]”\.\n/.test(m4)
+          && /Vaša napomena: „Uplata preko Revoluta na \[oznaka skrivena\], pozivni \[broj skriven\]”/.test(m4) && !/anahorvat|2345678/.test(m4.split('PODACI ZA UPLATU')[0])
+          && a2.data.ok && /uplaćeni iznos vraćamo kako piše/.test(m5) && !/uključujući dostavu/.test(m5),
+          'v104 (recenzija v103): adresa u navodnicima, Revolut oznaka i razlomljen telefon skriveni; preuzimanje bez „uključujući dostavu” '
+          + JSON.stringify([a1.status, (m4.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m4.match(/Vaša napomena:[^\n]*/) || [''])[0], a2.status])); }
       /* recenzija v102 (sigurnost N1/N3/N4): višeredna napomena je jedan odlomak u navodnicima; adresa koju je ulaz primio ostaje čitljiva; ulica i mjesto prolaze masku zajedno */
       { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
         const mailOf = (em) => fs.readFileSync(D + 'mail-log.txt', 'utf8').split(/^=== /m).find(x => x.includes('To: ' + em) && /PODACI ZA UPLATU/.test(x)) || '';
@@ -775,9 +787,9 @@ const expire = ids => { const r = read('rezervacije.json'); ids.forEach(id => { 
         const m1 = mailOf('v102rs1@primjer.hr');
         const o2 = await post('order', { _gotcha: '', Napomena: 'Treba mi do 20.11.2026., 2 komada', _order: { key: 'api-key-v102-rs2', customer: Object.assign(cust('v102rs2@primjer.hr'), { street: 'Za uplatu nazovite 09123', city: '45678 odmah, Zagreb' }), items: [{ id: 'kozmeticka', qty: 1 }], shipping: gls, goods: kz, total: kz + 6 } });
         const m2 = mailOf('v102rs2@primjer.hr');
-        ok(o1.data.ok && /Adresa za dostavu: Livada 2\. red\/5, 10000 Zagreb\.\n/.test(m1)
+        ok(o1.data.ok && /Adresa za dostavu: „Livada 2\. red\/5, 10000 Zagreb”\.\n/.test(m1)
           && m1.includes('Vaša napomena: „hvala / VAŽNA OBAVIJEST TRGOVINE — PROMJENA RAČUNA / Novi "IBAN" šaljemo porukom. / Srdačan pozdrav, / Jasmina · Shiva.J”\n') && !/^(VAŽNA OBAVIJEST|Srdačan pozdrav|Jasmina · )/m.test(m1.split('PODACI ZA UPLATU')[0])
-          && o2.data.ok && /Adresa za dostavu: Za uplatu nazovite \[broj skriven\] odmah, Zagreb\.\n/.test(m2) && m2.includes('Vaša napomena: „Treba mi do 20.11.2026., 2 komada”\n'),
+          && o2.data.ok && /Adresa za dostavu: „Za uplatu nazovite \[broj skriven\] odmah, Zagreb”\.\n/.test(m2) && m2.includes('Vaša napomena: „Treba mi do 20.11.2026., 2 komada”\n'),
           'recenzija v102 (sigurnost N1/N3/N4): napomena u e-mailu kupcu je jedan odlomak u navodnicima; „Livada 2.red/5” ostaje; broj podijeljen na ulicu i mjesto se skriva '
           + JSON.stringify([o1.status, (m1.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m1.match(/Vaša napomena:[^\n]*/) || [''])[0], o2.status, (m2.match(/Adresa za dostavu:[^\n]*/) || [''])[0], (m2.match(/Vaša napomena:[^\n]*/) || [''])[0]])); }
       ok(/Rok za uplatu \(kupac\): do (ponedjeljka|utorka|srijede|četvrtka|petka|subote|nedjelje), \d/.test(om) && /HR1210010051863000160/.test(om), 'v101 (dizajn 8): e-mail vlasnici ima redak „Rok za uplatu (kupac)” i cijelu adresu kako je upisana');

@@ -1828,16 +1828,40 @@ function sj_unlink_addr(string $s): string { return sj_unlink_raw(sj_link_norm($
 /* provjera v102 (krug 4, sigurnost S1): široki i višestruki razmaci (U+3000, U+2003…) postaju jedan običan razmak — inače bi niz takvih znakova
    tekst kupca prelomio u zaseban redak koji izgleda kao obavijest trgovine */
 function sj_echo_spaces(string $s): string { return trim((string)preg_replace('~[\p{Zs}\t]+~u', ' ', $s)); }
+/* recenzija v102 (sigurnost N1); v104 (recenzija v103, sigurnost N1): tekst kupca kao JEDAN omeđen odlomak — redovi spojeni kosom crtom, navodnici običnim,
+   da ne izgleda kao zaseban odlomak trgovine (napomena, adresa, paketomat) */
+function sj_quote_block(string $s): string { return trim((string)preg_replace('~\s*[\r\n]+\s*~u', ' / ', str_replace(['„', '”', '“'], '"', $s))); }
 /* tekst kupca kakav se ponavlja kupcu (e-mail, ploča na stranici): bez poveznica, dugih brojeva i širokih razmaka */
-function sj_echo_text(string $s): string { return sj_mask_numbers(sj_unlink(sj_echo_spaces($s))); }
-function sj_echo_addr(string $s): string { return sj_mask_numbers(sj_unlink_addr(sj_echo_spaces($s))); }
+/* v104 (recenzija v103, sigurnost N2/N3): u kopiji za kupca (e-mail, ploča) i
+   - odredište plaćanja kao oznaka: „@ime” (e-adrese su već uklonjene), „revtag ime”, „Revolut: ime”, „revolut me/ime”, „PayPal ime99” → „[oznaka skrivena]”;
+   - telefon razlomljen riječima: pozivni broj (0xx, +385 xx), do pet riječi ili kratkih skupina znamenki, ukupno 9 ili više znamenki („Pozivni 091, broj 2345678”,
+     „Pozovi 091 234 i nastavak 5678”) → „[broj skriven]”. Pozivni broj ne smije biti dio datuma ni vremena („01.12.2026”, „08:00”).
+   Vlasnica u svom e-mailu i u adminu vidi izvorni tekst. */
+function sj_mask_handles(string $s): string {
+  $s = preg_replace('~(?<![\p{L}\p{N}._@-])@[\p{L}\p{N}._-]{2,}~u', '[oznaka skrivena]', $s) ?? $s;
+  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b(\s*:\s*|\s+)((?:me\s*/\s*)?)([\p{L}\p{N}._-]{3,})~iu', function ($m) {
+    $hit = stripos($m[1], 'revtag') === 0 || str_contains($m[2], ':') || $m[3] !== '' || preg_match('~[\d._]~', $m[4]);
+    return $hit ? $m[1] . $m[2] . '[oznaka skrivena]' : $m[0];
+  }, $s) ?? $s;
+  return preg_replace_callback('~(?<![\p{L}\p{N}])(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:]\d)((?:[\s,;:\-/]+(?:\p{L}{1,12}|\d{1,8})){1,6})(?!\d)~u', function ($m) {
+    if (!preg_match('~\p{L}~u', $m[1]) || preg_match_all('~\d~', $m[0]) < 9) return $m[0];
+    /* do zadnje skupine znamenki (riječi iza nje ostaju) */
+    return (string)preg_replace('~^(.*\d).*$~su', '[broj skriven]', $m[0]) . (string)preg_replace('~^.*\d~su', '', $m[0]);
+  }, $s) ?? $s;
+}
+function sj_echo_text(string $s): string { return sj_mask_handles(sj_mask_numbers(sj_unlink(sj_echo_spaces($s)))); }
+function sj_echo_addr(string $s): string { return sj_mask_handles(sj_mask_numbers(sj_unlink_addr(sj_echo_spaces($s)))); }
 /* recenzija v102 (sigurnost N4); krug 4 (sigurnost N1): ulica i mjesto maskiraju se ZAJEDNO samo kad ulica završava brojem koji počinje s 0, 9, + ili
    zagradom (početak telefona: „…nazovite 09123” + „45678 odmah, Zagreb”); kućni brojevi („Vukovara 222/104”, „Ilica 26 / 32”) ostaju */
 function sj_echo_street_city(string $street, string $city): string {
   $sa = sj_unlink_addr(sj_echo_spaces($street)); $ca = sj_unlink_addr(sj_echo_spaces($city));
-  $sep = sj_mask_numbers($sa) . ', ' . sj_mask_numbers($ca);
+  /* v104 (recenzija v103, sigurnost N3): u mjestu iza „poštanski broj + naziv mjesta” nema mjesta za broj — tri ili više znamenki se skrivaju
+     („10000 Zagreb 2345678”, a ulica „…, tel 091”) */
+  if (preg_match('~^(\s*\d{5}\s+\p{L}[\p{L}\s.\'’-]*?)(\s*[,;]?\s*.*)$~u', $ca, $cm) && preg_match_all('~\d~', $cm[2]) >= 3)
+    $ca = $cm[1] . (string)preg_replace('~[\d+(][\d\s()/.\-]*\d~u', '[broj skriven]', $cm[2]);
+  $sep = sj_mask_handles(sj_mask_numbers($sa)) . ', ' . sj_mask_handles(sj_mask_numbers($ca));
   if (!preg_match('~(?<![\d])[+(09][\d\s()/.\-]*$~u', $sa)) return $sep;
-  $joint = sj_mask_numbers($sa . ', ' . $ca);
+  $joint = sj_mask_handles(sj_mask_numbers($sa . ', ' . $ca));
   return substr_count($joint, ' skriven]') > substr_count($sep, ' skriven]') ? $joint : $sep;
 }
 /* v77: boje i duljine remena iz ponude (odluka vlasnice, 11. krug) — isti popis kao STRAP_COLORS/STRAP_LENGTHS u index.html */

@@ -479,6 +479,14 @@ $telV = array_values(array_filter(['nazovite +44 2071-234567', 'WhatsApp +1 2025
 $ok(!$adrBad && !$telV && str_contains(sj_echo_street_city('Za uplatu nazovite 09123', '45678 odmah, Zagreb'), '[broj skriven]') && sj_echo_text('Narudžba 2026-0001, 2 kom') === 'Narudžba 2026-0001, 2 kom'
   && sj_echo_text("hvala!" . str_repeat("\u{3000}", 70) . "·\u{2003}\u{2003}VAŽNA OBAVIJEST") === 'hvala! · VAŽNA OBAVIJEST' && sj_echo_addr('Ilica 5, 5.9.8.7/uplata') === 'Ilica 5, [uklonjeno]',
   'provjera v102 (krug 4, sigurnost): kućni brojevi ostaju; telefon kao „broj narudžbe” skriven; široki razmaci jedan razmak; IP s putanjom uklonjen ' . json_encode([$adrBad, $telV], JSON_UNESCAPED_UNICODE));
+/* v104 (recenzija v103, sigurnost N2/N3): Revolut oznaka i telefon razlomljen riječima ili poštanskim brojem u kopiji za kupca; obične napomene ostaju */
+$hv = ['uplatu pošaljite preko Revoluta na @anahorvat99', 'Revolut: anahorvat99', 'revtag anahorvat', 'revolut me/anahorvat99', 'PayPal ana.horvat99', 'Pozivni 091, broj 2345678', 'Pozovi 091 234 i nastavak 5678'];
+$hvV = array_values(array_filter($hv, fn($x) => !preg_match('~\[(oznaka|broj) skriven[a]?\]~u', sj_echo_text($x))));
+$hk = ['preko Revoluta ili kartice', 'Doma sam od 08 do 16 h, kat 3 stan 12', 'Dostava 03.12. ili 04.12. poslije 16', '01.12.2026. i 05.12.2026.', 'Narudžba 2026-0001, 2 kom', 'Hvala, 091 nema veze 12 komada', 'Ulaz 0 kat 2 stan 12', 'Treba mi do 20.11.2026., 2 komada'];
+$hkB = array_values(array_filter($hk, fn($x) => sj_echo_text($x) !== $x));
+$ok(!$hvV && !$hkB && sj_echo_street_city('Ilica 12, tel 091', '10000 Zagreb 2345678') === 'Ilica 12, tel 091, 10000 Zagreb [broj skriven]' && sj_echo_street_city('Trg 101. brigade 5', '10000 Zagreb, kat 12') === 'Trg 101. brigade 5, 10000 Zagreb, kat 12'
+  && sj_echo_street_city('Vukovarska 269a', '10000 Zagreb - Novi Zagreb') === 'Vukovarska 269a, 10000 Zagreb - Novi Zagreb' && sj_quote_block("prvi „red”\n\ndrugi") === 'prvi "red" / drugi',
+  'v104 (recenzija v103, sigurnost N2/N3): Revolut oznaka i razlomljen telefon skriveni u kopiji za kupca; obične napomene i adrese ostaju ' . json_encode([$hvV, $hkB], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
 $kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
   'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];

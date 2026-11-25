@@ -44,6 +44,14 @@ ok(H(env, 'confirm', { id: L.id, t: 'f'.repeat(32) })._status === 403, 'kriva ta
 /* v102: otvaranje linka samo provjerava (peek) — bez upisa narudžbe; e-mail upućuje na gumb */
 const pk = H(env, 'confirm', { id: L.id, t: L.t, peek: true });
 ok(pk.ok && pk.peek === 'waiting' && pk.items[0].name === 'Luna' && pk.total === 65 && env.rows.length === 0 && /kliknite „Potvrdi narudžbu”/.test(env.mails[0].body), 'v102: peek vraća sažetak i ne potvrđuje narudžbu');
+/* v104 (kao api/index.php): provjera linka javlja „već vaše” s kodom; stari link nakon isteka roka bez „rezervirana je za vas” */
+{ const e2 = makeEnv(); H(e2, 'order', order('gas-key-v104-1', 'iva@primjer.hr', [{ id: 'luna' }], 65)); const La = link(e2);
+  H(e2, 'order', order('gas-key-v104-2', 'iva@primjer.hr', [{ id: 'luna' }], 65)); const Lb = link(e2);
+  const ca = H(e2, 'confirm', { id: La.id, t: La.t }); const pb = H(e2, 'confirm', { id: Lb.id, t: Lb.t, peek: true }); const cb = H(e2, 'confirm', { id: Lb.id, t: Lb.t });
+  e2.tick(30 * 3600e3); const ra = H(e2, 'confirm', { id: La.id, t: La.t, peek: true });
+  ok(ca.ok && pb._status === 409 && pb.code === 'mine' && pb.mine[0] === 'luna' && cb.code === 'mine' && /^Torba „Luna” već je u vašoj ranijoj narudžbi/.test(cb.error || '')
+    && ra.ok && ra.repeated && ra.reserved === false && ra.until === null && /^Rok za uplatu ove narudžbe je prošao/.test(ra.lapsed || ''),
+    'v104: probni poslužitelj — provjera linka i klik javljaju „već vaše” s kodom; stari link nakon isteka bez rezervacije ' + JSON.stringify([pb._status, pb.code, cb.code, ra.reserved, ra.until])); }
 const c1 = H(env, 'confirm', L);
 ok(c1.ok && c1.orderNo === 'SJ-2026-0001' && c1.until && env.rows.length === 1 && env.mails.some(m => m.to === 'vlasnica@primjer.hr' && /Narudžba SJ-2026-0001/.test(m.subject)), 'potvrda: broj, rezervacija, e-mail vlasnici');
 ok(c1.items[0].id === 'luna' && c1.ship.id === 'pickup' && env.mails.some(m => m.to === 'ana@primjer.hr' && /PODACI ZA UPLATU/.test(m.body)), 'odgovor sa stavkama; kupac dobiva podatke za uplatu');
