@@ -1841,14 +1841,22 @@ function sj_mask_handles(string $s): string {
   $s = str_replace('＠', '@', $s); /* krug provjere v104: „@” pune širine */
   $s = preg_replace('~(?<![\p{L}\p{N}._@-])@[\p{L}\p{N}._-]{2,}~u', '[oznaka skrivena]', $s) ?? $s;
   /* krug provjere v104 (sigurnost B7): i „Revolut - ime”, „Revolut – ime”, „Revolut → ime”, „Revolut (ime)”, „Revolut tag: ime” */
-  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b((?:\s+tag)?)(\s*[:\-–—→(]+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}._-]{3,})(\)?)~iu', function ($m) {
-    $hit = stripos($m[1], 'revtag') === 0 || $m[2] !== '' || preg_match('~[:\-–—→(]~u', $m[3]) || $m[4] !== '' || preg_match('~[\d._]~', $m[5]);
+  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b((?:\s+tag)?)(\s*[:\-–—→(]+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}._-]{3,})(\)?)(?=(.{0,12}))~isu', function ($m) {
+    /* drugi krug provjere v104 (N4): crtica, strelica, zagrada i „tag” bez dvotočke vrijede samo za samostalnu oznaku na kraju dijela rečenice, a ne za obične riječi
+       („Revolut → banka”, „PayPal (ako može)”, „Revolut tag nemam”) */
+    $word = preg_match('~^(?:ali|ako|ili|banka|banku|instant|nemam|imam|hoće|može|sve|molim|radije|samo|isto|nije|nema|je|da|ne|na|za|i|a|kartica|karticom|račun|uplata|uplatu|aplikacija)$~iu', $m[5]);
+    $alone = preg_match('~^[)\s]*(?:$|[.,;!?]|\s+(?:ili|i|a)\b)~u', (string)($m[7] ?? ''));
+    $hit = stripos($m[1], 'revtag') === 0 || str_contains($m[3], ':') || $m[4] !== '' || preg_match('~[\d._]~', $m[5]) || (!$word && $alone && ($m[2] !== '' || preg_match('~[\-–—→(]~u', $m[3])));
     return $hit ? $m[1] . $m[2] . $m[3] . '[oznaka skrivena]' . $m[6] : $m[0];
   }, $s) ?? $s;
   /* krug provjere v104 (sigurnost 1/5): razdjelnici i . ! ( ) — – →; pozivni broj nije dio vremena ili datuma (ni iza „:”, „/”, „.” ili znamenke) */
   $sep = '[\s,;:\-/.!()—–→]+'; $pre = '(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:/]\d)';
   $s = preg_replace_callback('~(?<![\p{L}\p{N}:/.])' . $pre . '((?:' . $sep . '(?:\p{L}{1,12}|\d{1,8})){1,6})(?!\d)~u', function ($m) {
     if (!preg_match('~\p{L}~u', $m[1]) || preg_match_all('~\d~', $m[0]) < 9) return $m[0];
+    /* drugi krug provjere v104 (N4): opis zgrade nije telefon („Ulaz 05 — kod 2468 — kat 3 — stan 12”); ostatak broja mora imati skupinu od 5+ znamenki ili dvije od 3+ (ukupno 6+) */
+    $grp = array_values(array_filter(array_map('strlen', preg_split('~\D+~', $m[1])), fn($n) => $n >= 3));
+    if ((!$grp || max($grp) < 5) && preg_match('~(?<!\p{L})(?:kat|katu|stan|stanu|zgrada|zgradi|ulaz|ulazu|kod|vrata|portafon|interfon|prizemlje|br)(?!\p{L})~iu', $m[1])) return $m[0];
+    if (!$grp || (max($grp) < 5 && array_sum($grp) < 6)) return $m[0];
     /* do zadnje skupine znamenki (riječi iza nje ostaju) */
     return (string)preg_replace('~^(.*\d).*$~su', '[broj skriven]', $m[0]) . (string)preg_replace('~^.*\d~su', '', $m[0]);
   }, $s) ?? $s;

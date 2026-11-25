@@ -1480,7 +1480,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
     const g3 = await panel();
     ok(!!fq && oA.data.pending && cA.data.ok && g1 && /^Rok za uplatu je prošao/.test(g1.hello) && !g1.reserved && !g1.claim && !g1.doRoka && !g1.gone && g1.cond && !/Marcellus/.test(g1.font) && !/ do /.test(g1.sum)
-      && g2 && !g2.reserved && g2.sum === '' && !g2.uplatite && g2.javili /* krug provjere v104 (kupac N3) */ && cB.data.ok && g3 && g3.gone && !g3.payData && !g3.claim,
+      && g2 && !g2.reserved && g2.sum === '' && !g2.uplatite && g2.javili && !g2.payData /* drugi krug provjere (N1): bez iznosa i barkoda */ /* krug provjere v104 (kupac N3) */ && cB.data.ok && g3 && g3.gone && !g3.payData && !g3.claim,
       'v104 (recenzija v103): stvarni odgovor servisa — rok prošao: bez „rezervirana”, „Uplatio/la sam” i „Do roka”, uvjet uz „Nakon uplate”, običan font; nakon „Uplatio/la sam” isto; torba drugog kupca: „otišla drugom kupcu”, bez podataka za uplatu '
       + JSON.stringify([fq, cB.status, cB.data.error || '', g1 && { r: g1.reserved, c: g1.claim, d: g1.doRoka, cond: g1.cond, f: g1.font, s: g1.sum, gone: g1.gone }, g2 && { r: g2.reserved, s: g2.sum }, g3 && { gone: g3.gone, pay: g3.payData, t: g3.txt }]));
     /* remen na prvom kliku; telefon „091” */

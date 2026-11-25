@@ -349,8 +349,8 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
           const o5 = read('narudzbe.json', []); delete o5.find(x => x.no === cA.data.orderNo).claimedAt; const x5 = o5.find(x => x.no === cA.data.orderNo); x5.payUntil = new Date(Date.now() - 3600e3).toISOString(); write('narudzbe.json', o5);
           const rz5 = read('rezervacije.json', {}); free.forEach(id => { if (rz5.res && rz5.res[id]) rz5.res[id].until = new Date(Date.now() - 60e3).toISOString(); }); write('rezervacije.json', rz5);
           const early = await post('confirm', { id: LA.id, t: LA.t, peek: true });
-          ok(/Ako ste nam snimku potvrde već poslali, ne trebate ništa više\./.test(lA.data.lapsed || '') && /zakonske zatezne kamate/.test(lA.data.lapsed || '')
-            && cl.data.ok && cl.data.reserved === false && cl.data.until === null && /^Rok za uplatu ove narudžbe prošao je u /.test(cl.data.lapsed || '') && !/rezervirana je za vas/.test(cl.data.lapsed || '')
+          ok(/Ako ste nam snimku potvrde već poslali, ne trebate ništa više\./.test(lA.data.lapsed || '') && /otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate/.test(lA.data.lapsed || '') && !/, vam vraćamo/.test(lA.data.lapsed || '') /* drugi krug provjere (N2) */
+            && cl.data.ok && cl.data.reserved === false && cl.data.until === null && /^Rok za uplatu ove narudžbe prošao je u /.test(cl.data.lapsed || '') && !/vraćamo/.test(cl.data.lapsed || '') /* povrat kaže claimMsg (N3) */ && !/rezervirana je za vas/.test(cl.data.lapsed || '')
             && early.data.ok && !early.data.claimUntil && !early.data.claimLink && early.data.reserved === false,
             'v104 (recenzija v103, kupac/softver N1, dizajn N2, softver N4): tekst kao e-mail; nakon „Uplatio/la sam” bez rezervacije; čuvanje završilo prije roka za klik — bez „Uplatio/la sam” '
             + JSON.stringify([cl.data.reserved, cl.data.until, (cl.data.lapsed || '').slice(0, 80), early.data.claimUntil, !!early.data.claimLink])); }

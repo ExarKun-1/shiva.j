@@ -489,9 +489,10 @@ $ok(!$hvV && !$hkB && sj_echo_street_city('Ilica 12, tel 091', '10000 Zagreb 234
   'v104 (recenzija v103, sigurnost N2/N3): Revolut oznaka i razlomljen telefon skriveni u kopiji za kupca; obične napomene i adrese ostaju ' . json_encode([$hvV, $hkB], JSON_UNESCAPED_UNICODE));
 /* krug provjere v104 (sigurnost 1/5, B7): razdjelnici, obrnut redoslijed, varijante oznake; vremena i datumi s nulom ostaju */
 $kv = ['Pozivni 091. Broj 2345678 — javite se za promjenu računa', 'Pozivni 091 — ostatak 2345678', 'Ulica: pozivni 091 (mob) 2345678', 'broj 2345678, pozivni 091', 'BOX NOW Zabok. Zovite 091. Broj 2345678',
-  'Revolut - anak', 'Revolut – anak', 'Revolut → anak', 'Revolut (anak)', 'Revolut tag: anak', '＠anak'];
+  'Revolut - anak', 'Revolut – anak', 'Revolut → anak', 'Revolut (anak)', 'Revolut tag: anak', '＠anak', 'Pozivni 091, kat 2345678'];
 $kvV = array_values(array_filter($kv, fn($x) => !preg_match('~\[(oznaka|broj) skriven[a]?\]~u', sj_echo_text($x))));
-$kk = ['Između 08:00 i 09:00 ili 17:00-19:00.', 'Mogu 08:00, 09:00 ili 10:00', 'Datum 05/12/2026, rok 09/12/2026', 'Dolazim 01/12, 02/12 ili 03/12'];
+$kk = ['Između 08:00 i 09:00 ili 17:00-19:00.', 'Mogu 08:00, 09:00 ili 10:00', 'Datum 05/12/2026, rok 09/12/2026', 'Dolazim 01/12, 02/12 ili 03/12',
+  /* drugi krug provjere v104 (N4) */ 'PayPal (ako može)', 'Imam Revolut - hoće li biti problem', 'Revolut (instant)', 'Revolut → banka', 'Revolut tag nemam', 'PayPal - ali radije uplatnicom', 'Revolut — sve 5!', 'Ulaz 05 — kod 2468 — kat 3 — stan 12', 'Kat 01 (prizemlje) — stan 234, zgrada 5678'];
 $kkB = array_values(array_filter($kk, fn($x) => sj_echo_text($x) !== $x));
 $ok(!$kvV && !$kkB, 'krug provjere v104: telefon razlomljen točkom, crticom, zagradama i obrnutim redom te varijante Revolut oznake skriveni; vremena i datumi s nulom ostaju ' . json_encode([$kvV, $kkB], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */

@@ -296,8 +296,9 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
   $Q = fn(array $a) => implode(' i ', array_map(fn($n) => '„' . $n . '”', $a));
   /* v104 (krug provjere, kupac N1): torba koja je otišla drugom kupcu spominje se i kad se druga još čuva; ploča tada ne traži uplatu cijele narudžbe (anyGone) */
   $taken = $payDue ? $hiP['taken'] : []; $free = $gone ? array_values(array_diff($hiP['gone'], $taken)) : [];
-  $refund = ' vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.';
-  $takenTxt = $taken ? ' Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam' . $refund : ''; /* krug provjere: „za nju vam vraćamo” */
+  $refund = ' uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.';
+  $takenHead = $taken ? ' Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu' : '';
+  $takenTxt = $taken ? $takenHead . '; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam vraćamo' . $refund : ''; /* krug provjere: „za nju vam vraćamo” */
   $allGone = $gone && $taken && count($taken) === count((array)array_filter((array)($prev['order']['items'] ?? []), fn($it) => empty($it['made'])))
     && !array_filter((array)($prev['order']['items'] ?? []), fn($it) => !empty($it['made']));
   $rest = ' Ako ste i dalje zainteresirani za ostatak narudžbe, odgovorite na e-mail o narudžbi.';
@@ -307,11 +308,11 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
     $extra['lapsedHeld'] = true;
   } elseif ($payDue && $claimedBefore && ($gone || $taken)) {
     /* javio je da je platio: što slijedi kaže claimMsg (vlasnica provjerava izvod) — ovdje samo rok i što je s torbom */
-    $extra['lapsed'] = $lead . '.' . ($free ? ' ' . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi.' : '') . $takenTxt;
+    $extra['lapsed'] = $lead . '.' . ($free ? ' ' . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi.' : '') . ($taken ? $takenHead . '.' : ''); /* drugi krug provjere v104 (N3): povrat kaže claimMsg — ovdje ne ponavljamo */
   } elseif ($gone) {
     $extra['lapsed'] = $lead . ', a uplatu još ne vidimo' . ($free ? ', pa ' . (count($free) > 1 ? 'su torbe ' . $Q($free) : 'je torba ' . $Q($free)) . ' ponovno u ponudi' : '') . '.' . $takenTxt
       . ' Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se'
-      . (($free && !$taken) ? '; ako je ' . (count($free) > 1 ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu,' . ' vam' . $refund : '.') /* povrat se spominje jednom */
+      . (($free && !$taken) ? '; ako je ' . (count($free) > 1 ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam' . $refund : '.') /* povrat se spominje jednom; drugi krug provjere v104 (N2): „vraćamo vam” */
       . ($allGone ? '' : ($taken ? $rest : ' Ako ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati' . ($free ? '; ako ' . (count($free) > 1 ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . (count($free) > 1 ? 'one su vaše' : 'ona je vaša') . '.' : '.')));
   }
   if ($allGone) $extra['allGone'] = true;

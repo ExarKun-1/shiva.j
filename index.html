@@ -2712,7 +2712,7 @@ function renderCart(){
   if(empty.classList.contains("pay-mode")){ empty.classList.remove("pay-mode"); empty.innerHTML = emptyHtml(); emptyGoFix(); }
   document.getElementById("drawerTitle").textContent = "Vaša košarica";
   /* v99 (recenzija vijeća v98, kupac N2): podaci za uplatu zadnje narudžbe dostupni i kad je nešto u košarici (npr. artikl izvan narudžbe) */
-  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line")) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">Podaci za uplatu narudžbe ${escHtml(lv.srv.orderNo)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
+  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line")) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">${lastBtnLabel(lv)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
   const uniques = cart.filter(p => !p.made).map(p => p.name);
   const hold = document.getElementById("orderHold");
   /* v69 (vijeće na v68, D68-1): rok za uplatu vidi se prije klika za svaku narudžbu, i bez unikata */
@@ -3340,7 +3340,9 @@ function prevValid(){
   const lp = storeGet("lastPrev");
   return Array.isArray(lp) ? lp.filter(l => l && l.open && !l.cancelled && !l.withdrawn && !l.paid && l.srv && l.srv.orderNo && Date.now() < lastUntilOf(l)) : [];
 }
-const prevButtons = () => prevValid().map(l => `<button type="button" class="last-order" data-prev="${escHtml(l.srv.orderNo)}">Podaci za uplatu narudžbe ${escHtml(l.srv.orderNo)}</button>`).join("<br>");
+/* drugi krug provjere v104 (N5): kad je dio narudžbe otišao ili je kupac javio uplatu nakon isteka, ploča nema podataka za uplatu — gumb to ne obećava */
+const lastBtnLabel = l => ((l.srv && (l.srv.anyGone || l.srv.allGone)) || (l.srv && l.srv.lapsed && l.claimed) ? "Narudžba " : "Podaci za uplatu narudžbe ") + escHtml(l.srv.orderNo);
+const prevButtons = () => prevValid().map(l => `<button type="button" class="last-order" data-prev="${escHtml(l.srv.orderNo)}">${lastBtnLabel(l)}</button>`).join("<br>");
 /* v100: klik „Uplatio/la sam” uspio — ploča zna produljeni rok i više ne nudi klik */
 function markClaimed(no, data){
   /* recenzija v100: „withdrawn” i „paid” nisu klik — ploča tada više ne nudi uplatu */
@@ -3364,7 +3366,7 @@ function emptyHtmlCore(){
   if(last && last.cancelled && last.srv && last.srv.orderNo && Date.now() < lastUntil)
     return `<div class="order-error order-info" role="status">Narudžba ${escHtml(last.srv.orderNo)} je stornirana; ne uplaćujte je.</div>` + EMPTY_MSG + (prevB ? "<br>" + prevB : "");
   if(last && last.at && !last.paid && Date.now() < lastUntil && last.srv && last.srv.orderNo)
-    return EMPTY_MSG + `<br><button type="button" class="last-order" id="showLast">Podaci za uplatu narudžbe ${escHtml(last.srv.orderNo)}</button>` + (prevB ? "<br>" + prevB : "");
+    return EMPTY_MSG + `<br><button type="button" class="last-order" id="showLast">${lastBtnLabel(last)}</button>` + (prevB ? "<br>" + prevB : "");
   return EMPTY_MSG + (prevB ? "<br>" + prevB : "");
 }
 const andList = a => a.length > 1 ? a.slice(0, -1).join(", ") + " i " + a[a.length - 1] : a.join(""); /* v104: popis „A”, „B” i „C” */
@@ -4025,7 +4027,7 @@ function paymentPanel(last){
   /* v103 (recenzija kupca, mobitel 2): rok je prošao — bez „Hvala vam!”, obećanja e-maila „za nekoliko minuta” i roka koji je prošao */
   /* krug provjere v104: kad je nešto otišlo drugom kupcu, ploča ne upućuje na podatke za uplatu */
   const noPay = !!(srv.allGone || srv.anyGone), claimedLapsed = !!(srv.lapsed && last.claimed);
-  const mailSent = noPay ? `Pitanja o narudžbi: odgovorite na <span class="nw">e-mail</span> o narudžbi ili pišite na ${escHtml(OWNER_EMAIL)}.`
+  const mailSent = noPay || claimedLapsed ? `Pitanja o narudžbi: odgovorite na <span class="nw">e-mail</span> o narudžbi ili pišite na ${escHtml(OWNER_EMAIL)}.`
     : srv.lapsed ? `Podatke za uplatu imate i u <span class="nw">e-mailu</span> s potvrdom narudžbe.`
     : srv.mailCustomer === false
     ? `Potvrdu narudžbe <span class="nw">e-mailom</span> nismo uspjeli poslati automatski; javit ćemo vam se sami <span class="nw">e-mailom</span>. Ovi podaci ostaju vam dostupni u košarici na ovom uređaju do isteka roka za uplatu.`
@@ -4035,7 +4037,7 @@ function paymentPanel(last){
       <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">${srv.lapsed ? "Rok za uplatu je prošao" : "Hvala vam!"}${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p>${paneLeftover.length ? `<p class="pay-left"><small>${paneLeftover.length > 1 ? "Artikli" : "Artikl"} ${escHtml(paneLeftover.map(n => "„" + n + "”").join(" i "))} ${paneLeftover.length > 1 ? "nisu u ovoj narudžbi — ostali su" : "nije u ovoj narudžbi — ostao je"} u košarici; ${paneOtherPending ? `${paneLeftover.length > 1 ? "čekaju" : "čeka"} potvrdu vaše novije narudžbe (link iz najnovijeg <span class="nw">e-maila</span>)` : `naručite ${paneLeftover.length > 1 ? "ih" : "ga"} zasebno kad zatvorite ove podatke`}.</small></p>` : ""}</div>
       ${last.wdU ? `<div class="order-error order-info pay-wdu" role="status">Za ovu narudžbu zaprimili smo izjavu o raskidu ugovora poslanu bez poveznice iz <span class="nw">e-maila</span>. Ako ste je poslali vi, narudžbu ne trebate platiti. Ako je niste poslali vi, javite nam se na ${escHtml(OWNER_EMAIL)}; podaci za uplatu su niže.</div>` : "" /* v101 (recenzija vijeća v100, kupac 2): zaseban okvir iznad iznosa, ne usred koraka „Do roka” */}
       ${!noPay && !claimedLapsed && (payIso || so) ? `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso && !srv.lapsed && !(Date.parse(payIso) < Date.now()) ? " do " + fmtDeadline(payIso) : "" /* v104: nikad rok u prošlosti */}.</p>` : ""}
-      ${noPay ? "" /* v104 (recenzija v103, softver N2; krug provjere N1): nešto je otišlo drugom kupcu — bez podataka za uplatu i barkoda */ : `<h3 class="pay-title">Podaci za uplatu</h3>
+      ${noPay || claimedLapsed ? "" /* v104 (recenzija v103, softver N2; krug provjere N1): nešto je otišlo drugom kupcu ili je kupac javio uplatu nakon isteka — bez podataka za uplatu i barkoda */ : `<h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
       ${payOk ? `<dl class="pay-data">
