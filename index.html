@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v104 (2026-11-25)
+     SHIVA.J WEBSHOP — v105 (2026-11-25)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -120,6 +120,9 @@
      v104 — recenzija v103: ploča nakon isteka roka (i nakon „Uplatio/la sam”; torba otišla drugom kupcu; koraci „Što slijedi”;
            tekst kao e-mail, običan font); adresa i paketomat u navodnicima; e-adresa nakon osvježavanja; remen na prvom kliku;
            „…, … i …”; telefon „091”; poruka uz polje u obrascu za raskid; poruka o skrivenom polju; Uvjeti t. 2 (Ostalo do 10 kom.)
+     v105 — stranica i za Safari 14 (iOS 14): top/right/bottom/left umjesto inset; omjer fotografija bez aspect-ratio (@supports not);
+           razred umjesto :has; razmaci u flex-recima za Safari 14.0 (flexGapFallback, ?noflexgap=1 za provjeru); tests/devices.js
+           (Android 12–15, više zaslona, veći tekst, zamjene za Safari 14)
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -516,7 +519,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v104"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v105"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -655,7 +658,7 @@
   .photo{cursor:zoom-in}
   .card.sold .photo{cursor:default}
   .lightbox{
-    position:fixed;inset:0;z-index:150;
+    position:fixed;top:0;right:0;bottom:0;left:0;z-index:150;
     background:rgba(27,26,23,.55);
     display:none;align-items:center;justify-content:center;padding:20px;
   }
@@ -820,7 +823,7 @@
   .hero.has-bag{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding-top:64px}
   .hero-bag{margin:0;justify-self:center;width:min(100%,460px);text-align:center}
   .hero-bag .ring{position:relative;display:block;aspect-ratio:1/1;border-radius:50%;padding:0;border:none;background:none;width:100%;cursor:zoom-in}
-  .hero-bag .ring::before{content:"";position:absolute;inset:-14px;border-radius:50%;border:1.5px dashed var(--thread);opacity:.7}
+  .hero-bag .ring::before{content:"";position:absolute;top:-14px;right:-14px;bottom:-14px;left:-14px;border-radius:50%;border:1.5px dashed var(--thread);opacity:.7}
   .hero-bag img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;background:var(--thread-light)}
   .hero-bag figcaption{margin-top:26px;display:flex;justify-content:center;gap:14px;align-items:baseline;flex-wrap:wrap}
   /* v83 (vijeće, CLS): mjesto za torbu na naslovnici rezervirano je od početka, pa se stranica ne pomiče kad stigne torbe.json */
@@ -859,7 +862,7 @@
   .card .photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease,opacity .35s ease}
   .card:hover .photo img{transform:scale(1.025)}
   /* druga fotografija (detalj, na osobi) na prijelaz mišem */
-  .card .photo img.alt{position:absolute;inset:0;opacity:0}
+  .card .photo img.alt{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0}
   @media (hover:hover){ .card:hover .photo img.alt{opacity:1} }
   .photo .count{position:absolute;right:10px;bottom:10px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;background:rgba(246,246,243,.92);color:var(--ink);padding:3px 8px;border-radius:var(--radius)}
   .grid-sub{grid-column:1/-1;margin:20px 0 -8px;padding-top:22px;border-top:1.5px dashed var(--thread)}
@@ -876,14 +879,14 @@
   .lb-photo .ph{position:relative;width:100%;height:100%;min-height:240px} /* v102 (dizajn 9): slovo i „Fotografija uskoro” jedno ispod drugog i u povećanom prikazu */
   .photo .ph,.lb-photo .ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--thread)}
   .photo .ph{
-    position:absolute;inset:0;
+    position:absolute;top:0;right:0;bottom:0;left:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
     color:var(--thread);
   }
   .ph .ph-mark{font-family:'Marcellus',serif;font-size:2.2rem;letter-spacing:.1em;opacity:.8}
   .ph .ph-note{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--thread)}
   .ph::before{
-    content:"";position:absolute;inset:14px;
+    content:"";position:absolute;top:14px;right:14px;bottom:14px;left:14px;
     border:1.5px dashed var(--thread);opacity:.35;border-radius:var(--radius);
   }
   .card.sold .photo{filter:grayscale(1);opacity:.55}
@@ -997,7 +1000,7 @@
 
   /* ---------- Košarica (drawer) ---------- */
   .overlay{
-    position:fixed;inset:0;background:rgba(27,26,23,.35);
+    position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(27,26,23,.35);
     opacity:0;pointer-events:none;transition:opacity .25s;z-index:90;
   }
   .drawer{
@@ -1273,8 +1276,8 @@
   @media (min-width:681px) and (max-height:500px){ .lb-info{padding-bottom:0} .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper),0 28px 0 0 var(--paper)} /* v100 (mobitel 1): bez pojasa ispod gumba */ .lb-info .add-btn:not(.in-cart):not(:hover){background:var(--paper)} .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
   summary h3 .n{font-family:'Space Mono',monospace;font-size:.82em;letter-spacing:0;margin-right:.15em} /* v94: brojka 1 u Marcellusu izgleda kao I */
   /* v95 (recenzija vijeća v94, dizajn 4): brojke u stupcu iste širine — naslovi „10.” i „11.” u ravnini, preloženi redak pod naslovom */
-  summary h3:has(> .n){display:grid;grid-template-columns:3.4ch minmax(0,1fr);align-items:baseline}
-  summary h3:has(> .n) .n{margin-right:0}
+  summary h3.with-n{display:grid;grid-template-columns:3.4ch minmax(0,1fr);align-items:baseline} /* v105: razred umjesto :has (Safari 14 ne zna :has) */
+  summary h3.with-n .n{margin-right:0}
   /* v92 (recenzija): poveznica za preskok (tipkovnica), vidljiva samo u fokusu */
   .skip{position:absolute;left:12px;top:-60px;z-index:300;background:var(--ink);color:var(--paper);padding:12px 16px;border-radius:var(--radius);text-decoration:none}
   .skip:focus{top:12px}
@@ -1325,6 +1328,14 @@
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition:none!important;animation:none!important}
     html{scroll-behavior:auto}
+  }
+  /* v105 (iOS 14, Safari 14): aspect-ratio dolazi tek u Safariju 15 — omjer 4:5 i krug na naslovnici zadaje se visinom (padding) */
+  @supports not (aspect-ratio:1/1){
+    .card .photo{height:0;padding-top:125%}
+    .card .photo > img{position:absolute;top:0;left:0}
+    .hero-bag .ring{height:0;padding-top:100%}
+    .hero-bag .ring img{position:absolute;top:0;left:0}
+    @media (max-width:680px){ .lb-photo{height:calc((100vw - 40px) * 1.25)} } /* širina prikaza na mobitelu je zaslon − 2 × 20 px */
   }
 </style>
 </head>
@@ -4294,6 +4305,35 @@ addEventListener("storage", e => { if(e.key !== STORE_KEY + ".last" && e.key !==
     /* krug 2 (softver N1): samo NOVA potvrda (noviji „at”) s artiklima iz ovog okvira — promjena stanja neke druge narudžbe ne dira gumb */
     if(nl && Number(nl.at || 0) > prevAt && confirmAskNames.length && confirmAskNames.every(n => (nl.items || []).some(i => i.name === n)) && document.getElementById("confirmBtn")){ const bx = document.getElementById("claimBox"); if(bx) bx.remove(); document.getElementById("emptyCart").classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask"); { const cb = document.getElementById("confirmBack"); if(cb) cb.remove(); } if(/[?&]potvrda=/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); }
     skipCartSave = true; try { lastStateChanged(); } finally { skipCartSave = false; } }, 60); });
+/* v105: naslovi s brojem u Uvjetima (umjesto CSS :has, koji Safari 14 ne zna) */
+document.querySelectorAll("summary h3 > .n").forEach(n => n.parentNode.classList.add("with-n"));
+/* v105 (iOS 14.0–14.4, Safari 14.0): flexbox ne zna „gap” (tek Safari 14.1) — razmake postavljaju margine djece. Ostali preglednici to preskaču.
+   ?noflexgap=1 uključuje zamjenu i u novom pregledniku (provjera izgleda u testovima). */
+(function flexGapFallback(){
+  let need = /[?&]noflexgap=1/.test(location.search);
+  if(!need){ try { const t = document.createElement("div"); t.style.cssText = "display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden";
+    t.appendChild(document.createElement("div")); t.appendChild(document.createElement("div")); document.body.appendChild(t); need = t.scrollHeight !== 1; t.remove(); } catch(e){ need = false; } }
+  if(!need) return;
+  document.documentElement.classList.add("no-flexgap");
+  const px = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+  const apply = () => { document.querySelectorAll("body *").forEach(el => { const cs = getComputedStyle(el); if(!/flex/.test(cs.display)) return;
+    /* razmak se pamti, a gap na elementu poništi (Safari 14.0 ga za flex ionako ne primjenjuje; u novom pregledniku inače bi se zbrojio s marginama) */
+    if(el.dataset.rg === undefined){ el.dataset.rg = px(cs.rowGap); el.dataset.cg = px(cs.columnGap); if(+el.dataset.rg || +el.dataset.cg){ el.style.rowGap = "0px"; el.style.columnGap = "0px"; } }
+    const rg = +el.dataset.rg, cg = +el.dataset.cg; if(!rg && !cg) return;
+    const col = /column/.test(cs.flexDirection), wrap = cs.flexWrap !== "nowrap";
+    /* spremnik s obrubom ili pozadinom ne dobiva negativne margine (rub bi izašao iz poravnanja) — djeca dobivaju razmak samo desno i dolje */
+    const boxed = px(cs.borderLeftWidth) > 0 || px(cs.borderTopWidth) > 0 || (cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent");
+    if(wrap && boxed){ [...el.children].forEach(c => { if(c.dataset.fgc) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return; c.dataset.fgc = "1"; c.style.marginRight = (px(ccs.marginRight) + cg) + "px"; c.style.marginBottom = (px(ccs.marginBottom) + rg) + "px"; }); return; }
+    if(wrap && !el.dataset.fg){ el.dataset.fg = "1"; el.style.marginTop = (px(cs.marginTop) - rg / 2) + "px"; el.style.marginBottom = (px(cs.marginBottom) - rg / 2) + "px"; el.style.marginLeft = (px(cs.marginLeft) - cg / 2) + "px"; el.style.marginRight = (px(cs.marginRight) - cg / 2) + "px"; }
+    let first = true;
+    [...el.childNodes].forEach(c => { if(c.nodeType === 3){ if(c.textContent.trim()) first = false; return; } if(c.nodeType !== 1) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return;
+      if(c.dataset.fgc){ first = false; return; } c.dataset.fgc = "1";
+      if(wrap){ c.style.marginTop = (px(ccs.marginTop) + rg / 2) + "px"; c.style.marginBottom = (px(ccs.marginBottom) + rg / 2) + "px"; c.style.marginLeft = (px(ccs.marginLeft) + cg / 2) + "px"; c.style.marginRight = (px(ccs.marginRight) + cg / 2) + "px"; }
+      else if(!first){ if(col) c.style.marginTop = (px(ccs.marginTop) + rg) + "px"; else if(ccs.marginLeft !== "auto") c.style.marginLeft = (px(ccs.marginLeft) + cg) + "px"; }
+      first = false; }); }); };
+  apply();
+  let tm = 0; new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(apply, 80); }).observe(document.body, { childList: true, subtree: true });
+})();
 /* v100: skripta se pokrenula do kraja — obavijest za prestare preglednike (.old-browser) se ne prikazuje */
 document.documentElement.classList.add("js-ok");
 </script>

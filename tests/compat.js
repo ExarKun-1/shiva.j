@@ -1,4 +1,5 @@
 /* v100: podrška starijim preglednicima — bez poslužitelja:  node tests/compat.js
+   v105 (odluka korisnika): cilj je Safari na iOS-u 14.0 i noviji — vidi odjeljak 5 (CSS i JS koje Safari 14.0 ne zna).
    Cilj (upute, odjeljak o pregledniku): Safari na iOS-u 15.0 i noviji (svi iPhonei od 6s/SE, 2015.), Chrome 119 i noviji
    (zadnji za Android 7), Samsung Internet, noviji preglednici na računalu. Pogreška u sintaksi zaustavlja CIJELU skriptu
    stranice (jedan <script>), pa se ovdje zabranjuje sve što iOS 15.0 ili Chrome 119 ne razumiju (podaci: MDN/caniuse):
@@ -115,6 +116,21 @@ ok(tdBad.length === 0, 'CSS: text-decoration samo s jednom vrijednošću (stil i
 const badColor = [];
 decls.forEach(body => { const parts = body.split(';').map(x => x.trim()).filter(Boolean); parts.forEach((d, k) => { if (!/\b(oklch|oklab|lch|lab|color-mix)\(/.test(d)) return; const prop = d.split(':')[0].trim(); const prev = parts.slice(0, k).reverse().find(x => x.split(':')[0].trim() === prop); if (!prev || /\b(oklch|oklab|lch|lab|color-mix)\(/.test(prev)) badColor.push(d.slice(0, 60)); }); });
 ok(badColor.length === 0, 'CSS: oklch/lab/color-mix samo uz prethodnu rezervnu vrijednost ' + JSON.stringify(badColor.slice(0, 4)));
+
+/* 5) v105: Safari 14.0 (iOS 14.0–14.4) — CSS i JS koje ne zna (MDN/caniuse: inset 14.1, flex gap 14.1, aspect-ratio 15, :has 15.4,
+   backdrop-filter samo s prefiksom, Intl.ListFormat/Segmenter i WeakRef 14.1). Admin smije :has kao ukras (vlasničin uređaj), stranica ne smije. */
+const siteCss = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+const siteDecls = [...siteCss.matchAll(/\{([^{}]*)\}/g)].map(m => m[1]);
+ok(!/(?:^|[;{\s])inset\s*:/.test(siteCss), 'Safari 14.0: bez svojstva inset (top/right/bottom/left)');
+ok(!/:has\(/.test(siteCss), 'Safari 14.0: stranica bez :has (razred iz skripte)');
+const arDecl = siteDecls.filter(b => /(?:^|;)\s*aspect-ratio\s*:\s*\d/.test(b)).length;
+ok(arDecl === 0 || /@supports\s+not\s*\(\s*aspect-ratio\s*:\s*1\s*\/\s*1\s*\)/.test(siteCss), 'Safari 14.0: aspect-ratio uz zamjenu @supports not (aspect-ratio) (' + arDecl + ')');
+const bdBad = siteDecls.filter(b => /(?:^|;)\s*backdrop-filter\s*:/.test(b) && !/-webkit-backdrop-filter\s*:/.test(b)).length;
+ok(bdBad === 0, 'Safari 14.0: backdrop-filter uz -webkit-backdrop-filter (' + bdBad + ')');
+const flexGap = siteDecls.filter(b => /display\s*:\s*(?:inline-)?flex/.test(b) && /(?:^|;)\s*(?:row-|column-)?gap\s*:/.test(b)).length;
+ok(flexGap === 0 || /function flexGapFallback\(/.test(scripts[0] || ''), 'Safari 14.0: flexbox s gap uz zamjenu flexGapFallback (' + flexGap + ' pravila)');
+const js14 = ['Intl.ListFormat', 'Intl.Segmenter', 'WeakRef', 'FinalizationRegistry', '.replaceChildren('].filter(t => allJs.includes(t));
+ok(js14.length === 0, 'Safari 14.0: JS bez Intl.ListFormat, Intl.Segmenter, WeakRef ' + JSON.stringify(js14));
 
 /* 4) obavijest za prestare preglednike: skrivena dok druga skripta ne postavi html.js-fail; bez animacije i tajmera (v101) */
 const obRule = (cssNc.match(/\.old-browser\{[^}]*\}/) || [''])[0];
