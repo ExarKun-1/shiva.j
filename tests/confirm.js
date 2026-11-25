@@ -67,6 +67,16 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     /* v99 (recenzija vijeća v98, N5): iz iste mreže /24 najviše 5 e-mailova za potvrdu na sat i ispod meke granice */
     const net6 = await post('order', order('potvrda-lazna-5-xx', 'lazni5@primjer.hr', [{ id: 'vela' }], 70));
     ok(net6.status === 503, 'v99: šesti e-mail za potvrdu iz iste mreže /24 u satu → 503 (' + net6.status + ')');
+    /* v104 (recenzija v103, kupac/softver): pravi razlog u poruci, vlasnici bez „previše narudžbi”; ponovno slanje istog kupca (isti ključ) ne troši granicu */
+    { const mb = mailLog().length; const net6b = await post('order', order('potvrda-lazna-6-xx', 'lazni6@primjer.hr', [{ id: 'vela' }], 70));
+      const again = await post('order', order('potvrda-lazna-4-xx', 'lazni4@primjer.hr', [{ id: 'vela' }], 70));
+      const nm = mailLog().slice(mb);
+      ok(net6b.status === 503 && net6b.data.code === 'net_limit' && /^S ove internetske mreže u zadnjih je sat vremena poslano više narudžbi/.test(net6b.data.error || '') && !/PAŽNJA: previše narudžbi/.test(nm)
+        && again.status === 200 && again.data.pending && /To: lazni4@primjer\.hr/.test(nm),
+        'v104 (recenzija v103): granica po mreži — poruka s pravim razlogom, vlasnici ništa; „Pošalji e-mail ponovno” istog kupca prolazi ' + JSON.stringify([net6b.status, net6b.data.code, again.status, again.data.replaced])); }
+      /* krug provjere v104 (kupac N4, sigurnost 2): isti ključ s DRUGOM e-adresom nije ponovno slanje — troši granicu */
+      { const byp = await post('order', order('potvrda-lazna-4-xx', 'napad7@primjer.hr', [{ id: 'vela' }], 70));
+        ok(byp.status === 503 && byp.data.code === 'net_limit', 'krug provjere v104: isti ključ narudžbe s drugom e-adresom troši granicu po mreži ' + JSON.stringify([byp.status, byp.data.code])); }
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     const real = await post('order', order('potvrda-key-0004', 'pravi@primjer.hr', [{ id: 'vela' }], 70));
     const Lr = lastLink(); const cr = await post('confirm', { id: Lr.id, t: Lr.t });
@@ -327,8 +337,23 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
         const rzL = read('rezervacije.json', {}); free.forEach(id => { if (rzL.res && rzL.res[id]) rzL.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rzL);
         try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
         const lA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
-        ok(lA.data.ok && lA.data.repeated && lA.data.reserved === false && lA.data.until === null && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo, pa su torbe ponovno u ponudi\./.test(lA.data.lapsed || '') && !lA.data.claimUntil && !lA.data.claimLink /* recenzija kupca v103 (računalo 2): bez „Uplatio/la sam” i obećanja produljenja */,
+        ok(lA.data.ok && lA.data.repeated && lA.data.reserved === false && lA.data.until === null && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo, pa su torbe „[^”]+” i „[^”]+” ponovno u ponudi\./.test(lA.data.lapsed || '') && !lA.data.claimUntil && !lA.data.claimLink /* recenzija kupca v103 (računalo 2): bez „Uplatio/la sam” i obećanja produljenja */,
           'v103 (recenzija v102, kupac N4): stari link nakon isteka roka i rezervacije — tekst „rok za uplatu je prošao”, bez rezervacije i roka u prošlosti ' + JSON.stringify([lA.status, lA.data.reserved, lA.data.until, (lA.data.lapsed || '').slice(0, 90)])); }
+        /* v104 (recenzija v103): tekst kao e-mail; nakon „Uplatio/la sam” bez rezervacije i roka u prošlosti; čuvanje završilo prije roka za klik → bez „Uplatio/la sam” */
+        { const o3 = read('narudzbe.json', []); o3.find(x => x.no === cA.data.orderNo).payUntil = new Date(Date.now() - 80 * 3600e3).toISOString(); write('narudzbe.json', o3);
+          const rz3 = read('rezervacije.json', {}); free.forEach(id => { if (rz3.res && rz3.res[id]) rz3.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rz3);
+          try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+          const lA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+          const o4 = read('narudzbe.json', []); const x4 = o4.find(x => x.no === cA.data.orderNo); x4.claimedAt = new Date(Date.now() - 90 * 3600e3).toISOString(); write('narudzbe.json', o4);
+          const cl = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+          const o5 = read('narudzbe.json', []); delete o5.find(x => x.no === cA.data.orderNo).claimedAt; const x5 = o5.find(x => x.no === cA.data.orderNo); x5.payUntil = new Date(Date.now() - 3600e3).toISOString(); write('narudzbe.json', o5);
+          const rz5 = read('rezervacije.json', {}); free.forEach(id => { if (rz5.res && rz5.res[id]) rz5.res[id].until = new Date(Date.now() - 60e3).toISOString(); }); write('rezervacije.json', rz5);
+          const early = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+          ok(/Ako ste nam snimku potvrde već poslali, ne trebate ništa više\./.test(lA.data.lapsed || '') && /otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate/.test(lA.data.lapsed || '') && !/, vam vraćamo/.test(lA.data.lapsed || '') /* drugi krug provjere (N2) */
+            && cl.data.ok && cl.data.reserved === false && cl.data.until === null && /^Rok za uplatu ove narudžbe prošao je u /.test(cl.data.lapsed || '') && !/vraćamo/.test(cl.data.lapsed || '') /* povrat kaže claimMsg (N3) */ && !/rezervirana je za vas/.test(cl.data.lapsed || '')
+            && early.data.ok && !early.data.claimUntil && !early.data.claimLink && early.data.reserved === false,
+            'v104 (recenzija v103, kupac/softver N1, dizajn N2, softver N4): tekst kao e-mail; nakon „Uplatio/la sam” bez rezervacije; čuvanje završilo prije roka za klik — bez „Uplatio/la sam” '
+            + JSON.stringify([cl.data.reserved, cl.data.until, (cl.data.lapsed || '').slice(0, 80), early.data.claimUntil, !!early.data.claimLink])); }
         /* recenzija kupca v103 (računalo 3): rok je prošao, torba se još čuva — tekst kaže do kada, a „Uplatio/la sam” ostaje */
         const rzH = read('rezervacije.json', {}); free.forEach(id => { if (rzH.res && rzH.res[id]) rzH.res[id].until = new Date(Date.now() + 20 * 3600e3).toISOString(); }); write('rezervacije.json', rzH);
         const ordH = read('narudzbe.json', []); const oH = ordH.find(x => x.no === cA.data.orderNo); oH.payUntil = new Date(Date.now() - 26 * 3600e3).toISOString(); write('narudzbe.json', ordH);
@@ -336,6 +361,30 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
         const hA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
         ok(hA.data.ok && hA.data.repeated && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo\. Torbe .* i dalje čuvamo za vas do /.test(hA.data.lapsed || '') && /^\?uplata=/.test(hA.data.claimLink || ''),
           'recenzija kupca v103 (računalo 3): rok prošao, torba se još čuva — ploča kaže do kada, bez roka u prošlosti; „Uplatio/la sam” ostaje ' + JSON.stringify([hA.status, (hA.data.lapsed || '').slice(0, 140), !!hA.data.claimLink]));
+        /* v104 (recenzija v103, softver N2): torbe je u međuvremenu naručio drugi kupac — „otišle drugom kupcu”, bez poziva na uplatu i bez podataka za uplatu (allGone) */
+        { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+          const rzD = read('rezervacije.json', {}); free.forEach(id => { if (rzD.res && rzD.res[id]) rzD.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rzD);
+          { const oD = read('narudzbe.json', []); oD.find(x => x.no === cA.data.orderNo).payUntil = new Date(Date.now() - 80 * 3600e3).toISOString(); write('narudzbe.json', oD); }
+          await post('order', order('potvrda-v104-drugi-1', 'v104drugi@primjer.hr', free.map(id => ({ id })), tot, 'serija-v104-drugi-cccc')); const LD = lastLink();
+          const cD = await post('confirm', { id: LD.id, t: LD.t });
+          const tk = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+          ok(cD.data.ok && tk.data.ok && /u međuvremenu su otišle drugom kupcu/.test(tk.data.lapsed || '') && !/ponovno u ponudi/.test(tk.data.lapsed || '') && !/uplatite iznos/.test(tk.data.lapsed || '') && tk.data.allGone === true,
+            'v104 (recenzija v103, softver N2): torbe otišle drugom kupcu — ploča to kaže, bez „ponovno u ponudi” i poziva na uplatu ' + JSON.stringify([cD.status, (tk.data.lapsed || '').slice(0, 160), tk.data.allGone])); }
+        /* krug provjere v104 (kupac N1): otišao samo dio narudžbe — ploča ne traži uplatu cijele narudžbe (anyGone), povrat se spominje jednom */
+        { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+          const plP = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rzP = read('rezervacije.json', {});
+          const fr2 = ['zora', 'mira', 'nera', 'tara', 'luna', 'vela'].filter(id => { const q = plP.find(x => x.id === id); return q && !q.sold && !q.reserved && !((rzP.sold || {})[id]); }).slice(0, 2);
+          { const rr = read('rezervacije.json', {}); if (rr.res && !Array.isArray(rr.res)) fr2.forEach(id => delete rr.res[id]); write('rezervacije.json', rr); } /* starije narudžbe ovog testa ne drže ove torbe */
+          const tt = fr2.reduce((z, id) => z + plP.find(x => x.id === id).price, 0);
+          await post('order', order('potvrda-v104-dio-1', 'v104dio@primjer.hr', fr2.map(id => ({ id })), tt, 'serija-v104-dio-dddd')); const LP = lastLink(); const cP = await post('confirm', { id: LP.id, t: LP.t });
+          { const o = read('narudzbe.json', []); o.find(x => x.no === cP.data.orderNo).payUntil = new Date(Date.now() - 80 * 3600e3).toISOString(); write('narudzbe.json', o); }
+          const r = read('rezervacije.json', {}); r.res[fr2[0]].until = new Date(Date.now() - 30 * 3600e3).toISOString();
+          r.res[fr2[1]] = Object.assign({}, r.res[fr2[1]], { token: 'drugikupac' + 'e'.repeat(22), email: 'drugi@primjer.hr', ordered: true, until: new Date(Date.now() + 40 * 3600e3).toISOString() }); write('rezervacije.json', r);
+          const pP = await post('confirm', { id: LP.id, t: LP.t, peek: true });
+          const L = pP.data.lapsed || '';
+          ok(fr2.length === 2 && cP.data.ok && pP.data.anyGone === true && !pP.data.allGone && /u međuvremenu je otišla drugom kupcu; ako ste je već platili, za nju vam vraćamo/.test(L) && (L.match(/zakonske zatezne kamate/g) || []).length === 1
+            && /Ako ste i dalje zainteresirani za ostatak narudžbe, odgovorite na e-mail o narudžbi\./.test(L) && !/uplatite iznos/.test(L),
+            'krug provjere v104 (kupac N1): otišao dio narudžbe — anyGone, bez poziva na uplatu cijele narudžbe, povrat jednom ' + JSON.stringify([fr2, pP.data.anyGone, L.slice(0, 220)])); }
       try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));

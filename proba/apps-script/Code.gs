@@ -134,12 +134,26 @@ function sjItemsText(P) {
 }
 function sjShipText(P) { return P.ship.label + ' — ' + (P.ship.price > 0 ? sjEur(P.ship.price) : 'besplatno') + (P.ship.locker ? ' — paketomat: ' + P.ship.locker : ''); }
 function sjView(o) { var d = o.data || {}; return { items: d.items || [], ship: d.ship || null }; }
-function sjRepeat(o) {
+function sjRepeat(o, env) {
   var d = o.data || {};
   var res = { ok: true, orderNo: o.no, reference: sjRef(o.no), total: d.total, until: (d.held || []).length ? o.until : null, reserved: !(d.unheld || []).length, unheld: !!(d.unheld || []).length,
     unheldIds: d.unheld || [], mailOwner: true, mailCustomer: true, repeated: true };
+  /* v104 (kao api/index.php, recenzija v103 softver N3): rok za uplatu (čuvanje torbe) je prošao — bez „rezervirana je za vas” i roka u prošlosti.
+     Probni poslužitelj nema „Uplatio/la sam” ni raskid preko poveznice, pa ni claimLink/raskidLink/linkPt. */
+  if (env && !o.paid && o.until && Date.parse(o.until) <= env.now()) {
+    var n = (d.held || []).length;
+    res.until = null; res.reserved = false;
+    res.lapsed = 'Rok za uplatu ove narudžbe je prošao, a uplatu još ne vidimo' + (n ? ', pa ' + (n > 1 ? 'su torbe' : 'je torba') + ' ponovno u ponudi' : '') + '. Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Ako ste nam snimku potvrde već poslali, ne trebate ništa više.';
+  }
   var v = sjView(o); res.items = v.items; res.ship = v.ship;
   return sjOut(200, res);
+}
+/* v104 (kao api/index.php sj_mine_out): torba je već u ranijoj narudžbi iste e-adrese — kod „mine” i popis, da je stranica makne iz košarice */
+function sjMineOut(mine, items) {
+  var nm = {}; items.forEach(function (it) { nm[it.id] = it.name; });
+  var names = mine.map(function (id) { return '„' + (nm[id] || id) + '”'; }), many = names.length > 1;
+  var list = many ? names.slice(0, -1).join(', ') + ' i ' + names[names.length - 1] : names[0];
+  return sjOut(409, { ok: false, code: 'mine', mine: mine, error: (many ? 'Torbe ' + list + ' već su u vašoj ranijoj narudžbi' : 'Torba ' + list + ' već je u vašoj ranijoj narudžbi') + '; podatke za uplatu poslali smo vam e-mailom. Ako želite nešto promijeniti, odgovorite na taj e-mail.' });
 }
 
 /* POST order: narudžba čeka potvrdu; kupac dobiva link */
@@ -150,7 +164,7 @@ function sjOrder(env, b) {
   if (parsed.err) return parsed.err;
   var P = parsed.P, ek = sjEmailKey(P.cust.email);
   var orders = env.orders();
-  for (var i = 0; i < orders.length; i++) if (P.key && orders[i].key === P.key) return sjRepeat(orders[i]);
+  for (var i = 0; i < orders.length; i++) if (P.key && orders[i].key === P.key) return sjRepeat(orders[i], env);
   if (P.uniqueIds.length) {
     var st = sjState(env), taken = [];
     P.uniqueIds.forEach(function (id) { var h = st.held[id]; if (st.sold[id] || (h && sjEmailKey(h.email) !== ek)) taken.push(id); });
@@ -195,11 +209,16 @@ function sjConfirm(env, b) {
   if (!e) return sjOut(410, { ok: false, expired: true, error: 'Ovaj link više ne vrijedi. Ako ste narudžbu već potvrdili, podaci za uplatu su u e-mailu s potvrdom narudžbe. Ako niste, narudžba nije zaprimljena i torba nije rezervirana — pošaljite je ponovno.' });
   if (env.sha256(sec) !== e.h) return sjOut(403, { ok: false, error: 'Neispravan link za potvrdu. Otvorite najnoviji e-mail „Potvrdite narudžbu”.' });
   var orders = env.orders();
-  if (e.no) { for (var i = 0; i < orders.length; i++) if (orders[i].no === e.no) return sjRepeat(orders[i]); }
+  if (e.no) { for (var i = 0; i < orders.length; i++) if (orders[i].no === e.no) return sjRepeat(orders[i], env); }
   if (Date.parse(e.until) < env.now()) return expired;
   var P = e.P, ek = sjEmailKey(P.cust.email);
-  for (var j = 0; j < orders.length; j++) if (P.key && orders[j].key === P.key) return sjRepeat(orders[j]);
+  for (var j = 0; j < orders.length; j++) if (P.key && orders[j].key === P.key) return sjRepeat(orders[j], env);
   /* v102 (kao api/index.php): otvaranje linka samo provjerava (peek) — narudžbu potvrđuje tek gumb „Potvrdi narudžbu” na stranici */
+  /* v104 (kao api/index.php): i provjera linka javlja prodanu ili tuđu torbu (taken) i torbu iz ranije narudžbe iste e-adrese (mine) — samo čita */
+  if (b && b.peek) { var stP = sjState(env), tkP = [], mnP = [];
+    P.uniqueIds.forEach(function (id) { var h = stP.held[id]; if (stP.sold[id] || (h && sjEmailKey(h.email) !== ek)) tkP.push(id); else if (h) mnP.push(id); });
+    if (tkP.length) return sjOut(409, { ok: false, taken: tkP });
+    if (mnP.length) return sjMineOut(mnP, P.items); }
   if (b && b.peek) return sjOut(200, { ok: true, peek: 'waiting', items: P.items.map(function (x) { return { name: String(x.name || ''), qty: Number(x.qty) || 1 }; }), total: Number(P.total) || 0, until: e.until });
   var st = sjState(env), prods = sjProducts(env), taken = [], mine = [];
   /* od narudžbe je moglo proći do sat vremena: ponuda i cijene provjeravaju se ponovno */
@@ -216,7 +235,7 @@ function sjConfirm(env, b) {
     else if (h) mine.push(id);
   });
   if (taken.length) return sjOut(409, { ok: false, taken: taken });
-  if (mine.length) return sjOut(409, { ok: false, error: 'Torba je već u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' });
+  if (mine.length) return sjMineOut(mine, P.items);
   for (var id in st.held) if (sjEmailKey(st.held[id].email) === ek)
     return sjOut(409, { ok: false, error: 'Već imate narudžbu s unikatnom torbom koja čeka uplatu. Kad je uplatite, možete naručiti sljedeću.' });
   /* granica: neplaćene narudžbe drže najviše pola stvarno slobodnih unikata; ostatak bez rezervacije (tko prvi uplati) */
