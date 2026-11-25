@@ -1467,7 +1467,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       await pg.goto(URL + '?potvrda=' + LA.id + '.' + LA.t, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pay', { timeout: 8000 }).catch(() => {});
       const r = await pg.evaluate(() => { const p = document.querySelector('.pay'); if (!p) return null; const t = p.textContent, lt = p.querySelector('.pay-lapsed-t');
         return { hello: (p.querySelector('.pay-hello') || {}).textContent || '', reserved: /rezervirana je za vas/.test(t), claim: !!p.querySelector('.claim-link'), doRoka: /Do roka/.test(t), payData: !!p.querySelector('.pay-data .iban'),
-          font: lt ? getComputedStyle(lt).fontFamily : '', sum: (p.querySelector('.pay-sum') || {}).textContent || '', gone: /u međuvremenu je otišla drugom kupcu;/.test(t), txt: t.slice(0, 400), cond: /Ako torbu u međuvremenu nije kupio netko drugi/.test(t) }; });
+          font: lt ? getComputedStyle(lt).fontFamily : '', sum: (p.querySelector('.pay-sum') || {}).textContent || '', gone: /u međuvremenu je otišla drugom kupcu;/.test(t), txt: t.slice(0, 400), cond: /To vrijedi ako torbu u međuvremenu nije kupio netko drugi\./.test(t) && !/drugi: /.test(t), uplatite: /Sada\s*Uplatite/.test(t), javili: /Javili ste nam|Već ste nam javili/.test(t) }; });
       await cx.close(); return r; };
     shift(false); try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
     const g1 = await panel();
@@ -1480,7 +1480,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
     const g3 = await panel();
     ok(!!fq && oA.data.pending && cA.data.ok && g1 && /^Rok za uplatu je prošao/.test(g1.hello) && !g1.reserved && !g1.claim && !g1.doRoka && !g1.gone && g1.cond && !/Marcellus/.test(g1.font) && !/ do /.test(g1.sum)
-      && g2 && !g2.reserved && !/ do /.test(g2.sum) && cB.data.ok && g3 && g3.gone && !g3.payData && !g3.claim,
+      && g2 && !g2.reserved && g2.sum === '' && !g2.uplatite && g2.javili /* krug provjere v104 (kupac N3) */ && cB.data.ok && g3 && g3.gone && !g3.payData && !g3.claim,
       'v104 (recenzija v103): stvarni odgovor servisa — rok prošao: bez „rezervirana”, „Uplatio/la sam” i „Do roka”, uvjet uz „Nakon uplate”, običan font; nakon „Uplatio/la sam” isto; torba drugog kupca: „otišla drugom kupcu”, bez podataka za uplatu '
       + JSON.stringify([fq, cB.status, cB.data.error || '', g1 && { r: g1.reserved, c: g1.claim, d: g1.doRoka, cond: g1.cond, f: g1.font, s: g1.sum, gone: g1.gone }, g2 && { r: g2.reserved, s: g2.sum }, g3 && { gone: g3.gone, pay: g3.payData, t: g3.txt }]));
     /* remen na prvom kliku; telefon „091” */
@@ -1493,8 +1493,16 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const ls = await q5.evaluate(() => { cart = []; saveCart(); return true; });
     ok(/boja i duljina remena/.test(fx[0]) && /prekratak/.test(fx[1]) && fx[2], 'v104 (recenzija v103, kupac N5, mobitel N3): remen u popisu „Ispravite” već na prvom kliku; „091” — broj je prekratak ' + JSON.stringify(fx));
     /* e-adresa nakon osvježavanja: poslana adresa iz sessionStorage, ne trenutni sadržaj polja */
-    const em = await q5.evaluate(() => { sessionStorage.setItem('sj-pend-form', JSON.stringify({ fEmail: 'poslano@primjer.hr' })); document.getElementById('fEmail').value = 'novo@primjer.hr'; return pendSentEmail(); });
+    const em = await q5.evaluate(() => { sessionStorage.setItem('sj-pend-sent', 'poslano@primjer.hr'); sessionStorage.setItem('sj-pend-form', JSON.stringify({ fEmail: 'novo-odbijeno@primjer.hr' })); document.getElementById('fEmail').value = 'novo@primjer.hr'; return pendSentEmail(); });
     ok(em === 'poslano@primjer.hr', 'v104 (recenzija v103, kupac N2): nakon osvježavanja ploča navodi adresu na koju je e-mail poslan ' + JSON.stringify(em));
+    /* krug provjere v104 (kupac N5): odbijeno ponovno slanje ne mijenja spremljenu adresu; ploča bez podataka za uplatu kad je dio otišao */
+    const kept = await q5.evaluate(() => { const before = sessionStorage.getItem('sj-pend-form'); document.getElementById('fEmail').value = 'drugo@primjer.hr';
+      showOrderPending({ mailCustomer: true, confirmUntil: new Date(Date.now() + 3600e3).toISOString() }, 'poslano@primjer.hr', '<p class="pend-note">odbijeno</p>');
+      const r = [sessionStorage.getItem('sj-pend-form') === before, pendSentEmail()]; storeSet('pend', null); return r; });
+    const part = await q5.evaluate(() => { const k = PRODUCTS.find(x => !x.made) || PRODUCTS[0];
+      showOrderSuccess({ ok: true, repeated: true, orderNo: 'SJ-2026-0995', reference: '2026-0995', total: 100, payUntil: new Date(Date.now() - 9e7).toISOString(), until: null, reserved: false, anyGone: true, lapsed: 'Rok za uplatu ove narudžbe prošao je. Nažalost, torba „X” u međuvremenu je otišla drugom kupcu.', items: [{ id: k.id, name: k.name, qty: 1, price: k.price, made: false }], ship: null });
+      const p = document.querySelector('.pay'); const r = [!!p.querySelector('.pay-data .iban'), !!p.querySelector('.pay-sum'), /Podatke za uplatu imate/.test(p.textContent)]; storeSet('last', null); storeSet('lastPrev', null); return r; });
+    ok(kept[0] && kept[1] === 'poslano@primjer.hr' && !part[0] && !part[1] && !part[2], 'krug provjere v104 (kupac N1/N5, sigurnost 3): odbijeno slanje ne mijenja spremljene podatke; dio narudžbe otišao — bez iznosa i podataka za uplatu ' + JSON.stringify([kept, part]));
     await cs.close();
     /* obrazac za raskid na mobitelu: poruka uz polje */
     const mr2 = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true }); const q6 = await mr2.newPage(); watch(q6);
@@ -1502,11 +1510,18 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     await q6.fill('#rName', 'Ana Anić'); await q6.tap('#raskidNext'); await q6.waitForTimeout(300);
     const rv = await q6.evaluate(() => [document.activeElement && document.activeElement.id, document.activeElement && document.activeElement.validationMessage]);
     ok(rv[0] === 'rNo' && /broj narudžbe/.test(rv[1] || ''), 'v104 (recenzija v103, mobitel N2): obrazac za raskid — poruka uz prvo neispravno polje ' + JSON.stringify(rv));
+    /* krug provjere v104 (kupac N2): polje s greškom ne završava ispod zaglavlja (375 i 390) */
+    const vis = [];
+    for (const vp of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) { const cx = await browser.newContext({ viewport: vp, isMobile: true, hasTouch: true }); const pg = await cx.newPage(); watch(pg);
+      await pg.goto(URL + '#raskid', { waitUntil: 'networkidle' }); await pg.waitForTimeout(400); await pg.tap('#raskidNext'); await pg.waitForTimeout(500);
+      vis.push(await pg.evaluate(() => { const a = document.activeElement, r = a.getBoundingClientRect(), h = document.querySelector('header'); const hb = h ? h.getBoundingClientRect().bottom : 0; return [a.id, Math.round(r.top), Math.round(hb), r.top >= hb && r.bottom <= innerHeight]; }));
+      await cx.close(); }
+    ok(vis.every(v => v[0] === 'rName' && v[3]), 'krug provjere v104 (kupac N2): obrazac za raskid na mobitelu — polje s greškom vidljivo ispod zaglavlja ' + JSON.stringify(vis));
     await mr2.close(); }
   await browser.close();
   const cnt = JSON.parse(fs.readFileSync(SITE + 'data/brojac.json', 'utf8'));
   const day = Object.values(cnt)[0] || {};
-  ok(day.visits === 36 && day.ig === 1 && day.orders === 11 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 31 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503; v102: +11 košarica u testovima mobitela, remena, potvrde i kartica; v104: +1 narudžba i +6 posjeta u testu ploče nakon isteka): ' + JSON.stringify(cnt));
+  ok(day.visits === 38 && day.ig === 1 && day.orders === 11 && day.orders_m === 3 && day.press === 1 && day.rad >= 1 && day.cart === 31 && day.copy >= 1, 'brojač (v73, v76: +1 košarica u testovima raskida i remena; v100: +1 test 503; v102: +11 košarica u testovima mobitela, remena, potvrde i kartica; v104: +1 narudžba i +8 posjeta u testovima ploče nakon isteka i obrasca za raskid): ' + JSON.stringify(cnt));
   const ml = fs.readFileSync(SITE + 'data/mail-log.txt', 'utf8');
   ok(/Dobar dan, Test Kupac/.test(ml) && !/Draga\/Dragi/.test(ml) && /čeka vašu uplatu/.test(ml) && /Opis plaćanja: Shiva\.J 2026-/.test(ml) && /javit ćemo vam se i dogovoriti termin/.test(ml) && /jednostrano raskinuti u roku 14 dana/.test(ml) && /ROK ZA UPLATU: do [^\n]* u \d\d:\d\d( \(u noći [^)]*\))?\./.test(ml), 'e-mail kupcu: pozdrav, čeka uplatu, opis, preuzimanje, raskid, rok');
   ok(/Narudžba bez unikata: kad kupac uplati/.test(ml), 'e-mail vlasnici: uputa za Plaćeno');

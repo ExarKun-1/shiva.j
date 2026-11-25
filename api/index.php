@@ -294,25 +294,28 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
   $extra += $more;
   $lapsed = $gone;
   $Q = fn(array $a) => implode(' i ', array_map(fn($n) => '„' . $n . '”', $a));
-  $taken = $gone ? $hiP['taken'] : []; $free = $gone ? array_values(array_diff($hiP['gone'], $taken)) : [];
-  $refund = ' vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.';
-  $takenTxt = $taken ? ' Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . $refund : '';
+  /* v104 (krug provjere, kupac N1): torba koja je otišla drugom kupcu spominje se i kad se druga još čuva; ploča tada ne traži uplatu cijele narudžbe (anyGone) */
+  $taken = $payDue ? $hiP['taken'] : []; $free = $gone ? array_values(array_diff($hiP['gone'], $taken)) : [];
+  $refund = ' vraćamo uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.';
+  $takenTxt = $taken ? ' Nažalost, ' . (count($taken) > 1 ? 'torbe ' . $Q($taken) . ' u međuvremenu su otišle' : 'torba ' . $Q($taken) . ' u međuvremenu je otišla') . ' drugom kupcu; ako ste ' . (count($taken) > 1 ? 'ih' : 'je') . ' već platili, za ' . (count($taken) > 1 ? 'njih' : 'nju') . ' vam' . $refund : ''; /* krug provjere: „za nju vam vraćamo” */
   $allGone = $gone && $taken && count($taken) === count((array)array_filter((array)($prev['order']['items'] ?? []), fn($it) => empty($it['made'])))
     && !array_filter((array)($prev['order']['items'] ?? []), fn($it) => !empty($it['made']));
+  $rest = ' Ako ste i dalje zainteresirani za ostatak narudžbe, odgovorite na e-mail o narudžbi.';
   $lead = 'Rok za uplatu ove narudžbe prošao je u ' . sj_fmt_deadline(sj_pay_until($prev), 'acc');
   if ($payPassed && !$gone && ($hsP = sj_held_sentence($hiP)) !== '') {
-    $extra['lapsed'] = $lead . ', a uplatu još ne vidimo. ' . $hsP . ' Već ste platili? Kliknite „Uplatio/la sam” ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.';
+    $extra['lapsed'] = $lead . ', a uplatu još ne vidimo. ' . $hsP . $takenTxt . ($taken ? $rest : ' Već ste platili? Kliknite „Uplatio/la sam” ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.');
     $extra['lapsedHeld'] = true;
-  } elseif ($gone && $claimedBefore) {
+  } elseif ($payDue && $claimedBefore && ($gone || $taken)) {
     /* javio je da je platio: što slijedi kaže claimMsg (vlasnica provjerava izvod) — ovdje samo rok i što je s torbom */
     $extra['lapsed'] = $lead . '.' . ($free ? ' ' . (count($free) > 1 ? 'Torbe ' . $Q($free) . ' zasad su' : 'Torba ' . $Q($free) . ' zasad je') . ' ponovno u ponudi.' : '') . $takenTxt;
   } elseif ($gone) {
     $extra['lapsed'] = $lead . ', a uplatu još ne vidimo' . ($free ? ', pa ' . (count($free) > 1 ? 'su torbe ' . $Q($free) : 'je torba ' . $Q($free)) . ' ponovno u ponudi' : '') . '.' . $takenTxt
       . ' Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se'
-      . ($free ? '; ako je ' . (count($free) > 1 ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu,' . $refund : '.')
-      . ($allGone ? '' : ' Ako ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati' . ($free ? '; ako ' . (count($free) > 1 ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . (count($free) > 1 ? 'one su vaše' : 'ona je vaša') . '.' : '.'));
+      . (($free && !$taken) ? '; ako je ' . (count($free) > 1 ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu,' . ' vam' . $refund : '.') /* povrat se spominje jednom */
+      . ($allGone ? '' : ($taken ? $rest : ' Ako ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati' . ($free ? '; ako ' . (count($free) > 1 ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . (count($free) > 1 ? 'one su vaše' : 'ona je vaša') . '.' : '.')));
   }
   if ($allGone) $extra['allGone'] = true;
+  if ($taken && isset($extra['lapsed'])) $extra['anyGone'] = true; /* bez iznosa, podataka za uplatu i barkoda za narudžbu u kojoj je nešto otišlo */
   sj_json_out(['ok' => true, 'orderNo' => $prev['no'], 'reference' => sj_payment_ref((string)$prev['no']), 'total' => (float)($prev['order']['total'] ?? 0),
                'until' => $lapsed ? null : ($prev['reservation']['until'] ?? null), 'reserved' => !$lapsed, 'payUntil' => sj_pay_until($prev), 'mailOwner' => $m['owner'] ?? true, 'mailCustomer' => $m['customer'] ?? true, 'repeated' => true, 'check' => sj_state_token($prev)] + $extra + sj_pay_out() + sj_order_view((array)($prev['order'] ?? [])));
 }
@@ -1180,7 +1183,8 @@ function sj_order_pending(array $P): void {
      nepotvrđenu narudžbu) ne troši granicu po mreži — „Pošalji e-mail ponovno” ne smije zatvoriti trgovinu kupcima iste mreže; granice po primatelju ostaju */
   $resend = false; $ekR = sj_email_key((string)$cust['email']); $serR = (string)($P['series'] ?? '');
   foreach ((array)sj_read_json(sj_pending_path(), []) as $px) { if (!is_array($px) || !empty($px['no']) || !empty($px['replacedBy']) || !isset($px['P'])) continue;
-    if (((string)$P['key'] !== '' && (string)($px['key'] ?? '') === (string)$P['key']) || ($serR !== '' && ($px['ek'] ?? '') === $ekR && hash_equals((string)($px['P']['series'] ?? ''), $serR))) { $resend = true; break; } }
+    /* krug provjere v104 (kupac N4, sigurnost 2): uvijek i ista e-adresa — isti ključ s drugim e-adresama nije ponovno slanje */
+    if (($px['ek'] ?? '') === $ekR && (((string)$P['key'] !== '' && (string)($px['key'] ?? '') === (string)$P['key']) || ($serR !== '' && hash_equals((string)($px['P']['series'] ?? ''), $serR)))) { $resend = true; break; } }
   if ($resend) $net24 = '';
   /* v104: granica po mreži ima svoju poruku (pravi razlog) i ne šalje vlasnici „previše narudžbi” */
   if ($net24 !== '' && !sj_global_limit($net24, $overSoft ? 3 : 5, 3600, false)) sj_net_limit_out();

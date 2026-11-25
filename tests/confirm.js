@@ -74,6 +74,9 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       ok(net6b.status === 503 && net6b.data.code === 'net_limit' && /^S ove internetske mreže u zadnjih je sat vremena poslano više narudžbi/.test(net6b.data.error || '') && !/PAŽNJA: previše narudžbi/.test(nm)
         && again.status === 200 && again.data.pending && /To: lazni4@primjer\.hr/.test(nm),
         'v104 (recenzija v103): granica po mreži — poruka s pravim razlogom, vlasnici ništa; „Pošalji e-mail ponovno” istog kupca prolazi ' + JSON.stringify([net6b.status, net6b.data.code, again.status, again.data.replaced])); }
+      /* krug provjere v104 (kupac N4, sigurnost 2): isti ključ s DRUGOM e-adresom nije ponovno slanje — troši granicu */
+      { const byp = await post('order', order('potvrda-lazna-4-xx', 'napad7@primjer.hr', [{ id: 'vela' }], 70));
+        ok(byp.status === 503 && byp.data.code === 'net_limit', 'krug provjere v104: isti ključ narudžbe s drugom e-adresom troši granicu po mreži ' + JSON.stringify([byp.status, byp.data.code])); }
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
     const real = await post('order', order('potvrda-key-0004', 'pravi@primjer.hr', [{ id: 'vela' }], 70));
     const Lr = lastLink(); const cr = await post('confirm', { id: Lr.id, t: Lr.t });
@@ -367,6 +370,21 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
           const tk = await post('confirm', { id: LA.id, t: LA.t, peek: true });
           ok(cD.data.ok && tk.data.ok && /u međuvremenu su otišle drugom kupcu/.test(tk.data.lapsed || '') && !/ponovno u ponudi/.test(tk.data.lapsed || '') && !/uplatite iznos/.test(tk.data.lapsed || '') && tk.data.allGone === true,
             'v104 (recenzija v103, softver N2): torbe otišle drugom kupcu — ploča to kaže, bez „ponovno u ponudi” i poziva na uplatu ' + JSON.stringify([cD.status, (tk.data.lapsed || '').slice(0, 160), tk.data.allGone])); }
+        /* krug provjere v104 (kupac N1): otišao samo dio narudžbe — ploča ne traži uplatu cijele narudžbe (anyGone), povrat se spominje jednom */
+        { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+          const plP = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rzP = read('rezervacije.json', {});
+          const fr2 = ['zora', 'mira', 'nera', 'tara', 'luna', 'vela'].filter(id => { const q = plP.find(x => x.id === id); return q && !q.sold && !q.reserved && !((rzP.sold || {})[id]); }).slice(0, 2);
+          { const rr = read('rezervacije.json', {}); if (rr.res && !Array.isArray(rr.res)) fr2.forEach(id => delete rr.res[id]); write('rezervacije.json', rr); } /* starije narudžbe ovog testa ne drže ove torbe */
+          const tt = fr2.reduce((z, id) => z + plP.find(x => x.id === id).price, 0);
+          await post('order', order('potvrda-v104-dio-1', 'v104dio@primjer.hr', fr2.map(id => ({ id })), tt, 'serija-v104-dio-dddd')); const LP = lastLink(); const cP = await post('confirm', { id: LP.id, t: LP.t });
+          { const o = read('narudzbe.json', []); o.find(x => x.no === cP.data.orderNo).payUntil = new Date(Date.now() - 80 * 3600e3).toISOString(); write('narudzbe.json', o); }
+          const r = read('rezervacije.json', {}); r.res[fr2[0]].until = new Date(Date.now() - 30 * 3600e3).toISOString();
+          r.res[fr2[1]] = Object.assign({}, r.res[fr2[1]], { token: 'drugikupac' + 'e'.repeat(22), email: 'drugi@primjer.hr', ordered: true, until: new Date(Date.now() + 40 * 3600e3).toISOString() }); write('rezervacije.json', r);
+          const pP = await post('confirm', { id: LP.id, t: LP.t, peek: true });
+          const L = pP.data.lapsed || '';
+          ok(fr2.length === 2 && cP.data.ok && pP.data.anyGone === true && !pP.data.allGone && /u međuvremenu je otišla drugom kupcu; ako ste je već platili, za nju vam vraćamo/.test(L) && (L.match(/zakonske zatezne kamate/g) || []).length === 1
+            && /Ako ste i dalje zainteresirani za ostatak narudžbe, odgovorite na e-mail o narudžbi\./.test(L) && !/uplatite iznos/.test(L),
+            'krug provjere v104 (kupac N1): otišao dio narudžbe — anyGone, bez poziva na uplatu cijele narudžbe, povrat jednom ' + JSON.stringify([fr2, pP.data.anyGone, L.slice(0, 220)])); }
       try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
     // 8) granica e-mailova za potvrdu po adresi
     write('config.json', Object.assign({}, read('config.json'), { limits: Object.assign({}, cfg0.limits, { confirm_per_ip: 3 }) }));

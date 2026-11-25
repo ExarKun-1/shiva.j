@@ -1838,15 +1838,24 @@ function sj_quote_block(string $s): string { return trim((string)preg_replace('~
      „Pozovi 091 234 i nastavak 5678”) → „[broj skriven]”. Pozivni broj ne smije biti dio datuma ni vremena („01.12.2026”, „08:00”).
    Vlasnica u svom e-mailu i u adminu vidi izvorni tekst. */
 function sj_mask_handles(string $s): string {
+  $s = str_replace('＠', '@', $s); /* krug provjere v104: „@” pune širine */
   $s = preg_replace('~(?<![\p{L}\p{N}._@-])@[\p{L}\p{N}._-]{2,}~u', '[oznaka skrivena]', $s) ?? $s;
-  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b(\s*:\s*|\s+)((?:me\s*/\s*)?)([\p{L}\p{N}._-]{3,})~iu', function ($m) {
-    $hit = stripos($m[1], 'revtag') === 0 || str_contains($m[2], ':') || $m[3] !== '' || preg_match('~[\d._]~', $m[4]);
-    return $hit ? $m[1] . $m[2] . '[oznaka skrivena]' : $m[0];
+  /* krug provjere v104 (sigurnost B7): i „Revolut - ime”, „Revolut – ime”, „Revolut → ime”, „Revolut (ime)”, „Revolut tag: ime” */
+  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b((?:\s+tag)?)(\s*[:\-–—→(]+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}._-]{3,})(\)?)~iu', function ($m) {
+    $hit = stripos($m[1], 'revtag') === 0 || $m[2] !== '' || preg_match('~[:\-–—→(]~u', $m[3]) || $m[4] !== '' || preg_match('~[\d._]~', $m[5]);
+    return $hit ? $m[1] . $m[2] . $m[3] . '[oznaka skrivena]' . $m[6] : $m[0];
   }, $s) ?? $s;
-  return preg_replace_callback('~(?<![\p{L}\p{N}])(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:]\d)((?:[\s,;:\-/]+(?:\p{L}{1,12}|\d{1,8})){1,6})(?!\d)~u', function ($m) {
+  /* krug provjere v104 (sigurnost 1/5): razdjelnici i . ! ( ) — – →; pozivni broj nije dio vremena ili datuma (ni iza „:”, „/”, „.” ili znamenke) */
+  $sep = '[\s,;:\-/.!()—–→]+'; $pre = '(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:/]\d)';
+  $s = preg_replace_callback('~(?<![\p{L}\p{N}:/.])' . $pre . '((?:' . $sep . '(?:\p{L}{1,12}|\d{1,8})){1,6})(?!\d)~u', function ($m) {
     if (!preg_match('~\p{L}~u', $m[1]) || preg_match_all('~\d~', $m[0]) < 9) return $m[0];
     /* do zadnje skupine znamenki (riječi iza nje ostaju) */
     return (string)preg_replace('~^(.*\d).*$~su', '[broj skriven]', $m[0]) . (string)preg_replace('~^.*\d~su', '', $m[0]);
+  }, $s) ?? $s;
+  /* krug provjere v104: obrnut redoslijed — najprije broj, pa riječi, pa pozivni („broj 2345678, pozivni 091”) */
+  return preg_replace_callback('~(?<![\p{L}\p{N}:/.])(\d[\d \-/]{4,12}\d)((?:' . $sep . '\p{L}{1,12}){1,4}' . $sep . ')(' . $pre . ')~u', function ($m) {
+    if (preg_match_all('~\d~', $m[1]) < 6 || preg_match_all('~\d~', $m[1] . $m[3]) < 9) return $m[0];
+    return '[broj skriven]' . $m[2] . '[broj skriven]';
   }, $s) ?? $s;
 }
 function sj_echo_text(string $s): string { return sj_mask_handles(sj_mask_numbers(sj_unlink(sj_echo_spaces($s)))); }

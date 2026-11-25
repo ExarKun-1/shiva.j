@@ -487,6 +487,13 @@ $hkB = array_values(array_filter($hk, fn($x) => sj_echo_text($x) !== $x));
 $ok(!$hvV && !$hkB && sj_echo_street_city('Ilica 12, tel 091', '10000 Zagreb 2345678') === 'Ilica 12, tel 091, 10000 Zagreb [broj skriven]' && sj_echo_street_city('Trg 101. brigade 5', '10000 Zagreb, kat 12') === 'Trg 101. brigade 5, 10000 Zagreb, kat 12'
   && sj_echo_street_city('Vukovarska 269a', '10000 Zagreb - Novi Zagreb') === 'Vukovarska 269a, 10000 Zagreb - Novi Zagreb' && sj_quote_block("prvi „red”\n\ndrugi") === 'prvi "red" / drugi',
   'v104 (recenzija v103, sigurnost N2/N3): Revolut oznaka i razlomljen telefon skriveni u kopiji za kupca; obične napomene i adrese ostaju ' . json_encode([$hvV, $hkB], JSON_UNESCAPED_UNICODE));
+/* krug provjere v104 (sigurnost 1/5, B7): razdjelnici, obrnut redoslijed, varijante oznake; vremena i datumi s nulom ostaju */
+$kv = ['Pozivni 091. Broj 2345678 — javite se za promjenu računa', 'Pozivni 091 — ostatak 2345678', 'Ulica: pozivni 091 (mob) 2345678', 'broj 2345678, pozivni 091', 'BOX NOW Zabok. Zovite 091. Broj 2345678',
+  'Revolut - anak', 'Revolut – anak', 'Revolut → anak', 'Revolut (anak)', 'Revolut tag: anak', '＠anak'];
+$kvV = array_values(array_filter($kv, fn($x) => !preg_match('~\[(oznaka|broj) skriven[a]?\]~u', sj_echo_text($x))));
+$kk = ['Između 08:00 i 09:00 ili 17:00-19:00.', 'Mogu 08:00, 09:00 ili 10:00', 'Datum 05/12/2026, rok 09/12/2026', 'Dolazim 01/12, 02/12 ili 03/12'];
+$kkB = array_values(array_filter($kk, fn($x) => sj_echo_text($x) !== $x));
+$ok(!$kvV && !$kkB, 'krug provjere v104: telefon razlomljen točkom, crticom, zagradama i obrnutim redom te varijante Revolut oznake skriveni; vremena i datumi s nulom ostaju ' . json_encode([$kvV, $kkB], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
 $kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
   'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];
