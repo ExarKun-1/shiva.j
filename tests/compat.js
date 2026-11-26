@@ -131,6 +131,12 @@ const flexGap = siteDecls.filter(b => /display\s*:\s*(?:inline-)?flex/.test(b) &
 ok(flexGap === 0 || /function flexGapFallback\(/.test(scripts[0] || ''), 'Safari 14.0: flexbox s gap uz zamjenu flexGapFallback (' + flexGap + ' pravila)');
 const js14 = ['Intl.ListFormat', 'Intl.Segmenter', 'WeakRef', 'FinalizationRegistry', '.replaceChildren('].filter(t => allJs.includes(t));
 ok(js14.length === 0, 'Safari 14.0: JS bez Intl.ListFormat, Intl.Segmenter, WeakRef ' + JSON.stringify(js14));
+/* v106 (pravi iPhone, iOS 15): Safari od iOS-a 15 gumbu bez boje daje sistemsku plavu — osnovno pravilo za button mora zadati boju */
+const btnRule = (cssNc.match(/(^|[}\s])button\{[^}]*\}/) || [''])[0];
+ok(/color\s*:/.test(btnRule), 'Safari iOS 15+: osnovno pravilo button{…} zadaje boju teksta ' + JSON.stringify(btnRule.trim().slice(0, 80)));
+/* v106 (pravi iPhone, iOS 14): opcije Intl koje Safari zna tek od 15.4 bacaju RangeError — demo je na tome pao pri slanju narudžbe */
+const intl154 = ['shortOffset', 'longOffset', 'shortGeneric', 'longGeneric', 'formatRange(', 'roundingMode', 'trailingZeroDisplay'].filter(t => allJs.includes(t));
+ok(intl154.length === 0, 'Safari 14.0: bez opcija Intl iz Safarija 15.4+ (shortOffset, formatRange…) ' + JSON.stringify(intl154));
 
 /* 4) obavijest za prestare preglednike: skrivena dok druga skripta ne postavi html.js-fail; bez animacije i tajmera (v101) */
 const obRule = (cssNc.match(/\.old-browser\{[^}]*\}/) || [''])[0];

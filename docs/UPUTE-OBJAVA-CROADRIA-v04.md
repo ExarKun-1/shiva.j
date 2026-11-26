@@ -130,6 +130,10 @@ uključujući e-mail s podacima za uplatu. Zato:
 - [ ] **Stariji mobitel (v100; v105: i iOS 14):** stranica radi u Safariju na iOS-u 14 i novijem (svi iPhonei od 6s/SE iz 2015.) i u Chromeu 119 i
   novijem (Android 7 i noviji). Ako imate stariji iPhone (iOS 14, 15 ili 16), otvorite stranicu i dodajte torbu u košaricu. Na još starijim
   uređajima (iPhone 5s/6) stranica ne radi ispravno, pa se pri dnu pojavi obavijest s e-adresom i Instagramom.
+  v106: demo stranice (bez pravog poslužitelja) provjeren je 26. 11. 2026. na pravim uređajima preko BrowserStacka: iPhone 12 (iOS 14.1),
+  iPhone 13 (iOS 15.4), iPhone 14 (iOS 16.4), iPhone 15 (iOS 17.5), iPhone 16 (iOS 18.6), iPad 9 (iOS 15.5), Galaxy S22 (Android 12,
+  Chrome i Samsung Internet) i Pixel 7 (Android 13). Pravu narudžbu s e-mailom i linkom za potvrdu tek treba provjeriti na probnoj mapi
+  na hostingu.
 
 ### 9. Nakon objave
 - [ ] Link na domenu stavite u Instagram bio.
