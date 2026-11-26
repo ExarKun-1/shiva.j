@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v107 (2026-11-26)
+     SHIVA.J WEBSHOP — v108 (2026-11-26)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -128,6 +128,8 @@
            · na iOS-u 15 i novijem „Košarica” u zaglavlju bila je plava (Safari daje gumbu bez boje sistemsku plavu) — gumbi imaju boju teksta
      v107 — pregled stranice: šest naslova u Uvjetima i Izjavi („4. Narudžba i sklapanje ugovora”, „6. Izrada i dostava”…) lomilo se
            i preklapalo, jer je svaki „i riječ” bio zasebna ćelija mreže — tekst naslova sada je jedan element
+     v108 — „Dodaj u košaricu” ispunjen bojom konca (u košarici: obrub); Uvjeti, Izjava, Impresum i Raskid na zasebnoj podstranici
+           (#uvjeti, #privatnost, #impresum, #raskid) s „Natrag u trgovinu”; bez JS-a sve ostaje na jednoj stranici
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -524,7 +526,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v107"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v108"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -731,7 +733,7 @@
   .lb-info .add-btn{margin-top:auto}
   /* v90 (vijeće, mobitel): „Dodaj u košaricu” uvijek vidljiv na dnu povećanog prikaza */
   @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)}
-    .lb-info .add-btn:not(.in-cart):not(:hover){background:var(--paper)} /* v90 (recenzija): tekst ne prolazi kroz prilijepljeni gumb; v100: bez :not(:focus-visible), koje stariji Safari ne zna pa odbaci pravilo */
+    .lb-info .add-btn.in-cart:not(:hover){background:var(--paper)} /* v90 (recenzija): tekst ne prolazi kroz prilijepljeni gumb; v100: bez :not(:focus-visible), koje stariji Safari ne zna pa odbaci pravilo */
     .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} }
   .lb-info .lb-ship{font-size:.85rem;color:var(--ink-soft)}
   .lb-gone{font-size:.92rem;color:var(--ink);border-left:2px dashed var(--thread);padding:2px 0 2px 12px}
@@ -755,6 +757,17 @@
 
   /* ---------- Pravni dio: privatnost + impressum ---------- */
   .legal{border-top:1px solid var(--line);background:#FBFBF9}
+  /* v108: pravni dio (Uvjeti, Izjava, Impresum, Raskid) kao zasebna stranica u istoj datoteci — #uvjeti, #privatnost, #impresum, #raskid;
+     skripta postavlja razred, pa bez JS-a sve ostaje na jednoj stranici kao prije */
+  html.shop-view section.legal{display:none}
+  html.legal-view .hero,html.legal-view .press,html.legal-view main.shop,html.legal-view .how,html.legal-view .about{display:none}
+  html.legal-view .legal{border-top:0;min-height:calc(100vh - 64px)}
+  html.legal-view .legal-inner{padding-top:28px}
+  html.legal-view #uvjeti{scroll-margin-top:200px} /* na vrhu podstranice — vidi se i „Natrag u trgovinu” */
+  .legal-back{display:none}
+  html.legal-view .legal-back{display:block;margin-bottom:36px}
+  .legal .legal-back a{display:inline-flex;align-items:center;min-height:44px;font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);border-bottom:0}
+  .legal .legal-back a:hover{text-decoration:underline}
   .legal-inner{max-width:860px;margin:0 auto;padding:64px 24px}
   .legal h2{font-family:'Marcellus',serif;font-weight:400;font-size:clamp(1.7rem,2.8vw,2.2rem);margin-bottom:8px}
   .legal h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.05rem;margin:26px 0 6px}
@@ -947,17 +960,19 @@
   .unikat-tag::before{content:"";width:22px;border-top:1.5px dashed var(--thread)}
   .add-btn{
     margin-top:4px;
-    border:1px solid var(--ink);background:none;border-radius:var(--radius);
+    border:1px solid var(--thread);background:var(--thread);color:var(--paper);border-radius:var(--radius); /* v108: ispunjen bojom konca — glavni poziv na kartici */
     padding:11px 0;width:100%;min-height:44px;
     font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
     transition:background .2s,color .2s;
   }
-  .add-btn:hover:not(:disabled){background:var(--thread);border-color:var(--thread);color:var(--paper)}
-  .add-btn:focus-visible:not(:disabled){background:var(--thread);border-color:var(--thread);color:var(--paper)}
-  .add-btn:disabled{border-color:var(--sold);color:var(--sold-text);cursor:not-allowed}
+  .add-btn:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .add-btn:focus-visible:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .add-btn:disabled{background:none;border-color:var(--sold);color:var(--sold-text);cursor:not-allowed}
   /* v43: gumb na dnu kartice, pa su gumbi u istom redu poravnati i kad je opis jedne torbe dulji */
   .card > .add-btn{margin-top:auto}
-  .add-btn.in-cart{background:var(--ink);color:var(--paper)}
+  .add-btn.in-cart{background:none;border-color:var(--thread);color:var(--thread)} /* v108: već u košarici — obrub, da se razlikuje od „Dodaj” */
+  .add-btn.in-cart:hover{background:var(--thread);border-color:var(--thread);color:var(--paper)}
+  .add-btn.in-cart:focus-visible{background:var(--thread);border-color:var(--thread);color:var(--paper)}
 
   /* ---------- Kako naručiti ---------- */
   .how{max-width:1180px;margin:0 auto;padding:0 24px 88px}
@@ -1278,7 +1293,7 @@
   /* v94: na niskom zaslonu gumb ne prekriva cijenu; v98 (recenzija vijeća v97, mobitel L1): manja fotografija, pa su naziv i cijena
      na prvom zaslonu, a gumb „Dodaj u košaricu” ostaje vidljiv pri dnu (iPhone SE); položeni mobitel — gumb uz dno desnog stupca */
   @media (max-width:680px) and (max-height:640px){ .lb-photo{max-height:46vh;max-height:46dvh} }
-  @media (min-width:681px) and (max-height:500px){ .lb-info{padding-bottom:0} .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper),0 28px 0 0 var(--paper)} /* v100 (mobitel 1): bez pojasa ispod gumba */ .lb-info .add-btn:not(.in-cart):not(:hover){background:var(--paper)} .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
+  @media (min-width:681px) and (max-height:500px){ .lb-info{padding-bottom:0} .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper),0 28px 0 0 var(--paper)} /* v100 (mobitel 1): bez pojasa ispod gumba */ .lb-info .add-btn.in-cart:not(:hover){background:var(--paper)} .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
   summary h3 .n{font-family:'Space Mono',monospace;font-size:.82em;letter-spacing:0;margin-right:.15em} /* v94: brojka 1 u Marcellusu izgleda kao I */
   /* v95 (recenzija vijeća v94, dizajn 4): brojke u stupcu iste širine — naslovi „10.” i „11.” u ravnini, preloženi redak pod naslovom */
   summary h3.with-n{display:grid;grid-template-columns:3.4ch minmax(0,1fr);align-items:baseline} /* v105: razred umjesto :has (Safari 14 ne zna :has) */
@@ -1466,6 +1481,7 @@
 
 <section class="legal">
   <div class="legal-inner">
+    <p class="legal-back"><a href="#torbe" id="legalBack">← Natrag u trgovinu</a></p>
 
     <!-- ===== UVJETI KUPNJE =====
          v73: struktura iz paketa izmjena (1. 11. 2026.), popunjena stvarnim podacima; rečenice o raskidu iz
@@ -2100,6 +2116,27 @@ function renderShopHead(){
     ? cats.map(k => `<a class="cat-tab${k.id === currentCat ? " on" : ""}" href="#${k.id}">${k.label}</a>`).join("")
     : "";
 }
+/* v108: pravni dio kao zasebna stranica (vidi CSS uz .legal). Ulaz iz trgovine pamti položaj, pa „Natrag u trgovinu” i tipka
+   „natrag” vraćaju na isto mjesto; izravna poveznica (npr. #raskid?no=… iz e-maila) otvara samo pravni dio. */
+const LEGAL_RE = /^#(uvjeti|privatnost|impresum|impressum|raskid|jamstvo)(\?|$)/;
+let legalFromY = null;
+function legalView(){
+  const de = document.documentElement, on = LEGAL_RE.test(location.hash), was = de.classList.contains("legal-view");
+  if(on && !was && de.classList.contains("shop-view")) legalFromY = window.scrollY;
+  de.classList.toggle("legal-view", on); de.classList.toggle("shop-view", !on);
+  if(on === was || !de.classList.contains("js-view")){ de.classList.add("js-view"); return; }
+  const id = location.hash.slice(1).split("?")[0], el = id ? document.getElementById(id) : null, y = legalFromY;
+  const hs = de.style.scrollBehavior; de.style.scrollBehavior = "auto"; /* promjena stranice je skok, ne glatko pomicanje */
+  if(on){ if(el) el.scrollIntoView(); else scrollTo(0, 0); }
+  else if(el && id !== "torbe") el.scrollIntoView();
+  else if(y !== null && (location.hash === "" || location.hash === "#torbe")) scrollTo(0, y);
+  else if(!el) scrollTo(0, 0);
+  de.style.scrollBehavior = hs;
+  if(!on) legalFromY = null;
+}
+legalView();
+addEventListener("hashchange", legalView);
+document.getElementById("legalBack").addEventListener("click", e => { if(legalFromY !== null){ e.preventDefault(); history.back(); } });
 /* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */
 function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
 document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
