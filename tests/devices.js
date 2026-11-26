@@ -43,6 +43,10 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       const q = P.safari14 ? '?noflexgap=1' : '';
       await pg.goto(URL + q, { waitUntil: 'networkidle' }); await prep(); await pg.waitForTimeout(300);
       await step('naslovnica', true);
+      /* v107: naslov s brojkom u Uvjetima ima točno dvije ćelije (brojka + tekst) — inače se „i riječ” (span.nw) lomi u novi red i preklapa */
+      const h3bad = await pg.evaluate(() => [...document.querySelectorAll('summary h3.with-n')].filter(h => h.children.length !== 2 || [...h.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).length);
+      const h3n = await pg.evaluate(() => document.querySelectorAll('summary h3.with-n').length);
+      ok(h3n > 10 && h3bad === 0, `${P.name}: naslovi s brojkom u Uvjetima i Izjavi u dvije ćelije (${h3n} naslova, ${h3bad} razlomljenih)`);
       /* v106 (pravi iPhone 12, iOS 14.1): ukras ::before uz „Jedan primjerak” bez flex gapa mora imati razmak do teksta */
       if (P.safari14) {
         const pg2 = await pg.evaluate(() => { const t = document.querySelector('.card .unikat-tag'); if (!t) return -1; const tn = [...t.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());

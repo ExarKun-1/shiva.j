@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v106 (2026-11-26)
+     SHIVA.J WEBSHOP — v107 (2026-11-26)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -126,6 +126,8 @@
      v106 — pravi uređaji (BrowserStack): na iPhoneu 12 s iOS-om 14.1 ukras ::before/::after u flex-retku bez gapa nije imao razmak
            („— Jedan primjerak”, broj, „+” uz pitanja) — flexGapFallback mu sada daje razmak pravilom u listu stilova
            · na iOS-u 15 i novijem „Košarica” u zaglavlju bila je plava (Safari daje gumbu bez boje sistemsku plavu) — gumbi imaju boju teksta
+     v107 — pregled stranice: šest naslova u Uvjetima i Izjavi („4. Narudžba i sklapanje ugovora”, „6. Izrada i dostava”…) lomilo se
+           i preklapalo, jer je svaki „i riječ” bio zasebna ćelija mreže — tekst naslova sada je jedan element
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -522,7 +524,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v106"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v107"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -4309,7 +4311,9 @@ addEventListener("storage", e => { if(e.key !== STORE_KEY + ".last" && e.key !==
     if(nl && Number(nl.at || 0) > prevAt && confirmAskNames.length && confirmAskNames.every(n => (nl.items || []).some(i => i.name === n)) && document.getElementById("confirmBtn")){ const bx = document.getElementById("claimBox"); if(bx) bx.remove(); document.getElementById("emptyCart").classList.remove("under-claim"); document.querySelector(".drawer-body").classList.remove("confirm-ask"); { const cb = document.getElementById("confirmBack"); if(cb) cb.remove(); } if(/[?&]potvrda=/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); }
     skipCartSave = true; try { lastStateChanged(); } finally { skipCartSave = false; } }, 60); });
 /* v105: naslovi s brojem u Uvjetima (umjesto CSS :has, koji Safari 14 ne zna) */
-document.querySelectorAll("summary h3 > .n").forEach(n => n.parentNode.classList.add("with-n"));
+document.querySelectorAll("summary h3 > .n").forEach(n => { const h = n.parentNode; h.classList.add("with-n");
+  /* v107: naslov iza brojke u jednom je elementu — inače svaki „i\u00a0riječ” (span.nw) postaje zasebna ćelija mreže i naslov se lomi i preklapa */
+  if(!h.querySelector(".h3-t")){ const t = document.createElement("span"); t.className = "h3-t"; while(n.nextSibling) t.appendChild(n.nextSibling); h.appendChild(t); } });
 /* v105 (iOS 14.0–14.4, Safari 14.0): flexbox ne zna „gap” (tek Safari 14.1) — razmake postavljaju margine djece. Ostali preglednici to preskaču.
    ?noflexgap=1 uključuje zamjenu i u novom pregledniku (provjera izgleda u testovima). */
 (function flexGapFallback(){
