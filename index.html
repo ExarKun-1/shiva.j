@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v105 (2026-11-25)
+     SHIVA.J WEBSHOP — v106 (2026-11-26)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -123,6 +123,9 @@
      v105 — stranica i za Safari 14 (iOS 14): top/right/bottom/left umjesto inset; omjer fotografija bez aspect-ratio (@supports not);
            razred umjesto :has; razmaci u flex-recima za Safari 14.0 (flexGapFallback, ?noflexgap=1 za provjeru); tests/devices.js
            (Android 12–15, više zaslona, veći tekst, zamjene za Safari 14)
+     v106 — pravi uređaji (BrowserStack): na iPhoneu 12 s iOS-om 14.1 ukras ::before/::after u flex-retku bez gapa nije imao razmak
+           („— Jedan primjerak”, broj, „+” uz pitanja) — flexGapFallback mu sada daje razmak pravilom u listu stilova
+           · na iOS-u 15 i novijem „Košarica” u zaglavlju bila je plava (Safari daje gumbu bez boje sistemsku plavu) — gumbi imaju boju teksta
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -519,7 +522,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v105"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v106"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -574,7 +577,7 @@
   }
 
   a{color:inherit;text-decoration:none}
-  button{font-family:inherit;cursor:pointer}
+  button{font-family:inherit;cursor:pointer;color:var(--ink)} /* v106 (pravi iPhone, iOS 15+): Safari gumbu bez boje daje sistemsku plavu („Košarica” u zaglavlju) */
 
   .mono{font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}
 
@@ -4316,6 +4319,15 @@ document.querySelectorAll("summary h3 > .n").forEach(n => n.parentNode.classList
   if(!need) return;
   document.documentElement.classList.add("no-flexgap");
   const px = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+  let pseudoN = 0, sheet = null;
+  const pseudoGap = (el, rg, cg, col, wrap) => { if(el.dataset.fgp) return;
+    ["::before", "::after"].forEach(ps => { const s = getComputedStyle(el, ps);
+      if(s.content === "none" || s.content === "normal" || s.display === "none" || s.position === "absolute" || s.position === "fixed") return;
+      if(!sheet){ try { sheet = [...document.styleSheets].find(x => { try { return !x.href && x.cssRules; } catch(e){ return false; } }) || null; } catch(e){} }
+      if(!sheet) return;
+      if(!el.dataset.fgp) el.dataset.fgp = String(++pseudoN);
+      const side = wrap ? "margin:" + (rg / 2) + "px " + (cg / 2) + "px" : col ? (ps === "::before" ? "margin-bottom:" : "margin-top:") + rg + "px" : (ps === "::before" ? "margin-right:" : "margin-left:") + cg + "px";
+      try { sheet.insertRule('[data-fgp="' + el.dataset.fgp + '"]' + ps + "{" + side + "!important}", sheet.cssRules.length); } catch(e){} }); };
   const apply = () => { document.querySelectorAll("body *").forEach(el => { const cs = getComputedStyle(el); if(!/flex/.test(cs.display)) return;
     /* razmak se pamti, a gap na elementu poništi (Safari 14.0 ga za flex ionako ne primjenjuje; u novom pregledniku inače bi se zbrojio s marginama) */
     if(el.dataset.rg === undefined){ el.dataset.rg = px(cs.rowGap); el.dataset.cg = px(cs.columnGap); if(+el.dataset.rg || +el.dataset.cg){ el.style.rowGap = "0px"; el.style.columnGap = "0px"; } }
@@ -4325,6 +4337,8 @@ document.querySelectorAll("summary h3 > .n").forEach(n => n.parentNode.classList
     const boxed = px(cs.borderLeftWidth) > 0 || px(cs.borderTopWidth) > 0 || (cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent");
     if(wrap && boxed){ [...el.children].forEach(c => { if(c.dataset.fgc) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return; c.dataset.fgc = "1"; c.style.marginRight = (px(ccs.marginRight) + cg) + "px"; c.style.marginBottom = (px(ccs.marginBottom) + rg) + "px"; }); return; }
     if(wrap && !el.dataset.fg){ el.dataset.fg = "1"; el.style.marginTop = (px(cs.marginTop) - rg / 2) + "px"; el.style.marginBottom = (px(cs.marginBottom) - rg / 2) + "px"; el.style.marginLeft = (px(cs.marginLeft) - cg / 2) + "px"; el.style.marginRight = (px(cs.marginRight) - cg / 2) + "px"; }
+    /* v106 (pravi iPhone, iOS 14.1): ukras ::before/::after nije dijete elementa, pa mu razmak dajemo pravilom u listu stilova */
+    pseudoGap(el, rg, cg, col, wrap);
     let first = true;
     [...el.childNodes].forEach(c => { if(c.nodeType === 3){ if(c.textContent.trim()) first = false; return; } if(c.nodeType !== 1) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return;
       if(c.dataset.fgc){ first = false; return; } c.dataset.fgc = "1";

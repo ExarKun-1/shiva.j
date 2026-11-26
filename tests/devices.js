@@ -43,6 +43,13 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       const q = P.safari14 ? '?noflexgap=1' : '';
       await pg.goto(URL + q, { waitUntil: 'networkidle' }); await prep(); await pg.waitForTimeout(300);
       await step('naslovnica', true);
+      /* v106 (pravi iPhone 12, iOS 14.1): ukras ::before uz „Jedan primjerak” bez flex gapa mora imati razmak do teksta */
+      if (P.safari14) {
+        const pg2 = await pg.evaluate(() => { const t = document.querySelector('.card .unikat-tag'); if (!t) return -1; const tn = [...t.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+          if (!tn) return -2; const r = document.createRange(); r.selectNodeContents(tn); const before = parseFloat(getComputedStyle(t, '::before').width) || 0;
+          return Math.round(r.getBoundingClientRect().left - t.getBoundingClientRect().left - before); });
+        ok(pg2 >= 7, `${P.name}: razmak između crtica i teksta „Jedan primjerak” bez flex gapa ${pg2} px (treba ≈ 8)`);
+      }
       /* torba iz ponude (dodirom) i artikl iz rubrike Ostalo */
       const tapped = await pg.locator('.card .add-btn:not([disabled])').first().tap({ timeout: 5000 }).then(() => true).catch(() => false);
       await pg.evaluate(() => { const k = PRODUCTS.find(x => x.id === 'kozmeticka'); if (k && !cart.some(c => c.id === k.id)) { cart.push({ ...k, qty: 1, note: '' }); saveCart(); renderCart(); } });
