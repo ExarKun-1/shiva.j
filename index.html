@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v108 (2026-11-26)
+     SHIVA.J WEBSHOP — v109 (2026-11-26)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -130,6 +130,8 @@
            i preklapalo, jer je svaki „i riječ” bio zasebna ćelija mreže — tekst naslova sada je jedan element
      v108 — „Dodaj u košaricu” ispunjen bojom konca (u košarici: obrub); Uvjeti, Izjava, Impresum i Raskid na zasebnoj podstranici
            (#uvjeti, #privatnost, #impresum, #raskid) s „Natrag u trgovinu”; bez JS-a sve ostaje na jednoj stranici
+     v109 — pravi Pixel 9 (Android 15): gumb do kojeg se stranica pomakne ostajao je ispod prilijepljenog zaglavlja; html{scroll-padding-top}
+           pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11)
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -526,7 +528,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v108"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v109"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -763,7 +765,7 @@
   html.legal-view .hero,html.legal-view .press,html.legal-view main.shop,html.legal-view .how,html.legal-view .about{display:none}
   html.legal-view .legal{border-top:0;min-height:calc(100vh - 64px)}
   html.legal-view .legal-inner{padding-top:28px}
-  html.legal-view #uvjeti{scroll-margin-top:200px} /* na vrhu podstranice — vidi se i „Natrag u trgovinu” */
+  html.legal-view #uvjeti{scroll-margin-top:128px} /* na vrhu podstranice — vidi se i „Natrag u trgovinu” */
   .legal-back{display:none}
   html.legal-view .legal-back{display:block;margin-bottom:36px}
   .legal .legal-back a{display:inline-flex;align-items:center;min-height:44px;font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);border-bottom:0}
@@ -795,7 +797,7 @@
   .legal h4{font-family:'Space Mono',monospace;font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--thread);margin:18px 0 6px}
   .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
-  #torbe,#kako,#radionica,#uvjeti,#privatnost,#impresum,#impressum,#kontakt,#raskid,#jamstvo{scroll-margin-top:72px}
+  html{scroll-padding-top:72px} /* v109 (pravi Pixel 9): prilijepljeno zaglavlje ne prekriva element do kojeg se stranica pomakne ni fokus tipkovnice (WCAG 2.2, 2.4.11; tehnika C43) — zamjenjuje scroll-margin-top:72px na odjeljcima */
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -929,7 +931,7 @@
   /* v68: besplatna dostava u košarici; blok „Veličina i nošenje” u povećanom prikazu */
   .free-ship{margin:4px 0 0;font-size:.85rem;color:var(--ink-soft)}.free-ship.ok{color:var(--thread)}
   .lb-size{margin:10px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:2px}.lb-size-h{margin:0 0 4px;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}.lb-size p:not(.lb-size-h){margin:0;font-size:.92rem}.lb-size .lb-size-all{color:var(--ink-soft);margin-top:6px}
-  .grid-sub{scroll-margin-top:72px}
+  .grid-sub{scroll-margin-top:0}
   .confirm-ask #cartItems,.confirm-ask #cartTotal,.confirm-ask #orderForm{display:none} /* v102: dok se čeka klik „Potvrdi narudžbu”, ispod okvira nema obrasca nove narudžbe */
   .claim-box{margin:0 0 20px}.claim-box .claim-btn{display:block;width:100%;margin:12px 0 6px}.claim-box .claim-close{display:block;margin-top:4px;min-width:44px;min-height:44px}
   .pay-steps .pay-late{display:block;margin-top:6px;font-size:.88rem;color:var(--ink-soft)}
@@ -1159,7 +1161,7 @@
   .order-form input[aria-invalid="true"],.order-form textarea[aria-invalid="true"]{border-color:#9B2C1F}
   .order-form .consent input[aria-invalid="true"]{outline:2px solid #9B2C1F;outline-offset:2px}
   #raskidForm input[aria-invalid="true"],#raskidForm textarea[aria-invalid="true"]{border-color:#9B2C1F} /* recenzija v102 (dizajn N4) */
-  #raskidForm input,#raskidForm textarea{scroll-margin-top:96px} /* krug provjere v104 (kupac N2): polje s greškom ne završava ispod zaglavlja */
+  #raskidForm input,#raskidForm textarea{scroll-margin-top:24px} /* krug provjere v104 (kupac N2): polje s greškom ne završava ispod zaglavlja */
   .strap-sel[aria-invalid="true"]{border-color:#9B2C1F;box-shadow:0 0 0 1px #9B2C1F}
   .strap-err{display:block;grid-column:1/-1;margin-top:6px;font-size:.85rem;color:#7A2418;border-left:2px solid #9B2C1F;padding:2px 0 2px 10px;text-transform:none;letter-spacing:0}
   /* način dostave */

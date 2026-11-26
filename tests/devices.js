@@ -43,6 +43,11 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       const q = P.safari14 ? '?noflexgap=1' : '';
       await pg.goto(URL + q, { waitUntil: 'networkidle' }); await prep(); await pg.waitForTimeout(300);
       await step('naslovnica', true);
+      /* v109 (pravi Pixel 9): gumb do kojeg se stranica pomakne (scrollIntoView, fokus) nije ispod prilijepljenog zaglavlja */
+      const under = await pg.evaluate(async () => { const de = document.documentElement, b = document.querySelectorAll('.card .add-btn')[1]; de.style.scrollBehavior = 'auto';
+        scrollTo(0, b.getBoundingClientRect().top + scrollY + 30); b.scrollIntoView(); const hb = document.querySelector('header').getBoundingClientRect().bottom, t1 = b.getBoundingClientRect().top;
+        const hit = document.elementFromPoint(b.getBoundingClientRect().left + 20, t1 + 5); de.style.scrollBehavior = ''; return { hb: Math.round(hb), t1: Math.round(t1), ok: t1 >= hb && !!hit && b.contains(hit) }; });
+      ok(under.ok, `${P.name}: gumb nakon pomicanja do njega nije ispod zaglavlja ${JSON.stringify(under)}`);
       /* v108: pravni dio je zasebna podstranica — u trgovini skriven, iz podnožja se otvara bez trgovine, „Natrag u trgovinu” vraća na isto mjesto */
       const lg = await pg.evaluate(async () => { const d = s => getComputedStyle(document.querySelector(s)).display, w = ms => new Promise(r => setTimeout(r, ms));
         const r = { shopHidesLegal: d('section.legal') === 'none' }; document.documentElement.style.scrollBehavior = 'auto'; scrollTo(0, 1200); document.documentElement.style.scrollBehavior = ''; await w(150); const y0 = scrollY;
