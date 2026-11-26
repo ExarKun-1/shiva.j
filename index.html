@@ -131,7 +131,8 @@
      v108 — „Dodaj u košaricu” ispunjen bojom konca (u košarici: obrub); Uvjeti, Izjava, Impresum i Raskid na zasebnoj podstranici
            (#uvjeti, #privatnost, #impresum, #raskid) s „Natrag u trgovinu”; bez JS-a sve ostaje na jednoj stranici
      v109 — pravi Pixel 9 (Android 15): gumb do kojeg se stranica pomakne ostajao je ispod prilijepljenog zaglavlja; html{scroll-padding-top}
-           pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11)
+           pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11); „lebdenje” gumba samo uz miš
+           (@media (hover:hover)) — na dodirnom zaslonu „U košarici” nakon dodira ostaje s obrubom
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -735,7 +736,7 @@
   .lb-info .add-btn{margin-top:auto}
   /* v90 (vijeće, mobitel): „Dodaj u košaricu” uvijek vidljiv na dnu povećanog prikaza */
   @media (max-width:680px){ .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper)}
-    .lb-info .add-btn.in-cart:not(:hover){background:var(--paper)} /* v90 (recenzija): tekst ne prolazi kroz prilijepljeni gumb; v100: bez :not(:focus-visible), koje stariji Safari ne zna pa odbaci pravilo */
+    .lb-info .add-btn.in-cart{background:var(--paper)} /* v90 (recenzija): tekst ne prolazi kroz prilijepljeni gumb; v100: bez :not(:focus-visible), koje stariji Safari ne zna pa odbaci pravilo */
     .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} }
   .lb-info .lb-ship{font-size:.85rem;color:var(--ink-soft)}
   .lb-gone{font-size:.92rem;color:var(--ink);border-left:2px dashed var(--thread);padding:2px 0 2px 12px}
@@ -967,13 +968,13 @@
     font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
     transition:background .2s,color .2s;
   }
-  .add-btn:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  @media (hover:hover){ .add-btn:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)} } /* v109 (pravi Pixel 9): na dodirnom zaslonu „lebdenje” ostaje nakon dodira i ispunilo bi „U košarici” */
   .add-btn:focus-visible:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)}
   .add-btn:disabled{background:none;border-color:var(--sold);color:var(--sold-text);cursor:not-allowed}
   /* v43: gumb na dnu kartice, pa su gumbi u istom redu poravnati i kad je opis jedne torbe dulji */
   .card > .add-btn{margin-top:auto}
   .add-btn.in-cart{background:none;border-color:var(--thread);color:var(--thread)} /* v108: već u košarici — obrub, da se razlikuje od „Dodaj” */
-  .add-btn.in-cart:hover{background:var(--thread);border-color:var(--thread);color:var(--paper)}
+  @media (hover:hover){ .add-btn.in-cart:hover{background:var(--thread);border-color:var(--thread);color:var(--paper)} .lb-info .add-btn.in-cart:hover{background:var(--thread)} }
   .add-btn.in-cart:focus-visible{background:var(--thread);border-color:var(--thread);color:var(--paper)}
 
   /* ---------- Kako naručiti ---------- */
@@ -1295,7 +1296,7 @@
   /* v94: na niskom zaslonu gumb ne prekriva cijenu; v98 (recenzija vijeća v97, mobitel L1): manja fotografija, pa su naziv i cijena
      na prvom zaslonu, a gumb „Dodaj u košaricu” ostaje vidljiv pri dnu (iPhone SE); položeni mobitel — gumb uz dno desnog stupca */
   @media (max-width:680px) and (max-height:640px){ .lb-photo{max-height:46vh;max-height:46dvh} }
-  @media (min-width:681px) and (max-height:500px){ .lb-info{padding-bottom:0} .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper),0 28px 0 0 var(--paper)} /* v100 (mobitel 1): bez pojasa ispod gumba */ .lb-info .add-btn.in-cart:not(:hover){background:var(--paper)} .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
+  @media (min-width:681px) and (max-height:500px){ .lb-info{padding-bottom:0} .lb-info .add-btn{position:sticky;bottom:0;z-index:3;box-shadow:0 -12px 14px -4px var(--paper),0 28px 0 0 var(--paper)} /* v100 (mobitel 1): bez pojasa ispod gumba */ .lb-info .add-btn.in-cart{background:var(--paper)} .lb-info .add-btn:not(.in-cart):focus-visible:not(:disabled){background:var(--thread)} } /* v99 (recenzija vijeća v98, mobitel M1): tekst ne prolazi kroz gumb */
   summary h3 .n{font-family:'Space Mono',monospace;font-size:.82em;letter-spacing:0;margin-right:.15em} /* v94: brojka 1 u Marcellusu izgleda kao I */
   /* v95 (recenzija vijeća v94, dizajn 4): brojke u stupcu iste širine — naslovi „10.” i „11.” u ravnini, preloženi redak pod naslovom */
   summary h3.with-n{display:grid;grid-template-columns:3.4ch minmax(0,1fr);align-items:baseline} /* v105: razred umjesto :has (Safari 14 ne zna :has) */

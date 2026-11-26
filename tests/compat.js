@@ -131,6 +131,9 @@ const flexGap = siteDecls.filter(b => /display\s*:\s*(?:inline-)?flex/.test(b) &
 ok(flexGap === 0 || /function flexGapFallback\(/.test(scripts[0] || ''), 'Safari 14.0: flexbox s gap uz zamjenu flexGapFallback (' + flexGap + ' pravila)');
 const js14 = ['Intl.ListFormat', 'Intl.Segmenter', 'WeakRef', 'FinalizationRegistry', '.replaceChildren('].filter(t => allJs.includes(t));
 ok(js14.length === 0, 'Safari 14.0: JS bez Intl.ListFormat, Intl.Segmenter, WeakRef ' + JSON.stringify(js14));
+/* v109 (pravi Pixel 9): na dodirnom zaslonu :hover ostaje nakon dodira — lebdenje gumba „Dodaj u košaricu” samo unutar @media (hover:hover) */
+const hovOut = cssNc.replace(/@media\s*\(hover:hover\)\s*\{(?:[^{}]*\{[^{}]*\})*\s*\}/g, '').match(/[^{}]*\.add-btn[^{}]*:hover[^{}]*\{/g) || [];
+ok(hovOut.length === 0, 'dodirni zaslon: :hover za .add-btn samo uz @media (hover:hover) ' + JSON.stringify(hovOut.map(x => x.trim().slice(0, 60))));
 /* v106 (pravi iPhone, iOS 15): Safari od iOS-a 15 gumbu bez boje daje sistemsku plavu — osnovno pravilo za button mora zadati boju */
 const btnRule = (cssNc.match(/(^|[}\s])button\{[^}]*\}/) || [''])[0];
 ok(/color\s*:/.test(btnRule), 'Safari iOS 15+: osnovno pravilo button{…} zadaje boju teksta ' + JSON.stringify(btnRule.trim().slice(0, 80)));
