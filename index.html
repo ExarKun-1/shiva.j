@@ -132,7 +132,7 @@
            (#uvjeti, #privatnost, #impresum, #raskid) s „Natrag u trgovinu”; bez JS-a sve ostaje na jednoj stranici
      v109 — pravi Pixel 9 (Android 15): gumb do kojeg se stranica pomakne ostajao je ispod prilijepljenog zaglavlja; html{scroll-padding-top}
            pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11); „lebdenje” gumba samo uz miš
-           (@media (hover:hover)) — na dodirnom zaslonu „U košarici” nakon dodira ostaje s obrubom
+           (@media (hover:hover) and (pointer:fine); Galaxy S24 javlja hover:hover) — na dodirnom zaslonu „U košarici” nakon dodira ostaje s obrubom
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -968,13 +968,13 @@
     font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
     transition:background .2s,color .2s;
   }
-  @media (hover:hover){ .add-btn:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)} } /* v109 (pravi Pixel 9): na dodirnom zaslonu „lebdenje” ostaje nakon dodira i ispunilo bi „U košarici” */
+  @media (hover:hover) and (pointer:fine){ .add-btn:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)} } /* v109 (pravi Pixel 9): na dodirnom zaslonu „lebdenje” ostaje nakon dodira i ispunilo bi „U košarici”; Galaxy S24 javlja hover:hover uz pointer:coarse, pa i pointer:fine */
   .add-btn:focus-visible:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--paper)}
   .add-btn:disabled{background:none;border-color:var(--sold);color:var(--sold-text);cursor:not-allowed}
   /* v43: gumb na dnu kartice, pa su gumbi u istom redu poravnati i kad je opis jedne torbe dulji */
   .card > .add-btn{margin-top:auto}
   .add-btn.in-cart{background:none;border-color:var(--thread);color:var(--thread)} /* v108: već u košarici — obrub, da se razlikuje od „Dodaj” */
-  @media (hover:hover){ .add-btn.in-cart:hover{background:var(--thread);border-color:var(--thread);color:var(--paper)} .lb-info .add-btn.in-cart:hover{background:var(--thread)} }
+  @media (hover:hover) and (pointer:fine){ .add-btn.in-cart:hover{background:var(--thread);border-color:var(--thread);color:var(--paper)} .lb-info .add-btn.in-cart:hover{background:var(--thread)} }
   .add-btn.in-cart:focus-visible{background:var(--thread);border-color:var(--thread);color:var(--paper)}
 
   /* ---------- Kako naručiti ---------- */
