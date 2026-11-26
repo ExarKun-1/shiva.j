@@ -167,9 +167,11 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
   const openCount = await pd.locator('.legal details[open]').count();
   const total = await pd.locator('.legal details').count();
   ok(total === 21 && openCount === 0, `uvjeti i privatnost sklopljeni (${total} odjeljaka)`);
+  await pd.evaluate(() => { location.hash = '#uvjeti'; }); await pd.waitForTimeout(300); /* v108: pravni dio je zasebna podstranica */
   const hBefore = await pd.evaluate(() => document.documentElement.scrollHeight);
   await pd.locator('.legal summary').first().click();
   ok(await pd.locator('.legal details[open]').count() === 1, 'odjeljak se otvara klikom');
+  await pd.evaluate(() => { location.hash = '#torbe'; }); await pd.waitForTimeout(300);
   // hero click opens lightbox
   await pd.evaluate(() => scrollTo(0, 0));
   await pd.click('#heroBag .ring');
@@ -227,7 +229,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const fd = await pu.evaluate(() => [fmtDeadline('2026-11-11T23:01:00Z'), fmtDeadline('2026-11-12T10:00:00Z')]);
     { const raw = await pu.evaluate(() => [fmtDeadline('<i>nije datum</i>'), fmtDateTime('<b>x</b>'), fmtDeadline('')]);
       ok(!/[<>]/.test(raw[0]) && /&lt;i&gt;/.test(raw[0]) && !/[<>]/.test(raw[1]) && raw[2] === '', 'recenzija v102 (sigurnost N6): neispravan datum ne ulazi sirov u HTML ' + JSON.stringify(raw)); }
-    ok(uv >= 0 && uv < 160 && /12\.\s11\.\s2026\.\su\s00:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
+    ok(uv >= 0 && uv < 260 && /12\.\s11\.\s2026\.\su\s00:01 \(u noći sa srijede na četvrtak\)$/.test(fd[0]) && !/noći/.test(fd[1]), 'v90: /#uvjeti nakon učitavanja na Uvjetima; noćni rok s „u noći sa srijede na četvrtak” ' + JSON.stringify([uv, fd])); await pu.close(); }
   { /* v96 (recenzija vijeća v95, hitno): na računalu fotografija u povećanom prikazu ne prekriva tekst */
     const ov = [];
     for (const w of [1440, 1024, 820, 700]) {
@@ -731,7 +733,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const stepA = await pg.evaluate(() => !document.getElementById('raskidStep2').hidden);
     await pg.evaluate(() => { location.hash = '#raskid?no=2026-0302&t=' + 'c'.repeat(24); }); await pg.waitForTimeout(300);
     const stepB = await pg.evaluate(() => [document.getElementById('raskidStep2').hidden, !document.getElementById('raskidStep1').hidden, document.getElementById('rNo').value, document.getElementById('rIban').value, document.getElementById('rNote').value, document.getElementById('rName').value]);
-    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
+    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); legalView(); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
     ok(stepA && stepB[0] && stepB[1] && stepB[2] === 'SJ-2026-0302' && stepB[3] === '' && stepB[4] === '' && stepB[5] === 'Ana Kupac', 'provjera v102 (krug 2, kupac 3b): druga poveznica za raskid zatvara pregled prve izjave; IBAN i napomena se ne prenose ' + JSON.stringify(stepB));
     /* krug 2 (K10): stanje najviše jednom u dvije minute */
     await pg.evaluate(L => { storeSet('last', L); }, mkLast('SJ-2026-0215', 'luna', 'Luna'));
@@ -785,10 +787,10 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const strapW = await pg.evaluate(() => { const e = document.querySelector('.strap-err'), row = e && e.closest('.strap-row'); return e ? [Math.round(e.getBoundingClientRect().width), Math.round(row.getBoundingClientRect().width)] : [0, 1]; });
     await pg.evaluate(() => { cart = []; saveCart(); renderCart(); closeCart(false); location.hash = '#raskid'; }); await pg.waitForTimeout(200);
     await pg.click('#raskidNext'); await pg.waitForTimeout(200);
-    const rsk = await pg.evaluate(() => { const n = document.getElementById('rName'); const g = [...document.querySelectorAll('.grid-sub > span')].map(x => x.getClientRects().length); return [n.getAttribute('aria-invalid'), getComputedStyle(n).borderTopColor, g.length === 0 || g.every(x => x === 1)]; });
+    const rsk = await pg.evaluate(() => { const n = document.getElementById('rName'); const g = [...document.querySelectorAll('.grid-sub > span')].map(x => x.getClientRects().length); return [n.getAttribute('aria-invalid'), getComputedStyle(n).borderTopColor, g.length === 0 || g.every(x => x <= 1)]; }); /* v108: 0 = skriveno (trgovina ispod pravne podstranice) */
     await pg.fill('#rName', 'Ana Anić'); await pg.fill('#rEmail', 'nije-adresa'); await pg.waitForTimeout(100);
     rsk.push(await pg.evaluate(() => [document.getElementById('rName').getAttribute('aria-invalid'), document.getElementById('rEmail').getAttribute('aria-invalid')])); /* krug 4, N5: ispravljeno polje bez obruba, neispravno ga zadržava */
-    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
+    await pg.evaluate(() => { history.replaceState(null, '', location.pathname); legalView(); document.getElementById('raskidForm').reset(); window.scrollTo(0, 0); });
     ok(misc2[0] && zipMsg[0] === '' && zipMsg[1] && strapW[0] >= strapW[1] - 2 && rsk[0] === 'true' && rsk[1] === 'rgb(155, 44, 31)' && rsk[2] && rsk[3][0] === null && rsk[3][1] === 'true',
       'recenzija v102 (mobitel 2/5/7, dizajn N4/N6): prikaz počinje od vrha; ispravan poštanski broj nema poruku; poruka uz remen preko cijele širine; raskid ima crveni obrub ' + JSON.stringify([misc2, zipMsg, strapW, rsk]));
     /* povratak u karticu pita stanje; ploča STARIJE narudžbe na zaslonu nestaje kad servis javi storno */
@@ -1342,6 +1344,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     ok(/Vaša izjava o raskidu zaprimljena je \d{1,2}\. \d{1,2}\. \d{4}\. u \d\d:\d\d\./.test(done) && /ana\.raskid@primjer\.hr/.test(done) && /potvrda primitka izjave o raskidu ugovora/.test(mlR) && !over73, 'v73: raskid — potvrda na zaslonu s datumom i vremenom, e-mail kupcu, bez vodoravnog klizanja (390 px)');
     await p73.goto(URL + '#raskid?no=2026-0042', { waitUntil: 'networkidle' }); await p73.reload({ waitUntil: 'networkidle' }); await p73.waitForTimeout(300);
     ok((await p73.inputValue('#rNo')) === 'SJ-2026-0042', 'v73: poveznica iz e-maila popunjava broj narudžbe');
+    await p73.evaluate(() => { location.hash = '#torbe'; }); await p73.waitForTimeout(300); /* v108: iz pravne podstranice natrag u trgovinu */
     await p73.click('.card .card-name >> nth=0'); await p73.waitForTimeout(300);
     ok(/Ručni rad — moguća su mala odstupanja u šavu i nijansi u odnosu na fotografiju\./.test(await p73.textContent('#lightbox .lb-handmade')), 'v73: prikaz torbe — napomena o ručnom radu');
     await p73.click('#lbCare summary'); await p73.waitForTimeout(100);

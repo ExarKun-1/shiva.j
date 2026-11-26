@@ -43,6 +43,15 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       const q = P.safari14 ? '?noflexgap=1' : '';
       await pg.goto(URL + q, { waitUntil: 'networkidle' }); await prep(); await pg.waitForTimeout(300);
       await step('naslovnica', true);
+      /* v108: pravni dio je zasebna podstranica — u trgovini skriven, iz podnožja se otvara bez trgovine, „Natrag u trgovinu” vraća na isto mjesto */
+      const lg = await pg.evaluate(async () => { const d = s => getComputedStyle(document.querySelector(s)).display, w = ms => new Promise(r => setTimeout(r, ms));
+        const r = { shopHidesLegal: d('section.legal') === 'none' }; document.documentElement.style.scrollBehavior = 'auto'; scrollTo(0, 1200); document.documentElement.style.scrollBehavior = ''; await w(150); const y0 = scrollY;
+        document.querySelector('footer a[href="#uvjeti"]').click(); await w(400);
+        r.legalOnly = d('section.legal') !== 'none' && d('main.shop') === 'none' && d('.hero') === 'none';
+        document.getElementById('legalBack').click(); await w(300); r.back = d('main.shop') !== 'none' && Math.abs(scrollY - y0) < 40; return r; });
+      ok(lg.shopHidesLegal && lg.legalOnly && lg.back, `${P.name}: Uvjeti na zasebnoj podstranici i povratak u trgovinu ${JSON.stringify(lg)}`);
+      const btnC = await pg.evaluate(() => { const b = document.querySelector('.card .add-btn:not([disabled]):not(.in-cart)'); return b ? getComputedStyle(b).backgroundColor : ''; });
+      ok(btnC === 'rgb(46, 74, 58)', `${P.name}: „Dodaj u košaricu” ispunjen bojom konca (${btnC})`);
       /* v107: naslov s brojkom u Uvjetima ima točno dvije ćelije (brojka + tekst) — inače se „i riječ” (span.nw) lomi u novi red i preklapa */
       const h3bad = await pg.evaluate(() => [...document.querySelectorAll('summary h3.with-n')].filter(h => h.children.length !== 2 || [...h.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).length);
       const h3n = await pg.evaluate(() => document.querySelectorAll('summary h3.with-n').length);
