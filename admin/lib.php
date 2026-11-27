@@ -778,7 +778,7 @@ function sj_deadline_mail(string $kind, array $o, array $c, int $auto): void {
       $okC = sj_send_mail((string)$o['email'], $c['shop'] . " — rok za uplatu je prošao, narudžba $no",
         $hi . "rok za uplatu narudžbe br. $no prošao je u $untilAcc, a uplatu još ne vidimo" . (($hsN = sj_held_sentence(sj_held_info($o))) !== '' ? '. ' . rtrim($hsN, '.') . ', jer obična uplata poslana do roka može stići sljedeći radni dan' : ($back !== '' ? ", pa $back" : '')) . '.' /* v81 (p2) */
         . "\n\nVeć ste platili? " . ($claim !== '' ? "Kliknite „Uplatio/la sam”:\n$claim\n(ili odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke)." : 'Odgovorite na ovaj e-mail sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke.')
-        . ' Ako ste nam snimku potvrde već poslali, ne trebate ništa više. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '.')
+        . ' Ako ste nam snimku potvrde već poslali, ništa više ne trebate poduzimati. Provjerit ćemo izvod i javiti vam se' . ($uq ? '; ako je ' . ($many ? 'neka od torbi' : 'torba') . ' u međuvremenu otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate od dana uplate do dana povrata, što prije, a najkasnije u roku od sedam dana.' : '.')
         . "\n\nAko ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati" . ($uq ? '; ako ' . ($many ? 'torbe' : 'torbu') . ' u međuvremenu nije kupio netko drugi, ' . ($many ? 'one su vaše' : 'ona je vaša') . '.' : '.')
         . $storno
         . "\n\n" . sj_pay_lines($o, $c) . $bye, null, (string)$c['owner_email']);
@@ -1841,13 +1841,16 @@ function sj_mask_handles(string $s): string {
   $s = str_replace('＠', '@', $s); /* krug provjere v104: „@” pune širine */
   $s = preg_replace('~(?<![\p{L}\p{N}._@-])@[\p{L}\p{N}._-]{2,}~u', '[oznaka skrivena]', $s) ?? $s;
   /* krug provjere v104 (sigurnost B7): i „Revolut - ime”, „Revolut – ime”, „Revolut → ime”, „Revolut (ime)”, „Revolut tag: ime” */
-  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)\b((?:\s+tag)?)(\s*[:\-–—→(]+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}._-]{3,})(\)?)(?=(.{0,12}))~isu', function ($m) {
+  /* v110 (recenzija v109, sigurnost N1): i padeži („Revolutom”, „Revolutu”, „PayPalom”, „Keks Payem”), „na …”, „račun …”, razdjelnici = / @ … ->,
+     gola oznaka na kraju dijela rečenice („Revolut ivanhorvat”) i oznaka s točkom („ivan.horvat99” / „ivan. horvat99”); obične riječi ostaju */
+  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)(\p{L}{0,3})\b((?:\s+(?:tag|na|račun|računa|account))?)(\s*(?:[:=/@…\-–—→(]|\.{2,}|->)+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}_-]{3,}(?:\.\s?[\p{L}\p{N}_-]+)*)(\)?)(?=(.{0,12}))~isu', function ($m) {
     /* drugi krug provjere v104 (N4): crtica, strelica, zagrada i „tag” bez dvotočke vrijede samo za samostalnu oznaku na kraju dijela rečenice, a ne za obične riječi
-       („Revolut → banka”, „PayPal (ako može)”, „Revolut tag nemam”) */
-    $word = preg_match('~^(?:ali|ako|ili|banka|banku|instant|nemam|imam|hoće|može|sve|molim|radije|samo|isto|nije|nema|je|da|ne|na|za|i|a|kartica|karticom|račun|uplata|uplatu|aplikacija)$~iu', $m[5]);
-    $alone = preg_match('~^[)\s]*(?:$|[.,;!?]|\s+(?:ili|i|a)\b)~u', (string)($m[7] ?? ''));
-    $hit = stripos($m[1], 'revtag') === 0 || str_contains($m[3], ':') || $m[4] !== '' || preg_match('~[\d._]~', $m[5]) || (!$word && $alone && ($m[2] !== '' || preg_match('~[\-–—→(]~u', $m[3])));
-    return $hit ? $m[1] . $m[2] . $m[3] . '[oznaka skrivena]' . $m[6] : $m[0];
+       („Revolut → banka”, „PayPal (ako može)”, „Revolut tag nemam”); v110: popis običnih riječi proširen (vrijeme, glagoli plaćanja) */
+    $word = preg_match('~^(?:ali|ako|ili|banka|banku|banke|instant|nemam|imam|hoće|hoćete|može|mogu|možete|sve|molim|radije|samo|isto|nije|nema|je|da|ne|na|za|i|a|u|s|sa|iz|od|do|po|pa|jer|kad|kada|čim|nakon|prije|poslije|preko|putem|kartica|kartice|karticom|račun|računa|uplata|uplatu|uplatom|uplatnicom|aplikacija|aplikaciju|vrijeme|sutra|danas|odmah|kasnije|večeras|ujutro|navečer|vikend|vikendom|prekosutra|plaćam|platim|platiti|platit|plaćanje|šaljem|šaljemo|pošaljem|uplatim|uplaćujem|uplatiti|radi|hvala|ok|okej|svejedno|nemate|imate|imaš|nemaš|bih|bi|ću|će|ćemo|sam|smo|ste|li|vas|vam|nas|nam|mi|ti|ja|vi|oni|to|ovo|ono|tako|ovako|isto|također|kao|nego|još|već|uvijek|nikad|možda|svakako|naravno|ne mogu)$~iu', $m[6]);
+    $alone = preg_match('~^[)\s]*(?:$|[.,;!?]|\s+(?:ili|i|a|hvala)\b)~u', (string)($m[8] ?? ''));
+    $hit = stripos($m[1], 'revtag') === 0 || preg_match('~[:=/@…]|\.\.|->~u', $m[4]) || $m[5] !== '' || preg_match('~[\d._]~', $m[6])
+      || (!$word && ($m[3] !== '' || $alone));
+    return $hit ? $m[1] . $m[2] . $m[3] . $m[4] . '[oznaka skrivena]' . $m[7] : $m[0];
   }, $s) ?? $s;
   /* krug provjere v104 (sigurnost 1/5): razdjelnici i . ! ( ) — – →; pozivni broj nije dio vremena ili datuma (ni iza „:”, „/”, „.” ili znamenke) */
   $sep = '[\s,;:\-/.!()—–→]+'; $pre = '(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:/]\d)';

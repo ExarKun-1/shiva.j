@@ -179,7 +179,11 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       ok(at.data.pending && at.data.replaced === false && cv.data.ok && /^SJ-/.test(cv.data.orderNo || ''), 'v96: s iste veze, drugi preglednik — pravi link i dalje potvrđuje (bez otmice) ' + JSON.stringify([at.data.replaced, cv.status]));
       const pnd = read('narudzbe-na-cekanju.json', []).find(x => x.id === LV.id) || {};
       const st = await (await fetch(U + 'status?pt=' + (pnd.pt || ''))).json();
-      ok(/^[0-9a-f]{24}$/.test(pnd.pt || '') && st.pendState === 'confirmed' && st.pendNo === cv.data.orderNo, 'v96: api/status?pt= javlja da je narudžba potvrđena (drugi uređaj) ' + JSON.stringify([st.pendState, st.pendNo])); }
+      ok(/^[0-9a-f]{24}$/.test(pnd.pt || '') && st.pendState === 'confirmed' && !('pendNo' in st), 'v96: api/status?pt= javlja da je narudžba potvrđena (drugi uređaj); v110: bez broja narudžbe ' + JSON.stringify([st.pendState, st.pendNo]));
+      /* v110 (recenzija v109, sigurnost N2): isti ključ nakon potvrde linkom — bez broja, oznake stanja i roka */
+      const rk = await post('order', order('cgnat-key-0001', 'cgnat@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, 'serija-zrtve-0000000001'));
+      ok(rk.data.ok && rk.data.confirmedByLink === true && !rk.data.orderNo && !rk.data.check && !rk.data.claimUntil && !rk.data.payment,
+        'v110: ponovljeni zahtjev istim ključem nakon potvrde linkom ne otkriva broj ni oznaku stanja ' + JSON.stringify(Object.keys(rk.data))); }
     // 7l) v98 (recenzija vijeća v97, sigurnost M3/M4): tri narudžbe s tuđim e-mailom iz drugog preglednika ne istiskuju pravi link;
     //     otvorena neplaćena narudžba javlja se odmah samo istom pregledniku, drugom odgovor je kao za svaku narudžbu, a vlasniku adrese e-mail
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);
@@ -349,7 +353,7 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
           const o5 = read('narudzbe.json', []); delete o5.find(x => x.no === cA.data.orderNo).claimedAt; const x5 = o5.find(x => x.no === cA.data.orderNo); x5.payUntil = new Date(Date.now() - 3600e3).toISOString(); write('narudzbe.json', o5);
           const rz5 = read('rezervacije.json', {}); free.forEach(id => { if (rz5.res && rz5.res[id]) rz5.res[id].until = new Date(Date.now() - 60e3).toISOString(); }); write('rezervacije.json', rz5);
           const early = await post('confirm', { id: LA.id, t: LA.t, peek: true });
-          ok(/Ako ste nam snimku potvrde već poslali, ne trebate ništa više\./.test(lA.data.lapsed || '') && /otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate/.test(lA.data.lapsed || '') && !/, vam vraćamo/.test(lA.data.lapsed || '') /* drugi krug provjere (N2) */
+          ok(/Ako ste nam snimku potvrde već poslali, ništa više ne trebate poduzimati\./.test(lA.data.lapsed || '') && /otišla drugom kupcu, vraćamo vam uplaćeni iznos uvećan za zakonske zatezne kamate/.test(lA.data.lapsed || '') && !/, vam vraćamo/.test(lA.data.lapsed || '') /* drugi krug provjere (N2) */
             && cl.data.ok && cl.data.reserved === false && cl.data.until === null && /^Rok za uplatu ove narudžbe prošao je u /.test(cl.data.lapsed || '') && !/vraćamo/.test(cl.data.lapsed || '') /* povrat kaže claimMsg (N3) */ && !/rezervirana je za vas/.test(cl.data.lapsed || '')
             && early.data.ok && !early.data.claimUntil && !early.data.claimLink && early.data.reserved === false,
             'v104 (recenzija v103, kupac/softver N1, dizajn N2, softver N4): tekst kao e-mail; nakon „Uplatio/la sam” bez rezervacije; čuvanje završilo prije roka za klik — bez „Uplatio/la sam” '
@@ -361,6 +365,11 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
         const hA = await post('confirm', { id: LA.id, t: LA.t, peek: true });
         ok(hA.data.ok && hA.data.repeated && /^Rok za uplatu ove narudžbe prošao je u .*, a uplatu još ne vidimo\. Torbe .* i dalje čuvamo za vas do /.test(hA.data.lapsed || '') && /^\?uplata=/.test(hA.data.claimLink || ''),
           'recenzija kupca v103 (računalo 3): rok prošao, torba se još čuva — ploča kaže do kada, bez roka u prošlosti; „Uplatio/la sam” ostaje ' + JSON.stringify([hA.status, (hA.data.lapsed || '').slice(0, 140), !!hA.data.claimLink]));
+        /* v110 (recenzija v109, softver N2 / kupac-pc N1): oznaka lapsedHeld (ploča bez „uplatite ako ste i dalje zainteresirani”) i ista stanja za spremljenu ploču u košarici */
+        { const stH = await (await fetch(U + 'status?stanje=' + encodeURIComponent(cA.data.orderNo) + '&t=' + (cA.data.check || ''))).json();
+          ok(hA.data.lapsedHeld === true && !hA.data.lapsedCall && stH.orderState === 'open' && stH.lapsedSrv && stH.lapsedSrv.lapsedHeld === true && stH.lapsedSrv.lapsed === hA.data.lapsed
+            && typeof stH.heldUntil === 'string' && Date.parse(stH.heldUntil) > Date.now() && !('claimLink' in stH.lapsedSrv),
+            'v110: rok prošao, torba se čuva — lapsedHeld; status?stanje= daje spremljenoj ploči isti tekst i do kada se torba čuva ' + JSON.stringify([hA.data.lapsedHeld, stH.orderState, !!stH.lapsedSrv, stH.heldUntil])); }
         /* v104 (recenzija v103, softver N2): torbe je u međuvremenu naručio drugi kupac — „otišle drugom kupcu”, bez poziva na uplatu i bez podataka za uplatu (allGone) */
         { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
           const rzD = read('rezervacije.json', {}); free.forEach(id => { if (rzD.res && rzD.res[id]) rzD.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rzD);
@@ -370,6 +379,12 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
           const tk = await post('confirm', { id: LA.id, t: LA.t, peek: true });
           ok(cD.data.ok && tk.data.ok && /u međuvremenu su otišle drugom kupcu/.test(tk.data.lapsed || '') && !/ponovno u ponudi/.test(tk.data.lapsed || '') && !/uplatite iznos/.test(tk.data.lapsed || '') && tk.data.allGone === true,
             'v104 (recenzija v103, softver N2): torbe otišle drugom kupcu — ploča to kaže, bez „ponovno u ponudi” i poziva na uplatu ' + JSON.stringify([cD.status, (tk.data.lapsed || '').slice(0, 160), tk.data.allGone])); }
+        /* v110 (recenzija v109, softver N4 / dizajn N3): torbe je drugi kupac kupio i platio (sold) — isto „otišle drugom kupcu”, bez drugog „Već ste platili?” i bez poziva na uplatu */
+        { const rzS = read('rezervacije.json', {}); if (!rzS.sold || Array.isArray(rzS.sold)) rzS.sold = {}; free.forEach(id => { if (rzS.res) delete rzS.res[id]; rzS.sold[id] = { no: 'SJ-2026-9999', paidAt: new Date().toISOString() }; }); write('rezervacije.json', rzS);
+          try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+          const sd = await post('confirm', { id: LA.id, t: LA.t, peek: true });
+          ok(sd.data.ok && /u međuvremenu su otišle drugom kupcu/.test(sd.data.lapsed || '') && sd.data.allGone === true && !/Već ste platili\?/.test(sd.data.lapsed || '') && !sd.data.lapsedCall && !/ponovno u ponudi/.test(sd.data.lapsed || ''),
+            'v110: prodane torbe (sold) — „otišle drugom kupcu”, povrat jednom, bez poziva na uplatu ' + JSON.stringify([(sd.data.lapsed || '').slice(0, 200), sd.data.allGone])); }
         /* krug provjere v104 (kupac N1): otišao samo dio narudžbe — ploča ne traži uplatu cijele narudžbe (anyGone), povrat se spominje jednom */
         { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
           const plP = JSON.parse(fs.readFileSync(D + 'proizvodi.json', 'utf8')); const rzP = read('rezervacije.json', {});
@@ -397,6 +412,17 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
     const body = JSON.stringify(strapFill(order('potvrda-host-0001', 'host@primjer.hr', [{ id: 'klasik', qty: 1 }], 60)));
     const out503 = require('child_process').execFileSync('curl', ['-s', '-w', '\n%{http_code}', '-H', 'Host: zli.primjer.hr', '-X', 'POST', '--data-binary', body, U + 'order']).toString();
     ok(/\n503$/.test(out503) && /trenutačno nedostupne/.test(out503) && /narudžbe ne rade/.test(mailLog()), 'nepoznat Host bez upisane adrese stranice → 503 i upozorenje vlasnici');
+    /* v110 (recenzija v109, mobitel N6 / dizajn N5): e-mail traži „Boja” za artikl bez duljine, „Boja i duljina” za remen; e-mail za potvrdu kaže „remena” */
+    { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} });
+      const before = fs.existsSync(D + 'mail-log.txt') ? fs.readFileSync(D + 'mail-log.txt', 'utf8').length : 0;
+      await post('order', order('potvrda-v110-boja-1', 'v110boja@primjer.hr', [{ id: 'kozmeticka', qty: 1, note: 'crvena' }, { id: 'remen', qty: 1, note: 'crna, 120 cm' }], 35)); const Lb = lastLink();
+      const cb = await post('confirm', { id: Lb.id, t: Lb.t });
+      const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(before);
+      ok(cb.data.ok && /Boja za artikl „Kozmetička torbica”: crvena\./.test(ml) && /Boja i duljina za artikl „Zamjenski remen”: crna, 120 cm\./.test(ml) && /odabranu boju i duljinu remena ili ono što ste upisali uz artikl/.test(ml),
+        'v110: e-mail — „Boja” za artikl bez duljine, „Boja i duljina” za remen; e-mail za potvrdu imenuje remen ' + JSON.stringify([cb.status, (ml.match(/Boj[ae][^\n]{0,60}/g) || []).slice(0, 3)]));
+      /* krug provjere v110: poruka nakon „Uplatio/la sam” — „izrađujemo artikle „…””, naziv u nominativu uz „artikl” */
+      const tk = (/&t=([0-9a-f]{32})$/.exec(cb.data.claimLink || '') || [])[1] || ''; const pcl = await post('paidclaim', { no: cb.data.orderNo, t: tk });
+      ok(pcl.data.ok && /izrađujemo artikle „Kozmetička torbica” i „Zamjenski remen”/.test(JSON.stringify(pcl.data)), 'krug provjere v110: „izrađujemo artikle „…”” nakon „Uplatio/la sam” ' + JSON.stringify(pcl.data).slice(0, 200)); }
     // 9) prekidač: require_confirm=false vraća staro ponašanje
     write('config.json', Object.assign({}, cfg0, { require_confirm: false }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

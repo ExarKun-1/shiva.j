@@ -142,8 +142,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const vis88 = await pd.isVisible('#orderForm .trust-line a[href="#jamstvo"]');
     if(vis88) await pd.click('#orderForm .trust-line a[href="#jamstvo"]'); else await pd.evaluate(() => { location.hash = 'jamstvo'; openJamstvo(); });
     await pd.waitForTimeout(1200);
-    const st88 = await pd.evaluate(() => [document.body.classList.contains('cart-open'), document.getElementById('jamstvo').open, Math.round(document.querySelector('#jamstvo summary').getBoundingClientRect().top - document.querySelector('header').getBoundingClientRect().bottom)]);
-    await pd.evaluate(() => { document.getElementById('jamstvo').open = false; history.replaceState(null, '', location.pathname); window.scrollTo(0, 0); });
+    const st88 = await pd.evaluate(() => [document.body.classList.contains('cart-open'), document.getElementById('jamstvo').open, Math.round(document.querySelector('#jamstvo summary').getBoundingClientRect().top - Math.max(document.querySelector('header').getBoundingClientRect().bottom, document.querySelector('.legal-back').getBoundingClientRect().bottom))]); /* v110: ispod zaglavlja i trake „Natrag u trgovinu” */
+    await pd.evaluate(() => { document.getElementById('jamstvo').open = false; history.replaceState(null, '', location.pathname); legalView(); window.scrollTo(0, 0); });
     ok(JSON.stringify(j88) === '["Zakonsko jamstvo 2 godine",0,true]' && st88[0] === false && st88[1] === true && st88[2] >= 0 && st88[2] < 40, 'v88: u košarici kratka poveznica bez sličice; klik zatvara košaricu i otvara Uvjete t. 8 ispod zaglavlja ' + JSON.stringify([j88, vis88, st88])); }
   { const ik = await pd.evaluate(async () => { const l = document.querySelector('link[rel="icon"]'), a = document.querySelector('link[rel="apple-touch-icon"]');
       const r = await fetch(l.getAttribute('href')); const im = new Image(); im.src = a.getAttribute('href'); await im.decode().catch(() => {});
@@ -583,6 +583,25 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const a2 = asked.slice(); await pg.evaluate(() => closeCart(false));
     ok(a1.some(Boolean) && a2.length > 0 && !a2.some(Boolean), 'v102 (softver N3): otvaranje košarice pita i stanje narudžbe, ali najviše jednom u minuti ' + JSON.stringify([a1, a2]));
     await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); });
+    /* v110 (recenzija v109, kupac-pc N1): rok za uplatu prošao, torba se još čuva — ploča ostaje u košarici, s tekstom kao stari link (lapsedSrv) */
+    { const held = new Date(Date.now() + 20 * 3600e3).toISOString(), lapsedTxt = 'Rok za uplatu ove narudžbe prošao je u četvrtak, 26. 11. 2026. u 23:59, a uplatu još ne vidimo. Torbu „Luna” i dalje čuvamo za vas do petka, 27. 11. 2026. u 23:59.';
+      const Lh = mkLast('SJ-2026-0207', 'luna', 'Luna'); Lh.at = Date.now() - 3 * 86400e3; Lh.srv.payUntil = new Date(Date.now() - 2 * 86400e3).toISOString(); Lh.srv.claimUntil = null;
+      await pg.evaluate(L => { storeSet('last', L); }, Lh);
+      await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); const u = decodeURIComponent(route.request().url());
+        await route.fulfill({ response: rsp, json: /stanje=SJ-2026-0207/.test(u) ? Object.assign(j, { orderState: 'open', heldUntil: held, lapsedSrv: { lapsed: lapsedTxt, lapsedHeld: true, until: held, reserved: true, payUntil: Lh.srv.payUntil, claimUntil: held } }) : j }); } catch (e) {} });
+      await pg.goto(URL + '?v110=1', { waitUntil: 'networkidle' });
+      await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.heldUntil; }, null, { timeout: 5000 }).catch(() => {});
+      const hv = await pg.evaluate(() => { openCart(); const t = document.querySelector('.drawer-body').textContent; const btn = document.getElementById('showLast'); if (btn) btn.click(); const t2 = (document.querySelector('.pay') || {}).textContent || ''; closeCart(false); return [!!btn, /i dalje čuvamo za vas do petka/.test(t2), /Uplatio\/la sam/.test(t2), /Ako ste i dalje zainteresirani/.test(t2), t.slice(0, 120)]; });
+      await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); });
+      ok(hv[0] && hv[1] && hv[2] && !hv[3], 'v110: rok za uplatu prošao, torba se čuva — ploča ostaje u košarici s tekstom kao link i „Uplatio/la sam” ' + JSON.stringify(hv)); }
+    /* v110 (recenzija v109, kupac-pc N2): stara kartica — torba iz vlastite narudžbe izlazi iz košarice s porukom; gumb „Podaci za uplatu” samo jednom */
+    { const Lo = mkLast('SJ-2026-0208', 'vela', 'Vela'); await pg.evaluate(L => { storeSet('last', L); }, Lo);
+      await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); j.ids = Array.from(new Set([...(j.ids || []), 'vela'])); await route.fulfill({ response: rsp, json: j }); } catch (e) {} });
+      await pg.goto(URL + '?v110b=1', { waitUntil: 'networkidle' });
+      const ow = await pg.evaluate(async () => { const v = PRODUCTS.find(x => x.id === 'vela'); cart = [{ ...v, qty: 1, note: '' }]; saveCart(); renderCart(); openCart(); await refreshReservations(); await new Promise(r => setTimeout(r, 400));
+        const r = [document.getElementById('toast').textContent, cart.some(c => c.id === 'vela'), document.querySelectorAll('#showLast').length]; closeCart(false); return r; });
+      await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); cart = []; saveCart(); renderCart(); });
+      ok(/Torba „Vela” već je u vašoj narudžbi SJ-2026-0208, pa je nema u košarici\./.test(ow[0]) && !ow[1] && ow[2] === 1, 'v110: stara kartica — torba iz vlastite narudžbe izlazi s porukom, jedan gumb „Podaci za uplatu” ' + JSON.stringify(ow)); }
     /* G) „mine” za dvije torbe: naslov u množini */
     await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'mine', mine: ['vela', 'nera'], error: 'Torbe „Vela” i „Nera” već su u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' }) }));
     await pg.goto(URL + '?potvrda=' + 'e'.repeat(32) + '.' + 'f'.repeat(32), { waitUntil: 'networkidle' });
@@ -1470,7 +1489,7 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       await pg.goto(URL + '?potvrda=' + LA.id + '.' + LA.t, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pay', { timeout: 8000 }).catch(() => {});
       const r = await pg.evaluate(() => { const p = document.querySelector('.pay'); if (!p) return null; const t = p.textContent, lt = p.querySelector('.pay-lapsed-t');
         return { hello: (p.querySelector('.pay-hello') || {}).textContent || '', reserved: /rezervirana je za vas/.test(t), claim: !!p.querySelector('.claim-link'), doRoka: /Do roka/.test(t), payData: !!p.querySelector('.pay-data .iban'),
-          font: lt ? getComputedStyle(lt).fontFamily : '', sum: (p.querySelector('.pay-sum') || {}).textContent || '', gone: /u međuvremenu je otišla drugom kupcu;/.test(t), txt: t.slice(0, 400), cond: /To vrijedi ako torbu u međuvremenu nije kupio netko drugi\./.test(t) && !/drugi: /.test(t), uplatite: /Sada\s*Uplatite/.test(t), javili: /Javili ste nam|Već ste nam javili/.test(t) }; });
+          font: lt ? getComputedStyle(lt).fontFamily : '', sum: (p.querySelector('.pay-sum') || {}).textContent || '', gone: /u međuvremenu je otišla drugom kupcu;/.test(t), txt: t.slice(0, 400), cond: /Sada\s*Ako ste i dalje zainteresirani za narudžbu, uplatite iznos i pošaljite nam potvrdu o uplati; ako torbu „[^”]+” u međuvremenu nije kupio netko drugi, ona je vaša\./.test(t) && (t.match(/Ako ste i dalje zainteresirani/g) || []).length === 1 && !/To vrijedi ako torbu/.test(t), /* v110 (recenzija v109, dizajn N2/N3): poziv jednom, s imenom torbe */ uplatite: /Sada\s*Uplatite/.test(t), javili: /Javili ste nam|Već ste nam javili/.test(t) }; });
       await cx.close(); return r; };
     shift(false); try { fs.unlinkSync(SITE + 'data/zahtjevi.json'); } catch (e) {}
     const g1 = await panel();

@@ -136,6 +136,8 @@ function sjShipText(P) { return P.ship.label + ' — ' + (P.ship.price > 0 ? sjE
 function sjView(o) { var d = o.data || {}; return { items: d.items || [], ship: d.ship || null }; }
 function sjRepeat(o, env) {
   var d = o.data || {};
+  /* v110 (recenzija v109, softver N5): kao api/index.php — nakon „Plaćeno” stari link ne pokazuje ploču za uplatu */
+  if (o.paid) return sjOut(409, { ok: false, code: 'paid', error: 'Uplatu za ovu narudžbu već smo zabilježili; nemojte plaćati ponovno.' });
   var res = { ok: true, orderNo: o.no, reference: sjRef(o.no), total: d.total, until: (d.held || []).length ? o.until : null, reserved: !(d.unheld || []).length, unheld: !!(d.unheld || []).length,
     unheldIds: d.unheld || [], mailOwner: true, mailCustomer: true, repeated: true };
   /* v104 (kao api/index.php, recenzija v103 softver N3): rok za uplatu (čuvanje torbe) je prošao — bez „rezervirana je za vas” i roka u prošlosti.
@@ -143,7 +145,7 @@ function sjRepeat(o, env) {
   if (env && !o.paid && o.until && Date.parse(o.until) <= env.now()) {
     var n = (d.held || []).length;
     res.until = null; res.reserved = false;
-    res.lapsed = 'Rok za uplatu ove narudžbe je prošao, a uplatu još ne vidimo' + (n ? ', pa ' + (n > 1 ? 'su torbe' : 'je torba') + ' ponovno u ponudi' : '') + '. Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Ako ste nam snimku potvrde već poslali, ne trebate ništa više.';
+    res.lapsed = 'Rok za uplatu ove narudžbe je prošao, a uplatu još ne vidimo' + (n ? ', pa ' + (n > 1 ? 'su torbe' : 'je torba') + ' ponovno u ponudi' : '') + '. Već ste platili? Odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati ili proslijedite potvrdu iz banke. Ako ste nam snimku potvrde već poslali, ništa više ne trebate poduzimati.';
   }
   var v = sjView(o); res.items = v.items; res.ship = v.ship;
   return sjOut(200, res);

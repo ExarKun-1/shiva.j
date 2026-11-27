@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v109 (2026-11-26)
+     SHIVA.J WEBSHOP — v110 (2026-11-27)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -133,6 +133,10 @@
      v109 — pravi Pixel 9 (Android 15): gumb do kojeg se stranica pomakne ostajao je ispod prilijepljenog zaglavlja; html{scroll-padding-top}
            pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11); „lebdenje” gumba samo uz miš
            (@media (hover:hover) and (pointer:fine); Galaxy S24 javlja hover:hover) — na dodirnom zaslonu „U košarici” nakon dodira ostaje s obrubom
+     v110 — recenzija v109: zatvaranje košarice više ne pomiče stranicu (fokus bez pomicanja); logo s pravne podstranice na vrh; „Natrag u
+           trgovinu” jednim klikom i nakon više pravnih odjeljaka, kao prilijepljena traka; ploča za uplatu ostaje u košarici dok se torba nakon
+           roka čuva (status?stanje= → lapsedSrv, heldUntil); poziv na uplatu jednom (lapsedCall) s imenom torbe; „U košarici” s obrubom i u Stalnoj
+           kolekciji; torba iz vlastite narudžbe u staroj kartici s porukom, jedan gumb „Podaci za uplatu”; zamjena za Safari 14 nakon okretanja
      v101 — vijeće na v100: plaćena narudžba na ploči bez „Uplatite”; starija vlastita narudžba nije „za drugog kupca”; ploča se osvježi
            čim se stanje promijeni (raskid u istoj kartici); obavijest za prestare preglednike bez tajmera (druga mala skripta, html.js-fail);
            „ovdje na stranici” otvara obrazac za raskid s brojem i oznakom; izjava bez poveznice u zasebnom okviru; prazna košarica dok
@@ -529,7 +533,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v109"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v110"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -759,6 +763,7 @@
   }
 
   /* ---------- Pravni dio: privatnost + impressum ---------- */
+  .pay-steps[hidden],.pay-title[hidden]{display:none}
   .legal{border-top:1px solid var(--line);background:#FBFBF9}
   /* v108: pravni dio (Uvjeti, Izjava, Impresum, Raskid) kao zasebna stranica u istoj datoteci — #uvjeti, #privatnost, #impresum, #raskid;
      skripta postavlja razred, pa bez JS-a sve ostaje na jednoj stranici kao prije */
@@ -766,9 +771,9 @@
   html.legal-view .hero,html.legal-view .press,html.legal-view main.shop,html.legal-view .how,html.legal-view .about{display:none}
   html.legal-view .legal{border-top:0;min-height:calc(100vh - 64px)}
   html.legal-view .legal-inner{padding-top:28px}
-  html.legal-view #uvjeti{scroll-margin-top:128px} /* na vrhu podstranice — vidi se i „Natrag u trgovinu” */
+  html.legal-view{scroll-padding-top:120px} /* v110: ispod zaglavlja je i traka „Natrag u trgovinu” */
   .legal-back{display:none}
-  html.legal-view .legal-back{display:block;margin-bottom:36px}
+  html.legal-view .legal-back{display:block;position:-webkit-sticky;position:sticky;top:64px;z-index:5;background:#FBFBF9;margin:0 -24px 28px;padding:2px 24px;border-bottom:1px solid var(--line)} /* v110 (recenzija v109, mobitel N5): uvijek na zaslonu, i uz izravan link za raskid */
   .legal .legal-back a{display:inline-flex;align-items:center;min-height:44px;font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);border-bottom:0}
   .legal .legal-back a:hover{text-decoration:underline}
   .legal-inner{max-width:860px;margin:0 auto;padding:64px 24px}
@@ -2122,10 +2127,15 @@ function renderShopHead(){
 /* v108: pravni dio kao zasebna stranica (vidi CSS uz .legal). Ulaz iz trgovine pamti položaj, pa „Natrag u trgovinu” i tipka
    „natrag” vraćaju na isto mjesto; izravna poveznica (npr. #raskid?no=… iz e-maila) otvara samo pravni dio. */
 const LEGAL_RE = /^#(uvjeti|privatnost|impresum|impressum|raskid|jamstvo)(\?|$)/;
-let legalFromY = null;
+let legalFromY = null, legalBase = -1, legalIdx = -1;
 function legalView(){
   const de = document.documentElement, on = LEGAL_RE.test(location.hash), was = de.classList.contains("legal-view");
   if(on && !was && de.classList.contains("shop-view")) legalFromY = window.scrollY;
+  /* v110 (recenzija v109, softver N3; krug provjere N1): položaj ovog unosa u povijesti i unosa trgovine s kojeg se ušlo — „Natrag u trgovinu” vraća jednim
+     klikom i nakon Impresum → Raskid ili košarice otvorene na pravnoj stranici (novi unos je uvijek zadnji: indeks = history.length − 1) */
+  if(on){ const st = history.state || {}; if(typeof st.lgIdx === "number"){ legalIdx = st.lgIdx; legalBase = typeof st.lgBase === "number" ? st.lgBase : -1; }
+    else { legalIdx = history.length - 1; if(!was) legalBase = history.length - 2; try { history.replaceState(Object.assign({}, history.state || {}, { lgIdx: legalIdx, lgBase: legalBase }), ""); } catch(e){} } }
+  else { legalIdx = -1; legalBase = -1; }
   de.classList.toggle("legal-view", on); de.classList.toggle("shop-view", !on);
   if(on === was || !de.classList.contains("js-view")){ de.classList.add("js-view"); return; }
   const id = location.hash.slice(1).split("?")[0], el = id ? document.getElementById(id) : null, y = legalFromY;
@@ -2139,7 +2149,9 @@ function legalView(){
 }
 legalView();
 addEventListener("hashchange", legalView);
-document.getElementById("legalBack").addEventListener("click", e => { if(legalFromY !== null){ e.preventDefault(); history.back(); } });
+document.getElementById("legalBack").addEventListener("click", e => { if(legalFromY !== null && legalBase >= 0 && legalIdx > legalBase){ e.preventDefault(); history.go(legalBase - legalIdx); } });
+/* v110 (recenzija v109, mobitel N2): logo „na vrh stranice” s pravne podstranice vodi na vrh trgovine, ne na mjesto s kojeg se ušlo */
+document.querySelectorAll("a.logo").forEach(a => a.addEventListener("click", () => { if(document.documentElement.classList.contains("legal-view")) legalFromY = null; }));
 /* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */
 function openJamstvo(){ const d = document.getElementById("jamstvo"); if(!d) return; d.open = true; d.scrollIntoView(); }
 document.addEventListener("click", e => { if(e.target.closest('a[href="#jamstvo"]')) setTimeout(openJamstvo, 0); });
@@ -2266,7 +2278,7 @@ function renderGrid(){
       })()}
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       ${p.made && !gone && !wait && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
-      <button class="add-btn ${entry && !p.made ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
+      <button class="add-btn ${entry && (!p.made || catOf(p) === "kolekcija") ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
         ${escHtml(btnText)}
       </button>`;
     target.appendChild(card);
@@ -2379,7 +2391,7 @@ function toggleCartItem(id){
   /* v48: nakon ponovnog iscrtavanja fokus ostaje na istom gumbu (tipkovnica, čitač zaslona) */
   const hadFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches("#productGrid .add-btn");
   renderGrid(); renderCart();
-  if(hadFocus) grid.querySelector(`.add-btn[data-id="${CSS.escape(p.id)}"]`)?.focus();
+  if(hadFocus) grid.querySelector(`.add-btn[data-id="${CSS.escape(p.id)}"]`)?.focus({ preventScroll: true });
   if(lbCurrent) updateLbButton();
 }
 
@@ -2541,7 +2553,7 @@ function closeLightbox(fromPop){
   lbCurrent = null;
   document.body.style.overflow = "";
   /* v98 (recenzija vijeća v97, kupac N3): kartica je možda ponovno iscrtana (dodano u košaricu) — tada fokus na novu karticu iste torbe */
-  if(lbReturnFocus && lbReturnFocus !== document.body && lbReturnFocus.isConnected && lbReturnFocus.focus) lbReturnFocus.focus();
+  if(lbReturnFocus && lbReturnFocus !== document.body && lbReturnFocus.isConnected && lbReturnFocus.focus) lbReturnFocus.focus({ preventScroll: true });
   else if(lbReturnFocus && lbReturnFocus !== document.body && !lbReturnFocus.isConnected && wasId){ const ph = grid.querySelector(`.photo[data-view="${CSS.escape(wasId)}"]`); if(ph) ph.focus({ preventScroll: true }); }
   else if(wasId && !lbNoReturn){
     /* v65: otvoreno linkom (#torba-ID, npr. s Instagrama) — natrag na karticu te torbe, ne na vrh stranice */
@@ -2598,7 +2610,7 @@ function updateLbButton(){
   const gone = isGone(lbCurrent), wait = !gone && noPhoto(lbCurrent);
   const entry = cart.find(c => c.id === lbCurrent.id);
   b.disabled = gone || wait;
-  b.classList.toggle("in-cart", !!entry && !gone && !lbCurrent.made);
+  b.classList.toggle("in-cart", !!entry && !gone && (!lbCurrent.made || catOf(lbCurrent) === "kolekcija")); /* v110 (recenzija v109, dizajn N1): „U košarici ✓ · otvori” s obrubom i u Stalnoj kolekciji (i na kartici); „dodaj još” ostaje ispunjen jer dodaje */
   b.textContent = gone ? statusLabel(lbCurrent)
     : wait ? "Fotografija uskoro"
     : lbCurrent.made ? (entry ? (catOf(lbCurrent) === "kolekcija" ? "U košarici ✓ · otvori" : `U košarici (${qtyOf(entry)}) · dodaj još`) : "Naruči izradu")
@@ -2660,7 +2672,7 @@ document.getElementById("mobileMenu").addEventListener("focusout", e => {
 });
 /* v83 (vijeće): Escape zatvara mobilni izbornik i vraća fokus na gumb */
 document.addEventListener("keydown", e => {
-  if(e.key === "Escape" && document.body.classList.contains("menu-open")){ closeMenu(true); menuBtn.focus(); }
+  if(e.key === "Escape" && document.body.classList.contains("menu-open")){ closeMenu(true); menuBtn.focus({ preventScroll: true }); }
 });
 
 /* ---------- košarica ---------- */
@@ -2690,7 +2702,7 @@ function closeCart(restore = true, fromPop = false){
   if(!restore){ try { if(history.state && history.state.sj === "cart") history.replaceState(null, "", location.pathname + location.search + location.hash); } catch(e){} } /* zatvaranje radi poveznice na odjeljak (restore=false) ostavlja povijest kakva jest */
   drawer.inert = true;
   if(restore && cartReturnFocus && !cartReturnFocus.isConnected){ const dv = cartReturnFocus.getAttribute && (cartReturnFocus.getAttribute("data-view") || cartReturnFocus.getAttribute("data-id")); cartReturnFocus = dv ? grid.querySelector(`.photo[data-view="${CSS.escape(dv)}"]`) : null; } /* v98: kartica ponovno iscrtana */
-  if(restore && cartReturnFocus && cartReturnFocus.focus) cartReturnFocus.focus();
+  if(restore && cartReturnFocus && cartReturnFocus.focus) cartReturnFocus.focus({ preventScroll: true }); /* v110 (recenzija v109, mobitel N1): vraćanje fokusa ne pomiče stranicu — gumb u prilijepljenom zaglavlju uz scroll-padding-top inače pomakne stranicu ~340 px */
   cartReturnFocus = null;
 }
 document.getElementById("openCart").addEventListener("click", openCart);
@@ -2768,7 +2780,7 @@ function renderCart(){
   if(empty.classList.contains("pay-mode")){ empty.classList.remove("pay-mode"); empty.innerHTML = emptyHtml(); emptyGoFix(); }
   document.getElementById("drawerTitle").textContent = "Vaša košarica";
   /* v99 (recenzija vijeća v98, kupac N2): podaci za uplatu zadnje narudžbe dostupni i kad je nešto u košarici (npr. artikl izvan narudžbe) */
-  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line")) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">${lastBtnLabel(lv)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
+  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line") && cart.length && !document.getElementById("showLast")) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">${lastBtnLabel(lv)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
   const uniques = cart.filter(p => !p.made).map(p => p.name);
   const hold = document.getElementById("orderHold");
   /* v69 (vijeće na v68, D68-1): rok za uplatu vidi se prije klika za svaku narudžbu, i bez unikata */
@@ -3054,7 +3066,7 @@ async function refreshReservations(first = false){
        storniranu ploču dok joj traje rok — vlasnica može poništiti storno ili naknadno evidentirati uplatu */
     const withState = first || stateForce; stateForce = false; if(withState) stateAsked = Date.now();
     const lastS = withState ? storeGet("last") : null;
-    if(lastS && lastS.srv && lastS.srv.orderNo && lastS.srv.check && Date.now() < lastUntilOf(lastS)) q += (q ? "&" : "") + "stanje=" + encodeURIComponent(lastS.srv.orderNo) + "&t=" + encodeURIComponent(lastS.srv.check);
+    if(lastS && lastS.srv && lastS.srv.orderNo && lastS.srv.check && Date.now() < lastUntilOf(lastS) + 7 * 86400e3) /* v110: i nakon roka za uplatu — torba se možda još čuva (lapsedSrv) */ q += (q ? "&" : "") + "stanje=" + encodeURIComponent(lastS.srv.orderNo) + "&t=" + encodeURIComponent(lastS.srv.check);
     /* v96 (recenzija vijeća v95): je li narudžba koja čeka potvrdu u međuvremenu potvrđena (druga kartica ili drugi uređaj) */
     { const lp = storeGet("lastPrev"); const pq = Array.isArray(lp) ? lp.filter(l => l && l.srv && l.srv.check && l.srv.orderNo && !l.cancelled && !l.withdrawn && Date.now() < lastUntilOf(l)).map(l => l.srv.orderNo + ":" + l.srv.check) : [];
       if(withState && pq.length) q += (q ? "&" : "") + "prev=" + encodeURIComponent(pq.join(",")); } /* v100 (kupac N9) */
@@ -3075,6 +3087,12 @@ async function refreshReservations(first = false){
       if(keep.length !== lp.length || wduCh){ storeSet("lastPrev", keep); setTimeout(lastStateChanged, 0); } } } /* v102: i ploča starije narudžbe koja je na zaslonu (lastStateChanged je osvježi ili makne) */ /* recenzija v100: samo kad se nešto promijenilo, ne preko ploče na zaslonu */
     if(lastS && data.orderState === "open" && lastS.paid){ delete lastS.paid; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } /* recenzija v101: oznaka plaćeno nije trajna (vlasnica može poništiti evidentiranu uplatu) */
     if(lastS && data.orderState === "paid" && !lastS.paid){ lastS.paid = true; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } /* v101 (recenzija vijeća v100, softver A): plaćena narudžba — ploča više ne traži uplatu */
+    /* v110 (recenzija v109, kupac-pc N1): rok za uplatu prošao — tekst ploče kao stari link (lapsedSrv) i do kada se torba čuva; poveznice za uplatu i raskid ostaju */
+    if(lastS && data.orderState === "open" && data.lapsedSrv && typeof data.lapsedSrv === "object"){
+      const ls = data.lapsedSrv, keep = ["lapsed", "lapsedHeld", "lapsedCall", "allGone", "anyGone", "claimUntil", "claimAtLeast", "until", "reserved", "payUntil"], hu = typeof data.heldUntil === "string" ? data.heldUntil : null;
+      const before = JSON.stringify([keep.map(k => lastS.srv[k]), lastS.heldUntil || null]);
+      keep.forEach(k => { if(k in ls) lastS.srv[k] = ls[k]; else delete lastS.srv[k]; }); if(hu) lastS.heldUntil = hu; else delete lastS.heldUntil;
+      if(JSON.stringify([keep.map(k => lastS.srv[k]), lastS.heldUntil || null]) !== before){ storeSet("last", lastS); setTimeout(lastStateChanged, 0); } }
     if(lastS && data.orderState === "withdrawn" && !lastS.withdrawn){ lastS.withdrawn = true; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } /* v99: izjava o raskidu — ploča više ne traži uplatu */
     const reservedIds = new Set((data.ids || []).map(String));
     const soldIds = new Set((data.sold || []).map(String));
@@ -3086,13 +3104,16 @@ async function refreshReservations(first = false){
     /* v96 (recenzija vijeća v95, mobitel): torba iz vlastite potvrđene narudžbe (npr. u drugoj kartici) nije „otišla drugom kupcu” */
     /* recenzija v98: torba iz „own” koja više nije rezervirana ni prodana (storno) više nije „vaša” */
     { const ow = storeGet("own"); if(ow && Array.isArray(ow.ids)){ const keepIds = ow.ids.filter(id => reservedIds.has(String(id)) || soldIds.has(String(id))); if(keepIds.length !== ow.ids.length) storeSet("own", keepIds.length ? { ...ow, ids: keepIds } : null); } }
-    const ownDone = id => !!ownOrderOf(id); /* recenzija v101: jedno pravilo (ownOrderOf već gleda zadnju narudžbu, starije ploče i oznaku own) */
+    const ownDropped = []; const ownDone = id => !!ownOrderOf(id); /* recenzija v101: jedno pravilo (ownOrderOf već gleda zadnju narudžbu, starije ploče i oznaku own) */
     PRODUCTS.forEach(p => {
       const r = reservedIds.has(p.id) && !mine(p.id), sd = soldIds.has(p.id);
       if(!!p.srvReserved !== r){ p.srvReserved = r; changed = true; }
       if(!!p.srvSold !== sd){ p.srvSold = sd; changed = true; }
-      if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); if(!ownDone(p.id)) dropped.push(p.name); else changed = true; }
+      if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); if(!ownDone(p.id)) dropped.push(p.name); else { changed = true; ownDropped.push([p.name, ownOrderOf(p.id)]); } }
     });
+    /* v110 (recenzija v109, kupac-pc N2): torba iz vlastite narudžbe (npr. dodana u staroj kartici) ne nestaje bez riječi */
+    if(ownDropped.length){ const nm = ownDropped.map(x => "„" + x[0] + "”").join(" i "), no = ownDropped[0][1];
+      showToast((ownDropped.length > 1 ? "Torbe " + nm + " već su" : "Torba " + nm + " već je") + " u vašoj narudžbi" + (no && no !== "—" ? " " + no : "") + ", pa " + (ownDropped.length > 1 ? "ih" : "je") + " nema u košarici.", 6000); }
     if(changed || dropped.length){ renderGrid(); renderCart(); if(lbCurrent) updateLbButton(); }
     if(dropped.length) noticeGone(dropped);
   } catch(err){ /* servis nedostupan — stranica radi bez blokade */ }
@@ -3372,7 +3393,7 @@ function showSendRetry(o, rez){
 }
 /* v77 (recenzija R76-D2): podaci za uplatu ostaju do roka za uplatu (preko vikenda dulje od 24 h), najmanje 24 h;
    v100 (recenzija vijeća v99, kupac N3): i do roka produljenog klikom „Uplatio/la sam” */
-const lastUntilOf = l => l && l.srv ? Math.max((l.at || 0) + 24 * 3600 * 1000, Date.parse(l.srv.payUntil || "") || 0, Date.parse(l.claimedUntil || "") || 0) : 0;
+const lastUntilOf = l => l && l.srv ? Math.max((l.at || 0) + 24 * 3600 * 1000, Date.parse(l.srv.payUntil || "") || 0, Date.parse(l.claimedUntil || "") || 0, Date.parse(l.heldUntil || "") || 0) : 0; /* v110 (recenzija v109, kupac-pc N1): i dok se torba nakon roka za uplatu još čuva (heldUntil iz status?stanje=) */
 /* v101 (recenzija vijeća v100, dizajn 6): stanje zadnje narudžbe se promijenilo (raskid, uplata, storno). renderCart namjerno ne dira ploču
    za uplatu koja je na zaslonu — zato se ploča TE narudžbe ovdje iscrta ponovno ili makne (inače i dalje piše „Uplatite …”) */
 function lastStateChanged(){
@@ -3482,7 +3503,7 @@ orderFormEl.addEventListener("input", () => { if(!document.getElementById("order
 orderFormEl.addEventListener("change", () => { if(!document.getElementById("orderFix").hidden) setTimeout(updateOrderFix, 0); }); /* v83: nakon brisanja poruke provjere na polju */
 orderFormEl.addEventListener("invalid", e => { let m = VALID_MSG[e.target.id];
   /* v104 (recenzija v103, mobitel N3): broj upisan brojkama, ali prekratak („091”) */
-  if(e.target.id === "fPhone" && /^[\d\s+()\/.-]+$/.test(e.target.value) && (e.target.value.match(/\d/g) || []).length < 6) m = "Broj telefona je prekratak, npr. 091 234 5678.";
+  if(e.target.id === "fPhone" && /^[\d\s+()\/.-]+$/.test(e.target.value) && (e.target.value.match(/\d/g) || []).length < 6) m = "Broj telefona je prekratak — upišite cijeli broj, npr. 091 234 5678."; /* v110 (recenzija v109, dizajn N4) */
   if(m && !e.target.validity.customError) e.target.setCustomValidity(m); }, true);
 ["input", "change"].forEach(t => orderFormEl.addEventListener(t, e => { if(e.target.setCustomValidity) e.target.setCustomValidity(""); if(e.target.id === "fZip" || e.target.id === "fCity") zipCheck();
   /* v66: drugi e-mail — gumb ponovno radi */
@@ -3878,7 +3899,7 @@ function showOrderSuccess(srv){
     items: items.map(p => ({ id: p.id, name: p.name, qty: qtyOf(p), price: p.price, made: !!p.made, lead: p.lead || "", note: String(p.note || "").slice(0, 120), cat: p.cat || "torbe" })),
     ship,
     pay: PAY_FROM_SERVER ? { payment: { ...PAYMENT }, ownerEmail: OWNER_EMAIL } : null,
-    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, claimUntil: srv.claimUntil || null, claimAtLeast: !!srv.claimAtLeast, claimLink: /^\?uplata=[A-Za-z0-9%-]{4,40}&t=[0-9a-f]{32}$/.test(srv.claimLink || "") ? srv.claimLink : "", raskidLink: /^#raskid\?no=\d{4}-\d{4,6}&t=[0-9a-f]{24}$/.test(srv.raskidLink || "") ? srv.raskidLink : "", mailCustomer: srv.mailCustomer, check: /^[0-9a-f]{24}$/.test(srv.check || "") ? srv.check : "", lapsed: typeof srv.lapsed === "string" ? srv.lapsed.slice(0, 1400) : "", lapsedHeld: !!srv.lapsedHeld, allGone: !!srv.allGone, anyGone: !!srv.anyGone } };
+    srv: { orderNo: srv.orderNo || "", reference: srv.reference || "", total: srv.total, until: srv.until || null, payUntil: srv.payUntil || null, claimUntil: srv.claimUntil || null, claimAtLeast: !!srv.claimAtLeast, claimLink: /^\?uplata=[A-Za-z0-9%-]{4,40}&t=[0-9a-f]{32}$/.test(srv.claimLink || "") ? srv.claimLink : "", raskidLink: /^#raskid\?no=\d{4}-\d{4,6}&t=[0-9a-f]{24}$/.test(srv.raskidLink || "") ? srv.raskidLink : "", mailCustomer: srv.mailCustomer, check: /^[0-9a-f]{24}$/.test(srv.check || "") ? srv.check : "", lapsed: typeof srv.lapsed === "string" ? srv.lapsed.slice(0, 1400) : "", lapsedHeld: !!srv.lapsedHeld, lapsedCall: typeof srv.lapsedCall === "string" ? srv.lapsedCall.slice(0, 400) : null /* v110: poziv na uplatu nakon roka (korak „Sada”) */, allGone: !!srv.allGone, anyGone: !!srv.anyGone } };
   /* v101 (recenzija vijeća v100, dizajn H): ista narudžba otvorena ponovno (stari link za potvrdu) — ploča ne zaboravlja što već zna */
   { const oL = storeGet("last"), oP = (storeGet("lastPrev") || []).find(x => x && x.srv && x.srv.orderNo === last.srv.orderNo);
     const src = (oL && oL.srv && oL.srv.orderNo === last.srv.orderNo) ? oL : oP;
@@ -4106,13 +4127,13 @@ function paymentPanel(last){
         ${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}
       </dl>` : orderNo ? `<dl class="pay-data">${orderNo}${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}</dl>` : ""}
       ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}`}
-      <h3 class="pay-title pay-title-next">Što slijedi</h3>
-      <ol class="pay-steps" aria-label="Što slijedi">
-        ${noPay || claimedLapsed ? (last.claimed ? `<li><b>Sada</b><span class="pay-late">${claimLine}</span></li>` /* krug provjere v104 (kupac N3): javio je uplatu — bez „Uplatite” */ : "") : ""}${noPay ? "" : `${claimedLapsed ? "" : `<li><b>${payIso && !srv.lapsed ? "Do roka" : "Sada"}</b>${srv.lapsed && !srv.lapsedHeld ? "Ako ste i dalje zainteresirani za narudžbu, uplatite" : "Uplatite"} prema podacima ${payOk ? "za uplatu" : "koje vam šaljemo <span class='nw'>e-mailom</span>"}.${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
+      <h3 class="pay-title pay-title-next"${srv.allGone && !last.claimed ? " hidden" : ""}>Što slijedi</h3> <!-- v110 (recenzija v109, dizajn N3): sve je otišlo drugom kupcu — bez koraka (ostao bi samo raskid) -->
+      <ol class="pay-steps" aria-label="Što slijedi"${srv.allGone && !last.claimed ? " hidden" : ""}>
+        ${noPay || claimedLapsed ? (last.claimed ? `<li><b>Sada</b><span class="pay-late">${claimLine}</span></li>` /* krug provjere v104 (kupac N3): javio je uplatu — bez „Uplatite” */ : "") : ""}${noPay ? "" : `${claimedLapsed ? "" : `<li><b>${payIso && !srv.lapsed ? "Do roka" : "Sada"}</b>${srv.lapsedCall ? escHtml(srv.lapsedCall) /* v110 (recenzija v109, dizajn N2/N3): poziv na uplatu jednom, s imenom torbe — uvod ga više nema */ : (srv.lapsed && !srv.lapsedHeld ? "Ako ste i dalje zainteresirani za narudžbu, uplatite" : "Uplatite") + " prema podacima " + (payOk ? "za uplatu" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + "."}${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
           ${srv.lapsed && !srv.lapsedHeld ? "" /* v104 (recenzija v103, dizajn N1): rok i čuvanje istekli — bez „Uplatio/la sam” i obećanja produljenja; potvrdu o uplati traži već uvod */ : `<span class="pay-late">${claimLine}</span>`}</li>`}
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? (leadsNamed === leads ? " u roku od " + escHtml(leads.join("; ")) /* v98 (recenzija vijeća v97, dizajn): ne „u roku izrade (5 radnih dana)” */ : " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")") : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."
-          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}${srv.lapsed && !srv.lapsedHeld && anyUnique ? " To vrijedi ako " + (many ? "torbe" : "torbu") + " u međuvremenu nije kupio netko drugi." /* krug provjere v104 (dizajn 4): bez dvotočke i ponavljanja */ : ""}</li>`}
+          : Torbu + " pažljivo pakiramo i šaljemo" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam kad paket krene."}${srv.lapsed && !srv.lapsedHeld && !srv.lapsedCall && anyUnique ? (() => { const un = items.filter(p => !p.made).map(p => "„" + escHtml(p.name) + "”"); return " To vrijedi ako " + (un.length > 1 ? "torbe " : "torbu ") + un.join(" i ") + " u međuvremenu nije kupio netko drugi."; })() /* krug provjere v104 (dizajn 4); v110 (recenzija v109, dizajn N2): s imenom unikata, ne „torbu” uz model iz Stalne kolekcije */ : ""}</li>`}
         <li><b>Ako se predomislite</b>Ugovor možete raskinuti od narudžbe pa do isteka 14 dana od preuzimanja, i to <a class="drawer-link" href="${escHtml(srv.raskidLink || (/^\d{4}-\d{4,6}$/.test(srv.reference || "") ? "#raskid?no=" + srv.reference : "#raskid"))}">ovdje na stranici</a>; trošak povrata snosite vi (Uvjeti kupnje, točka\u00a07.).</li>
       </ol>
       <p class="pay-note">${mailSent}</p>
@@ -4276,6 +4297,7 @@ document.getElementById("orderForm").addEventListener("submit", async e => {
     if (status === 503 && data && typeof data.error === "string" && data.error) { showOrderError(`<b>Narudžba nije prihvaćena.</b> ${escHtml(noHyBreak(data.error))} Upisani podaci ostaju.`); return; }
     if (!resOk || !data.ok) throw new Error("HTTP " + status);
     /* v40: narudžba čeka da je kupac potvrdi linkom iz e-maila; košarica i ključ ostaju (ponovno slanje = novi link) */
+    if (data.confirmedByLink) { pendConfirmedElsewhere(""); return; } /* v110 (recenzija v109, sigurnost N2): narudžbu je potvrdio vlasnik e-adrese — ovaj preglednik ne dobiva njezin broj ni stanje */
     if (data.pending) { if(data.mailCustomer !== false) pendSentSave(o.email); showOrderPending(data, o.email); return; } /* krug provjere v104: poslana adresa samo nakon uspješnog slanja */
     heldRes = null; storeSet("hold", null);
     storeSet("okey", null); /* narudžba je prošla: sljedeća dobiva novi ključ */
@@ -4364,6 +4386,9 @@ document.querySelectorAll("summary h3 > .n").forEach(n => { const h = n.parentNo
   document.documentElement.classList.add("no-flexgap");
   const px = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
   let pseudoN = 0, sheet = null;
+  /* v110 (recenzija v109, mobitel N4): izvorne vrijednosti svega što zamjena mijenja — nakon okretanja mobitela vraća se i računa ponovno (medijski upiti mijenjaju razmake) */
+  const orig = new Map();
+  const setS = (el, prop, val) => { let o = orig.get(el); if(!o){ o = {}; orig.set(el, o); } if(!(prop in o)) o[prop] = el.style[prop]; el.style[prop] = val; };
   const pseudoGap = (el, rg, cg, col, wrap) => { if(el.dataset.fgp) return;
     ["::before", "::after"].forEach(ps => { const s = getComputedStyle(el, ps);
       if(s.content === "none" || s.content === "normal" || s.display === "none" || s.position === "absolute" || s.position === "fixed") return;
@@ -4374,23 +4399,28 @@ document.querySelectorAll("summary h3 > .n").forEach(n => { const h = n.parentNo
       try { sheet.insertRule('[data-fgp="' + el.dataset.fgp + '"]' + ps + "{" + side + "!important}", sheet.cssRules.length); } catch(e){} }); };
   const apply = () => { document.querySelectorAll("body *").forEach(el => { const cs = getComputedStyle(el); if(!/flex/.test(cs.display)) return;
     /* razmak se pamti, a gap na elementu poništi (Safari 14.0 ga za flex ionako ne primjenjuje; u novom pregledniku inače bi se zbrojio s marginama) */
-    if(el.dataset.rg === undefined){ el.dataset.rg = px(cs.rowGap); el.dataset.cg = px(cs.columnGap); if(+el.dataset.rg || +el.dataset.cg){ el.style.rowGap = "0px"; el.style.columnGap = "0px"; } }
+    if(el.dataset.rg === undefined){ el.dataset.rg = px(cs.rowGap); el.dataset.cg = px(cs.columnGap); if(+el.dataset.rg || +el.dataset.cg){ setS(el, "rowGap", "0px"); setS(el, "columnGap", "0px"); } }
     const rg = +el.dataset.rg, cg = +el.dataset.cg; if(!rg && !cg) return;
     const col = /column/.test(cs.flexDirection), wrap = cs.flexWrap !== "nowrap";
     /* spremnik s obrubom ili pozadinom ne dobiva negativne margine (rub bi izašao iz poravnanja) — djeca dobivaju razmak samo desno i dolje */
     const boxed = px(cs.borderLeftWidth) > 0 || px(cs.borderTopWidth) > 0 || (cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent");
-    if(wrap && boxed){ [...el.children].forEach(c => { if(c.dataset.fgc) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return; c.dataset.fgc = "1"; c.style.marginRight = (px(ccs.marginRight) + cg) + "px"; c.style.marginBottom = (px(ccs.marginBottom) + rg) + "px"; }); return; }
-    if(wrap && !el.dataset.fg){ el.dataset.fg = "1"; el.style.marginTop = (px(cs.marginTop) - rg / 2) + "px"; el.style.marginBottom = (px(cs.marginBottom) - rg / 2) + "px"; el.style.marginLeft = (px(cs.marginLeft) - cg / 2) + "px"; el.style.marginRight = (px(cs.marginRight) - cg / 2) + "px"; }
+    if(wrap && boxed){ [...el.children].forEach(c => { if(c.dataset.fgc) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return; c.dataset.fgc = "1"; setS(c, "marginRight", (px(ccs.marginRight) + cg) + "px"); setS(c, "marginBottom", (px(ccs.marginBottom) + rg) + "px"); }); return; }
+    if(wrap && !el.dataset.fg){ el.dataset.fg = "1"; setS(el, "marginTop", (px(cs.marginTop) - rg / 2) + "px"); setS(el, "marginBottom", (px(cs.marginBottom) - rg / 2) + "px"); setS(el, "marginLeft", (px(cs.marginLeft) - cg / 2) + "px"); setS(el, "marginRight", (px(cs.marginRight) - cg / 2) + "px"); }
     /* v106 (pravi iPhone, iOS 14.1): ukras ::before/::after nije dijete elementa, pa mu razmak dajemo pravilom u listu stilova */
     pseudoGap(el, rg, cg, col, wrap);
     let first = true;
     [...el.childNodes].forEach(c => { if(c.nodeType === 3){ if(c.textContent.trim()) first = false; return; } if(c.nodeType !== 1) return; const ccs = getComputedStyle(c); if(ccs.display === "none" || ccs.position === "absolute" || ccs.position === "fixed") return;
       if(c.dataset.fgc){ first = false; return; } c.dataset.fgc = "1";
-      if(wrap){ c.style.marginTop = (px(ccs.marginTop) + rg / 2) + "px"; c.style.marginBottom = (px(ccs.marginBottom) + rg / 2) + "px"; c.style.marginLeft = (px(ccs.marginLeft) + cg / 2) + "px"; c.style.marginRight = (px(ccs.marginRight) + cg / 2) + "px"; }
-      else if(!first){ if(col) c.style.marginTop = (px(ccs.marginTop) + rg) + "px"; else if(ccs.marginLeft !== "auto") c.style.marginLeft = (px(ccs.marginLeft) + cg) + "px"; }
+      if(wrap){ setS(c, "marginTop", (px(ccs.marginTop) + rg / 2) + "px"); setS(c, "marginBottom", (px(ccs.marginBottom) + rg / 2) + "px"); setS(c, "marginLeft", (px(ccs.marginLeft) + cg / 2) + "px"); setS(c, "marginRight", (px(ccs.marginRight) + cg / 2) + "px"); }
+      else if(!first){ if(col) setS(c, "marginTop", (px(ccs.marginTop) + rg) + "px"); else if(ccs.marginLeft !== "auto") setS(c, "marginLeft", (px(ccs.marginLeft) + cg) + "px"); }
       first = false; }); }); };
   apply();
   let tm = 0; new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(apply, 80); }).observe(document.body, { childList: true, subtree: true });
+  const reset = () => { orig.forEach((o, el) => Object.keys(o).forEach(k => { el.style[k] = o[k]; })); orig.clear();
+    document.querySelectorAll("[data-rg],[data-fg],[data-fgc],[data-fgp]").forEach(el => { delete el.dataset.rg; delete el.dataset.cg; delete el.dataset.fg; delete el.dataset.fgc; delete el.dataset.fgp; });
+    if(sheet){ try { for(let i = sheet.cssRules.length - 1; i >= 0; i--) if(/^\[data-fgp=/.test(sheet.cssRules[i].selectorText || "")) sheet.deleteRule(i); } catch(e){} } pseudoN = 0; };
+  let lastW = window.innerWidth, rt = 0;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if(window.innerWidth === lastW) return; lastW = window.innerWidth; reset(); apply(); }, 200); }); /* samo promjena širine (okretanje), ne skrivanje trake preglednika */
 })();
 /* v100: skripta se pokrenula do kraja — obavijest za prestare preglednike (.old-browser) se ne prikazuje */
 document.documentElement.classList.add("js-ok");
