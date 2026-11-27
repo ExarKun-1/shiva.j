@@ -419,7 +419,10 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       const cb = await post('confirm', { id: Lb.id, t: Lb.t });
       const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(before);
       ok(cb.data.ok && /Boja za artikl „Kozmetička torbica”: crvena\./.test(ml) && /Boja i duljina za artikl „Zamjenski remen”: crna, 120 cm\./.test(ml) && /odabranu boju i duljinu remena ili ono što ste upisali uz artikl/.test(ml),
-        'v110: e-mail — „Boja” za artikl bez duljine, „Boja i duljina” za remen; e-mail za potvrdu imenuje remen ' + JSON.stringify([cb.status, (ml.match(/Boj[ae][^\n]{0,60}/g) || []).slice(0, 3)])); }
+        'v110: e-mail — „Boja” za artikl bez duljine, „Boja i duljina” za remen; e-mail za potvrdu imenuje remen ' + JSON.stringify([cb.status, (ml.match(/Boj[ae][^\n]{0,60}/g) || []).slice(0, 3)]));
+      /* krug provjere v110: poruka nakon „Uplatio/la sam” — „izrađujemo artikle „…””, naziv u nominativu uz „artikl” */
+      const tk = (/&t=([0-9a-f]{32})$/.exec(cb.data.claimLink || '') || [])[1] || ''; const pcl = await post('paidclaim', { no: cb.data.orderNo, t: tk });
+      ok(pcl.data.ok && /izrađujemo artikle „Kozmetička torbica” i „Zamjenski remen”/.test(JSON.stringify(pcl.data)), 'krug provjere v110: „izrađujemo artikle „…”” nakon „Uplatio/la sam” ' + JSON.stringify(pcl.data).slice(0, 200)); }
     // 9) prekidač: require_confirm=false vraća staro ponašanje
     write('config.json', Object.assign({}, cfg0, { require_confirm: false }));
     try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}

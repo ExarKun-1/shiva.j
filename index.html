@@ -2127,12 +2127,15 @@ function renderShopHead(){
 /* v108: pravni dio kao zasebna stranica (vidi CSS uz .legal). Ulaz iz trgovine pamti položaj, pa „Natrag u trgovinu” i tipka
    „natrag” vraćaju na isto mjesto; izravna poveznica (npr. #raskid?no=… iz e-maila) otvara samo pravni dio. */
 const LEGAL_RE = /^#(uvjeti|privatnost|impresum|impressum|raskid|jamstvo)(\?|$)/;
-let legalFromY = null, legalDepth = 0;
+let legalFromY = null, legalBase = -1, legalIdx = -1;
 function legalView(){
   const de = document.documentElement, on = LEGAL_RE.test(location.hash), was = de.classList.contains("legal-view");
   if(on && !was && de.classList.contains("shop-view")) legalFromY = window.scrollY;
-  /* v110 (recenzija v109, softver N3): koliko je pravnih koraka u povijesti od ulaska iz trgovine — „Natrag u trgovinu” vraća jednim klikom i nakon Impresum → Raskid */
-  if(on){ const st = history.state && history.state.lgDepth; legalDepth = st ? st : (was ? legalDepth + 1 : 1); try { history.replaceState(Object.assign({}, history.state || {}, { lgDepth: legalDepth }), ""); } catch(e){} } else legalDepth = 0;
+  /* v110 (recenzija v109, softver N3; krug provjere N1): položaj ovog unosa u povijesti i unosa trgovine s kojeg se ušlo — „Natrag u trgovinu” vraća jednim
+     klikom i nakon Impresum → Raskid ili košarice otvorene na pravnoj stranici (novi unos je uvijek zadnji: indeks = history.length − 1) */
+  if(on){ const st = history.state || {}; if(typeof st.lgIdx === "number"){ legalIdx = st.lgIdx; legalBase = typeof st.lgBase === "number" ? st.lgBase : -1; }
+    else { legalIdx = history.length - 1; if(!was) legalBase = history.length - 2; try { history.replaceState(Object.assign({}, history.state || {}, { lgIdx: legalIdx, lgBase: legalBase }), ""); } catch(e){} } }
+  else { legalIdx = -1; legalBase = -1; }
   de.classList.toggle("legal-view", on); de.classList.toggle("shop-view", !on);
   if(on === was || !de.classList.contains("js-view")){ de.classList.add("js-view"); return; }
   const id = location.hash.slice(1).split("?")[0], el = id ? document.getElementById(id) : null, y = legalFromY;
@@ -2146,7 +2149,7 @@ function legalView(){
 }
 legalView();
 addEventListener("hashchange", legalView);
-document.getElementById("legalBack").addEventListener("click", e => { if(legalFromY !== null && legalDepth > 0){ e.preventDefault(); history.go(-legalDepth); } });
+document.getElementById("legalBack").addEventListener("click", e => { if(legalFromY !== null && legalBase >= 0 && legalIdx > legalBase){ e.preventDefault(); history.go(legalBase - legalIdx); } });
 /* v110 (recenzija v109, mobitel N2): logo „na vrh stranice” s pravne podstranice vodi na vrh trgovine, ne na mjesto s kojeg se ušlo */
 document.querySelectorAll("a.logo").forEach(a => a.addEventListener("click", () => { if(document.documentElement.classList.contains("legal-view")) legalFromY = null; }));
 /* v88: „Zakonsko jamstvo 2 godine” u košarici otvara Uvjete t. 8 s usklađenom obaviješću EU (ZZP čl. 60. st. 7.) */

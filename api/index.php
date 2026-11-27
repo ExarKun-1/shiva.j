@@ -1066,7 +1066,7 @@ if ($a === 'paidclaim') {
   /* v95 (recenzija vijeća v94, kupac 11): što slijedi prema dostavi i artiklima po narudžbi */
   $oItems = (array)($o['order']['items'] ?? []); $oMade = array_filter($oItems, fn($it) => !empty($it['made']));
   $oPickup = (($o['order']['shipping']['id'] ?? '') === 'pickup');
-  $nextTxt = 'Kad uplatu vidimo na računu, ' . ($oMade ? 'izrađujemo ' . sj_and_join(array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', array_values($oMade))) . ' (rok izrade piše u potvrdi narudžbe), zatim ' : '') /* v101 (dizajn C): naziv, ne „artikl po narudžbi” */
+  $nextTxt = 'Kad uplatu vidimo na računu, ' . ($oMade ? 'izrađujemo ' . (count($oMade) > 1 ? 'artikle ' : 'artikl ') /* krug provjere v110: naziv u navodnicima ostaje u nominativu uz „artikl”, kao u e-mailu */ . sj_and_join(array_map(fn($it) => '„' . (string)($it['name'] ?? '') . '”', array_values($oMade))) . ' (rok izrade piše u potvrdi narudžbe), zatim ' : '') /* v101 (dizajn C): naziv, ne „artikl po narudžbi” */
     . ($oPickup ? 'pripremamo narudžbu za preuzimanje u radionici i javljamo vam se kad bude spremna.' : 'šaljemo paket i javljamo vam kad krene.');
   $lostTxt = $lost ? ' Nažalost, ' . implode(', ', array_map(fn($n) => '„' . $n . '”', $lost)) . (count($lost) > 1 ? ' su u međuvremenu otišle' : ' je u međuvremenu otišla') . ' drugom kupcu; javit ćemo vam se oko povrata tog iznosa (vraćamo ga najkasnije u roku od sedam dana).' : '';
   if ((string)($o['email'] ?? '') !== '')

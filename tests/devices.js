@@ -70,9 +70,14 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
         jump(1500); await w(150); const y0 = scrollY; document.querySelector('footer a[href="#impresum"]').click(); await w(350);
         location.hash = '#raskid'; await w(350); document.getElementById('legalBack').click(); await w(600);
         r.hopBack = d('main.shop') !== 'none' && Math.abs(scrollY - y0) < 40;
+        /* krug provjere v110 (N1): na pravnoj stranici otvorena košarica i iz nje „Uvjete kupnje” — povratak i dalje jednim klikom */
+        jump(1500); await w(150); const y1 = scrollY; document.querySelector('footer a[href="#impresum"]').click(); await w(350);
+        const c0 = cart.length; { const v = PRODUCTS.find(x => !x.made && !isGone(x)); if (v && !cart.some(c => c.id === v.id)) { cart.push({ ...v, qty: 1, note: '' }); saveCart(); renderCart(); } }
+        openCart(); await w(450); document.querySelector('#orderForm a.drawer-link[href="#uvjeti"]').click(); await w(600);
+        document.getElementById('legalBack').click(); await w(700); r.cartHop = d('main.shop') !== 'none' && Math.abs(scrollY - y1) < 40 && !document.body.classList.contains('cart-open'); cart.length = c0; saveCart(); renderCart();
         location.hash = '#raskid?no=2026-0001'; await w(500); const b = document.getElementById('legalBack').getBoundingClientRect();
         r.backVisible = b.top >= 0 && b.bottom <= innerHeight && b.height > 20; location.hash = '#torbe'; await w(300); return r; });
-      ok(lg2.logoTop && lg2.hopBack && lg2.backVisible, `${P.name}: logo s podstranice na vrh, povratak nakon dva pravna odjeljka, traka „Natrag” na zaslonu uz link za raskid ${JSON.stringify(lg2)}`);
+      ok(lg2.logoTop && lg2.hopBack && lg2.backVisible && lg2.cartHop, `${P.name}: logo s podstranice na vrh, povratak nakon dva pravna odjeljka, traka „Natrag” na zaslonu uz link za raskid ${JSON.stringify(lg2)}`);
       const btnC = await pg.evaluate(() => { const b = document.querySelector('.card .add-btn:not([disabled]):not(.in-cart)'); return b ? getComputedStyle(b).backgroundColor : ''; });
       ok(btnC === 'rgb(46, 74, 58)', `${P.name}: „Dodaj u košaricu” ispunjen bojom konca (${btnC})`);
       /* v107: naslov s brojkom u Uvjetima ima točno dvije ćelije (brojka + tekst) — inače se „i riječ” (span.nw) lomi u novi red i preklapa */
