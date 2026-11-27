@@ -401,9 +401,13 @@ if ($a === 'status') {
     $stateOut = ['orderState' => $st] + ($st === 'open' && sj_withdrawn($so, false) ? ['wdUnverified' => true] : []); /* v100: izjava bez poveznice — ploča to kaže (kupac N2) */
     /* v110 (recenzija v109, kupac-pc N1): rok za uplatu je prošao, a torba se još čuva — spremljena ploča dobiva isti tekst kao stari link
        (sj_order_repeat_data) i do kada se torba čuva, pa ne nestane iz košarice prije vremena */
-    if ($st === 'open' && (int)strtotime(sj_pay_until($so)) <= time()) {
+    /* v111 (pregled v110, mobitel N1 / softver N4): i nakon „Uplatio/la sam” (rok produljen, pa više nije prošao) — spremljena ploča dobiva novi rok
+       i tekst bez poziva na klik (claim), a lapsedSrv bez „lapsed” briše stari tekst nakon roka; inače bi ploča govorila dvoje i nestala prije novog roka */
+    $soClaimed = $st === 'open' && (!empty($so['claimedAt']) || !empty($so['proofAt']));
+    if ($soClaimed) $stateOut['claim'] = ['until' => sj_pay_until($so), 'msg' => sj_already_text($so)];
+    if ($st === 'open' && ($soClaimed || (int)strtotime(sj_pay_until($so)) <= time())) {
       [$rp, $rc] = sj_order_repeat_data($so, false);
-      if ($rc === 200 && isset($rp['lapsed'])) {
+      if ($rc === 200 && (isset($rp['lapsed']) || $soClaimed)) {
         $stateOut['lapsedSrv'] = array_intersect_key($rp, array_flip(['lapsed', 'lapsedHeld', 'lapsedCall', 'allGone', 'anyGone', 'claimUntil', 'claimAtLeast', 'until', 'reserved', 'payUntil']));
         $hiS = sj_held_info($so); if ($hiS['until'] > time()) $stateOut['heldUntil'] = sj_iso($hiS['until']);
       }

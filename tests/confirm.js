@@ -370,6 +370,15 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
           ok(hA.data.lapsedHeld === true && !hA.data.lapsedCall && stH.orderState === 'open' && stH.lapsedSrv && stH.lapsedSrv.lapsedHeld === true && stH.lapsedSrv.lapsed === hA.data.lapsed
             && typeof stH.heldUntil === 'string' && Date.parse(stH.heldUntil) > Date.now() && !('claimLink' in stH.lapsedSrv),
             'v110: rok prošao, torba se čuva — lapsedHeld; status?stanje= daje spremljenoj ploči isti tekst i do kada se torba čuva ' + JSON.stringify([hA.data.lapsedHeld, stH.orderState, !!stH.lapsedSrv, stH.heldUntil])); }
+        /* v111 (pregled v110, mobitel N1 / softver N4): „Uplatio/la sam” dok se torba čuva (i s drugog uređaja) — status?stanje= javlja novi rok i briše stari tekst nakon roka */
+        { const tk = (/[?&]t=([0-9a-f]{32})/.exec(hA.data.claimLink || '') || [])[1] || ''; const pc = await post('paidclaim', { no: cA.data.orderNo, t: tk });
+          const stC = await (await fetch(U + 'status?stanje=' + encodeURIComponent(cA.data.orderNo) + '&t=' + (cA.data.check || ''))).json();
+          ok(pc.data.ok && pc.data.state === 'extended' && stC.orderState === 'open' && stC.claim && Date.parse(stC.claim.until) > Date.now() && /^Već ste nam javili da ste uplatili/.test(stC.claim.msg || '')
+            && stC.lapsedSrv && !('lapsed' in stC.lapsedSrv) && !stC.lapsedSrv.lapsedHeld && !stC.lapsedSrv.lapsedCall,
+            'v111: nakon „Uplatio/la sam” status?stanje= daje novi rok i poruku (claim), bez starog teksta nakon roka ' + JSON.stringify([pc.data.state, stC.claim, stC.lapsedSrv && Object.keys(stC.lapsedSrv)]));
+          const oR = read('narudzbe.json', []); const xR = oR.find(x => x.no === cA.data.orderNo); ['claimedAt', 'claimLate', 'proofAt'].forEach(k => delete xR[k]); xR.payUntil = new Date(Date.now() - 26 * 3600e3).toISOString(); write('narudzbe.json', oR);
+          const rzR = read('rezervacije.json', {}); free.forEach(id => { if (rzR.res && rzR.res[id]) rzR.res[id].until = new Date(Date.now() + 20 * 3600e3).toISOString(); }); write('rezervacije.json', rzR);
+          try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} }
         /* v104 (recenzija v103, softver N2): torbe je u međuvremenu naručio drugi kupac — „otišle drugom kupcu”, bez poziva na uplatu i bez podataka za uplatu (allGone) */
         { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
           const rzD = read('rezervacije.json', {}); free.forEach(id => { if (rzD.res && rzD.res[id]) rzD.res[id].until = new Date(Date.now() - 30 * 3600e3).toISOString(); }); write('rezervacije.json', rzD);

@@ -594,6 +594,23 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       const hv = await pg.evaluate(() => { openCart(); const t = document.querySelector('.drawer-body').textContent; const btn = document.getElementById('showLast'); if (btn) btn.click(); const t2 = (document.querySelector('.pay') || {}).textContent || ''; closeCart(false); return [!!btn, /i dalje čuvamo za vas do petka/.test(t2), /Uplatio\/la sam/.test(t2), /Ako ste i dalje zainteresirani/.test(t2), t.slice(0, 120)]; });
       await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); });
       ok(hv[0] && hv[1] && hv[2] && !hv[3], 'v110: rok za uplatu prošao, torba se čuva — ploča ostaje u košarici s tekstom kao link i „Uplatio/la sam” ' + JSON.stringify(hv)); }
+    /* v111 (pregled v110, mobitel N1 / softver N4): „Uplatio/la sam” nakon roka dok se torba čuva — (a) s drugog uređaja (status?stanje= javi claim), (b) na istom uređaju:
+       ploča bez „Kliknite „Uplatio/la sam””, bez starog datuma čuvanja, s novim rokom, i ne nestaje prije njega */
+    { const lapsedTxt = 'Rok za uplatu ove narudžbe prošao je u četvrtak, 26. 11. 2026. u 23:59, a uplatu još ne vidimo. Torbu „Luna” i dalje čuvamo za vas do petka, 27. 11. 2026. u 23:59. Već ste platili? Kliknite „Uplatio/la sam” ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.';
+      const soon = new Date(Date.now() + 2 * 3600e3).toISOString(), later = new Date(Date.now() + 3 * 86400e3).toISOString();
+      const mk = no => { const L = mkLast(no, 'luna', 'Luna'); L.at = Date.now() - 3 * 86400e3; L.srv.payUntil = new Date(Date.now() - 2 * 86400e3).toISOString(); L.srv.claimUntil = soon; Object.assign(L.srv, { lapsed: lapsedTxt, lapsedHeld: true, until: soon, reserved: true }); L.heldUntil = soon; return L; };
+      const panel = () => pg.evaluate(() => { openCart(); const btn = document.getElementById('showLast'); if (btn) btn.click(); const t = (document.querySelector('.pay') || {}).textContent || ''; closeCart(false); const l = storeGet('last');
+        return { btn: !!btn, kliknite: /Kliknite „Uplatio\/la sam”/.test(t), staroCuvanje: /do petka, 27\. 11\./.test(t), javili: /Javili ste nam da ste uplatili/.test(t), traje: lastUntilOf(l) >= Date.now() + 2.5 * 86400e3 }; });
+      const La = mk('SJ-2026-0212'); await pg.evaluate(L => { storeSet('last', L); }, La);
+      await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); const u = decodeURIComponent(route.request().url());
+        await route.fulfill({ response: rsp, json: /stanje=SJ-2026-0212/.test(u) ? Object.assign(j, { orderState: 'open', heldUntil: later, claim: { until: later, msg: 'Već ste nam javili da ste uplatili; torbu čuvamo za vas do ponedjeljka, 30. 11. 2026. u 23:59. Ako uplata do tada ne bude vidljiva, javit ćemo vam se e-mailom.' }, lapsedSrv: { until: later, reserved: true, payUntil: later } }) : j }); } catch (e) {} });
+      await pg.goto(URL + '?v111b=1', { waitUntil: 'networkidle' });
+      await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.claimed; }, null, { timeout: 5000 }).catch(() => {});
+      const pa = await panel(); await pg.unroute('**/api/status*');
+      const Lb = mk('SJ-2026-0213'); const pb = await pg.evaluate(L => { storeSet('last', L); markClaimed(L.srv.orderNo, { state: 'extended', payUntil: new Date(Date.now() + 3 * 86400e3).toISOString(), message: null }); return true; }, Lb).then(panel);
+      await pg.evaluate(() => { storeSet('last', null); });
+      ok(pa.btn && !pa.kliknite && !pa.staroCuvanje && pa.javili && pa.traje && !pb.kliknite && !pb.staroCuvanje && pb.javili && pb.traje,
+        'v111: „Uplatio/la sam” nakon roka (drugi uređaj i isti uređaj) — ploča bez ponovnog poziva na klik i starog datuma, s novim rokom ' + JSON.stringify([pa, pb])); }
     /* v110 (recenzija v109, kupac-pc N2): stara kartica — torba iz vlastite narudžbe izlazi iz košarice s porukom; gumb „Podaci za uplatu” samo jednom */
     { const Lo = mkLast('SJ-2026-0208', 'vela', 'Vela'); await pg.evaluate(L => { storeSet('last', L); }, Lo);
       await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); j.ids = Array.from(new Set([...(j.ids || []), 'vela'])); await route.fulfill({ response: rsp, json: j }); } catch (e) {} });

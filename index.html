@@ -3089,6 +3089,10 @@ async function refreshReservations(first = false){
     if(lastS && data.orderState === "open" && lastS.paid){ delete lastS.paid; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } /* recenzija v101: oznaka plaćeno nije trajna (vlasnica može poništiti evidentiranu uplatu) */
     if(lastS && data.orderState === "paid" && !lastS.paid){ lastS.paid = true; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } /* v101 (recenzija vijeća v100, softver A): plaćena narudžba — ploča više ne traži uplatu */
     /* v110 (recenzija v109, kupac-pc N1): rok za uplatu prošao — tekst ploče kao stari link (lapsedSrv) i do kada se torba čuva; poveznice za uplatu i raskid ostaju */
+    /* v111 (pregled v110, mobitel N1 / softver N4): „Uplatio/la sam” kliknut (i na drugom uređaju) — ploča zna novi rok i ne poziva na klik */
+    if(lastS && data.orderState === "open" && data.claim && typeof data.claim === "object"){
+      const cu = typeof data.claim.until === "string" ? data.claim.until : null, cm = String(data.claim.msg || "").replace(/^Već ste nam javili da ste uplatili[;,.]?\s*/, "").replace(/^./, c => c.toUpperCase()).slice(0, 600);
+      if(!lastS.claimed || (cu && lastS.claimedUntil !== cu) || lastS.claimMsg !== cm){ lastS.claimed = true; if(cu) lastS.claimedUntil = cu; lastS.claimMsg = cm; storeSet("last", lastS); setTimeout(lastStateChanged, 0); } }
     if(lastS && data.orderState === "open" && data.lapsedSrv && typeof data.lapsedSrv === "object"){
       const ls = data.lapsedSrv, keep = ["lapsed", "lapsedHeld", "lapsedCall", "allGone", "anyGone", "claimUntil", "claimAtLeast", "until", "reserved", "payUntil"], hu = typeof data.heldUntil === "string" ? data.heldUntil : null;
       const before = JSON.stringify([keep.map(k => lastS.srv[k]), lastS.heldUntil || null]);
@@ -3424,7 +3428,9 @@ const prevButtons = () => prevValid().map(l => `<button type="button" class="las
 /* v100: klik „Uplatio/la sam” uspio — ploča zna produljeni rok i više ne nudi klik */
 function markClaimed(no, data){
   /* recenzija v100: „withdrawn” i „paid” nisu klik — ploča tada više ne nudi uplatu */
-  const upd = l => { if(l && l.srv && l.srv.orderNo === no){ if(data.state === "withdrawn") l.withdrawn = true; else if(data.state === "paid") l.paid = true; else { l.claimed = true; if(data.payUntil) l.claimedUntil = data.payUntil; l.claimMsg = String(data.message || "").slice(0, 600); } return true; } return false; };
+  const upd = l => { if(l && l.srv && l.srv.orderNo === no){ if(data.state === "withdrawn") l.withdrawn = true; else if(data.state === "paid") l.paid = true; else { l.claimed = true; if(data.payUntil) l.claimedUntil = data.payUntil; l.claimMsg = String(data.message || "").slice(0, 600);
+    /* v111 (pregled v110, mobitel N1): torba se čuvala nakon roka — klik produljuje rok, pa stari tekst „Već ste platili? Kliknite…” i stari datum čuvanja odlaze */
+    if(l.srv.lapsedHeld){ ["lapsed", "lapsedHeld", "lapsedCall"].forEach(k => delete l.srv[k]); delete l.heldUntil; } } return true; } return false; };
   const l = storeGet("last"); if(upd(l)) storeSet("last", l);
   const lp = storeGet("lastPrev"); if(Array.isArray(lp) && lp.some(upd)) storeSet("lastPrev", lp);
 }
