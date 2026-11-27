@@ -599,9 +599,25 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); j.ids = Array.from(new Set([...(j.ids || []), 'vela'])); await route.fulfill({ response: rsp, json: j }); } catch (e) {} });
       await pg.goto(URL + '?v110b=1', { waitUntil: 'networkidle' });
       const ow = await pg.evaluate(async () => { const v = PRODUCTS.find(x => x.id === 'vela'); cart = [{ ...v, qty: 1, note: '' }]; saveCart(); renderCart(); openCart(); await refreshReservations(); await new Promise(r => setTimeout(r, 400));
-        const r = [document.getElementById('toast').textContent, cart.some(c => c.id === 'vela'), document.querySelectorAll('#showLast').length]; closeCart(false); return r; });
+        const r = [document.getElementById('toast').textContent, cart.some(c => c.id === 'vela'), [...document.querySelectorAll('#showLast')].filter(b => b.getClientRects().length && !b.closest('[hidden]')).length]; closeCart(false); return r; });
       await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); cart = []; saveCart(); renderCart(); });
       ok(/Torba „Vela” već je u vašoj narudžbi SJ-2026-0208, pa je nema u košarici\./.test(ow[0]) && !ow[1] && ow[2] === 1, 'v110: stara kartica — torba iz vlastite narudžbe izlazi s porukom, jedan gumb „Podaci za uplatu” ' + JSON.stringify(ow)); }
+    /* v111 (pregled v110, kupac-pc N1 — ponavljana greška): „Podaci za uplatu” VIDLJIV točno jednom u svakom stanju košarice */
+    { const Lo = mkLast('SJ-2026-0211', 'vela', 'Vela'); await pg.evaluate(L => { storeSet('last', L); cart = []; saveCart(); }, Lo);
+      await pg.goto(URL + '?v111a=1', { waitUntil: 'networkidle' });
+      const vis = () => pg.evaluate(() => [...document.querySelectorAll('#showLast')].filter(b => b.getClientRects().length && !b.closest('[hidden]')).length);
+      const art = () => pg.evaluate(() => { const k = PRODUCTS.find(x => x.made && x.id !== 'vela'); cart = [{ ...k, qty: 1, note: '' }]; saveCart(); renderCart(); return k.name; });
+      const st = {};
+      await pg.evaluate(() => openCart()); await pg.waitForTimeout(150); st.prazna = await vis();
+      await art(); await pg.waitForTimeout(150); st.artikl = await vis();
+      await pg.evaluate(() => { cart = []; saveCart(); renderCart(); }); await pg.waitForTimeout(150); st.ispraznjena = await vis();
+      await art(); await pg.waitForTimeout(150); st.ponovno = await vis();
+      await pg.evaluate(() => { renderCart(); renderCart(); }); await pg.waitForTimeout(150); st.dvaRendera = await vis();
+      await pg.evaluate(() => closeCart(false)); await pg.reload({ waitUntil: 'networkidle' }); await pg.evaluate(() => openCart()); await pg.waitForTimeout(300); st.osvjezeno = await vis();
+      st.ploca = await pg.evaluate(async () => { document.getElementById('showLast').click(); await new Promise(r => setTimeout(r, 200)); const p = !!document.querySelector('#emptyCart .pay'); document.getElementById('backToCart').click(); await new Promise(r => setTimeout(r, 200)); return p; });
+      st.natrag = await vis();
+      await pg.evaluate(() => { closeCart(false); storeSet('last', null); cart = []; saveCart(); renderCart(); });
+      ok(st.prazna === 1 && st.artikl === 1 && st.ispraznjena === 1 && st.ponovno === 1 && st.dvaRendera === 1 && st.osvjezeno === 1 && st.ploca && st.natrag === 1, 'v111: „Podaci za uplatu” vidljiv točno jednom — prazna košarica, s artiklom, ispražnjena, ponovno dodano, nakon osvježavanja, nakon ploče i povratka ' + JSON.stringify(st)); }
     /* G) „mine” za dvije torbe: naslov u množini */
     await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'mine', mine: ['vela', 'nera'], error: 'Torbe „Vela” i „Nera” već su u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' }) }));
     await pg.goto(URL + '?potvrda=' + 'e'.repeat(32) + '.' + 'f'.repeat(32), { waitUntil: 'networkidle' });

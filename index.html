@@ -2780,7 +2780,8 @@ function renderCart(){
   if(empty.classList.contains("pay-mode")){ empty.classList.remove("pay-mode"); empty.innerHTML = emptyHtml(); emptyGoFix(); }
   document.getElementById("drawerTitle").textContent = "Vaša košarica";
   /* v99 (recenzija vijeća v98, kupac N2): podaci za uplatu zadnje narudžbe dostupni i kad je nešto u košarici (npr. artikl izvan narudžbe) */
-  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line") && cart.length && !document.getElementById("showLast")) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">${lastBtnLabel(lv)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
+  /* v111 (pregled v110, kupac-pc N1): gumb iznad stavki izostaje samo kad je blok prazne košarice VIDLJIV (on ima svoj gumb) — skriveni blok uvijek sadrži #showLast, pa ga provjera po id-u ne smije gledati */
+  { const lv = lastValid(), pb = prevButtons(); if(lv || pb) setTimeout(() => { if(!box.querySelector(".last-line") && cart.length && empty.hidden) box.insertAdjacentHTML("afterbegin", `<p class="last-line">${lv ? `<button type="button" class="last-order" id="showLast">${lastBtnLabel(lv)}</button>` : ""}${lv && pb ? "<br>" : ""}${pb}</p>`); }, 0); }
   const uniques = cart.filter(p => !p.made).map(p => p.name);
   const hold = document.getElementById("orderHold");
   /* v69 (vijeće na v68, D68-1): rok za uplatu vidi se prije klika za svaku narudžbu, i bez unikata */
