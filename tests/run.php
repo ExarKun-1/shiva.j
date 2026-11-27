@@ -495,6 +495,14 @@ $kk = ['Između 08:00 i 09:00 ili 17:00-19:00.', 'Mogu 08:00, 09:00 ili 10:00', 
   /* drugi krug provjere v104 (N4) */ 'PayPal (ako može)', 'Imam Revolut - hoće li biti problem', 'Revolut (instant)', 'Revolut → banka', 'Revolut tag nemam', 'PayPal - ali radije uplatnicom', 'Revolut — sve 5!', 'Ulaz 05 — kod 2468 — kat 3 — stan 12', 'Kat 01 (prizemlje) — stan 234, zgrada 5678'];
 $kkB = array_values(array_filter($kk, fn($x) => sj_echo_text($x) !== $x));
 $ok(!$kvV && !$kkB, 'krug provjere v104: telefon razlomljen točkom, crticom, zagradama i obrnutim redom te varijante Revolut oznake skriveni; vremena i datumi s nulom ostaju ' . json_encode([$kvV, $kkB], JSON_UNESCAPED_UNICODE));
+/* v110 (recenzija v109, sigurnost N1): oznake plaćanja u padežima, gola oznaka, razdjelnici; obične rečenice o plaćanju ostaju */
+$pv = ['Revolutom na ivanhorvat99', 'Revolutu ivanhorvat', 'PayPalom: ivanhorvat', 'PayPalu ivanhorvat', 'Keks Payem na ivanhorvat', 'Revolut ivanhorvat', 'Uplatite na Revolut ivanhorvat, hvala',
+  'Revolut @ ivanhorvat', 'Revolut=ivanhorvat', 'Revolut/ivanhorvat', 'Revolut…ivanhorvat', 'Revolut račun ivanhorvat', 'PayPal ivan.horvat99'];
+$pvV = array_values(array_filter($pv, fn($x) => !str_contains(sj_echo_text($x), '[oznaka skrivena]') || preg_match('~ivan|horvat~u', sj_echo_text($x))));
+$pk = ['preko Revoluta ili kartice', 'Platit ću Revolutom sutra', 'Revolutom plaćam odmah', 'Može i Revolutom?', 'Imam Revolut, može?', 'Platit ću Revolutom na vrijeme', 'Ne koristim Revolut.', 'Plaćam PayPalom ili karticom', 'Revolut je ok', 'Može PayPal', 'Uplata preko Revoluta, hvala'];
+$pkB = array_values(array_filter($pk, fn($x) => sj_echo_text($x) !== $x));
+$ok(!$pvV && !$pkB && !str_contains(sj_echo_addr('Zabok Konzum, uplatite Revolutom na ivanhorvat'), 'ivanhorvat'),
+  'v110 (recenzija v109, sigurnost N1): oznake plaćanja u padežima i bez dvotočke skrivene (i u paketomatu); obične rečenice ostaju ' . json_encode([$pvV, $pkB], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
 $kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
   'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];

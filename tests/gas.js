@@ -74,6 +74,8 @@ ok(o4.pending && c4._status === 410 && c4.expired, 'istekao link → 410');
 env.rows[0].paid = '12.10.2026.';
 const s2 = H(env, 'status');
 ok(s2.sold.includes('luna') && !s2.ids.includes('luna'), 'upisan datum u „Plaćeno” → torba prodana');
+{ const cp = H(env, 'confirm', L); /* v110 (recenzija v109, softver N5): stari link nakon „Plaćeno” kao api/index.php — 409 paid, bez ploče za uplatu */
+  ok(cp._status === 409 && cp.code === 'paid' && !cp.total, 'v110: probni poslužitelj — stari link nakon „Plaćeno” vraća 409 paid ' + JSON.stringify([cp._status, cp.code])); }
 // granica pola ponude: slobodni unikati iz ispitnog popisa
 env = makeEnv();
 const free = list.filter(p => !p.made && !p.sold && !p.reserved && !p.hidden && (p.imgs || []).length).map(p => String(p.id));

@@ -43,6 +43,13 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       const q = P.safari14 ? '?noflexgap=1' : '';
       await pg.goto(URL + q, { waitUntil: 'networkidle' }); await prep(); await pg.waitForTimeout(300);
       await step('naslovnica', true);
+      /* v110 (recenzija v109, mobitel N1): otvaranje i zatvaranje košarice ne pomiče stranicu (fokus se vraća na „Košarica” u prilijepljenom zaglavlju) */
+      { const ctr = async sel => { const r = await pg.evaluate(s => { const b = document.querySelector(s).getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }, sel); await pg.touchscreen.tap(r[0], r[1]); };
+        await pg.evaluate(() => { const de = document.documentElement; de.style.scrollBehavior = 'auto'; scrollTo(0, Math.min(2000, de.scrollHeight - innerHeight - 10)); de.style.scrollBehavior = ''; }); await pg.waitForTimeout(200);
+        const yA = await pg.evaluate(() => Math.round(scrollY)); const ys = [];
+        for (let k = 0; k < 2; k++) { await ctr('#openCart'); await pg.waitForTimeout(450); await ctr('#closeCart'); await pg.waitForTimeout(450); ys.push(await pg.evaluate(() => Math.round(scrollY))); }
+        ok(ys.every(y => Math.abs(y - yA) <= 4), `${P.name}: košarica otvorena i zatvorena dvaput, stranica ostaje na mjestu (${yA} → ${ys.join(', ')})`);
+        await pg.evaluate(() => scrollTo(0, 0)); }
       /* v109 (pravi Pixel 9): gumb do kojeg se stranica pomakne (scrollIntoView, fokus) nije ispod prilijepljenog zaglavlja */
       const under = await pg.evaluate(async () => { const de = document.documentElement, b = document.querySelectorAll('.card .add-btn')[1]; de.style.scrollBehavior = 'auto';
         scrollTo(0, b.getBoundingClientRect().top + scrollY + 30); b.scrollIntoView(); const hb = document.querySelector('header').getBoundingClientRect().bottom, t1 = b.getBoundingClientRect().top;
@@ -55,6 +62,17 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
         r.legalOnly = d('section.legal') !== 'none' && d('main.shop') === 'none' && d('.hero') === 'none';
         document.getElementById('legalBack').click(); await w(300); r.back = d('main.shop') !== 'none' && Math.abs(scrollY - y0) < 40; return r; });
       ok(lg.shopHidesLegal && lg.legalOnly && lg.back, `${P.name}: Uvjeti na zasebnoj podstranici i povratak u trgovinu ${JSON.stringify(lg)}`);
+      /* v110 (recenzija v109): logo s podstranice na vrh; „Natrag u trgovinu” jednim klikom i nakon Impresum → Raskid; traka s povratkom vidljiva uz izravan link za raskid */
+      const lg2 = await pg.evaluate(async () => { const d = s => getComputedStyle(document.querySelector(s)).display, w = ms => new Promise(r => setTimeout(r, ms)), de = document.documentElement;
+        const jump = y => { de.style.scrollBehavior = 'auto'; scrollTo(0, y); de.style.scrollBehavior = ''; };
+        const r = {}; jump(1500); await w(150); document.querySelector('footer a[href="#impresum"]').click(); await w(350);
+        document.querySelector('a.logo').click(); await w(1100); r.logoTop = d('main.shop') !== 'none' && scrollY < 5;
+        jump(1500); await w(150); const y0 = scrollY; document.querySelector('footer a[href="#impresum"]').click(); await w(350);
+        location.hash = '#raskid'; await w(350); document.getElementById('legalBack').click(); await w(600);
+        r.hopBack = d('main.shop') !== 'none' && Math.abs(scrollY - y0) < 40;
+        location.hash = '#raskid?no=2026-0001'; await w(500); const b = document.getElementById('legalBack').getBoundingClientRect();
+        r.backVisible = b.top >= 0 && b.bottom <= innerHeight && b.height > 20; location.hash = '#torbe'; await w(300); return r; });
+      ok(lg2.logoTop && lg2.hopBack && lg2.backVisible, `${P.name}: logo s podstranice na vrh, povratak nakon dva pravna odjeljka, traka „Natrag” na zaslonu uz link za raskid ${JSON.stringify(lg2)}`);
       const btnC = await pg.evaluate(() => { const b = document.querySelector('.card .add-btn:not([disabled]):not(.in-cart)'); return b ? getComputedStyle(b).backgroundColor : ''; });
       ok(btnC === 'rgb(46, 74, 58)', `${P.name}: „Dodaj u košaricu” ispunjen bojom konca (${btnC})`);
       /* v107: naslov s brojkom u Uvjetima ima točno dvije ćelije (brojka + tekst) — inače se „i riječ” (span.nw) lomi u novi red i preklapa */
@@ -67,6 +85,16 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
           if (!tn) return -2; const r = document.createRange(); r.selectNodeContents(tn); const before = parseFloat(getComputedStyle(t, '::before').width) || 0;
           return Math.round(r.getBoundingClientRect().left - t.getBoundingClientRect().left - before); });
         ok(pg2 >= 7, `${P.name}: razmak između crtica i teksta „Jedan primjerak” bez flex gapa ${pg2} px (treba ≈ 8)`);
+        /* v110 (recenzija v109, softver N1): zamjena je stvarno uključena — bez nje ovaj profil ne provjerava ništa */
+        const fgOn = await pg.evaluate(() => [document.documentElement.classList.contains('no-flexgap'), document.querySelectorAll('[data-rg]').length, document.querySelectorAll('[data-fgp]').length, document.querySelectorAll('[data-fgc]').length]);
+        ok(fgOn[0] && fgOn[1] > 20 && fgOn[2] > 0 && fgOn[3] > 20, `${P.name}: zamjena za flex gap je uključena (razred, ${fgOn[1]} spremnika, ${fgOn[2]} ukrasa, ${fgOn[3]} djece)`);
+        /* v110 (recenzija v109, mobitel N4): nakon okretanja (390 → 844 × 390) razmaci kao kod izravnog otvaranja u položenom prikazu */
+        const sig = p2 => p2.evaluate(() => [...document.querySelectorAll('.press-inner > *, .header-inner > *, .cat-tabs > *')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().left)));
+        await pg.setViewportSize({ width: 844, height: 390 }); await pg.waitForTimeout(700); const sRot = await sig(pg);
+        const pd = await cx.newPage(); await pd.goto(URL + '?noflexgap=1', { waitUntil: 'networkidle' }); await pd.addStyleTag({ content: SAFARI14_CSS }); await pd.setViewportSize({ width: 844, height: 390 }); await pd.reload({ waitUntil: 'networkidle' }); await pd.addStyleTag({ content: SAFARI14_CSS }); await pd.waitForTimeout(500);
+        const sDir = await sig(pd); await pd.close(); await pg.setViewportSize(P.viewport); await pg.waitForTimeout(700);
+        const dMax = sRot.length === sDir.length ? Math.max(0, ...sRot.map((v, k) => Math.abs(v - sDir[k]))) : 999;
+        ok(dMax <= 2, `${P.name}: nakon okretanja razmaci kao kod izravnog otvaranja (najveća razlika ${dMax} px, ${sRot.length}/${sDir.length} elemenata)`);
       }
       /* torba iz ponude (dodirom) i artikl iz rubrike Ostalo */
       const tapped = await pg.locator('.card .add-btn:not([disabled])').first().tap({ timeout: 5000 }).then(() => true).catch(() => false);
