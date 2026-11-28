@@ -183,7 +183,15 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       /* v110 (recenzija v109, sigurnost N2): isti ključ nakon potvrde linkom — bez broja, oznake stanja i roka */
       const rk = await post('order', order('cgnat-key-0001', 'cgnat@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, 'serija-zrtve-0000000001'));
       ok(rk.data.ok && rk.data.confirmedByLink === true && !rk.data.orderNo && !rk.data.check && !rk.data.claimUntil && !rk.data.payment,
-        'v110: ponovljeni zahtjev istim ključem nakon potvrde linkom ne otkriva broj ni oznaku stanja ' + JSON.stringify(Object.keys(rk.data))); }
+        'v110: ponovljeni zahtjev istim ključem nakon potvrde linkom ne otkriva broj ni oznaku stanja ' + JSON.stringify(Object.keys(rk.data)));
+      /* v111 (pregled v110, sigurnost/softver N1): zaštita ne ovisi o zapisu na čekanju — nakon njegova brisanja (30 dana, oštećenje) i nakon uplate i dalje ništa (ni 409 paid) */
+      { const pendBak = read('narudzbe-na-cekanju.json', []), ordBak = read('narudzbe.json', []); const ov = ordBak.find(x => x.no === cv.data.orderNo) || {};
+        write('narudzbe-na-cekanju.json', []); const oP = read('narudzbe.json', []); oP.find(x => x.no === cv.data.orderNo).paidAt = new Date().toISOString(); write('narudzbe.json', oP);
+        try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {}
+        const rk2 = await post('order', order('cgnat-key-0001', 'cgnat@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20, 'serija-zrtve-0000000001'));
+        write('narudzbe-na-cekanju.json', pendBak); write('narudzbe.json', ordBak);
+        ok(ov.byLink === true && rk2.status === 200 && rk2.data.confirmedByLink === true && !rk2.data.orderNo && !rk2.data.check && !rk2.data.code,
+          'v111: oznaka „potvrđeno linkom” trajno uz narudžbu — bez zapisa na čekanju i nakon uplate ponovljeni ključ ne otkriva ništa ' + JSON.stringify([ov.byLink, rk2.status, Object.keys(rk2.data)])); } }
     // 7l) v98 (recenzija vijeća v97, sigurnost M3/M4): tri narudžbe s tuđim e-mailom iz drugog preglednika ne istiskuju pravi link;
     //     otvorena neplaćena narudžba javlja se odmah samo istom pregledniku, drugom odgovor je kao za svaku narudžbu, a vlasniku adrese e-mail
     { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} write('rezervacije.json', { res: {}, sold: {} }); write('narudzbe.json', []);

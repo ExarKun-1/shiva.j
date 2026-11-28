@@ -166,7 +166,9 @@ function sjOrder(env, b) {
   if (parsed.err) return parsed.err;
   var P = parsed.P, ek = sjEmailKey(P.cust.email);
   var orders = env.orders();
-  for (var i = 0; i < orders.length; i++) if (P.key && orders[i].key === P.key) return sjRepeat(orders[i], env);
+  /* v111 (kao api/index.php, pregled v110 sigurnost N4 / softver N2): ovdje je svaka narudžba potvrđena linkom iz e-maila (vlasnik e-adrese) —
+     preglednik koji ju je samo poslao ne dobiva broj, iznos, stavke ni stanje (ni 409 „plaćeno”) */
+  for (var i = 0; i < orders.length; i++) if (P.key && orders[i].key === P.key) return sjOut(200, { ok: true, repeated: true, confirmedByLink: true });
   if (P.uniqueIds.length) {
     var st = sjState(env), taken = [];
     P.uniqueIds.forEach(function (id) { var h = st.held[id]; if (st.sold[id] || (h && sjEmailKey(h.email) !== ek)) taken.push(id); });

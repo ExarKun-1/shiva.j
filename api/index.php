@@ -264,6 +264,7 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
    ju je samo poslao ne vidi: bez broja, oznake stanja, roka i adrese (inače bi onaj tko naruči na tuđu adresu pratio plaća li vlasnik) */
 function sj_order_repeat_key_out(array $prev): void {
   $no = (string)($prev['no'] ?? '');
+  if (!empty($prev['byLink'])) sj_json_out(['ok' => true, 'repeated' => true, 'confirmedByLink' => true]); /* v111: trajna oznaka; zapis na čekanju samo za narudžbe iz v110 */
   if ($no !== '') foreach (sj_read_json(sj_pending_path(), []) as $px) if (is_array($px) && (string)($px['no'] ?? '') === $no) sj_json_out(['ok' => true, 'repeated' => true, 'confirmedByLink' => true]);
   sj_order_repeat_out($prev);
 }
@@ -1446,7 +1447,8 @@ function sj_place_order_locked(array $P): array {
      i tajna za poveznicu „Uplatio/la sam” (samo u e-mailovima kupcu) */
   /* v81 (p2): rok za uplatu je zaseban od rezervacije (rezervacija traje do 23:59 radnog dana nakon roka) */
   $payUntil = ($res && !empty($res['pay'])) ? (string)$res['pay'] : sj_iso(sj_pay_deadline(time(), (int)$ttl)); /* v76: vikend i blagdani */
-  $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time()), 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
+  /* v111 (pregled v110, sigurnost/softver N1): oznaka „potvrđeno linkom iz e-maila” trajno uz narudžbu — zapis na čekanju briše se nakon 30 dana ili pri oštećenju */
+  $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time())] + (!empty($P['viaLink']) ? ['byLink' => true] : []) + [ 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
             'total' => sj_fmt_eur($total), 'items' => $itemsText, 'shipping' => $shipText, 'address' => trim($cust['street'] . ', ' . $cust['city'], ', '),
             'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o,
             'ip' => (string)($ip ?? ''), 'ip_prev' => (string)($ipPrev ?? ''), 'series' => (string)($P['series'] ?? '')]; /* skraćena veza: admin „Storniraj sve s ove adrese”; v98: oznaka preglednika */
