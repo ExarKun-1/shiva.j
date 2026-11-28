@@ -1843,14 +1843,19 @@ function sj_mask_handles(string $s): string {
   /* krug provjere v104 (sigurnost B7): i „Revolut - ime”, „Revolut – ime”, „Revolut → ime”, „Revolut (ime)”, „Revolut tag: ime” */
   /* v110 (recenzija v109, sigurnost N1): i padeži („Revolutom”, „Revolutu”, „PayPalom”, „Keks Payem”), „na …”, „račun …”, razdjelnici = / @ … ->,
      gola oznaka na kraju dijela rečenice („Revolut ivanhorvat”) i oznaka s točkom („ivan.horvat99” / „ivan. horvat99”); obične riječi ostaju */
-  $s = preg_replace_callback('~\b(revtag|revolut|paypal|aircash|keks\s?pay)(\p{L}{0,3})\b((?:\s+(?:tag|na|račun|računa|account))?)(\s*(?:[:=/@…\-–—→(]|\.{2,}|->)+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}_-]{3,}(?:\.\s?[\p{L}\p{N}_-]+)*)(\)?)(?=(.{0,12}))~isu', function ($m) {
+  /* v111 (pregled v110, sigurnost N2/N3): uputa na plaćanje (2. lice: „uplatite”, „pošaljite”, „plaćanje na” …) bilo gdje u napomeni — tada je oznaka skrivena i kad iza nje
+     slijedi riječ („Uplatite Revolutom ivanhorvat do petka”); bez upute gola oznaka mora biti na kraju dijela rečenice (ne pitanje), ne smije imati č ć ž š đ
+     („uopće”, „nažalost”) i ne stoji iza „preko/putem” (kupac opisuje svoj način: „Uplatit ću preko Revoluta sestrinog”) — pitanja kupaca ostaju */
+  $imp = (bool)preg_match('~(?<!\p{L})(?:uplatite|platite|pošaljite|šaljite|prebacite|uplati|plati|pošalji|prebaci|uplaćujete|plaćate|šaljete|možete\s+(?:uplatiti|platiti|poslati)|(?:uplata|uplatu|plaćanje|novac|iznos)\s+(?:ide\s+)?na)(?!\p{L})~iu', $s);
+  $s = preg_replace_callback('~((?<!\p{L})(?:preko|putem)\s+)?\b(revtag|revolut|paypal|aircash|keks\s?pay)(\p{L}{0,3})\b((?:\s+(?:tag|na|račun|računa|account|korisnik|korisničko\s+ime|ime|username|user|profil))?)(\s*(?:[:=/@…\-–—→(]|\.{2,}|->)+\s*|\s+)((?:me\s*/\s*)?)@?([\p{L}\p{N}_-]{3,}(?:\.\s?[\p{L}\p{N}_-]+)*)(\)?)(?=(.{0,12}))~isu', function ($m) use ($imp) {
     /* drugi krug provjere v104 (N4): crtica, strelica, zagrada i „tag” bez dvotočke vrijede samo za samostalnu oznaku na kraju dijela rečenice, a ne za obične riječi
        („Revolut → banka”, „PayPal (ako može)”, „Revolut tag nemam”); v110: popis običnih riječi proširen (vrijeme, glagoli plaćanja) */
-    $word = preg_match('~^(?:ali|ako|ili|banka|banku|banke|instant|nemam|imam|hoće|hoćete|može|mogu|možete|sve|molim|radije|samo|isto|nije|nema|je|da|ne|na|za|i|a|u|s|sa|iz|od|do|po|pa|jer|kad|kada|čim|nakon|prije|poslije|preko|putem|kartica|kartice|karticom|račun|računa|uplata|uplatu|uplatom|uplatnicom|aplikacija|aplikaciju|vrijeme|sutra|danas|odmah|kasnije|večeras|ujutro|navečer|vikend|vikendom|prekosutra|plaćam|platim|platiti|platit|plaćanje|šaljem|šaljemo|pošaljem|uplatim|uplaćujem|uplatiti|radi|hvala|ok|okej|svejedno|nemate|imate|imaš|nemaš|bih|bi|ću|će|ćemo|sam|smo|ste|li|vas|vam|nas|nam|mi|ti|ja|vi|oni|to|ovo|ono|tako|ovako|isto|također|kao|nego|još|već|uvijek|nikad|možda|svakako|naravno|ne mogu)$~iu', $m[6]);
-    $alone = preg_match('~^[)\s]*(?:$|[.,;!?]|\s+(?:ili|i|a|hvala)\b)~u', (string)($m[8] ?? ''));
-    $hit = stripos($m[1], 'revtag') === 0 || preg_match('~[:=/@…]|\.\.|->~u', $m[4]) || $m[5] !== '' || preg_match('~[\d._]~', $m[6])
-      || (!$word && ($m[3] !== '' || $alone));
-    return $hit ? $m[1] . $m[2] . $m[3] . $m[4] . '[oznaka skrivena]' . $m[7] : $m[0];
+    $word = preg_match('~^(?:ali|ako|ili|banka|banku|banke|instant|nemam|imam|hoće|hoćete|može|mogu|možete|sve|molim|radije|samo|isto|nije|nema|je|da|ne|na|za|i|a|u|s|sa|iz|od|do|po|pa|jer|kad|kada|čim|nakon|prije|poslije|preko|putem|kartica|kartice|karticom|račun|računa|uplata|uplatu|uplate|uplatom|uplatnicom|isplata|isplatu|aplikacija|aplikaciju|opcija|opciju|opcije|mogućnost|vrijeme|sutra|danas|odmah|kasnije|večeras|ujutro|navečer|vikend|vikendom|prekosutra|plaćam|platim|platiti|platit|plaćanje|šaljem|šaljemo|pošaljem|uplatim|uplaćujem|uplatiti|radi|ne radi|hvala|ok|okej|svejedno|nemate|imate|imaš|nemaš|bih|bi|ću|će|ćemo|sam|smo|ste|li|vas|vam|nas|nam|mi|ti|ja|vi|oni|to|ovo|ono|tako|ovako|isto|također|kao|nego|još|već|uvijek|nikad|možda|svakako|naravno|ne mogu|primjer|sreću|žalost)$~iu', $m[7]);
+    $alone = preg_match('~^[)\s]*(?:$|[.,;!]|\s+(?:ili|i|a|hvala)\b)~u', (string)($m[9] ?? '')); /* v111: „?” nije kraj oznake — pitanje kupca */
+    $plain = !$word && !preg_match('~[čćžšđ]~iu', $m[7]);
+    $hit = stripos($m[2], 'revtag') === 0 || preg_match('~[:=/@…]|\.\.|->~u', $m[5]) || $m[6] !== '' || preg_match('~[\d._]~', $m[7])
+      || ($plain && ($imp || (preg_match('~\S~u', $m[4]) && !preg_match('~^\s+na$~iu', $m[4])) || ($alone && $m[1] === '' ) || ($alone && preg_match('~^\s+na$~iu', $m[4]))));
+    return $hit ? $m[1] . $m[2] . $m[3] . $m[4] . $m[5] . '[oznaka skrivena]' . $m[8] : $m[0];
   }, $s) ?? $s;
   /* krug provjere v104 (sigurnost 1/5): razdjelnici i . ! ( ) — – →; pozivni broj nije dio vremena ili datuma (ni iza „:”, „/”, „.” ili znamenke) */
   $sep = '[\s,;:\-/.!()—–→]+'; $pre = '(?:\+\s?385\s?\d{1,2}|0\d{1,2})(?![\d]|[.:/]\d)';

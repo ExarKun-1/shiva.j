@@ -503,6 +503,12 @@ $pk = ['preko Revoluta ili kartice', 'Platit ću Revolutom sutra', 'Revolutom pl
 $pkB = array_values(array_filter($pk, fn($x) => sj_echo_text($x) !== $x));
 $ok(!$pvV && !$pkB && !str_contains(sj_echo_addr('Zabok Konzum, uplatite Revolutom na ivanhorvat'), 'ivanhorvat'),
   'v110 (recenzija v109, sigurnost N1): oznake plaćanja u padežima i bez dvotočke skrivene (i u paketomatu); obične rečenice ostaju ' . json_encode([$pvV, $pkB], JSON_UNESCAPED_UNICODE));
+/* v111 (pregled v110, sigurnost N2/N3): uputa na plaćanje skriva oznaku i kad iza nje slijedi riječ; pitanja i opisi kupaca o načinu plaćanja ostaju */
+$qv = ['Uplatite Revolutom ivanhorvat do petka.', 'Revolut korisnik ivanhorvat', 'Revolut ime ivanhorvat', 'Platite preko Revoluta ivanhorvat', 'Pošaljite novac na PayPal ivanhorvat kod nas', 'Revolut na ivanhorvat', 'Možete uplatiti na Aircash ivanhorvat sutra'];
+$qvV = array_values(array_filter($qv, fn($x) => !str_contains(sj_echo_text($x), '[oznaka skrivena]') || preg_match('~ivanhorvat~u', sj_echo_text($x))));
+$qk = ['Imate li PayPal opciju?', 'Je li plaćanje PayPalom moguće?', 'Primate li Revolut uplate?', 'Može li Aircash isplata?', 'Ne koristim PayPal uopće', 'Nemam PayPal nažalost.', 'Revolut na žalost ne radi', 'Uplatit ću preko Revoluta sestrinog.', 'Imate li Revolut? Mogu platiti tako.', 'Pošaljite mi račun, platit ću PayPalom kasnije'];
+$qkB = array_values(array_filter($qk, fn($x) => sj_echo_text($x) !== $x));
+$ok(!$qvV && !$qkB, 'v111 (pregled v110, sigurnost N2/N3): oznaka uz uputu na plaćanje skrivena i s nastavkom rečenice; pitanja kupaca o PayPalu i Revolutu ostaju ' . json_encode([$qvV, $qkB], JSON_UNESCAPED_UNICODE));
 /* recenzija v102 (sigurnost N1–N5): maska ne kvari obične napomene; dvojnici crtice i miješane „znamenke” ne prenose broj; adresa se u e-mailu ne briše */
 $kR = ['Treba mi do 20.11.2026., 2 komada', 'Doma sam 8:00-16:00, 12. kat', 'Dostava na Ilica 5, 20.11.2026.', 'Termin: 23.11., 24.11., 25.11., 26.11. poslije 17 h',
   'Narudžba 2026-0001, 2 kom', '20.11.2026. 5 kom', '20.11.2026. u 14:30, 2 kom', '22 m² i 3 kom', 'Ilica 123/4, 10000 Zagreb', 'BOX NOW Savska — Savska cesta 1060, 10000 (ID 4051)', 'Ilica 5, stan 1234, 10000 Zagreb'];
