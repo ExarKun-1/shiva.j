@@ -1281,7 +1281,13 @@ function sj_order_pending(array $P): void {
   $t[] = (string)($P['itemsTextC'] ?? $P['itemsText']);
   $t[] = '- Dostava: ' . (string)($P['shipTextC'] ?? $P['shipText']);
   $t[] = 'Ukupno: ' . sj_fmt_eur((float)$P['total']);
-  $t[] = 'Podatke za dostavu' . (array_filter((array)($P['items'] ?? []), fn($it) => ($it['note'] ?? '') !== '') ? ', odabranu boju i duljinu remena ili ono što ste upisali uz artikl' : '') /* v110 (recenzija v109, dizajn N5) */ . ' vidjet ćete na stranici nakon potvrde i u e-mailu s potvrdom narudžbe.';
+  /* v111 (pregled v110, dizajn N4): rečenica prema sadržaju narudžbe — „podatke za dostavu” samo uz dostavu, „boju i duljinu remena” samo uz remen s odabirom, „ono što ste upisali” samo uz upisanu napomenu artikla */
+  { $byIdM = sj_products_by_id(); $strapN = false; $otherN = false;
+    foreach ((array)($P['items'] ?? []) as $it) { if (($it['note'] ?? '') === '') continue; $pM = $byIdM[(string)($it['id'] ?? '')] ?? [];
+      if ((string)($pM['sub'] ?? '') === 'remeni' || preg_match('/remen/iu', (string)($it['name'] ?? ''))) $strapN = true; else $otherN = true; }
+    $partsM = array_values(array_filter([(($P['ship']['id'] ?? '') !== 'pickup' && is_array($P['ship'] ?? null)) ? 'podatke za dostavu' : '', $strapN ? 'odabranu boju i duljinu remena' : '', $otherN ? 'ono što ste upisali uz artikl' : '']));
+    if ($partsM) { $jM = count($partsM) > 1 ? implode(', ', array_slice($partsM, 0, -1)) . ' i ' . end($partsM) : $partsM[0];
+      $t[] = mb_strtoupper(mb_substr($jM, 0, 1)) . mb_substr($jM, 1) . ' vidjet ćete na stranici nakon potvrde i u e-mailu s potvrdom narudžbe.'; } }
   $t[] = '';
   $t[] = 'Ako niste naručili vi, zanemarite ovaj e-mail: bez potvrde narudžba se ne zaprima i ništa se ne rezervira.';
   $t[] = '';

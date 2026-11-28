@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- =========================================================
-     SHIVA.J WEBSHOP — v110 (2026-11-27)
+     SHIVA.J WEBSHOP — v111 (2026-11-28)
      Povijest verzija:
      v01 — osnovna stranica: grid, košarica, narudžba mailto
      v02 — Formspree slanje narudžbi + mailto rezerva
@@ -133,6 +133,10 @@
      v109 — pravi Pixel 9 (Android 15): gumb do kojeg se stranica pomakne ostajao je ispod prilijepljenog zaglavlja; html{scroll-padding-top}
            pa ni fokus tipkovnice ni skok na odjeljak ne završavaju ispod zaglavlja (WCAG 2.2, 2.4.11); „lebdenje” gumba samo uz miš
            (@media (hover:hover) and (pointer:fine); Galaxy S24 javlja hover:hover) — na dodirnom zaslonu „U košarici” nakon dodira ostaje s obrubom
+     v111 — pregled v110: „Podaci za uplatu” vidljivi i uz artikl u košarici (test vidljivosti u svim stanjima); ploča nakon roka zna za
+           „Uplatio/la sam” i na drugom uređaju (status?stanje= → claim); narudžba potvrđena linkom trajno skrivena (byLink, i Apps Script);
+           skrivanje oznaka plaćanja uz uputu na plaćanje, pitanja kupaca ostaju; traka „Natrag” široka kao stupac; Tab kroz zaglavlje bez
+           pomaka; „dodaj još” bez loma riječi; „Što slijedi” bez jednog koraka kad je dio otišao; e-mail i poruke prema sadržaju narudžbe
      v110 — recenzija v109: zatvaranje košarice više ne pomiče stranicu (fokus bez pomicanja); logo s pravne podstranice na vrh; „Natrag u
            trgovinu” jednim klikom i nakon više pravnih odjeljaka, kao prilijepljena traka; ploča za uplatu ostaje u košarici dok se torba nakon
            roka čuva (status?stanje= → lapsedSrv, heldUntil); poziv na uplatu jednom (lapsedCall) s imenom torbe; „U košarici” s obrubom i u Stalnoj
@@ -533,7 +537,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="shivaj-verzija" content="v110"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
+<meta name="shivaj-verzija" content="v111"> <!-- v95 (recenzija vijeća v94, L4): verzija vidljiva i u paketu (komentari se uklanjaju); admin je ispisuje na dnu -->
 <meta name="color-scheme" content="light">
 <title>Shiva.J — Ručno šivane torbe iz Zaboka</title>
 <meta name="description" content="Shiva.J — ručno šivane torbe iz Zaboka, od umjetne kože. Unikati postoje samo jednom, a modele iz Stalne kolekcije šijemo po narudžbi.">
@@ -780,6 +784,7 @@
   .legal h2{font-family:'Marcellus',serif;font-weight:400;font-size:clamp(1.7rem,2.8vw,2.2rem);margin-bottom:8px}
   .legal h3{font-family:'Marcellus',serif;font-weight:400;font-size:1.05rem;margin:26px 0 6px}
   .legal p{color:var(--ink-soft);font-size:.9rem;margin-bottom:10px;max-width:72ch}
+  html.legal-view .legal p.legal-back{max-width:none} /* v111 (pregled v110, dizajn N1): traka je <p> — bez granice 72ch, široka kao stupac (ispod nje ne vire crte i „+”) */
   .legal .seam{max-width:120px;margin:14px 0 8px}
   .legal a{border-bottom:1.5px dashed var(--thread)}
   .impressum{margin-top:40px;padding-top:24px;border-top:1.5px dashed var(--thread)}
@@ -804,6 +809,7 @@
   .legal-list{color:var(--ink-soft);font-size:.9rem;max-width:72ch;margin:0 0 10px;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
   /* sidra ispod ljepljivog zaglavlja */
   html{scroll-padding-top:72px} /* v109 (pravi Pixel 9): prilijepljeno zaglavlje ne prekriva element do kojeg se stranica pomakne ni fokus tipkovnice (WCAG 2.2, 2.4.11; tehnika C43) — zamjenjuje scroll-margin-top:72px na odjeljcima */
+  header a,header button,.legal-back a{scroll-margin-top:-72px;scroll-margin-bottom:72px} /* v111 (pregled v110, kupac-pc N3): prilijepljeno zaglavlje i traka „Natrag” su uvijek na zaslonu — fokus tipkom Tab na njima ne pomiče stranicu (scroll-padding ih inače smatra „ispod zaglavlja”) */
 
   /* honeypot — nevidljivo ljudima, mame za botove */
   .hp-field{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden}
@@ -2279,7 +2285,7 @@ function renderGrid(){
       ${wait ? `<p class="ask-ig">Zanima vas? Pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       ${p.made && !gone && !wait && !cover ? `<p class="ask-ig">Fotografija modela uskoro — za izgled i boje pitajte nas na <a href="https://www.instagram.com/shiva.j_handmade/" target="_blank" rel="noopener">Instagramu</a>.</p>` : ""}
       <button class="add-btn ${entry && (!p.made || catOf(p) === "kolekcija") ? "in-cart" : ""}" data-id="${escHtml(p.id)}" ${gone || wait ? "disabled" : ""}>
-        ${escHtml(btnText)}
+        ${/ · /.test(btnText) ? btnText.split(" · ").map(t => `<span class="nw">${escHtml(t)}</span>`).join(" · ") /* v111 (pregled v110, dizajn N2): u uskoj mreži (Ostalo, 390 px) redak se lomi samo kod „·” — „JOŠ” ne ostaje sam u retku */ : escHtml(btnText)}
       </button>`;
     target.appendChild(card);
   });
@@ -3117,8 +3123,10 @@ async function refreshReservations(first = false){
       if((r || sd) && cart.some(c => c.id === p.id)){ cart = cart.filter(c => c.id !== p.id); if(!ownDone(p.id)) dropped.push(p.name); else { changed = true; ownDropped.push([p.name, ownOrderOf(p.id)]); } }
     });
     /* v110 (recenzija v109, kupac-pc N2): torba iz vlastite narudžbe (npr. dodana u staroj kartici) ne nestaje bez riječi */
-    if(ownDropped.length){ const nm = ownDropped.map(x => "„" + x[0] + "”").join(" i "), no = ownDropped[0][1];
-      showToast((ownDropped.length > 1 ? "Torbe " + nm + " već su" : "Torba " + nm + " već je") + " u vašoj narudžbi" + (no && no !== "—" ? " " + no : "") + ", pa " + (ownDropped.length > 1 ? "ih" : "je") + " nema u košarici.", 6000); }
+    /* v111 (pregled v110, dizajn N5): torbe iz različitih vlastitih narudžbi — uz svaku njezin broj */
+    if(ownDropped.length){ const byNo = new Map(); ownDropped.forEach(([n, no]) => { const k = no && no !== "—" ? no : ""; if(!byNo.has(k)) byNo.set(k, []); byNo.get(k).push("„" + n + "”"); });
+      const many = ownDropped.length > 1, part = [...byNo].map(([no, ns]) => andList(ns) + (no ? (byNo.size > 1 ? " (narudžba " + no + ")" : "") : "")), one = byNo.size === 1 ? [...byNo.keys()][0] : "";
+      showToast((many ? "Torbe " : "Torba ") + andList(part) + (many ? " već su" : " već je") + (byNo.size > 1 ? " u vašim narudžbama" : " u vašoj narudžbi" + (one ? " " + one : "")) + ", pa " + (many ? "ih" : "je") + " nema u košarici.", 6000); }
     if(changed || dropped.length){ renderGrid(); renderCart(); if(lbCurrent) updateLbButton(); }
     if(dropped.length) noticeGone(dropped);
   } catch(err){ /* servis nedostupan — stranica radi bez blokade */ }
@@ -4120,7 +4128,7 @@ function paymentPanel(last){
     <div class="pay">
       <div class="pay-thanks" tabindex="-1"><h3 class="pay-hello">${srv.lapsed ? "Rok za uplatu je prošao" : "Hvala vam!"}${srv.orderNo ? ` <span class="pay-no">Narudžba ${escHtml(srv.orderNo)}</span>` : ""}</h3><p>${thanks}</p>${paneLeftover.length ? `<p class="pay-left"><small>${paneLeftover.length > 1 ? "Artikli" : "Artikl"} ${escHtml(paneLeftover.map(n => "„" + n + "”").join(" i "))} ${paneLeftover.length > 1 ? "nisu u ovoj narudžbi — ostali su" : "nije u ovoj narudžbi — ostao je"} u košarici; ${paneOtherPending ? `${paneLeftover.length > 1 ? "čekaju" : "čeka"} potvrdu vaše novije narudžbe (link iz najnovijeg <span class="nw">e-maila</span>)` : `naručite ${paneLeftover.length > 1 ? "ih" : "ga"} zasebno kad zatvorite ove podatke`}.</small></p>` : ""}</div>
       ${last.wdU ? `<div class="order-error order-info pay-wdu" role="status">Za ovu narudžbu zaprimili smo izjavu o raskidu ugovora poslanu bez poveznice iz <span class="nw">e-maila</span>. Ako ste je poslali vi, narudžbu ne trebate platiti. Ako je niste poslali vi, javite nam se na ${escHtml(OWNER_EMAIL)}; podaci za uplatu su niže.</div>` : "" /* v101 (recenzija vijeća v100, kupac 2): zaseban okvir iznad iznosa, ne usred koraka „Do roka” */}
-      ${!noPay && !claimedLapsed && (payIso || so) ? `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso && !srv.lapsed && !(Date.parse(payIso) < Date.now()) ? " do " + fmtDeadline(payIso) : "" /* v104: nikad rok u prošlosti */}.</p>` : ""}
+      ${!noPay && !claimedLapsed && (payIso || so) ? (last.claimed ? `<p class="pay-sum">Iznos narudžbe: <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>.</p>` /* v111 (pregled v110, kupac-pc N5): javio je da je uplatio — bez „Uplatite … do” (ne plaća dvaput) */ : `<p class="pay-sum">Uplatite <b>${so ? amountTxt : fmt(goods) + " + dostava"}</b>${payIso && !srv.lapsed && !(Date.parse(payIso) < Date.now()) ? " do " + fmtDeadline(payIso) : "" /* v104: nikad rok u prošlosti */}.</p>`) : ""}
       ${noPay || claimedLapsed ? "" /* v104 (recenzija v103, softver N2; krug provjere N1): nešto je otišlo drugom kupcu ili je kupac javio uplatu nakon isteka — bez podataka za uplatu i barkoda */ : `<h3 class="pay-title">Podaci za uplatu</h3>
       ${payOk && barcodeFirst ? barcode : ""}
       ${payOk ? `<p class="pay-who">Uplaćujete izravno obrtu, bez posrednika.</p>` : `<p class="pay-who">Podatke za uplatu šaljemo vam <span class="nw">e-mailom</span>.</p>`}
@@ -4134,9 +4142,9 @@ function paymentPanel(last){
         ${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}
       </dl>` : orderNo ? `<dl class="pay-data">${orderNo}${itemsHtml ? `<div><dt>Naručeno</dt><dd>${itemsHtml}</dd></div>` : ""}</dl>` : ""}
       ${payOk ? `<div class="pay-actions">${copyBtn(allText, "Podaci za uplatu").replace(">Kopiraj<", ">Kopiraj sve podatke<")}${share}</div>${barcodeFirst ? "" : barcode}` : ""}`}
-      <h3 class="pay-title pay-title-next"${srv.allGone && !last.claimed ? " hidden" : ""}>Što slijedi</h3> <!-- v110 (recenzija v109, dizajn N3): sve je otišlo drugom kupcu — bez koraka (ostao bi samo raskid) -->
-      <ol class="pay-steps" aria-label="Što slijedi"${srv.allGone && !last.claimed ? " hidden" : ""}>
-        ${noPay || claimedLapsed ? (last.claimed ? `<li><b>Sada</b><span class="pay-late">${claimLine}</span></li>` /* krug provjere v104 (kupac N3): javio je uplatu — bez „Uplatite” */ : "") : ""}${noPay ? "" : `${claimedLapsed ? "" : `<li><b>${payIso && !srv.lapsed ? "Do roka" : "Sada"}</b>${srv.lapsedCall ? escHtml(srv.lapsedCall) /* v110 (recenzija v109, dizajn N2/N3): poziv na uplatu jednom, s imenom torbe — uvod ga više nema */ : (srv.lapsed && !srv.lapsedHeld ? "Ako ste i dalje zainteresirani za narudžbu, uplatite" : "Uplatite") + " prema podacima " + (payOk ? "za uplatu" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + "."}${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
+      <h3 class="pay-title pay-title-next"${noPay && !last.claimed ? " hidden" : ""}>Što slijedi</h3> <!-- v110 (recenzija v109, dizajn N3): sve je otišlo drugom kupcu — bez koraka (ostao bi samo raskid) --> <!-- v111 (pregled v110, dizajn N3 / mobitel N3): i kad je otišao samo dio (anyGone) — ostao bi samo korak o raskidu -->
+      <ol class="pay-steps" aria-label="Što slijedi"${noPay && !last.claimed ? " hidden" : ""}>
+        ${noPay || claimedLapsed ? (last.claimed ? `<li><b>Sada</b><span class="pay-late">${claimLine}</span></li>` /* krug provjere v104 (kupac N3): javio je uplatu — bez „Uplatite” */ : "") : ""}${noPay ? "" : `${claimedLapsed ? "" : `<li><b>${payIso && !srv.lapsed ? "Do roka" : "Sada"}</b>${srv.lapsedCall ? escHtml(srv.lapsedCall) /* v110 (recenzija v109, dizajn N2/N3): poziv na uplatu jednom, s imenom torbe — uvod ga više nema */ : (srv.lapsed && !srv.lapsedHeld ? "Ako ste i dalje zainteresirani za narudžbu, uplatite" : last.claimed ? "Ako uplatu još niste poslali, uplatite" /* v111 (kupac-pc N5) */ : "Uplatite") + " prema podacima " + (payOk ? "za uplatu" : "koje vam šaljemo <span class='nw'>e-mailom</span>") + "."}${anyUnique ? "" : " Čim uplata bude vidljiva, krećemo s izradom."} Ako vaša banka nudi instant uplatu, odaberite je: uplata tada obično stigne brže.
           ${srv.lapsed && !srv.lapsedHeld ? "" /* v104 (recenzija v103, dizajn N1): rok i čuvanje istekli — bez „Uplatio/la sam” i obećanja produljenja; potvrdu o uplati traži već uvod */ : `<span class="pay-late">${claimLine}</span>`}</li>`}
         <li><b>Nakon uplate</b>${anyMade ? madeSubject + (leadsNamed.length ? (leadsNamed === leads ? " u roku od " + escHtml(leads.join("; ")) /* v98 (recenzija vijeća v97, dizajn): ne „u roku izrade (5 radnih dana)” */ : " u roku izrade (" + escHtml(leadsNamed.join("; ")) + ")") : "") + ", zatim " + (anyUnique ? (pickup ? "cijelu narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "cijelu narudžbu — " + allNamesQ + " — šaljemo zajedno, u jednom paketu" + shipAfter + "; javit ćemo vam kad paket krene.") : pickup ? "narudžbu pripremamo za preuzimanje u radionici; javit ćemo vam se i dogovoriti termin." : "narudžbu pažljivo pakiramo i šaljemo" + shipAfter + "; javit ćemo vam kad paket krene.")
           : pickup ? Torbu + " pripremamo za preuzimanje u radionici" + (SHIP_LEAD ? ", u roku " + escHtml(SHIP_LEAD) + " nakon uplate" : "") + "; javit ćemo vam se kad " + (many ? "budu spremne" : "bude spremna") + " i dogovoriti termin."

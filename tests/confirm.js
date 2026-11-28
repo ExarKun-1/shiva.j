@@ -435,8 +435,14 @@ const lastLink = () => { const m = [...mailLog().matchAll(/\?potvrda=([a-f0-9]{3
       await post('order', order('potvrda-v110-boja-1', 'v110boja@primjer.hr', [{ id: 'kozmeticka', qty: 1, note: 'crvena' }, { id: 'remen', qty: 1, note: 'crna, 120 cm' }], 35)); const Lb = lastLink();
       const cb = await post('confirm', { id: Lb.id, t: Lb.t });
       const ml = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(before);
-      ok(cb.data.ok && /Boja za artikl „Kozmetička torbica”: crvena\./.test(ml) && /Boja i duljina za artikl „Zamjenski remen”: crna, 120 cm\./.test(ml) && /odabranu boju i duljinu remena ili ono što ste upisali uz artikl/.test(ml),
+      ok(cb.data.ok && /Boja za artikl „Kozmetička torbica”: crvena\./.test(ml) && /Boja i duljina za artikl „Zamjenski remen”: crna, 120 cm\./.test(ml) && /\nOdabranu boju i duljinu remena i ono što ste upisali uz artikl vidjet ćete/.test(ml) && !/Podatke za dostavu/.test(ml) /* v111: osobno preuzimanje — bez „podataka za dostavu” */,
         'v110: e-mail — „Boja” za artikl bez duljine, „Boja i duljina” za remen; e-mail za potvrdu imenuje remen ' + JSON.stringify([cb.status, (ml.match(/Boj[ae][^\n]{0,60}/g) || []).slice(0, 3)]));
+      /* v111 (pregled v110, dizajn N4): samo remen s odabirom → bez „ono što ste upisali”; bez napomena i uz preuzimanje → bez te rečenice */
+      { try { fs.unlinkSync(D + 'zahtjevi.json'); } catch (e) {} const b1 = fs.readFileSync(D + 'mail-log.txt', 'utf8').length;
+        await post('order', order('potvrda-v111-mail-1', 'v111mail1@primjer.hr', [{ id: 'remen', qty: 1, note: 'crna, 120 cm' }], 15)); const m1 = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(b1);
+        const b2 = m1.length + b1; await post('order', order('potvrda-v111-mail-2', 'v111mail2@primjer.hr', [{ id: 'kozmeticka', qty: 1 }], 20)); const m2 = fs.readFileSync(D + 'mail-log.txt', 'utf8').slice(b2);
+        ok(/\nOdabranu boju i duljinu remena vidjet ćete/.test(m1) && !/ono što ste upisali/.test(m1) && /potvrdite narudžbu/i.test(m2) && !/vidjet ćete na stranici nakon potvrde i u e-mailu/.test(m2),
+          'v111: e-mail za potvrdu nabraja samo ono što je u narudžbi ' + JSON.stringify([(m1.match(/\n[^\n]*vidjet ćete[^\n]*/) || [''])[0].slice(0, 90), (m2.match(/\n[^\n]*vidjet ćete[^\n]*/) || [''])[0].slice(0, 90)])); }
       /* krug provjere v110: poruka nakon „Uplatio/la sam” — „izrađujemo artikle „…””, naziv u nominativu uz „artikl” */
       const tk = (/&t=([0-9a-f]{32})$/.exec(cb.data.claimLink || '') || [])[1] || ''; const pcl = await post('paidclaim', { no: cb.data.orderNo, t: tk });
       ok(pcl.data.ok && /izrađujemo artikle „Kozmetička torbica” i „Zamjenski remen”/.test(JSON.stringify(pcl.data)), 'krug provjere v110: „izrađujemo artikle „…”” nakon „Uplatio/la sam” ' + JSON.stringify(pcl.data).slice(0, 200)); }
