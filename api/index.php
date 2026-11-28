@@ -264,6 +264,7 @@ function sj_order_repeat_out(array $prev, bool $viaLink = false, array $more = [
    ju je samo poslao ne vidi: bez broja, oznake stanja, roka i adrese (inače bi onaj tko naruči na tuđu adresu pratio plaća li vlasnik) */
 function sj_order_repeat_key_out(array $prev): void {
   $no = (string)($prev['no'] ?? '');
+  if (!empty($prev['byLink'])) sj_json_out(['ok' => true, 'repeated' => true, 'confirmedByLink' => true]); /* v111: trajna oznaka; zapis na čekanju samo za narudžbe iz v110 */
   if ($no !== '') foreach (sj_read_json(sj_pending_path(), []) as $px) if (is_array($px) && (string)($px['no'] ?? '') === $no) sj_json_out(['ok' => true, 'repeated' => true, 'confirmedByLink' => true]);
   sj_order_repeat_out($prev);
 }
@@ -401,9 +402,13 @@ if ($a === 'status') {
     $stateOut = ['orderState' => $st] + ($st === 'open' && sj_withdrawn($so, false) ? ['wdUnverified' => true] : []); /* v100: izjava bez poveznice — ploča to kaže (kupac N2) */
     /* v110 (recenzija v109, kupac-pc N1): rok za uplatu je prošao, a torba se još čuva — spremljena ploča dobiva isti tekst kao stari link
        (sj_order_repeat_data) i do kada se torba čuva, pa ne nestane iz košarice prije vremena */
-    if ($st === 'open' && (int)strtotime(sj_pay_until($so)) <= time()) {
+    /* v111 (pregled v110, mobitel N1 / softver N4): i nakon „Uplatio/la sam” (rok produljen, pa više nije prošao) — spremljena ploča dobiva novi rok
+       i tekst bez poziva na klik (claim), a lapsedSrv bez „lapsed” briše stari tekst nakon roka; inače bi ploča govorila dvoje i nestala prije novog roka */
+    $soClaimed = $st === 'open' && (!empty($so['claimedAt']) || !empty($so['proofAt']));
+    if ($soClaimed) $stateOut['claim'] = ['until' => sj_pay_until($so), 'msg' => sj_already_text($so)];
+    if ($st === 'open' && ($soClaimed || (int)strtotime(sj_pay_until($so)) <= time())) {
       [$rp, $rc] = sj_order_repeat_data($so, false);
-      if ($rc === 200 && isset($rp['lapsed'])) {
+      if ($rc === 200 && (isset($rp['lapsed']) || $soClaimed)) {
         $stateOut['lapsedSrv'] = array_intersect_key($rp, array_flip(['lapsed', 'lapsedHeld', 'lapsedCall', 'allGone', 'anyGone', 'claimUntil', 'claimAtLeast', 'until', 'reserved', 'payUntil']));
         $hiS = sj_held_info($so); if ($hiS['until'] > time()) $stateOut['heldUntil'] = sj_iso($hiS['until']);
       }
@@ -1276,7 +1281,13 @@ function sj_order_pending(array $P): void {
   $t[] = (string)($P['itemsTextC'] ?? $P['itemsText']);
   $t[] = '- Dostava: ' . (string)($P['shipTextC'] ?? $P['shipText']);
   $t[] = 'Ukupno: ' . sj_fmt_eur((float)$P['total']);
-  $t[] = 'Podatke za dostavu' . (array_filter((array)($P['items'] ?? []), fn($it) => ($it['note'] ?? '') !== '') ? ', odabranu boju i duljinu remena ili ono što ste upisali uz artikl' : '') /* v110 (recenzija v109, dizajn N5) */ . ' vidjet ćete na stranici nakon potvrde i u e-mailu s potvrdom narudžbe.';
+  /* v111 (pregled v110, dizajn N4): rečenica prema sadržaju narudžbe — „podatke za dostavu” samo uz dostavu, „boju i duljinu remena” samo uz remen s odabirom, „ono što ste upisali” samo uz upisanu napomenu artikla */
+  { $byIdM = sj_products_by_id(); $strapN = false; $otherN = false;
+    foreach ((array)($P['items'] ?? []) as $it) { if (($it['note'] ?? '') === '') continue; $pM = $byIdM[(string)($it['id'] ?? '')] ?? [];
+      if ((string)($pM['sub'] ?? '') === 'remeni' || preg_match('/remen/iu', (string)($it['name'] ?? ''))) $strapN = true; else $otherN = true; }
+    $partsM = array_values(array_filter([(($P['ship']['id'] ?? '') !== 'pickup' && is_array($P['ship'] ?? null)) ? 'podatke za dostavu' : '', $strapN ? 'odabranu boju i duljinu remena' : '', $otherN ? 'ono što ste upisali uz artikl' : '']));
+    if ($partsM) { $jM = count($partsM) > 1 ? implode(', ', array_slice($partsM, 0, -1)) . ' i ' . end($partsM) : $partsM[0];
+      $t[] = mb_strtoupper(mb_substr($jM, 0, 1)) . mb_substr($jM, 1) . ' vidjet ćete na stranici nakon potvrde i u e-mailu s potvrdom narudžbe.'; } }
   $t[] = '';
   $t[] = 'Ako niste naručili vi, zanemarite ovaj e-mail: bez potvrde narudžba se ne zaprima i ništa se ne rezervira.';
   $t[] = '';
@@ -1442,7 +1453,8 @@ function sj_place_order_locked(array $P): array {
      i tajna za poveznicu „Uplatio/la sam” (samo u e-mailovima kupcu) */
   /* v81 (p2): rok za uplatu je zaseban od rezervacije (rezervacija traje do 23:59 radnog dana nakon roka) */
   $payUntil = ($res && !empty($res['pay'])) ? (string)$res['pay'] : sj_iso(sj_pay_deadline(time(), (int)$ttl)); /* v76: vikend i blagdani */
-  $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time()), 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
+  /* v111 (pregled v110, sigurnost/softver N1): oznaka „potvrđeno linkom iz e-maila” trajno uz narudžbu — zapis na čekanju briše se nakon 30 dana ili pri oštećenju */
+  $entry = ['no' => $no, 'key' => $key, 'at' => sj_iso(time())] + (!empty($P['viaLink']) ? ['byLink' => true] : []) + [ 'payUntil' => $payUntil, 'claim' => sj_token(), 'name' => $cust['name'], 'email' => $cust['email'], 'phone' => $cust['phone'],
             'total' => sj_fmt_eur($total), 'items' => $itemsText, 'shipping' => $shipText, 'address' => trim($cust['street'] . ', ' . $cust['city'], ', '),
             'note' => $note, 'reservation' => $res ? ['until' => $res['until'], 'token' => $res['token']] : null, 'order' => $o,
             'ip' => (string)($ip ?? ''), 'ip_prev' => (string)($ipPrev ?? ''), 'series' => (string)($P['series'] ?? '')]; /* skraćena veza: admin „Storniraj sve s ove adrese”; v98: oznaka preglednika */

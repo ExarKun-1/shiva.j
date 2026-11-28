@@ -398,6 +398,13 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const e503 = await p5.textContent('#orderError');
     ok(/Narudžba nije prihvaćena\. Trenutačno primamo previše narudžbi/.test(e503) && !/Veza je prekinuta/.test(e503) && !(await p5.isVisible('#retrySend')), 'v100 (kupac N1): 503 s porukom servisa — „Narudžba nije prihvaćena”, bez „Pošalji ponovno” ' + e503.slice(0, 90));
     await p5.unroute('**/api/order');
+    /* v111 (pregled v110, softver N5 / M18): ponovljeni ključ narudžbe koju je vlasnik e-adrese potvrdio linkom — ovaj preglednik ne dobiva ploču ni broj */
+    await p5.route('**/api/order', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, repeated: true, confirmedByLink: true }) }));
+    const lastB = await p5.evaluate(() => JSON.stringify(storeGet('last'))); await p5.evaluate(() => clearOrderError()); await p5.click('#orderBtn');
+    await p5.waitForFunction(() => /potvrdili ste preko linka/.test(document.querySelector('.drawer-body').textContent), null, { timeout: 8000 }).catch(() => {});
+    const cbl = await p5.evaluate(lb => ({ msg: /Narudžbu potvrdili ste preko linka iz e-maila\./.test(document.querySelector('.drawer-body').textContent), panel: !!document.querySelector('.pay'), last: JSON.stringify(storeGet('last')) !== lb, undef: /undefined/.test(document.querySelector('.drawer-body').textContent) }), lastB);
+    await p5.unroute('**/api/order');
+    ok(cbl.msg && !cbl.panel && !cbl.last && !cbl.undef, 'v111: odgovor „potvrđeno linkom” — poruka bez ploče, broja i spremljene narudžbe ' + JSON.stringify(cbl));
     const dt = await p5.evaluate(async () => { const el = document.createElement('p'); el.textContent = 'Torbu čuvamo do utorka, 24. 11. 2026. u 23:59. Što slijedi: u roku 1–2 radna dana, 10000 Zagreb. Šaljemo u 5 radnih dana, s 24. 11. 2026. u 10:00, i 21000 Split; pišite i ana-marija@primjer.hr'; document.body.appendChild(el); await new Promise(r => setTimeout(r, 50)); const out = [...el.querySelectorAll('.nw')].map(x => x.textContent); el.remove(); return out; });
     ok(dt.includes('24. 11. 2026. u 23:59') && dt.includes('1–2 radna dana') && dt.includes('10000 Zagreb') && dt.includes('u 5 radnih dana') && dt.includes('s 24. 11. 2026. u 10:00') && dt.includes('i 21000 Split') && !dt.some(x => /@/.test(x)), 'v100 (mobitel 6, dizajn N9): datum, raspon i poštanski broj u tekstu s poslužitelja bez prijeloma ' + JSON.stringify(dt));
     ok(await p5.evaluate(() => getComputedStyle(document.querySelector('.old-browser')).display === 'none' && document.documentElement.classList.contains('js-ok')), 'v100: obavijest za prestare preglednike se ne vidi kad skripta radi');
@@ -434,8 +441,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const pan = await pg.evaluate(L => { storeSet('cart', null); cart = []; storeSet('last', L); markClaimed(L.srv.orderNo, { state: 'extended', payUntil: new Date(Date.now() + 3 * 86400e3).toISOString(), message: 'Torbu čuvamo za vas do srijede.' });
       const l2 = storeGet('last'); l2.wdU = true; storeSet('last', l2); openCart(); renderPaymentPanel(storeGet('last'));
       const e = document.getElementById('emptyCart'), wdu = e.querySelector('.pay-wdu'), sum = e.querySelector('.pay-sum'), a = [...e.querySelectorAll('a')].find(x => /ovdje na stranici/.test(x.textContent));
-      return { said: (e.querySelector('.pay-late .said') || {}).textContent || '', claimLinkShown: !!e.querySelector('.claim-link'), wduBefore: !!(wdu && sum && (wdu.compareDocumentPosition(sum) & 4)), wduInLate: /bez poveznice/.test((e.querySelector('.pay-late') || {}).textContent || ''), href: a ? a.getAttribute('href') : '' }; }, mkLast('SJ-2026-0101', 'luna', 'Luna'));
-    ok(pan.said === 'Javili ste nam da ste uplatili.' && !pan.claimLinkShown && pan.wduBefore && !pan.wduInLate && pan.href === '#raskid?no=2026-0101&t=' + 'b'.repeat(24),
+      return { said: (e.querySelector('.pay-late .said') || {}).textContent || '', claimLinkShown: !!e.querySelector('.claim-link'), wduBefore: !!(wdu && sum && (wdu.compareDocumentPosition(sum) & 4)), wduInLate: /bez poveznice/.test((e.querySelector('.pay-late') || {}).textContent || ''), href: a ? a.getAttribute('href') : '', sumTxt: sum ? sum.textContent : '', steps: (e.querySelector('ol.pay-steps') || {}).textContent || '' }; }, mkLast('SJ-2026-0101', 'luna', 'Luna'));
+    ok(pan.said === 'Javili ste nam da ste uplatili.' && !pan.claimLinkShown && pan.wduBefore && !pan.wduInLate && pan.href === '#raskid?no=2026-0101&t=' + 'b'.repeat(24) && /^Iznos narudžbe: /.test(pan.sumTxt) && !/Uplatite/.test(pan.sumTxt) && /Ako uplatu još niste poslali, uplatite/.test(pan.steps) /* v111 (kupac-pc N5) */,
       'v101: ploča pamti „Uplatio/la sam”; izjava bez poveznice u zasebnom okviru iznad iznosa; „ovdje na stranici” nosi broj i oznaku ' + JSON.stringify(pan));
     await pg.locator('#emptyCart a', { hasText: 'ovdje na stranici' }).click();
     await pg.waitForFunction(() => !document.body.classList.contains('cart-open') && document.getElementById('rNo').value === 'SJ-2026-0101', null, { timeout: 4000 }).catch(() => {});
@@ -594,14 +601,54 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       const hv = await pg.evaluate(() => { openCart(); const t = document.querySelector('.drawer-body').textContent; const btn = document.getElementById('showLast'); if (btn) btn.click(); const t2 = (document.querySelector('.pay') || {}).textContent || ''; closeCart(false); return [!!btn, /i dalje čuvamo za vas do petka/.test(t2), /Uplatio\/la sam/.test(t2), /Ako ste i dalje zainteresirani/.test(t2), t.slice(0, 120)]; });
       await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); });
       ok(hv[0] && hv[1] && hv[2] && !hv[3], 'v110: rok za uplatu prošao, torba se čuva — ploča ostaje u košarici s tekstom kao link i „Uplatio/la sam” ' + JSON.stringify(hv)); }
+    /* v111 (pregled v110, mobitel N1 / softver N4): „Uplatio/la sam” nakon roka dok se torba čuva — (a) s drugog uređaja (status?stanje= javi claim), (b) na istom uređaju:
+       ploča bez „Kliknite „Uplatio/la sam””, bez starog datuma čuvanja, s novim rokom, i ne nestaje prije njega */
+    { const lapsedTxt = 'Rok za uplatu ove narudžbe prošao je u četvrtak, 26. 11. 2026. u 23:59, a uplatu još ne vidimo. Torbu „Luna” i dalje čuvamo za vas do petka, 27. 11. 2026. u 23:59. Već ste platili? Kliknite „Uplatio/la sam” ili odgovorite na e-mail o narudžbi sa snimkom potvrde o uplati.';
+      const soon = new Date(Date.now() + 2 * 3600e3).toISOString(), later = new Date(Date.now() + 3 * 86400e3).toISOString();
+      const mk = no => { const L = mkLast(no, 'luna', 'Luna'); L.at = Date.now() - 3 * 86400e3; L.srv.payUntil = new Date(Date.now() - 2 * 86400e3).toISOString(); L.srv.claimUntil = soon; Object.assign(L.srv, { lapsed: lapsedTxt, lapsedHeld: true, until: soon, reserved: true }); L.heldUntil = soon; return L; };
+      const panel = () => pg.evaluate(() => { openCart(); const btn = document.getElementById('showLast'); if (btn) btn.click(); const t = (document.querySelector('.pay') || {}).textContent || ''; closeCart(false); const l = storeGet('last');
+        return { btn: !!btn, kliknite: /Kliknite „Uplatio\/la sam”/.test(t), staroCuvanje: /do petka, 27\. 11\./.test(t), javili: /Javili ste nam da ste uplatili/.test(t), traje: lastUntilOf(l) >= Date.now() + 2.5 * 86400e3 }; });
+      const La = mk('SJ-2026-0212'); await pg.evaluate(L => { storeSet('last', L); }, La);
+      await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); const u = decodeURIComponent(route.request().url());
+        await route.fulfill({ response: rsp, json: /stanje=SJ-2026-0212/.test(u) ? Object.assign(j, { orderState: 'open', heldUntil: later, claim: { until: later, msg: 'Već ste nam javili da ste uplatili; torbu čuvamo za vas do ponedjeljka, 30. 11. 2026. u 23:59. Ako uplata do tada ne bude vidljiva, javit ćemo vam se e-mailom.' }, lapsedSrv: { until: later, reserved: true, payUntil: later } }) : j }); } catch (e) {} });
+      await pg.goto(URL + '?v111b=1', { waitUntil: 'networkidle' });
+      await pg.waitForFunction(() => { const l = storeGet('last'); return l && l.claimed; }, null, { timeout: 5000 }).catch(() => {});
+      const pa = await panel(); await pg.unroute('**/api/status*');
+      const Lb = mk('SJ-2026-0213'); const pb = await pg.evaluate(L => { storeSet('last', L); markClaimed(L.srv.orderNo, { state: 'extended', payUntil: new Date(Date.now() + 3 * 86400e3).toISOString(), message: null }); return true; }, Lb).then(panel);
+      await pg.evaluate(() => { storeSet('last', null); });
+      ok(pa.btn && !pa.kliknite && !pa.staroCuvanje && pa.javili && pa.traje && !pb.kliknite && !pb.staroCuvanje && pb.javili && pb.traje,
+        'v111: „Uplatio/la sam” nakon roka (drugi uređaj i isti uređaj) — ploča bez ponovnog poziva na klik i starog datuma, s novim rokom ' + JSON.stringify([pa, pb])); }
     /* v110 (recenzija v109, kupac-pc N2): stara kartica — torba iz vlastite narudžbe izlazi iz košarice s porukom; gumb „Podaci za uplatu” samo jednom */
     { const Lo = mkLast('SJ-2026-0208', 'vela', 'Vela'); await pg.evaluate(L => { storeSet('last', L); }, Lo);
       await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); j.ids = Array.from(new Set([...(j.ids || []), 'vela'])); await route.fulfill({ response: rsp, json: j }); } catch (e) {} });
       await pg.goto(URL + '?v110b=1', { waitUntil: 'networkidle' });
       const ow = await pg.evaluate(async () => { const v = PRODUCTS.find(x => x.id === 'vela'); cart = [{ ...v, qty: 1, note: '' }]; saveCart(); renderCart(); openCart(); await refreshReservations(); await new Promise(r => setTimeout(r, 400));
-        const r = [document.getElementById('toast').textContent, cart.some(c => c.id === 'vela'), document.querySelectorAll('#showLast').length]; closeCart(false); return r; });
+        const r = [document.getElementById('toast').textContent, cart.some(c => c.id === 'vela'), [...document.querySelectorAll('#showLast')].filter(b => b.getClientRects().length && !b.closest('[hidden]')).length]; closeCart(false); return r; });
       await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); cart = []; saveCart(); renderCart(); });
       ok(/Torba „Vela” već je u vašoj narudžbi SJ-2026-0208, pa je nema u košarici\./.test(ow[0]) && !ow[1] && ow[2] === 1, 'v110: stara kartica — torba iz vlastite narudžbe izlazi s porukom, jedan gumb „Podaci za uplatu” ' + JSON.stringify(ow)); }
+    /* v111 (pregled v110, dizajn N5): dvije torbe iz dviju vlastitih narudžbi — uz svaku njezin broj */
+    { const L1 = mkLast('SJ-2026-0214', 'vela', 'Vela'), L2 = mkLast('SJ-2026-0215', 'luna', 'Luna'); await pg.evaluate(([a, b]) => { storeSet('last', a); storeSet('lastPrev', [b]); }, [L1, L2]);
+      await pg.route('**/api/status*', async route => { try { const rsp = await route.fetch(); const j = await rsp.json(); j.ids = Array.from(new Set([...(j.ids || []), 'vela', 'luna'])); j.prevStates = Object.assign(j.prevStates || {}, { 'SJ-2026-0215': 'open' }); await route.fulfill({ response: rsp, json: j }); } catch (e) {} });
+      await pg.goto(URL + '?v111c=1', { waitUntil: 'networkidle' });
+      const t2 = await pg.evaluate(async () => { cart = ['vela', 'luna'].map(id => ({ ...PRODUCTS.find(x => x.id === id), qty: 1, note: '' })); saveCart(); renderCart(); await refreshReservations(); await new Promise(r => setTimeout(r, 300)); return [document.getElementById('toast').textContent, cart.length]; });
+      await pg.unroute('**/api/status*'); await pg.evaluate(() => { storeSet('last', null); storeSet('lastPrev', null); cart = []; saveCart(); renderCart(); });
+      ok(/^Torbe „[^”]+” \(narudžba SJ-2026-021[45]\) i „[^”]+” \(narudžba SJ-2026-021[45]\) već su u vašim narudžbama, pa ih nema u košarici\.$/.test(t2[0]) && /„Vela” \(narudžba SJ-2026-0214\)/.test(t2[0]) && /„Luna” \(narudžba SJ-2026-0215\)/.test(t2[0]) && t2[1] === 0, 'v111: dvije torbe iz dviju vlastitih narudžbi — uz svaku njezin broj ' + JSON.stringify(t2)); }
+    /* v111 (pregled v110, kupac-pc N1 — ponavljana greška): „Podaci za uplatu” VIDLJIV točno jednom u svakom stanju košarice */
+    { const Lo = mkLast('SJ-2026-0211', 'vela', 'Vela'); await pg.evaluate(L => { storeSet('last', L); cart = []; saveCart(); }, Lo);
+      await pg.goto(URL + '?v111a=1', { waitUntil: 'networkidle' });
+      const vis = () => pg.evaluate(() => [...document.querySelectorAll('#showLast')].filter(b => b.getClientRects().length && !b.closest('[hidden]')).length);
+      const art = () => pg.evaluate(() => { const k = PRODUCTS.find(x => x.made && x.id !== 'vela'); cart = [{ ...k, qty: 1, note: '' }]; saveCart(); renderCart(); return k.name; });
+      const st = {};
+      await pg.evaluate(() => openCart()); await pg.waitForTimeout(150); st.prazna = await vis();
+      await art(); await pg.waitForTimeout(150); st.artikl = await vis();
+      await pg.evaluate(() => { cart = []; saveCart(); renderCart(); }); await pg.waitForTimeout(150); st.ispraznjena = await vis();
+      await art(); await pg.waitForTimeout(150); st.ponovno = await vis();
+      await pg.evaluate(() => { renderCart(); renderCart(); }); await pg.waitForTimeout(150); st.dvaRendera = await vis();
+      await pg.evaluate(() => closeCart(false)); await pg.reload({ waitUntil: 'networkidle' }); await pg.evaluate(() => openCart()); await pg.waitForTimeout(300); st.osvjezeno = await vis();
+      st.ploca = await pg.evaluate(async () => { document.getElementById('showLast').click(); await new Promise(r => setTimeout(r, 200)); const p = !!document.querySelector('#emptyCart .pay'); document.getElementById('backToCart').click(); await new Promise(r => setTimeout(r, 200)); return p; });
+      st.natrag = await vis();
+      await pg.evaluate(() => { closeCart(false); storeSet('last', null); cart = []; saveCart(); renderCart(); });
+      ok(st.prazna === 1 && st.artikl === 1 && st.ispraznjena === 1 && st.ponovno === 1 && st.dvaRendera === 1 && st.osvjezeno === 1 && st.ploca && st.natrag === 1, 'v111: „Podaci za uplatu” vidljiv točno jednom — prazna košarica, s artiklom, ispražnjena, ponovno dodano, nakon osvježavanja, nakon ploče i povratka ' + JSON.stringify(st)); }
     /* G) „mine” za dvije torbe: naslov u množini */
     await pg.route('**/api/confirm', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'mine', mine: ['vela', 'nera'], error: 'Torbe „Vela” i „Nera” već su u vašoj ranijoj narudžbi; podatke za uplatu poslali smo vam e-mailom.' }) }));
     await pg.goto(URL + '?potvrda=' + 'e'.repeat(32) + '.' + 'f'.repeat(32), { waitUntil: 'networkidle' });
@@ -1171,6 +1218,20 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
     const nav900 = await p18.evaluate(() => ({ btn: getComputedStyle(document.getElementById('menuBtn')).display !== 'none', links: [...document.querySelectorAll('nav a.navlink')].filter(a => a.offsetParent).length }));
     await p18.setViewportSize({ width: 1024, height: 800 }); await p18.waitForTimeout(200);
     const nav1024 = await p18.evaluate(() => { const l = [...document.querySelectorAll('nav a.navlink')].filter(a => a.offsetParent); return { tops: new Set(l.map(a => Math.round(a.getBoundingClientRect().top))).size, h: Math.max(...l.map(a => a.getBoundingClientRect().height)), over: document.documentElement.scrollWidth > innerWidth }; });
+    /* v111 (pregled v110, dizajn N1): traka „Natrag u trgovinu” široka kao stupac pravnog teksta na 1440 i 1024 px */
+    const barW = []; for (const w of [1440, 1024]) { await p18.setViewportSize({ width: w, height: 800 }); await p18.evaluate(() => { location.hash = '#uvjeti'; }); await p18.waitForTimeout(400);
+      barW.push(await p18.evaluate(() => { const b = document.querySelector('p.legal-back').getBoundingClientRect(), i = document.querySelector('.legal-inner'), r = i.getBoundingClientRect(); return Math.round(Math.abs(b.width - r.width) + Math.abs(b.left - r.left)); })); }
+    await p18.evaluate(() => { location.hash = '#torbe'; }); await p18.setViewportSize({ width: 1024, height: 800 }); await p18.waitForTimeout(300);
+    /* v111 (pregled v110, kupac-pc N3): Tab kroz prilijepljeno zaglavlje i Shift+Tab na traku „Natrag” ne pomiču stranicu */
+    await p18.setViewportSize({ width: 1440, height: 900 }); await p18.waitForTimeout(300);
+    const tabY = await p18.evaluate(async () => { document.documentElement.style.scrollBehavior = 'auto'; scrollTo(0, 1500); await new Promise(r => setTimeout(r, 150));
+      const l = [...document.querySelectorAll('header a, header button')].filter(e => e.offsetParent); l[0].focus({ preventScroll: true }); return l.length; });
+    const ysT = []; for (let i = 0; i < tabY - 1; i++) { await p18.keyboard.press('Tab'); await p18.waitForTimeout(100); ysT.push(await p18.evaluate(() => Math.round(scrollY))); }
+    await p18.evaluate(async () => { location.hash = '#uvjeti'; await new Promise(r => setTimeout(r, 400)); document.documentElement.style.scrollBehavior = 'auto'; scrollTo(0, 3000); await new Promise(r => setTimeout(r, 150)); document.querySelector('.legal summary').focus({ preventScroll: true }); });
+    const yL0 = await p18.evaluate(() => Math.round(scrollY)); await p18.keyboard.press('Shift+Tab'); await p18.waitForTimeout(150); const yL1 = await p18.evaluate(() => [Math.round(scrollY), document.activeElement.id]);
+    await p18.evaluate(() => { location.hash = '#torbe'; }); await p18.setViewportSize({ width: 1024, height: 800 }); await p18.waitForTimeout(300);
+    ok(ysT.length > 3 && ysT.every(y => y === 1500) && yL1[0] === yL0 && yL1[1] === 'legalBack', 'v111: Tab kroz zaglavlje i na traku „Natrag” ne pomiče stranicu ' + JSON.stringify([ysT, yL0, yL1]));
+    ok(barW.every(d => d <= 2), 'v111: traka „Natrag u trgovinu” široka kao stupac pravnog teksta (1440, 1024) ' + JSON.stringify(barW));
     ok(nav900.btn && nav900.links === 0 && nav1024.tops === 1 && nav1024.h < 40 && !nav1024.over, 'v63: izbornik — hamburger na 900 px, na 1024 px jedan redak bez prijeloma: ' + JSON.stringify([nav900, nav1024]));
     await m18.close();
   }
@@ -1523,8 +1584,8 @@ const ok = (c, m) => log.push((c ? 'PASS ' : 'FAIL ') + m);
       const r = [sessionStorage.getItem('sj-pend-form') === before, pendSentEmail()]; storeSet('pend', null); return r; });
     const part = await q5.evaluate(() => { const k = PRODUCTS.find(x => !x.made) || PRODUCTS[0];
       showOrderSuccess({ ok: true, repeated: true, orderNo: 'SJ-2026-0995', reference: '2026-0995', total: 100, payUntil: new Date(Date.now() - 9e7).toISOString(), until: null, reserved: false, anyGone: true, lapsed: 'Rok za uplatu ove narudžbe prošao je. Nažalost, torba „X” u međuvremenu je otišla drugom kupcu.', items: [{ id: k.id, name: k.name, qty: 1, price: k.price, made: false }], ship: null });
-      const p = document.querySelector('.pay'); const r = [!!p.querySelector('.pay-data .iban'), !!p.querySelector('.pay-sum'), /Podatke za uplatu imate/.test(p.textContent)]; storeSet('last', null); storeSet('lastPrev', null); return r; });
-    ok(kept[0] && kept[1] === 'poslano@primjer.hr' && !part[0] && !part[1] && !part[2], 'krug provjere v104 (kupac N1/N5, sigurnost 3): odbijeno slanje ne mijenja spremljene podatke; dio narudžbe otišao — bez iznosa i podataka za uplatu ' + JSON.stringify([kept, part]));
+      const p = document.querySelector('.pay'); const ol = p.querySelector('ol.pay-steps'), h = p.querySelector('.pay-title-next'); const r = [!!p.querySelector('.pay-data .iban'), !!p.querySelector('.pay-sum'), /Podatke za uplatu imate/.test(p.textContent), !!(ol && ol.hidden && h && h.hidden) /* v111: bez „Što slijedi” s jednim korakom */]; storeSet('last', null); storeSet('lastPrev', null); return r; });
+    ok(kept[0] && kept[1] === 'poslano@primjer.hr' && !part[0] && !part[1] && !part[2] && part[3], 'krug provjere v104 (kupac N1/N5, sigurnost 3): odbijeno slanje ne mijenja spremljene podatke; dio narudžbe otišao — bez iznosa i podataka za uplatu; v111: bez „Što slijedi” s jednim korakom ' + JSON.stringify([kept, part]));
     await cs.close();
     /* obrazac za raskid na mobitelu: poruka uz polje */
     const mr2 = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true }); const q6 = await mr2.newPage(); watch(q6);

@@ -80,6 +80,19 @@ const SAFARI14_CSS = '.card .photo,.hero-bag .ring,.lb-photo,.about-photo img{as
       ok(lg2.logoTop && lg2.hopBack && lg2.backVisible && lg2.cartHop, `${P.name}: logo s podstranice na vrh, povratak nakon dva pravna odjeljka, traka „Natrag” na zaslonu uz link za raskid ${JSON.stringify(lg2)}`);
       const btnC = await pg.evaluate(() => { const b = document.querySelector('.card .add-btn:not([disabled]):not(.in-cart)'); return b ? getComputedStyle(b).backgroundColor : ''; });
       ok(btnC === 'rgb(46, 74, 58)', `${P.name}: „Dodaj u košaricu” ispunjen bojom konca (${btnC})`);
+      /* v111 (pregled v110, dizajn N2): „U košarici (1) · dodaj još” u rubrici Ostalo — lom samo kod „·”, nijedan dio razlomljen, gumb ne viši od susjednog za više od jednog retka */
+      const addMore = await pg.evaluate(async () => { const k = PRODUCTS.find(x => x.made && catOf(x) !== 'kolekcija' && !isGone(x)); if (!k) return { skip: true };
+        const c0 = cart.slice(), cat0 = currentCat; cart = [{ ...k, qty: 1, note: '' }]; saveCart(); currentCat = catOf(k); renderGrid(); await new Promise(r => setTimeout(r, 200));
+        const b = [...document.querySelectorAll('.card .add-btn')].find(x => /dodaj još/i.test(x.textContent)); const sp = b ? [...b.querySelectorAll('span.nw')] : [];
+        const r = { parts: sp.length, broken: sp.filter(x => x.getClientRects().length > 1).length };
+        cart = c0; saveCart(); currentCat = cat0; renderGrid(); return r; });
+      /* v111 (pregled v110, softver N5 / M19): „U košarici ✓ · otvori” u Stalnoj kolekciji s obrubom (ne ispunjen kao „Dodaj”) */
+      const collOut = await pg.evaluate(async () => { const k = PRODUCTS.find(x => catOf(x) === 'kolekcija' && !isGone(x)); if (!k) return { skip: true };
+        const c0 = cart.slice(), cat0 = currentCat; cart = [{ ...k, qty: 1, note: '', strap: (k.straps || [])[0] }]; saveCart(); currentCat = 'kolekcija'; renderGrid(); await new Promise(r => setTimeout(r, 150));
+        const b = [...document.querySelectorAll('.card .add-btn')].find(x => /U košarici ✓/.test(x.textContent)); const r = b ? { cls: b.classList.contains('in-cart'), bg: getComputedStyle(b).backgroundColor } : { none: true };
+        cart = c0; saveCart(); currentCat = cat0; renderGrid(); return r; });
+      ok(collOut.skip || (collOut.cls && collOut.bg !== 'rgb(46, 74, 58)'), `${P.name}: „U košarici ✓ · otvori” u Stalnoj kolekciji s obrubom ${JSON.stringify(collOut)}`);
+      ok(addMore.skip || (addMore.parts === 2 && addMore.broken === 0), `${P.name}: „U košarici (1) · dodaj još” lomi se samo kod „·” ${JSON.stringify(addMore)}`);
       /* v107: naslov s brojkom u Uvjetima ima točno dvije ćelije (brojka + tekst) — inače se „i riječ” (span.nw) lomi u novi red i preklapa */
       const h3bad = await pg.evaluate(() => [...document.querySelectorAll('summary h3.with-n')].filter(h => h.children.length !== 2 || [...h.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).length);
       const h3n = await pg.evaluate(() => document.querySelectorAll('summary h3.with-n').length);

@@ -76,6 +76,9 @@ const s2 = H(env, 'status');
 ok(s2.sold.includes('luna') && !s2.ids.includes('luna'), 'upisan datum u „Plaćeno” → torba prodana');
 { const cp = H(env, 'confirm', L); /* v110 (recenzija v109, softver N5): stari link nakon „Plaćeno” kao api/index.php — 409 paid, bez ploče za uplatu */
   ok(cp._status === 409 && cp.code === 'paid' && !cp.total, 'v110: probni poslužitelj — stari link nakon „Plaćeno” vraća 409 paid ' + JSON.stringify([cp._status, cp.code])); }
+/* v111 (pregled v110, sigurnost N4 / softver N2): ista narudžba s istim ključem nakon potvrde linkom — bez broja, iznosa i stanja, i nakon „Plaćeno” (bez 409 paid) */
+{ const rk = H(env, 'order', order('gas-key-00001', 'ana@primjer.hr', [{ id: 'luna' }], 65));
+  ok(rk._status === 200 && rk.ok && rk.repeated && rk.confirmedByLink && !rk.orderNo && !rk.total && !rk.items && !rk.code, 'v111: probni poslužitelj — ponovljeni ključ nakon potvrde linkom ne otkriva narudžbu ni uplatu ' + JSON.stringify(rk)); }
 // granica pola ponude: slobodni unikati iz ispitnog popisa
 env = makeEnv();
 const free = list.filter(p => !p.made && !p.sold && !p.reserved && !p.hidden && (p.imgs || []).length).map(p => String(p.id));
